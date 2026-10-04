@@ -16,6 +16,8 @@ third-party code are kept untouched.
 | Kotlin and kotlinx libraries, © JetBrains s.r.o. and contributors | Apache-2.0 | Language runtime and standard library; includes `kotlinx-coroutines-test` (tests only, not shipped in the APK) |
 | AndroidX, Jetpack Compose and Material 3, © The Android Open Source Project | Apache-2.0 | UI toolkit |
 | Dagger / Hilt, © The Dagger Authors | Apache-2.0 | Dependency injection |
+| AndroidX Room 3 and AndroidX SQLite, © The Android Open Source Project | Apache-2.0 | Local metadata database. The app uses the system SQLite |
+| MockK, Turbine and the bundled SQLite build for the JVM (`sqlite-bundled-jvm`; SQLite itself is in the public domain) | Apache-2.0 | Tests only; not shipped in the APK |
 | JUnit 5, © the JUnit team | EPL-2.0 | Tests only; not shipped in the APK |
 | JUnit 4, © the JUnit team | EPL-1.0 | Tests only; not shipped in the APK. Runs the emulator's upstream tests |
 | `terminal-emulator` from [termux-app](https://github.com/termux/termux-app), © Termux developers, derived from [Android Terminal Emulator](https://github.com/jackpal/Android-Terminal-Emulator) © Jack Palevich | Apache-2.0 (see the note below) | Vendored **unmodified** in `terminal-emulator/` at tag `v0.118.3` (commit `5b657c6adf4304e5198951ce815fe0205dcac29c`): the Java sources, the JNI `termux.c` and upstream's unit tests. Only this library is used: the rest of `termux-app` is **GPL-3.0-only** and is not copied, and `terminal-view` is not used (the view is our own, in Compose). License text: `terminal-emulator/LICENSE` |

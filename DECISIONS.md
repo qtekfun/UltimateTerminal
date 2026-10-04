@@ -16,6 +16,8 @@ funcionando:
   armeabi-v7a y x86_64.
 - Comportamiento de seccomp, `ptrace`, `/proc` y `--link2symlink` en Android moderno (API 26–37).
 - Ejecutar binarios desde `nativeLibraryDir` con `targetSdk` 28 en Android 15+/16.
+- Capa de datos (T05): el cableado de Hilt, `AndroidSQLiteDriver` y `java.nio` (enlaces simbólicos,
+  permisos, `ATOMIC_MOVE`) en el almacenamiento privado de la app (ver D-T05-9).
 - T03, todo lo que necesita un PTY real o una pantalla: que `libtermux.so` cargue y el `fork/exec` de
   `/system/bin/sh` funcione; que el dibujo (colores, cursor, texto ancho, fuente) sea correcto y fluido;
   el teclado en pantalla (IME), el teclado físico, los gestos (scroll y selección) y que `stty size`
@@ -262,6 +264,95 @@ Sin validar:
 5. Que la actividad no se recrea en ninguno de esos cambios (el test solo comprueba el manifest).
 6. Que 120 ms de debounce se siente bien y no hace saltar el contenido.
 7. Redimensionar la ventana flotante arrastrando (freeform) en tablets con ese modo.
+
+## T05 — Room y repositorios
+
+### D-T05-1 · 2026-10-04 · Room 3 como en UltimateDeck, SQLite del sistema en la app
+- **Decisión:** `androidx.room3` 3.0.3 (las versiones de Deck). En la app, `AndroidSQLiteDriver`
+  (SQLite del sistema); en los tests de host, el `BundledSQLiteDriver` de JVM. Esquema exportado a
+  `app/schemas`, versión 1, sin migración destructiva: subir `UltimateTerminalDatabase.VERSION` exige
+  añadir su migración (lo comprueba `DatabaseSchemaTest`) y un caso en `MigrationTest`.
+- **Motivo:** mismo patrón probado en Deck; el SQLite del sistema no engorda el APK.
+- **Alternativas:** SQLite empaquetado en el APK (más peso); DataStore o JSON a mano (sin esquema ni
+  migraciones verificables).
+- **Impacto:** `MigrationTest` crea una base con cada esquema exportado y la abre con el código
+  actual; hoy solo existe la versión 1.
+
+### D-T05-2 · 2026-10-04 · Ajustes en una tabla clave-valor de Room
+- **Decisión:** `AppSettings` se guarda en la tabla `setting` (`key`, `value` como texto), no en
+  DataStore. Un valor ausente o ilegible cae a su valor por defecto; el *scrollback* se acota a
+  100..1 000 000 al guardar.
+- **Motivo:** los ajustes viajan en la copia de seguridad (T15) junto con el resto de metadatos y
+  quedan en una sola base; no añade dependencia. Una fila dañada no debe romper la app.
+- **Alternativas:** DataStore (otra dependencia y otro fichero que respaldar).
+- **Impacto:** **los nombres de las claves (`SettingKeys`) son parte del formato de backup**: no
+  renombrarlos sin migración.
+
+### D-T05-3 · 2026-10-04 · Rutas siempre relativas y validadas (`FsPath`)
+- **Decisión:** el directorio de cada distro se guarda como ruta relativa a la raíz de
+  almacenamiento (`FsPath`), nunca absoluta. `FsPath` rechaza vacío, absolutas, segmentos vacíos,
+  `.`, `..`, `\` y NUL. Las filas cuya ruta no sea válida (p. ej. de una copia manipulada) no se
+  devuelven.
+- **Motivo:** una copia restaurada en otro dispositivo (T15) no debe depender de dónde esté
+  `filesDir`, y una ruta venida de un backup no debe poder salir de la raíz.
+- **Impacto:** `ui` y `domain` no usan `java.io.File`; la ruta absoluta solo existe como `String` en
+  `FileSystemRepository.absolutePathOf`, para construir la línea de comandos de proot.
+
+### D-T05-4 · 2026-10-04 · `FileSystemRepository` no sigue enlaces simbólicos y copia de forma atómica
+- **Decisión:** si algún componente intermedio de una ruta es un enlace simbólico, la operación se
+  rechaza (`InvalidPath`); los recorridos de árboles no siguen enlaces. `copyRecursively` construye
+  una copia `<destino>.partial` y la renombra (todo o nada; un `.partial` de un cierre anterior se
+  reemplaza). El borrado da permisos de escritura al propietario en directorios de solo lectura. Los
+  ficheros especiales (sockets, pipes, dispositivos) se omiten y los enlaces duros quedan como
+  copias independientes.
+- **Motivo:** un rootfs está lleno de enlaces absolutos (`/var/run -> /run`); seguirlos permitiría
+  borrar o leer fuera de la raíz. Es la propiedad de seguridad más importante de esta capa y tiene
+  tests específicos.
+- **Alternativas:** `Files.copy` simple sin carpeta temporal (deja distros a medias, contra la regla
+  de CLAUDE.md).
+- **Impacto:** T07 (duplicar/eliminar) y T15 (restaurar) deben usar solo esta interfaz.
+
+### D-T05-5 · 2026-10-04 · Una única distro predeterminada, garantizada por transacción
+- **Decisión:** la primera distro registrada es la predeterminada. `setDefault` deja exactamente
+  una. Al eliminar la predeterminada, la **más antigua** de las restantes pasa a serlo. Se hace en
+  transacciones del DAO, no con una restricción en la base (SQLite vía Room no ofrece índices
+  parciales).
+- **Motivo:** una pestaña nueva siempre debe tener dónde abrirse; sin esta regla, borrar la
+  predeterminada dejaba el estado sin distro por defecto.
+- **Impacto:** el SPEC no fija este comportamiento; si se prefiere "ninguna", es un cambio de una
+  línea en `deleteAndPromote`.
+
+### D-T05-6 · 2026-10-04 · Nombres únicos sin distinguir mayúsculas; entradas SSH validadas
+- **Decisión:** distros, perfiles, layouts y hosts tienen nombre único sin distinguir mayúsculas
+  (`COLLATE NOCASE` + comprobación transaccional), de 1 a 64 caracteres y sin caracteres de control.
+  El host SSH debe cumplir `[A-Za-z0-9._:%\[\]-]+` y no empezar por `-`; el usuario, un patrón sin
+  espacios ni `-` inicial; el puerto, 1..65535. Perfiles: fuente 6..72 sp, *scrollback* 100..1 000 000.
+- **Motivo:** un host `-oProxyCommand=...` pasado a `ssh` se interpretaría como opción (inyección de
+  argumentos). Se rechaza ya al guardar, además de lo que deba hacer T14 al lanzar el comando.
+- **Impacto:** T14 debe seguir pasando `--` antes del destino aunque los datos ya estén validados.
+
+### D-T05-7 · 2026-10-04 · El árbol de paneles se guarda como JSON
+- **Decisión:** `LayoutNode` (`pane` / `split`) se serializa con kotlinx.serialization a una columna
+  de texto, con `type` como discriminador y claves desconocidas ignoradas (un layout de una versión
+  posterior sigue abriéndose). El `ratio` de un `Split` debe estar estrictamente entre 0 y 1; un
+  layout con JSON ilegible o `ratio` inválido no se devuelve en vez de romper la lista.
+- **Alternativas:** tablas relacionales de nodos (más complejas sin ganancia: el árbol siempre se
+  lee y se escribe entero).
+- **Impacto:** el formato JSON de la copia de configuración (T15) puede reutilizar este.
+
+### D-T05-8 · 2026-10-04 · Fakes: solo los que ya hacen falta, verificados con el mismo contrato
+- **Decisión:** `FakeDistroRepository` e `InMemoryFileSystemRepository` (en `src/test`) pasan los
+  mismos tests de contrato que las implementaciones reales (`DistroRepositoryContract`,
+  `FileSystemRepositoryContract`), para que un fake no se desvíe de la realidad. No hay fakes de
+  perfiles, layouts, hosts ni ajustes todavía; se añaden cuando una tarea los necesite.
+- **Impacto:** T07 puede probar la instalación de distros sin base de datos ni disco.
+
+### D-T05-9 · 2026-10-04 · Qué NO está validado
+- Todo se verificó en la JVM del host (Room en memoria con SQLite empaquetado, `java.nio` sobre el
+  sistema de ficheros de Linux). **No se ha probado en Android**: el cableado de Hilt (`di/`), el
+  `AndroidSQLiteDriver`, la creación de `files/storage`, y que `java.nio` (enlaces simbólicos,
+  permisos POSIX, `ATOMIC_MOVE`) se comporte igual en el almacenamiento privado de la app.
+- Cobertura de `domain` + `data` en el momento de esta tarea: 99,4 % de líneas y 92,4 % de ramas.
 
 ## T11
 

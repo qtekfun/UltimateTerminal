@@ -18,6 +18,8 @@ plugins {
     alias(libs.plugins.ktlint)
     alias(libs.plugins.kover)
     alias(libs.plugins.licensee)
+    alias(libs.plugins.room)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 /**
@@ -126,6 +128,10 @@ kotlin {
         jvmTarget.set(JvmTarget.JVM_17)
         allWarningsAsErrors.set(true)
     }
+}
+
+room3 {
+    schemaDirectory("$projectDir/schemas")
 }
 
 detekt {
@@ -304,8 +310,16 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
+    implementation(libs.room.runtime)
+    ksp(libs.room.compiler)
+    implementation(libs.kotlinx.serialization.json)
+
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
+    testImplementation(libs.mockk)
+    // Host JVM build of the bundled SQLite, so Room runs in local unit tests.
+    testImplementation(libs.sqlite.bundled.jvm)
 }
