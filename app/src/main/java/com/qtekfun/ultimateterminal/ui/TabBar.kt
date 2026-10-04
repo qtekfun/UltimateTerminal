@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -149,7 +150,7 @@ private fun TabStrip(
 ) {
     val description = stringResource(R.string.tab_bar_description)
     val bar = modifier
-        .background(MaterialTheme.colorScheme.surface)
+        .background(currentChrome().surface)
         .semantics { contentDescription = description }
     if (vertical) {
         Column(bar) {
@@ -182,6 +183,7 @@ private class TabDrag {
 class TabBarLinks(
     val openDistros: () -> Unit,
     val openSsh: () -> Unit,
+    val openAppearance: () -> Unit,
     val splitRight: () -> Unit,
     val splitDown: () -> Unit
 )
@@ -208,6 +210,7 @@ private fun TabChip(
     )
     val description = stringResource(R.string.tab_description, name, item.position, count, state)
     val dragging = drag.id == item.id
+    val chrome = currentChrome()
     val chip = if (vertical) {
         Modifier.fillMaxWidth()
     } else {
@@ -225,11 +228,8 @@ private fun TabChip(
                 drag.sizes[item.id] = (if (vertical) it.height else it.width).toFloat()
             }
             .background(
-                if (item.active) {
-                    MaterialTheme.colorScheme.secondaryContainer
-                } else {
-                    MaterialTheme.colorScheme.surface
-                }
+                if (item.active) chrome.selected else chrome.surface,
+                RoundedCornerShape(chrome.corner)
             )
             .semantics(mergeDescendants = true) {
                 contentDescription = description
@@ -246,7 +246,7 @@ private fun TabChip(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = textAlpha)
+            color = chrome.onSurface.copy(alpha = textAlpha)
         )
         TabMenu(name, actions)
     }
@@ -293,7 +293,7 @@ private fun TabMenu(name: String, actions: TabChipActions) {
             .combinedClickable(onClick = { open = true }),
         contentAlignment = Alignment.Center
     ) {
-        Text("⋮", modifier = Modifier.alpha(MENU_ICON_ALPHA))
+        Text("⋮", modifier = Modifier.alpha(MENU_ICON_ALPHA), color = currentChrome().onSurface)
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.tab_rename)) },
@@ -336,47 +336,8 @@ private fun NewTabButton(
             ),
         contentAlignment = Alignment.Center
     ) {
-        Text("+", style = MaterialTheme.typography.titleLarge)
-        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-            choices.forEach { choice ->
-                DropdownMenuItem(
-                    text = { Text(choice.name ?: stringResource(R.string.tab_shell_option)) },
-                    onClick = {
-                        menuOpen = false
-                        onNewTabIn(choice.id)
-                    }
-                )
-            }
-            // The split of the pane that has the keyboard: here, and not as a button over the text.
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.pane_split_right)) },
-                onClick = {
-                    menuOpen = false
-                    links.splitRight()
-                }
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.pane_split_down)) },
-                onClick = {
-                    menuOpen = false
-                    links.splitDown()
-                }
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.ssh_open)) },
-                onClick = {
-                    menuOpen = false
-                    links.openSsh()
-                }
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.tab_manage_distros)) },
-                onClick = {
-                    menuOpen = false
-                    links.openDistros()
-                }
-            )
-        }
+        Text("+", style = MaterialTheme.typography.titleLarge, color = currentChrome().onSurface)
+        NewTabMenu(menuOpen, { menuOpen = false }, choices, onNewTabIn, links)
     }
 }
 
