@@ -73,6 +73,7 @@ fun AppearanceScreen(onClose: () -> Unit, viewModel: AppearanceViewModel = viewM
             ThemeSection(settings, viewModel::update)
             SchemeSection(settings, viewModel, onEdit = { editing = it })
             FontSection(settings, viewModel)
+            KeysSection(settings, viewModel::update)
             DesignSection(settings, viewModel::update)
         }
         editing?.let { edit ->

@@ -62,6 +62,19 @@ class ConfigCodecTest {
     }
 
     @Test
+    fun theKeyStyleSurvivesAndABackupFromBeforeItReadsAsFlat() {
+        val classic = sampleSnapshot().copy(
+            settings = sampleSettings().copy(extraKeyStyle = "CLASSIC")
+        )
+        assertEquals(classic, ConfigCodec.decode(ConfigCodec.encode(classic)).value())
+
+        val old = text(ConfigCodec.encode(sampleSnapshot()))
+            .replace(Regex(",?\"extraKeyStyle\":\"[A-Z]+\""), "")
+        val decoded = ConfigCodec.decode(old.toByteArray()).value()
+        assertEquals("FLAT", decoded.settings.extraKeyStyle)
+    }
+
+    @Test
     fun unknownFieldsFromALaterVersionAreIgnored() {
         val json = text(
             ConfigCodec.encode(sampleSnapshot())

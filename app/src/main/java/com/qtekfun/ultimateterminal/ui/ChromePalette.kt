@@ -9,10 +9,15 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.qtekfun.ultimateterminal.domain.appearance.ChromeColorsFor
 import com.qtekfun.ultimateterminal.domain.appearance.ChromeStyle
+import com.qtekfun.ultimateterminal.domain.appearance.ExtraKeyPalette
+import com.qtekfun.ultimateterminal.domain.appearance.ExtraKeyPaletteFor
+import com.qtekfun.ultimateterminal.domain.appearance.ExtraKeyStyle
+import com.qtekfun.ultimateterminal.domain.appearance.KeyChromeInputs
 import com.qtekfun.ultimateterminal.domain.appearance.TerminalAppearance
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
 
@@ -25,10 +30,8 @@ data class ChromePalette(
     val outline: Color,
     val accent: Color,
     val onAccent: Color,
-    /** The cap of an extra key, a step lighter than the tray it sits on, and while pressed. */
-    val key: Color,
-    val keyPressed: Color,
-    val onKey: Color,
+    /** The extra-keys row, in the style the user picked. */
+    val keys: ExtraKeyPalette,
     val corner: Dp
 )
 
@@ -41,8 +44,19 @@ private val DefaultCorner = 8.dp
 fun currentChrome(): ChromePalette = LocalChromePalette.current ?: materialChrome(DefaultCorner)
 
 @Composable
-private fun materialChrome(corner: Dp): ChromePalette {
+private fun materialChrome(
+    corner: Dp,
+    keyStyle: ExtraKeyStyle = ExtraKeyStyle.DEFAULT
+): ChromePalette {
     val colors = MaterialTheme.colorScheme
+    val keyInputs = KeyChromeInputs(
+        background = colors.background.toArgb(),
+        foreground = colors.onBackground.toArgb(),
+        surface = colors.surface.toArgb(),
+        onSurface = colors.onSurface.toArgb(),
+        accent = colors.primary.toArgb(),
+        onAccent = colors.onPrimary.toArgb()
+    )
     return ChromePalette(
         surface = colors.surface,
         selected = colors.secondaryContainer,
@@ -50,9 +64,7 @@ private fun materialChrome(corner: Dp): ChromePalette {
         outline = colors.outline,
         accent = colors.primary,
         onAccent = colors.onPrimary,
-        key = colors.surfaceVariant,
-        keyPressed = colors.outlineVariant,
-        onKey = colors.onSurfaceVariant,
+        keys = ExtraKeyPaletteFor.of(keyInputs, keyStyle),
         corner = corner
     )
 }
@@ -64,10 +76,19 @@ fun rememberChromePalette(
     appearance: TerminalAppearance
 ): ChromePalette {
     val corner = appearance.cornerRadiusDp.dp
-    val material = materialChrome(corner)
-    return remember(scheme, appearance.chromeStyle, corner, material) {
+    val keyStyle = appearance.extraKeyStyle
+    val material = materialChrome(corner, keyStyle)
+    return remember(scheme, appearance.chromeStyle, corner, keyStyle, material) {
         if (appearance.chromeStyle == ChromeStyle.SCHEME) {
             val chrome = ChromeColorsFor.scheme(scheme)
+            val keyInputs = KeyChromeInputs(
+                background = scheme.background,
+                foreground = scheme.foreground,
+                surface = chrome.surface,
+                onSurface = chrome.onSurface,
+                accent = chrome.accent,
+                onAccent = chrome.onAccent
+            )
             ChromePalette(
                 surface = Color(chrome.surface),
                 selected = Color(chrome.selected),
@@ -75,9 +96,7 @@ fun rememberChromePalette(
                 outline = Color(chrome.outline),
                 accent = Color(chrome.accent),
                 onAccent = Color(chrome.onAccent),
-                key = Color(chrome.key),
-                keyPressed = Color(chrome.keyPressed),
-                onKey = Color(chrome.onKey),
+                keys = ExtraKeyPaletteFor.of(keyInputs, keyStyle),
                 corner = corner
             )
         } else {

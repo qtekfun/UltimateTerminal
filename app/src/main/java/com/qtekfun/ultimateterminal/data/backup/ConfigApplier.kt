@@ -4,6 +4,7 @@
 package com.qtekfun.ultimateterminal.data.backup
 
 import com.qtekfun.ultimateterminal.domain.Outcome
+import com.qtekfun.ultimateterminal.domain.appearance.ExtraKeyStyle
 import com.qtekfun.ultimateterminal.domain.model.Layout
 import com.qtekfun.ultimateterminal.domain.model.Profile
 import com.qtekfun.ultimateterminal.domain.model.SshHost
@@ -166,7 +167,10 @@ internal class ConfigApplier(repositories: BackupRepositories) {
                     FontZoom.MIN_SP,
                     FontZoom.MAX_SP
                 ),
-                customSchemes = custom
+                customSchemes = custom,
+                appearance = it.appearance.copy(
+                    extraKeyStyle = ExtraKeyStyle.parse(dto.extraKeyStyle)
+                )
             )
         }
     }

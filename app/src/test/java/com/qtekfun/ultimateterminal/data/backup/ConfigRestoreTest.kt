@@ -4,6 +4,7 @@
 package com.qtekfun.ultimateterminal.data.backup
 
 import com.qtekfun.ultimateterminal.domain.Outcome
+import com.qtekfun.ultimateterminal.domain.appearance.ExtraKeyStyle
 import com.qtekfun.ultimateterminal.domain.backup.BackupKind
 import com.qtekfun.ultimateterminal.domain.backup.ExportRequest
 import com.qtekfun.ultimateterminal.domain.model.LayoutNode
@@ -75,7 +76,8 @@ class ConfigRestoreTest {
                 defaultScrollbackLines = 2_000,
                 terminalSchemeId = "custom-mine",
                 terminalFontSizeSp = 18f,
-                customSchemes = listOf(custom)
+                customSchemes = listOf(custom),
+                appearance = it.appearance.copy(extraKeyStyle = ExtraKeyStyle.CLASSIC)
             )
         }
     }
@@ -153,6 +155,7 @@ class ConfigRestoreTest {
         assertEquals("custom-mine", settings.terminalSchemeId)
         assertEquals(18f, settings.terminalFontSizeSp)
         assertEquals(listOf(custom), settings.customSchemes)
+        assertEquals(ExtraKeyStyle.CLASSIC, settings.appearance.extraKeyStyle)
         val distro = new.distros.observeAll().first().single()
         assertTrue(distro.isDefault)
         val profiles = new.profiles.observeAll().first().associateBy { it.name }
@@ -215,7 +218,8 @@ class ConfigRestoreTest {
             defaultScrollbackLines = 5,
             terminalSchemeId = "nope",
             terminalFontSizeSp = 1_000f,
-            customSchemes = "not json"
+            customSchemes = "not json",
+            extraKeyStyle = "BOGUS"
         )
         val summary = apply(sampleSnapshot().copy(settings = settings, distros = emptyList()))
         assertTrue(summary.settingsApplied)
@@ -225,6 +229,7 @@ class ConfigRestoreTest {
         assertEquals(BuiltInSchemes.DEFAULT_ID, now.terminalSchemeId)
         assertEquals(FontZoom.MAX_SP, now.terminalFontSizeSp)
         assertEquals(emptyList<Any>(), now.customSchemes)
+        assertEquals(ExtraKeyStyle.FLAT, now.appearance.extraKeyStyle)
         val small =
             apply(
                 sampleSnapshot().copy(

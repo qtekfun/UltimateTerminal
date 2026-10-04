@@ -10,6 +10,7 @@ import com.qtekfun.ultimateterminal.data.local.runDatabaseTest
 import com.qtekfun.ultimateterminal.domain.appearance.ChromeStyle
 import com.qtekfun.ultimateterminal.domain.appearance.CursorShape
 import com.qtekfun.ultimateterminal.domain.appearance.CustomFont
+import com.qtekfun.ultimateterminal.domain.appearance.ExtraKeyStyle
 import com.qtekfun.ultimateterminal.domain.appearance.FontCatalog
 import com.qtekfun.ultimateterminal.domain.appearance.TerminalAppearance
 import kotlinx.coroutines.flow.first
@@ -53,7 +54,8 @@ class AppearanceSettingsTest {
             cursorShape = CursorShape.BAR,
             cursorBlink = true,
             chromeStyle = ChromeStyle.SYSTEM,
-            cornerRadiusDp = 4
+            cornerRadiusDp = 4,
+            extraKeyStyle = ExtraKeyStyle.CAPSULE
         )
 
         settings.update { it.copy(appearance = mine, customFonts = listOf(font)) }
@@ -61,6 +63,17 @@ class AppearanceSettingsTest {
         val stored = settings.observe().first()
         assertEquals(mine, stored.appearance)
         assertEquals(listOf(font), stored.customFonts)
+    }
+
+    @Test
+    fun theKeyStyleIsFlatUntilChosenAndAnUnknownStoredOneIsFlatToo() = runDatabaseTest {
+        assertEquals(ExtraKeyStyle.FLAT, settings.observe().first().appearance.extraKeyStyle)
+
+        store(SettingKeys.EXTRA_KEY_STYLE, "NEON")
+        assertEquals(ExtraKeyStyle.FLAT, settings.observe().first().appearance.extraKeyStyle)
+
+        store(SettingKeys.EXTRA_KEY_STYLE, "CLASSIC")
+        assertEquals(ExtraKeyStyle.CLASSIC, settings.observe().first().appearance.extraKeyStyle)
     }
 
     @Test

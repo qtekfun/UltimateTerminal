@@ -33,7 +33,9 @@ data class TerminalAppearance(
     val cursorBlink: Boolean = false,
     val chromeStyle: ChromeStyle = ChromeStyle.SCHEME,
     /** Corner radius of the tabs, the keys and the buttons of the bars, in dp. */
-    val cornerRadiusDp: Int = DEFAULT_CORNER_DP
+    val cornerRadiusDp: Int = DEFAULT_CORNER_DP,
+    /** How the extra-keys row is drawn. */
+    val extraKeyStyle: ExtraKeyStyle = ExtraKeyStyle.DEFAULT
 ) {
     /** The same appearance with every number inside its range. */
     fun sanitized(): TerminalAppearance = copy(
