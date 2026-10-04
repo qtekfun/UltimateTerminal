@@ -63,9 +63,19 @@ data class RejectedLine(val line: String, val reason: String)
 /**
  * The extra-keys row: which keys, in which rows. Rows hold catalog ids, so the stored form stays
  * small and survives changes to how a key is sent. [visible] hides the whole row (a hardware
- * keyboard user may not want it).
+ * keyboard user may not want it). With [onlyWithKeyboard] (the default) the row is shown only
+ * while the on-screen keyboard is, so it does not take terminal space when there is nothing to
+ * type with; see [shownWith].
  */
-data class ExtraKeysConfig(val rows: List<List<String>>, val visible: Boolean = true) {
+data class ExtraKeysConfig(
+    val rows: List<List<String>>,
+    val visible: Boolean = true,
+    val onlyWithKeyboard: Boolean = true
+) {
+    /** This configuration as it must be drawn now: hidden when it follows a keyboard that is not up. */
+    fun shownWith(keyboardVisible: Boolean): ExtraKeysConfig =
+        if (onlyWithKeyboard && !keyboardVisible) copy(visible = false) else this
+
     /** The keys of each row; ids that are not in the catalog are skipped. */
     fun resolved(): List<List<ExtraKey>> = rows
         .map { row -> row.mapNotNull(ExtraKeyCatalog::find) }
@@ -77,11 +87,13 @@ data class ExtraKeysConfig(val rows: List<List<String>>, val visible: Boolean = 
      */
     fun serialize(): String = buildString {
         append(VISIBLE_PREFIX).append(visible).append('\n')
+        append(ONLY_WITH_KEYBOARD_PREFIX).append(onlyWithKeyboard).append('\n')
         rows.forEach { row -> append(row.joinToString(" ")).append('\n') }
     }
 
     companion object {
         private const val VISIBLE_PREFIX = "visible="
+        private const val ONLY_WITH_KEYBOARD_PREFIX = "onlyWithKeyboard="
 
         /** Two rows of seven keys, which fit a 360 dp wide phone at the 48 dp touch size. */
         fun default() = ExtraKeysConfig(
@@ -99,10 +111,13 @@ data class ExtraKeysConfig(val rows: List<List<String>>, val visible: Boolean = 
         fun parse(text: String): Pair<ExtraKeysConfig, List<RejectedLine>> {
             val rejected = mutableListOf<RejectedLine>()
             var visible = true
+            var onlyWithKeyboard = true
             val rows = mutableListOf<List<String>>()
             text.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.forEach { line ->
                 if (line.startsWith(VISIBLE_PREFIX)) {
                     visible = line.removePrefix(VISIBLE_PREFIX) != "false"
+                } else if (line.startsWith(ONLY_WITH_KEYBOARD_PREFIX)) {
+                    onlyWithKeyboard = line.removePrefix(ONLY_WITH_KEYBOARD_PREFIX) != "false"
                 } else {
                     val ids = line.split(' ').filter { it.isNotEmpty() }
                     ids.filter { ExtraKeyCatalog.find(it) == null }
@@ -113,9 +128,9 @@ data class ExtraKeysConfig(val rows: List<List<String>>, val visible: Boolean = 
                 }
             }
             val config = if (rows.isEmpty()) {
-                default().copy(visible = visible)
+                default().copy(visible = visible, onlyWithKeyboard = onlyWithKeyboard)
             } else {
-                ExtraKeysConfig(rows, visible)
+                ExtraKeysConfig(rows, visible, onlyWithKeyboard)
             }
             return config to rejected
         }
