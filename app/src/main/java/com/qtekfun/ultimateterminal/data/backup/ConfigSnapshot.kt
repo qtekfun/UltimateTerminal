@@ -3,6 +3,7 @@
 
 package com.qtekfun.ultimateterminal.data.backup
 
+import com.qtekfun.ultimateterminal.domain.appearance.ExtraKeyStyle
 import com.qtekfun.ultimateterminal.domain.backup.BackupError
 import com.qtekfun.ultimateterminal.domain.backup.BackupResult
 import com.qtekfun.ultimateterminal.domain.model.LayoutNode
@@ -39,7 +40,9 @@ internal data class SettingsDto(
     val terminalSchemeId: String,
     val terminalFontSizeSp: Float,
     /** The imported color schemes, in the format of a scheme list export. */
-    val customSchemes: String
+    val customSchemes: String,
+    /** How the extra-keys row is drawn; a backup from before it existed has none (flat). */
+    val extraKeyStyle: String = ExtraKeyStyle.DEFAULT.name
 )
 
 /** A distro of the source device, only to find the same one by name on this device. */
