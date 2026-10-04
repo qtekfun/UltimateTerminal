@@ -107,15 +107,15 @@ class SessionController(
     /** Like [newSession], running [launch] instead of the Android shell when it is not null. */
     fun newSession(distroId: Long?, launch: SessionLaunch?): SessionId {
         val (next, id) = mutableState.value.created(distroId)
-        return startPublished(next, id)
+        return startPublished(next, id, launch)
     }
 
     override fun splitActive(orientation: SplitOrientation): SessionId? {
         val (next, id) = mutableState.value.split(orientation) ?: return null
-        return startPublished(next, id)
+        return startPublished(next, id, null)
     }
 
-    private fun startPublished(next: Sessions, id: SessionId): SessionId {
+    private fun startPublished(next: Sessions, id: SessionId, launch: SessionLaunch?): SessionId {
         // Published first: a shell that ends at once reports to a session that exists.
         publish(next)
         val onExit = { status: Int -> onExited(id, status) }
@@ -150,8 +150,6 @@ class SessionController(
         publish(mutableState.value.allClosed())
         stopped.forEach(SessionHandle::stop)
     }
-
-    fun activate(id: SessionId) = edit { activated(id) }
 
     override fun edit(change: Sessions.() -> Sessions) {
         val before = mutableState.value
@@ -196,6 +194,9 @@ class SessionController(
             TerminalLayout(GridSize(columns = 80, rows = 24), cellWidthPx = 10, cellHeightPx = 20)
     }
 }
+
+/** Makes [id] the active session. */
+fun SessionEditor.activate(id: SessionId) = edit { activated(id) }
 
 /** Remembers the size each pty was last told, so a size that did not change is not sent again. */
 private class PtySizes(private val handles: Map<SessionId, SessionHandle>) {
