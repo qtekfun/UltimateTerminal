@@ -26,6 +26,7 @@ import com.qtekfun.ultimateterminal.domain.model.AppSettings
 import com.qtekfun.ultimateterminal.domain.repository.SettingsRepository
 import com.qtekfun.ultimateterminal.domain.theme.SchemeCatalog
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
+import com.qtekfun.ultimateterminal.domain.theme.ThemeDecision
 import com.qtekfun.ultimateterminal.domain.theme.resolveTheme
 import com.qtekfun.ultimateterminal.terminal.SessionManager
 import com.qtekfun.ultimateterminal.terminal.TerminalFontLoader
@@ -36,6 +37,9 @@ import com.qtekfun.ultimateterminal.ui.SessionPrompts
 import com.qtekfun.ultimateterminal.ui.SshScreen
 import com.qtekfun.ultimateterminal.ui.TerminalLook
 import com.qtekfun.ultimateterminal.ui.TerminalScreen
+import com.qtekfun.ultimateterminal.ui.ios.IosTheme
+import com.qtekfun.ultimateterminal.ui.settings.SettingsLinks
+import com.qtekfun.ultimateterminal.ui.settings.SettingsScreen
 import com.qtekfun.ultimateterminal.ui.theme.UltimateTerminalTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -76,15 +80,20 @@ class MainActivity : ComponentActivity() {
             enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
         }
         UltimateTerminalTheme(decision, settings.dynamicColor) {
-            Screens(scheme, settings)
+            Screens(scheme, settings, decision)
         }
     }
 
     @Composable
-    private fun Screens(scheme: TerminalColorScheme, settings: AppSettings) {
+    private fun Screens(
+        scheme: TerminalColorScheme,
+        settings: AppSettings,
+        decision: ThemeDecision
+    ) {
         val scope = rememberCoroutineScope()
         val sessions by sessionManager.state.collectAsStateWithLifecycle()
         var hadSessions by remember { mutableStateOf(false) }
+        var showSettings by rememberSaveable { mutableStateOf(false) }
         var showDistros by rememberSaveable { mutableStateOf(false) }
         var showSsh by rememberSaveable { mutableStateOf(false) }
         var showAppearance by rememberSaveable { mutableStateOf(false) }
@@ -111,10 +120,23 @@ class MainActivity : ComponentActivity() {
                 screens = ScreenLinks(
                     openDistros = { showDistros = true },
                     openSsh = { showSsh = true },
-                    openAppearance = { showAppearance = true }
+                    openAppearance = { showAppearance = true },
+                    openSettings = { showSettings = true }
                 )
             )
-            if (showDistros) DistroScreen(onClose = { showDistros = false })
+            // Later is on top: Settings opens Appearance and Distributions over itself.
+            IosTheme(decision, scheme) {
+                if (showSettings) {
+                    SettingsScreen(
+                        onClose = { showSettings = false },
+                        links = SettingsLinks(
+                            openAppearance = { showAppearance = true },
+                            openDistros = { showDistros = true }
+                        )
+                    )
+                }
+                if (showDistros) DistroScreen(onClose = { showDistros = false })
+            }
             if (showSsh) SshScreen(onClose = { showSsh = false })
             if (showAppearance) AppearanceScreen(onClose = { showAppearance = false })
         }

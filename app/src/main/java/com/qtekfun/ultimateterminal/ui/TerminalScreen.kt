@@ -170,6 +170,7 @@ private fun TerminalContent(
             openDistros = screens.openDistros,
             openSsh = screens.openSsh,
             openAppearance = screens.openAppearance,
+            openSettings = screens.openSettings,
             splitRight = viewModel.panes::splitVertical,
             splitDown = viewModel.panes::splitHorizontal
         )
@@ -208,7 +209,8 @@ data class TerminalLook(
 class ScreenLinks(
     val openDistros: () -> Unit,
     val openSsh: () -> Unit,
-    val openAppearance: () -> Unit
+    val openAppearance: () -> Unit,
+    val openSettings: () -> Unit
 )
 
 /** The tab bar at the size its placement reserves, which the grid of the terminal leaves out. */

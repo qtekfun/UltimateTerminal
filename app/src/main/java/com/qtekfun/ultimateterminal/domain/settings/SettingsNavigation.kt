@@ -11,12 +11,21 @@ enum class SettingsPage {
     KEYBOARD_KEYS,
     SHORTCUTS,
     SESSIONS,
+    DISTROS,
     STORAGE,
     NETWORK,
     BACKUP,
     ABOUT,
     NOTICES
 }
+
+/** The page a back button goes to from this one: the section for its sub-pages, otherwise the root. */
+val SettingsPage.parent: SettingsPage
+    get() = when (this) {
+        SettingsPage.KEYBOARD_KEYS, SettingsPage.SHORTCUTS -> SettingsPage.KEYBOARD
+        SettingsPage.NOTICES -> SettingsPage.ABOUT
+        else -> SettingsPage.ROOT
+    }
 
 /**
  * The pages the user has opened, as a stack with the root at the bottom: going back pops one and

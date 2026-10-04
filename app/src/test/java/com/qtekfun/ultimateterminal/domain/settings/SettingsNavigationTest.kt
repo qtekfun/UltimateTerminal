@@ -61,4 +61,23 @@ class SettingsNavigationTest {
             SettingsNavigation.fromNames(listOf("ROOT", "BOGUS", "ABOUT"))
         )
     }
+
+    @Test
+    fun theBackButtonOfAPageNamesItsParent() {
+        assertEquals(SettingsPage.KEYBOARD, SettingsPage.KEYBOARD_KEYS.parent)
+        assertEquals(SettingsPage.KEYBOARD, SettingsPage.SHORTCUTS.parent)
+        assertEquals(SettingsPage.ABOUT, SettingsPage.NOTICES.parent)
+        assertEquals(SettingsPage.ROOT, SettingsPage.NETWORK.parent)
+        assertEquals(SettingsPage.ROOT, SettingsPage.ROOT.parent)
+    }
+
+    @Test
+    fun everySubPageHasAParentThatIsOneStepUp() {
+        for (page in SettingsPage.entries.filter { it != SettingsPage.ROOT }) {
+            val path = SettingsNavigation().open(page.parent).open(page)
+
+            assertEquals(page, path.current)
+            assertEquals(page.parent, path.back().current)
+        }
+    }
 }
