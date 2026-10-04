@@ -17,7 +17,8 @@ Reglas: una tarea cada vez, en su rama `feat/<tarea>`, con `./gradlew check` en 
 ## Fase 1 — Distros y datos
 - [x] **T05 Modelo Room y repositorios**: distros, perfiles, layouts, hosts SSH y ajustes; abstracción de rootfs/ficheros; migraciones y tests.
   - *Hecho (solo verificado en JVM de host, ver `DECISIONS.md` D-T05-1..9):* esquema v1 exportado, `MigrationTest`, repositorios Room con fakes verificados por contrato, `FileSystemRepository` sobre `java.nio` que no sigue enlaces simbólicos. Pendiente de validar en Android: cableado Hilt, `AndroidSQLiteDriver` y `java.nio` en el almacenamiento de la app.
-- [ ] **T06 Descarga y verificación de rootfs**: Debian, Ubuntu y Alpine desde fuentes oficiales, SHA-256, progreso, reanudación y reintentos. **100 % de cobertura** en la verificación.
+- [x] **T06 Descarga y verificación de rootfs**: Debian, Ubuntu y Alpine desde fuentes oficiales, SHA-256, progreso, reanudación y reintentos. **100 % de cobertura** en la verificación.
+  - *Nota:* verificado con tests de host (MockWebServer) y con las fuentes reales consultadas por `curl`; la app no ha descargado aún de los mirrors reales (ver `DECISIONS.md`, T06). La instalación y la reconexión al `RootfsCatalog`/`RootfsDownloader` llegan en T07.
 - [ ] **T07 Instalación y gestión de distros**: extraer a almacenamiento privado, transaccional (sin distros a medias), listar, renombrar, duplicar y eliminar; usuario por defecto y distro predeterminada.
 
 ## Fase 2 — Sesiones y terminal
