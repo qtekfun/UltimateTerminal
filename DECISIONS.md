@@ -1939,3 +1939,109 @@ Defectos vistos (sin corregir todavía):
 - **El diálogo "Mantener las sesiones activas" y la pantalla de Apariencia siguen con el aspecto de Material;** las rehacen T22c y T16.
 - **No comprobado todavía:** el rendimiento al desplazar con la barra translúcida, el repaso de TalkBack, la rotación y todo lo de la tablet.
 
+## T12b — Perfiles, layouts, emisión y atajos (solo dominio, sin interfaz)
+
+Todo vive en `domain/profile`, `domain/broadcast` y `domain/terminal/ShortcutConflicts.kt`, sin tocar ninguna pantalla,
+`SessionController` ni `TabsController`. 51 tests de host nuevos, deterministas (sin reloj ni azar). Sin validar en
+dispositivo: no hay nada que ejecutar todavía, falta la interfaz.
+
+### D-T12b-1 · 2026-10-04 · En un perfil, los valores por defecto guardados significan "usar el ajuste global"
+- **Decisión:** `Profile` conserva `colorSchemeId = "default"`, `fontFamily = "monospace"` y `fontSizeSp = 14` como "no
+  personalizado". `PaneSpecResolver` los traduce a `null` en `PaneLook` y solo un valor distinto sustituye al global.
+  Así cambiar el esquema o la fuente globales (T12/T12c) sigue llegando a los paneles que no los personalizaron.
+- **Motivo:** el perfil se guardó en T05, antes de que existiera la apariencia global; cambiar su esquema de Room para
+  admitir `null` obligaba a una migración. El coste es que un perfil no puede pedir "exactamente 14 sp" cuando el
+  global es otro: si hiciera falta, habrá que migrar el campo a anulable (la clave del problema está en `Profile.kt`).
+- **Un esquema o fuente que ya no existen** (uno importado y borrado) no rompen el panel: se usa el global y sale un
+  `PaneNotice.SchemeMissing`/`FontMissing`. Un número fuera de rango se acerca a su rango con `ValueAdjusted`.
+
+### D-T12b-2 · 2026-10-04 · El comando de arranque se escribe en el shell, no se ejecuta en su lugar
+- **Decisión:** `PaneSpec.startupInput` es el comando seguido de Enter (`\r`), que la sesión teclea cuando el shell ya
+  corre. No se lanza `sh -c <comando>`.
+- **Motivo:** el shell sigue siendo interactivo (si el comando termina o falla queda un prompt), no hay nada que
+  entrecomillar, y la entrada no pasa por la línea de comandos de proot. El coste: el comando se ve en pantalla y
+  depende de que el prompt esté listo (la UI debe teclearlo tras el primer prompt o con un breve margen).
+- **Qué se acepta** (`StartupCommand`): una sola línea, sin saltos (se ejecutarían varios comandos desde un campo
+  pensado para uno), sin caracteres de control (un Tab pediría completar; un Escape manejaría el shell) y de hasta
+  1000 caracteres. En blanco significa "ninguno"; el comando de un panel de un layout sustituye al del perfil, y uno en
+  blanco lo anula.
+
+### D-T12b-3 · 2026-10-04 · Un layout guardado siempre se abre: lo que falla se degrada y avisa
+- **Decisión:** `PaneSpecResolver.resolve` rechaza con un `ProfileProblem` sellado (distro inexistente, distro no lista,
+  usuario no válido, comando no válido), nunca con una excepción. `resolveOrDegrade`, que usa la restauración, abre ese
+  panel como el perfil por defecto y **sin comando de arranque**, con `PaneNotice.Degraded(motivo)`; un perfil
+  borrado da el perfil por defecto, conserva el comando del propio layout y avisa con `ProfileMissing`.
+- **Motivo:** un layout viene del disco, de una copia o de otro dispositivo, y no debe perderse entero porque una
+  distro ya no esté. Un comando escrito para una distro que no existe podría hacer daño en otra, así que no se
+  conserva al degradar.
+- **Alternativa descartada:** negarse a abrir el layout. Se pierde la estructura por un solo panel roto.
+
+### D-T12b-4 · 2026-10-04 · Un layout es un dato no fiable: tamaño acotado y proporciones saneadas
+- **Decisión:** `LayoutRestorePlanner` rechaza (`LayoutRefusal`) un árbol de más de 16 paneles (`TOO_MANY_PANES`) o de más
+  de 8 niveles de división (`TOO_DEEP`; la comprobación se detiene en el límite, así que su recursión está acotada
+  aunque el JSON sea malicioso). Una división cuya parte sea menor que el 10 % se lleva al 10 % con un aviso
+  `RatioAdjusted`; una cercana al 50 % (±3 %) se ajusta a la mitad sin avisar, como al arrastrar el separador.
+- **Compatibilidad:** se probó con `LayoutCodec` (T05) la ida y vuelta y la lectura de un JSON antiguo, con paneles sin
+  perfil ni comando y con una clave que una versión futura podría añadir.
+- **Números:** 16 paneles y 8 niveles son límites de seguridad, no de diseño; se pueden subir sin migrar nada.
+
+### D-T12b-5 · 2026-10-04 · Emisión a varios paneles: solo en memoria y con frenos
+- **Decisión:** `BroadcastState` (`Off`, `AllPanes`, `Group(nombre)`) no se guarda: una emisión que sobreviviera a un
+  reinicio escribiría en servidores por sorpresa. `targets(activo, paneles, tipo)` devuelve a qué paneles va lo escrito,
+  en el orden de la pestaña y nunca vacío. Frenos:
+  - con un solo panel no hay a quién emitir;
+  - con `textOnly` (por defecto) las teclas de control (Ctrl/Alt, Esc, flechas) solo van al panel activo, de modo que un
+    Ctrl+C o una flecha pensados para un servidor no llegan a los demás; texto pegado o tecleado sí se emite;
+  - un panel fuera del grupo no se cuela en él, y un panel que no está en la pestaña solo se recibe a sí mismo.
+- `pruned(vivos)` olvida los paneles cerrados (el número de un panel cerrado no debe coincidir con uno nuevo) y apaga una
+  emisión a un grupo que se quedó sin paneles. `isEmitting(paneles)` permite a la interfaz mostrar de forma clara que
+  teclear llegará a otros: es el aviso que no debe faltar.
+- **Alternativa descartada:** un modo "todos los paneles de todas las pestañas": demasiado peligroso para el primer
+  corte; se puede añadir como otro `BroadcastMode`.
+
+### D-T12b-6 · 2026-10-04 · Atajos: tres acciones nuevas y los conflictos son avisos
+- **Acciones nuevas** en `AppShortcut` (los `when` de `ShortcutHandler` tienen `else`, así que quedan sin efecto hasta
+  que la interfaz las conecte): `ToggleBroadcast` (`Ctrl+Shift+B`), `SaveLayout` (`Ctrl+Shift+S`) y `OpenLayouts`
+  (`Ctrl+Shift+L`). Terminator usa Alt+letra, pero Alt+letra es el Meta de readline (Alt+b y Alt+f mueven por palabras),
+  así que van con Ctrl+Shift, como el resto de los de paneles (D-T11-4).
+- **Detección** (`ShortcutConflicts.kt`): `terminalConflict()` marca Ctrl+letra sin más modificadores
+  (`StealsControlKey`: Ctrl+C interrumpe, Ctrl+D cierra la entrada) y Alt+letra o Alt+dígito sin Ctrl
+  (`StealsReadlineMeta`). Son avisos, no rechazos: la SPEC pide Alt+dígito para elegir pestaña (D-T11-4), y los únicos
+  atajos por defecto que chocan son esos nueve. `bindChecked` devuelve el mapa nuevo, lo que reemplazó y el coste, o
+  `Refused` si la combinación robaría teclado normal (antes lanzaba una excepción). `ShortcutText.analyze` detecta una
+  combinación que el texto guardado da a dos acciones distintas (gana la última línea, como en `parse`).
+- **Una combinación para dos acciones** no puede darse dentro de `ShortcutMap` (es un mapa por combinación); varias
+  combinaciones para una acción sí (Copiar tiene dos por defecto).
+
+### D-T12b-7 · 2026-10-04 · Lo que NO se hizo: persistir los atajos y meterlos en la copia de seguridad
+- **Hallazgo:** los atajos no se guardan en ninguna parte hoy (`InputRouter` arranca con `ShortcutMap.defaults()`), y
+  `ConfigSnapshot` (T15) no lleva atajos, ni las teclas extra, ni la apariencia de T12c. Los perfiles y los layouts **sí**
+  van ya en la copia: los layouts refieren a los perfiles por posición, no por id, así que viajan bien.
+- **Decisión:** no tocar `data.backup`. Su cobertura crítica exige el 100 % de ramas y no existe aún un almacén de
+  atajos, así que añadirlo allí sin almacén sería código muerto o sin probar. Queda definida la interfaz `ShortcutStore`
+  (como `ExtraKeysStore`) y el formato de texto ya existente (`ShortcutMap.serialize/parse`).
+- **Para completarlo:** una clave en el repositorio de ajustes con el texto de `ShortcutMap.serialize()`; añadirla a
+  `SettingsDto` o a un campo nuevo de `ConfigSnapshot` (la lectura es indulgente: un campo que falta no rompe una copia
+  antigua); `ConfigCollector` la lee y `ConfigApplier` la aplica con `ShortcutText.analyze` para no perder las líneas
+  buenas; test de ida y vuelta, y mantener el 100 % de `data.backup`.
+
+### Lo que debe hacer la interfaz posterior
+1. **Abrir un panel con un perfil:** llamar a `PaneSpecResolver.resolve(perfil)` con las distros, los esquemas y las
+   fuentes conocidos; mostrar un `Rejected` con un mensaje por cada `ProfileProblem`, y los `PaneNotice` como aviso
+   no bloqueante. Construir la sesión con el lanzamiento que ya existe a partir de `PaneSpec.target`, aplicar `look` a
+   ese panel (hoy el esquema y la fuente son globales: el pintor debe admitir un `PaneLook` por panel) y teclear
+   `startupInput` tras el primer prompt.
+2. **Pantallas de perfiles** (lista, alta, edición, borrado con confirmación; `Profile` ya valida nombre y rangos) y de
+   **layouts** (lista, guardar con `LayoutSaving.build` desde el árbol de la pestaña y `PaneDescription` de cada panel,
+   renombrar, borrar, abrir).
+3. **Abrir un layout:** `LayoutRestorePlanner.plan` con los perfiles por id; si devuelve `Refused`, decirlo; si no, crear
+   una pestaña con `paneNodeOf(...)`/las sesiones en orden de lectura (`LayoutRestorePlan.panes`) y mostrar los
+   `LayoutNotice`, que indican el panel por su posición.
+4. **Emisión:** un `BroadcastState` por pestaña en el ViewModel; enrutar lo tecleado por `targets(...)` (`TEXT` para
+   texto y pegado, `CONTROL` para el resto); un indicador siempre visible mientras `isEmitting` sea cierto; asignar
+   paneles a grupos desde el menú del panel; llamar a `pruned` al cerrar un panel y al cambiar de pestaña.
+5. **Atajos:** conectar `ToggleBroadcast`, `SaveLayout` y `OpenLayouts` en `ShortcutHandler`; una pantalla de atajos que use
+   `bindChecked` y muestre los `ShortcutConflict`; persistirlos y llevarlos a la copia (D-T12b-7).
+6. **Sin validar:** tecleado del comando de arranque tras el primer prompt en un shell real, rendimiento de la emisión con
+   varios paneles y la restauración de un layout de 16 paneles con proot en un dispositivo.
+
