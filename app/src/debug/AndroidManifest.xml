@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPDX-FileCopyrightText: 2026 UltimateTerminal contributors
+  SPDX-License-Identifier: GPL-3.0-or-later
+
+  The component catalog of the iOS-style design (T22a): debug builds only, no launcher icon.
+  Open it with: adb shell am start -n com.qtekfun.ultimateterminal/.ui.ios.IosCatalogActivity
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <activity
+            android:name=".ui.ios.IosCatalogActivity"
+            android:exported="true"
+            android:label="@string/catalog_title" />
+    </application>
+</manifest>

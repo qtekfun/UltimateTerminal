@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPDX-FileCopyrightText: 2026 UltimateTerminal contributors
+  SPDX-License-Identifier: GPL-3.0-or-later
+
+  Text of the component catalog, which only exists in debug builds.
+-->
+<resources>
+    <string name="catalog_title">Componentes iOS</string>
+    <string name="catalog_done">Hecho</string>
+    <string name="catalog_section_theme">Tema</string>
+    <string name="catalog_light">Claro</string>
+    <string name="catalog_dark">Oscuro</string>
+    <string name="catalog_oled">OLED</string>
+    <string name="catalog_scheme">Esquema de color</string>
+    <string name="catalog_scheme_default">Predeterminado</string>
+    <string name="catalog_section_rows">Listas</string>
+    <string name="catalog_row_plain">Fila simple</string>
+    <string name="catalog_row_subtitle">Con subtítulo</string>
+    <string name="catalog_row_subtitle_detail">Segunda línea en texto pequeño</string>
+    <string name="catalog_row_value">Con valor</string>
+    <string name="catalog_row_value_text">Valor</string>
+    <string name="catalog_row_switch">Interruptor</string>
+    <string name="catalog_row_check">Marcada</string>
+    <string name="catalog_row_destructive">Eliminar</string>
+    <string name="catalog_footer">Un pie explica el grupo de arriba.</string>
+    <string name="catalog_section_controls">Controles</string>
+    <string name="catalog_segment_one">Día</string>
+    <string name="catalog_segment_two">Semana</string>
+    <string name="catalog_segment_three">Mes</string>
+    <string name="catalog_search_placeholder">Buscar</string>
+    <string name="catalog_button_filled">Relleno</string>
+    <string name="catalog_button_tinted">Tintado</string>
+    <string name="catalog_button_plain">Plano</string>
+    <string name="catalog_button_destructive">Destructivo</string>
+    <string name="catalog_section_overlays">Superposiciones</string>
+    <string name="catalog_open_alert">Alerta</string>
+    <string name="catalog_open_action_sheet">Hoja de acciones</string>
+    <string name="catalog_open_sheet">Hoja inferior</string>
+    <string name="catalog_alert_title">¿Eliminar la distro?</string>
+    <string name="catalog_alert_message">No se puede deshacer.</string>
+    <string name="catalog_cancel">Cancelar</string>
+    <string name="catalog_delete">Eliminar</string>
+    <string name="catalog_sheet_body">Arrastra el asa para cambiar su tamaño, o tírala hacia abajo para cerrarla.</string>
+    <string name="catalog_menu">Más</string>
+    <string name="catalog_menu_copy">Copiar</string>
+    <string name="catalog_menu_download">Descargar</string>
+    <string name="catalog_section_scroll">Desplazamiento</string>
+    <string name="catalog_scroll_row">Fila %1$d</string>
+    <string name="catalog_scroll_footer">Desplázate para colapsar el título grande.</string>
+</resources>

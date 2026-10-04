@@ -58,6 +58,12 @@ Reglas: una tarea cada vez, en su rama `feat/<tarea>`, con `./gradlew check` en 
 - [ ] **T16 Ajustes e i18n** (RF-11, ampliada tras las primeras pruebas en un Pixel 8, donde el usuario no veía ningún menú de ajustes): icono ⚙ permanente en la barra de pestañas y entrada en el menú de "+"; pantalla con secciones Apariencia (enlaza T12c), Terminal, Teclado (filas de teclas extra, "ocultar con el teclado", atajos), Sesiones (wakelock y permiso de segundo plano), Distros, Almacenamiento, Red (DNS de respaldo configurables), Copias de seguridad (T15) y Acerca de (versión, licencias y créditos desde `THIRD_PARTY_NOTICES.md`); idioma.
   - *Verificación:* cada ajuste se cambia desde la pantalla y persiste tras reiniciar; todo cabe en la copia de configuración de T15.
 
+## Fase 3b — Rediseño estilo iOS (RF-14)
+- [~] **T22a Sistema de diseño estilo iOS: componentes base** *(hecha en host y sin validar en dispositivo: ver D-T22a-9 en `DECISIONS.md`)*: paquete `ui/ios` con tokens, tema (claro, oscuro y OLED desde los esquemas de T12), tipografía Inter, iconos Lucide, título grande colapsable con barra translúcida, lista agrupada, interruptor, control segmentado, botones, campo de búsqueda, hoja modal con detents, alerta, hoja de acciones y menú contextual; lógica pura en `domain/ios` con tests; catálogo de componentes solo en depuración.
+  - *Verificación:* tests de host del dominio (contraste de todos los esquemas en los tres temas); el orquestador revisa el catálogo en el dispositivo (`adb shell am start -n com.qtekfun.ultimateterminal/.ui.ios.IosCatalogActivity`).
+- [ ] **T22b Cromo del terminal en estilo iOS**: barra de pestañas (píldoras o segmentos), fila de teclas extra con teclas redondeadas, menús de "+" y de paneles, botón de paneles `⋮` y avisos, usando solo `ui/ios`. El área del terminal no cambia.
+- [ ] **T22c Distros, diálogos y Ajustes en estilo iOS**: la pantalla de distros, los diálogos (instalar, renombrar, contraseña, SSH, copias), y la pantalla de Ajustes de T16 con listas agrupadas, hojas modales y alertas de `ui/ios`.
+
 ## Fase 4 — Cierre del MVP
 - [ ] **T17 Accesibilidad y rendimiento**: TalkBack en la UI, tamaños táctiles, fuente grande; medir arranque hasta prompt y salida masiva.
 - [ ] **T18 Tests de UI e integración clave**: instalar distro, ejecutar comando, redimensionar, exportar y restaurar.

@@ -23,6 +23,8 @@ third-party code are kept untouched.
 | [Apache Commons Compress](https://commons.apache.org/proper/commons-compress/) 1.28.0, with Commons IO 2.20.0, Commons Codec 1.19.0 and Commons Lang 3.18.0, © The Apache Software Foundation | Apache-2.0 | Reads the `.tar.gz` root filesystems when a distro is installed (T07). Only gzip and plain tar are read; the optional xz, zstd and brotli codecs are not shipped. Android's packaging drops the libraries' own `NOTICE` and `LICENSE` files, so their texts are copied unchanged into `app/src/main/res/raw/third_party_apache_commons.txt`, which ships in the APK (checked in the release build) |
 | `kotlinx-serialization-json` 1.11.0, © JetBrains s.r.o. and contributors | Apache-2.0 | Reads the OCI manifest that locates the Debian root filesystem (T06) |
 | [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) 2.304, © 2020 The JetBrains Mono Project Authors | SIL OFL-1.1 | Terminal font, bundled unmodified (Regular, Bold, Italic, Bold Italic; checked identical to the official release). License text in the APK, `assets/licenses/JetBrainsMono-OFL-1.1.txt` |
+| [Inter](https://github.com/rsms/inter) 4.1, © 2016 The Inter Project Authors | SIL OFL-1.1 | Typeface of the iOS-style screens (T22a): Regular, Medium, SemiBold and Bold, bundled unmodified from the official release (`extras/ttf`). License text in the APK, `assets/licenses/Inter-OFL-1.1.txt` |
+| [Lucide](https://lucide.dev) icons 1.52.0, © 2026 Lucide Icons and Contributors; the icons derived from Feather are © 2013-present Cole Bemis | ISC (Lucide) and MIT (Feather-derived icons) | 16 icons converted to Android vector drawables with their paths unchanged (`res/drawable/ic_ios_*.xml`). License texts in the APK, `assets/licenses/Lucide-ISC-MIT.txt` |
 | Color scheme **Solarized**, © 2011 Ethan Schoonover ([altercation/solarized](https://github.com/altercation/solarized)) | MIT | Palette values, with the small readability changes listed in `BuiltInSchemes.kt` |
 | Color scheme **Dracula**, © 2023 Dracula Theme ([dracula/dracula-theme](https://github.com/dracula/dracula-theme)) | MIT | Palette values |
 | Color scheme **Gruvbox**, © Pavel Pertsev ([morhetz/gruvbox](https://github.com/morhetz/gruvbox)) | MIT/X11 | Palette values. Upstream states the license in its README and `package.json`; the repository has no `LICENSE` file |
@@ -69,3 +71,7 @@ The app finds the current archive in each project's own index and verifies its S
 Their contents are free software under each package's own license; the license texts are inside the
 archives once installed. Names such as Debian, Ubuntu and Alpine Linux belong to their owners (Debian
 is a registered trademark of Software in the Public Interest, Inc.; Ubuntu of Canonical Ltd.).
+
+### Note on the iOS-style design
+
+The iOS-style screens (RF-14) are **inspired by** iOS, not copied from it. They use no Apple font, icon or other asset: the typeface is Inter and the icons are Lucide, both free (see above). "iOS", "SF Pro" and "SF Symbols" are names or marks of Apple Inc.; this project is not affiliated with, endorsed by or sponsored by Apple.
