@@ -7,6 +7,7 @@ import com.qtekfun.ultimateterminal.data.local.dao.SettingDao
 import com.qtekfun.ultimateterminal.data.local.entity.SettingEntity
 import com.qtekfun.ultimateterminal.domain.appearance.ChromeStyle
 import com.qtekfun.ultimateterminal.domain.appearance.CursorShape
+import com.qtekfun.ultimateterminal.domain.appearance.ExtraKeyStyle
 import com.qtekfun.ultimateterminal.domain.appearance.FontCatalog
 import com.qtekfun.ultimateterminal.domain.appearance.TerminalAppearance
 import com.qtekfun.ultimateterminal.domain.model.AppSettings
@@ -42,6 +43,7 @@ internal object SettingKeys {
     const val CURSOR_BLINK = "appearance_cursor_blink"
     const val CHROME_STYLE = "appearance_chrome_style"
     const val CORNER_DP = "appearance_corner_dp"
+    const val EXTRA_KEY_STYLE = "appearance_extra_key_style"
 }
 
 class RoomSettingsRepository @Inject constructor(private val dao: SettingDao) : SettingsRepository {
@@ -114,7 +116,8 @@ class RoomSettingsRepository @Inject constructor(private val dao: SettingDao) : 
                 ?.let { name -> ChromeStyle.entries.firstOrNull { it.name == name } }
                 ?: defaults.chromeStyle,
             cornerRadiusDp = values[SettingKeys.CORNER_DP]?.toIntOrNull()
-                ?: defaults.cornerRadiusDp
+                ?: defaults.cornerRadiusDp,
+            extraKeyStyle = ExtraKeyStyle.parse(values[SettingKeys.EXTRA_KEY_STYLE])
         ).sanitized()
     }
 
@@ -149,6 +152,7 @@ class RoomSettingsRepository @Inject constructor(private val dao: SettingDao) : 
         SettingEntity(SettingKeys.CURSOR_SHAPE, appearance.cursorShape.name),
         SettingEntity(SettingKeys.CURSOR_BLINK, appearance.cursorBlink.toString()),
         SettingEntity(SettingKeys.CHROME_STYLE, appearance.chromeStyle.name),
-        SettingEntity(SettingKeys.CORNER_DP, appearance.cornerRadiusDp.toString())
+        SettingEntity(SettingKeys.CORNER_DP, appearance.cornerRadiusDp.toString()),
+        SettingEntity(SettingKeys.EXTRA_KEY_STYLE, appearance.extraKeyStyle.name)
     )
 }

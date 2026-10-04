@@ -53,4 +53,12 @@ class TerminalAppearanceTest {
         assertEquals(custom, custom.sanitized())
         assertSame(CursorShape.BAR, custom.sanitized().cursorShape)
     }
+
+    @Test
+    fun theKeysAreFlatByDefaultAndSanitizingKeepsTheStyle() {
+        assertEquals(ExtraKeyStyle.FLAT, TerminalAppearance().extraKeyStyle)
+        val classic = TerminalAppearance(extraKeyStyle = ExtraKeyStyle.CLASSIC, marginDp = 900)
+
+        assertEquals(ExtraKeyStyle.CLASSIC, classic.sanitized().extraKeyStyle)
+    }
 }

@@ -250,6 +250,11 @@
     <string name="appearance_font_size">Font size</string>
     <string name="appearance_line_spacing">Line spacing</string>
     <string name="appearance_letter_spacing">Letter spacing</string>
+    <string name="appearance_section_keys">Special keys</string>
+    <string name="extra_key_style_flat">Flat</string>
+    <string name="extra_key_style_capsule">Capsules</string>
+    <string name="extra_key_style_classic">Classic</string>
+    <string name="extra_key_style_preview">Preview of the special keys row</string>
     <string name="appearance_section_design">Design</string>
     <string name="appearance_margin">Margin around the text</string>
     <string name="appearance_corner">Corner radius of tabs and keys</string>

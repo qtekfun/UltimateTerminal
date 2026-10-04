@@ -2050,3 +2050,40 @@ dispositivo: no hay nada que ejecutar todavía, falta la interfaz.
 6. **Sin validar:** tecleado del comando de arranque tras el primer prompt en un shell real, rendimiento de la emisión con
    varios paneles y la restauración de un layout de 16 paneles con proot en un dispositivo.
 
+## T22d — Estilo de las teclas extra
+
+El usuario probó la app en un Pixel 8 y dijo que las teclas especiales (Esc, Tab, Ctrl, flechas…) tenían "un acabado muy feo". Eran cápsulas del color `surfaceVariant` de Material con una línea de sombra inferior de 1 dp: un efecto de bisel que contradice el estilo plano de iOS, y un gris que no pertenece ni al esquema ni al teclado azul marino de Gboard que queda justo debajo. Pidió **elegir el estilo en Ajustes, con las planas por defecto**.
+
+### D-T22d-1 · 2026-10-04 · Tres estilos, `FLAT` por defecto
+- **Decisión:** `ExtraKeyStyle { FLAT, CAPSULE, CLASSIC }`, con `FLAT` por defecto; lo que no se reconoce o falta se lee como `FLAT`.
+  - **FLAT:** sin fondo por tecla; solo el símbolo (peso medio), separadores finos (0,5 dp, 20 % de opacidad) entre teclas y filas, y un óvalo tintado con el acento (18 %) al pulsar. Ctrl/Alt armados son una cápsula rellena con el acento; **bloqueados**, la misma más un subrayado bajo la etiqueta, para que la diferencia no dependa solo del color.
+  - **CAPSULE:** cada tecla es una cápsula del color del texto al 10 % de opacidad, sin sombra, con 6 dp de separación entre teclas; armada, el acento al 28 %.
+  - **CLASSIC:** el aspecto anterior (cápsula con filo inferior), pero con los colores del **esquema**: tecla = fondo mezclado con el primer plano al 12 %, filo = fondo oscurecido al 40 %. Ya no sale de `surfaceVariant`.
+- **Motivo:** que el usuario elija, y que ninguna variante sea un gris ajeno.
+- **Impacto:** `TerminalAppearance.extraKeyStyle`; se guarda en `appearance_extra_key_style` (mismo patrón que el resto de la apariencia de T12c).
+
+### D-T22d-2 · 2026-10-04 · La lógica de color es pura y está probada con todos los esquemas
+- **Decisión:** `ExtraKeyPaletteFor.of(KeyChromeInputs, style)` en `domain/appearance` devuelve colores ARGB opacos (mezclas precompuestas, no transparencias), y `ExtraKeyPalette.look(latch, pressed)` dice cómo se ve una tecla según su estado. Las entradas son el fondo y el primer plano del esquema y los colores de las barras, tomados del esquema o del tema del sistema (`ChromeStyle.SYSTEM`), para que el mismo estilo valga con los dos.
+- **Pruebas:** contraste WCAG ≥ 4,5:1 de la etiqueta sobre su fondo en reposo y pulsada, de la etiqueta de una tecla armada y de una bloqueada, para **todos los esquemas incluidos y su variante OLED, por cada uno de los tres estilos**. El texto de Solarized, de contraste bajo por diseño, se empuja hacia negro o blanco solo lo necesario (`readableOn`).
+- **Cambio:** los colores `key`, `keyPressed` y `onKey` de `ChromeColors` y `ChromePalette` desaparecen (solo los usaba la fila y habrían quedado muertos); sus tres tests los sustituyen los nuevos.
+
+### D-T22d-3 · 2026-10-04 · Desviación: la bandeja no es translúcida ni se desenfoca
+- **Pedido:** barra translúcida con desenfoque desde la API 31 y color sólido en 26–30, reutilizando T22a y T22b.
+- **Qué pasa:** el desenfoque de T22a (`BackdropState`) desenfoca el contenido que pasa **por debajo** de la barra. Esta fila va debajo del terminal, sin solaparlo, así que no hay nada que desenfocar.
+- **Decisión:** la bandeja de `FLAT` es el fondo del terminal mezclado un 4 % con el primer plano (los otros estilos, un 7 %), con la línea fina superior de siempre. Así se lee como parte del terminal y no como una losa gris. Si algún día la fila se superpone al contenido, se puede pasar a `BackdropState`.
+
+### D-T22d-4 · 2026-10-04 · Selector reutilizable: `ExtraKeyStylePicker`
+- **API:** `ExtraKeyStylePicker(settings: AppSettings, onStyle: (ExtraKeyStyle) -> Unit, modifier)` en `ui/ExtraKeyStylePicker.kt`. Muestra un `IosSegmentedControl` con las tres opciones y debajo **una vista previa real** (Esc, Tab, Ctrl armado y dos flechas) en los colores del esquema actual; la vista previa es la propia `ExtraKeysRow` sobre el fondo del terminal.
+- **No guarda nada:** lee `settings` y avisa con `onStyle`. La pantalla de Apariencia la muestra en la sección "Teclas especiales" (`KeysSection`); **Z puede enlazarla desde Ajustes > Teclado** llamándola igual, con el mismo `update { it.copy(appearance = it.appearance.copy(extraKeyStyle = style)) }`.
+- **Accesibilidad:** las opciones miden 48 dp; la vista previa lleva una descripción y no expone sus teclas, que no hacen nada.
+
+### D-T22d-5 · 2026-10-04 · Copia de seguridad
+- `SettingsDto.extraKeyStyle` (texto, por defecto `FLAT`). Una copia anterior, sin el campo, se lee como `FLAT`; un valor desconocido también. Se aplica al restaurar. Con ida y vuelta probada.
+- **Lo que esta tarea no resuelve:** el backup de T15 **tampoco guarda el resto de la apariencia de T12c** (fuente, márgenes, cursor, estilo de barras), a pesar de lo que dice D-T12c. Solo he añadido mi campo; el resto es trabajo aparte.
+
+### D-T22d-6 · 2026-10-04 · Geometría
+- Cada fila mide 48 dp, el objetivo táctil de siempre; la separación entre teclas va dentro de la celda. `FLAT` deja 4 dp de aire por lado, las otras 3 dp (6 dp entre dos cápsulas). La háptica y las acciones de accesibilidad (nombre de la tecla y estado armada/bloqueada) son las de T22b.
+
+### D-T22d-7 · 2026-10-04 · Qué NO está validado (sin dispositivo)
+- Cómo se ve cada estilo de verdad (sobre todo `FLAT` frente al teclado del sistema), el espesor de los separadores en pantallas de distinta densidad, el óvalo de pulsación, el subrayado de una tecla bloqueada, la vista previa en la pantalla de Apariencia y TalkBack. El orquestador lo prueba en el Pixel 8.
+

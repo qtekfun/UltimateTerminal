@@ -101,7 +101,8 @@ private fun AppSettings.toDto() = SettingsDto(
     defaultScrollbackLines = defaultScrollbackLines,
     terminalSchemeId = terminalSchemeId,
     terminalFontSizeSp = terminalFontSizeSp,
-    customSchemes = SchemeCodec.encodeList(customSchemes)
+    customSchemes = SchemeCodec.encodeList(customSchemes),
+    extraKeyStyle = appearance.extraKeyStyle.name
 )
 
 private fun SshKeyInfo.toDto(privateKey: String) =

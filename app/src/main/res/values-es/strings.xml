@@ -247,6 +247,11 @@
     <string name="appearance_font_size">Tamaño de la fuente</string>
     <string name="appearance_line_spacing">Interlineado</string>
     <string name="appearance_letter_spacing">Espaciado entre letras</string>
+    <string name="appearance_section_keys">Teclas especiales</string>
+    <string name="extra_key_style_flat">Planas</string>
+    <string name="extra_key_style_capsule">Cápsulas</string>
+    <string name="extra_key_style_classic">Clásicas</string>
+    <string name="extra_key_style_preview">Vista previa de la fila de teclas especiales</string>
     <string name="appearance_section_design">Diseño</string>
     <string name="appearance_margin">Margen alrededor del texto</string>
     <string name="appearance_corner">Radio de las esquinas de pestañas y teclas</string>
