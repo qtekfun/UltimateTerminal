@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -36,6 +37,7 @@ import com.qtekfun.ultimateterminal.domain.theme.resolveTheme
 import com.qtekfun.ultimateterminal.terminal.SessionManager
 import com.qtekfun.ultimateterminal.ui.DistroScreen
 import com.qtekfun.ultimateterminal.ui.SessionPrompts
+import com.qtekfun.ultimateterminal.ui.SshScreen
 import com.qtekfun.ultimateterminal.ui.TerminalScreen
 import com.qtekfun.ultimateterminal.ui.theme.UltimateTerminalTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -85,6 +87,7 @@ class MainActivity : ComponentActivity() {
         val sessions by sessionManager.state.collectAsStateWithLifecycle()
         var hadSessions by remember { mutableStateOf(false) }
         var showDistros by rememberSaveable { mutableStateOf(false) }
+        var showSsh by rememberSaveable { mutableStateOf(false) }
         // "Exit" in the notification closes every session: close the screen with them.
         LaunchedEffect(sessions.items.isEmpty()) {
             if (sessions.items.isNotEmpty()) {
@@ -103,13 +106,16 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             )
-            // Temporary entry point to the distro screen (T07): it belongs in the tab bar's
-            // "new tab" menu, which T09 owns; see DECISIONS.md, D-T07-7.
-            TextButton(
-                onClick = { showDistros = true },
-                modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding()
-            ) { Text(stringResource(R.string.distros_open)) }
+            // Temporary entry points to the distro (T07) and SSH (T14) screens: they belong in the
+            // tab bar's "new tab" menu, which T09 owns; see DECISIONS.md, D-T07-7 and D-T14.
+            Row(modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding()) {
+                TextButton(onClick = { showSsh = true }) { Text(stringResource(R.string.ssh_open)) }
+                TextButton(onClick = {
+                    showDistros = true
+                }) { Text(stringResource(R.string.distros_open)) }
+            }
             if (showDistros) DistroScreen(onClose = { showDistros = false })
+            if (showSsh) SshScreen(onClose = { showSsh = false })
         }
         SessionPrompts(hasRunningSession = sessions.needsService)
     }

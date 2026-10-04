@@ -6,6 +6,7 @@ package com.qtekfun.ultimateterminal.terminal
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import com.qtekfun.ultimateterminal.domain.session.SessionLaunch
 import com.qtekfun.ultimateterminal.domain.terminal.GridSize
 import com.qtekfun.ultimateterminal.domain.terminal.ShellEnvironment
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
@@ -30,7 +31,8 @@ import kotlinx.coroutines.flow.asStateFlow
 @Suppress("TooManyFunctions")
 class TerminalSessionHost(
     private val context: Context,
-    private val onFinished: (Int) -> Unit = {}
+    private val onFinished: (Int) -> Unit = {},
+    private val launch: SessionLaunch? = null
 ) : TerminalSessionClient,
     TerminalOutput {
     private val frameState = MutableStateFlow(0)
@@ -57,14 +59,32 @@ class TerminalSessionHost(
             // A new emulator reads its starting colors from the library's shared default scheme.
             scheme?.writeInto(TerminalColors.COLOR_SCHEME.mDefaultColors)
             val home = context.filesDir.absolutePath
-            val created = TerminalSession(
-                SHELL,
+            val environment = ShellEnvironment.build(
                 home,
-                arrayOf(SHELL_NAME),
-                ShellEnvironment.build(home, context.cacheDir.absolutePath, System.getenv()),
-                TRANSCRIPT_ROWS,
-                this
+                context.cacheDir.absolutePath,
+                System.getenv()
             )
+            val created = launch?.let { start ->
+                // The command line is proot's, with the distro's `env -i` inside it: the
+                // variables here are only for proot itself (its loader and temporary directory).
+                val extra = start.environment.map { (key, value) -> "$key=$value" }
+                TerminalSession(
+                    start.command.first(),
+                    home,
+                    start.command.toTypedArray(),
+                    environment + extra,
+                    TRANSCRIPT_ROWS,
+                    this
+                )
+            }
+                ?: TerminalSession(
+                    SHELL,
+                    home,
+                    arrayOf(SHELL_NAME),
+                    environment,
+                    TRANSCRIPT_ROWS,
+                    this
+                )
             session = created
             created.updateSize(grid.columns, grid.rows, cellWidthPx, cellHeightPx)
         } else if (exitState.value == null &&

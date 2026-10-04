@@ -28,6 +28,25 @@ fun interface SessionFactory {
     fun start(id: SessionId, layout: TerminalLayout, onExit: (Int) -> Unit): SessionHandle?
 }
 
+/**
+ * A [SessionFactory] that can also run a given command (proot running `ssh`, say) instead of
+ * Android's own shell. Kept separate so the plain factory stays a single-method interface.
+ */
+interface LaunchingSessionFactory : SessionFactory {
+    fun start(
+        id: SessionId,
+        layout: TerminalLayout,
+        launch: SessionLaunch?,
+        onExit: (Int) -> Unit
+    ): SessionHandle?
+
+    override fun start(
+        id: SessionId,
+        layout: TerminalLayout,
+        onExit: (Int) -> Unit
+    ): SessionHandle? = start(id, layout, null, onExit)
+}
+
 /** Starts and stops the foreground service that keeps the shells alive. */
 fun interface ServiceControl {
     /** Called only when the answer changes, so an implementation need not be idempotent. */
@@ -83,20 +102,29 @@ class SessionController(
 
     override val state: StateFlow<Sessions> = mutableState.asStateFlow()
 
-    override fun newSession(distroId: Long?): SessionId {
+    override fun newSession(distroId: Long?): SessionId = newSession(distroId, null)
+
+    /** Like [newSession], running [launch] instead of the Android shell when it is not null. */
+    fun newSession(distroId: Long?, launch: SessionLaunch?): SessionId {
         val (next, id) = mutableState.value.created(distroId)
-        return startPublished(next, id)
+        return startPublished(next, id, launch)
     }
 
     override fun splitActive(orientation: SplitOrientation): SessionId? {
         val (next, id) = mutableState.value.split(orientation) ?: return null
-        return startPublished(next, id)
+        return startPublished(next, id, null)
     }
 
-    private fun startPublished(next: Sessions, id: SessionId): SessionId {
+    private fun startPublished(next: Sessions, id: SessionId, launch: SessionLaunch?): SessionId {
         // Published first: a shell that ends at once reports to a session that exists.
         publish(next)
-        val handle = factory.start(id, layout) { status -> onExited(id, status) }
+        val onExit = { status: Int -> onExited(id, status) }
+        // One start only: a launch that fails must not fall back to a second, plain shell.
+        val handle = if (factory is LaunchingSessionFactory) {
+            factory.start(id, layout, launch, onExit)
+        } else {
+            factory.start(id, layout, onExit)
+        }
         if (handle == null) {
             onExited(id, START_FAILED)
         } else if (mutableState.value.items.any { it.id == id }) {
@@ -122,8 +150,6 @@ class SessionController(
         publish(mutableState.value.allClosed())
         stopped.forEach(SessionHandle::stop)
     }
-
-    fun activate(id: SessionId) = edit { activated(id) }
 
     override fun edit(change: Sessions.() -> Sessions) {
         val before = mutableState.value
@@ -168,6 +194,9 @@ class SessionController(
             TerminalLayout(GridSize(columns = 80, rows = 24), cellWidthPx = 10, cellHeightPx = 20)
     }
 }
+
+/** Makes [id] the active session. */
+fun SessionEditor.activate(id: SessionId) = edit { activated(id) }
 
 /** Remembers the size each pty was last told, so a size that did not change is not sent again. */
 private class PtySizes(private val handles: Map<SessionId, SessionHandle>) {

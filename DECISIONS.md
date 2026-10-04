@@ -26,6 +26,8 @@ funcionando:
   coincida con lo visible tras redimensionar (ver D-T03-4 a D-T03-6 y T04).
 - T03, release con R8: que los métodos nativos de `JNI` sobrevivan a la minificación (las reglas por
   defecto de Android conservan los nombres de los `native`, pero no se ha comprobado en un APK real).
+- T14, SSH: el Keystore real, `ssh` dentro de proot con la clave temporal, el selector de archivos y la
+  limpieza del fichero de la clave (ver "T14: lo que NO se ha validado").
 - T08, servicio en primer plano: que Android lo arranque con el tipo `specialUse` en 12–16, que la
   notificación aparezca y sus acciones (nueva sesión, salir) funcionen, que el shell sobreviva a
   cerrar la actividad y a apagar la pantalla, y que la UI se reconecte a la sesión viva. También el
@@ -1069,6 +1071,169 @@ Nada de esto se ha visto en pantalla; solo hay tests de host.
 3. El renderizado de JetBrains Mono: negrita/cursiva con las cuatro variantes, ancho de celda correcto, y que no cambia el tamaño de la rejilla (`stty size`) respecto a la fuente del sistema.
 4. Iconos de las barras del sistema con esquemas claros y oscuros.
 5. La pantalla de ajustes para elegir esquema/tema aún no existe (T16): hoy solo se cambian por el repositorio de ajustes.
+
+## T14 — Hosts SSH y claves
+
+Alcance: lista de hosts guardados con alta/edición/borrado, conexión con un toque en una pestaña
+nueva, y gestión de claves (generar, importar, exportar, borrar) cifradas en reposo. Todo se ha
+probado solo en la JVM del host; ver "T14: lo que NO se ha validado" al final.
+
+### D-T14-1 · 2026-10-04 · `ssh` se lanza como vector de argumentos, sin shell
+**Decisión:** `SshCommand.build` devuelve una lista de argumentos (`ssh -o ServerAliveInterval=30 …
+-p <puerto> [-i <clave> -o IdentitiesOnly=yes] -- usuario@host`) que proot ejecuta directamente. No
+hay ninguna cadena de shell, así que no hace falta escapar nada: no existe el intérprete que lo
+leería. Aun así se validan host, usuario y puerto (`Validation`: un host que empieza por `-` se
+leería como opción de `ssh`; no se aceptan espacios ni metacaracteres), `--` termina las opciones
+antes del destino y la ruta de la clave solo puede ser `/tmp/.ut-ssh-<hex>`.
+**Motivo:** una inyección de comandos a través del nombre de un host guardado (o importado de una
+copia de seguridad) sería la vulnerabilidad más obvia de esta función. Eliminar el shell es más
+robusto que escapar bien.
+**Alternativas:** `sh -c "ssh …"` con escapado de comillas (un solo fallo de escapado es una
+ejecución de comandos); `ProxyCommand`/`LocalCommand` quedan fuera: no se emite ninguna opción
+`-o` que ejecute programas.
+**Impacto:** hay tests con entradas hostiles (`;`, `$(…)`, comillas, saltos de línea, `-oProxyCommand=…`,
+rutas con `..`). El nombre del host guardado es solo una etiqueta y nunca llega a la línea de comandos.
+
+### D-T14-2 · 2026-10-04 · Formato de claves: OpenSSH propio, sin librerías nuevas
+**Decisión:** el formato `openssh-key-v1` (clave privada sin passphrase) y la línea `authorized_keys`
+se escriben y leen en `OpenSshKeyFormat`, para Ed25519 y RSA. La importación acepta además PKCS#8 y
+PKCS#1 (solo RSA, que son las claves antiguas habituales) en `PrivateKeyText`. Una clave con passphrase
+se rechaza con un mensaje que explica cómo quitarla (`ssh-keygen -p`). No se admiten ECDSA, DSA ni
+certificados, ni Ed25519 en PKCS#8.
+**Motivo:** `ssh` necesita ese formato y la API de criptografía de la plataforma no lo produce. Es
+poco código (unos 200 líneas) y se prueba contra claves reales de `ssh-keygen`; BouncyCastle añadiría
+~2 MB y una licencia más para algo que no necesitamos.
+**Alternativas:** BouncyCastle (descartada por peso); generar las claves dentro de la distro con
+`ssh-keygen` (la clave nacería en texto plano en el rootfs, justo lo que se quiere evitar).
+**Impacto:** Ed25519 en PKCS#8 no se puede importar porque habría que derivar la clave pública de la
+semilla y el JDK no lo expone. Quien tenga una clave así la convierte con `ssh-keygen -p -m RFC4716`.
+
+### D-T14-3 · 2026-10-04 · Generación con la criptografía de la plataforma; Ed25519 solo desde Android 13
+**Decisión:** `JcaSshKeyGenerator` usa `KeyPairGenerator` (RSA de 3072 bits en todas las versiones;
+Ed25519 donde la plataforma lo tiene, Android 13 o posterior). La pantalla solo ofrece los tipos que
+`supportedTypes` dice que el dispositivo soporta. La generación RSA corre fuera del hilo principal.
+**Motivo:** `minSdk` 26 no tiene Ed25519 en `java.security`. RSA 3072 tarda unos segundos en un móvil;
+4096 podía tardar medio minuto.
+**Alternativas:** BouncyCastle para Ed25519 en API 26–32 (ver D-T14-2); ofrecer solo RSA.
+**Impacto:** en Android 8–12 el único tipo para generar es RSA. Importar Ed25519 funciona en todas.
+
+### D-T14-4 · 2026-10-04 · Cifrado en reposo: AES-256-GCM con una clave del Android Keystore
+**Decisión:** la clave privada (texto OpenSSH) se sella con `AesGcmSecretBox`: AES-256-GCM, IV de 12
+bytes aleatorio, formato `versión | longitud del IV | IV | texto cifrado + etiqueta`. El alias de la
+clave va como dato autenticado, así que un blob no se puede mover a otra clave. La clave AES está en
+el Android Keystore (`KeystoreSecretKey`, no exportable). Cada clave son dos ficheros en
+`files/storage/ssh-keys/`: `<alias>.key` (sellado, 0600) y `<alias>.meta` (JSON con nombre, tipo, clave
+pública y huella; el alias es el nombre del fichero). El `.meta` se escribe el último: una clave cuya
+escritura se interrumpió no aparece en la lista.
+**Motivo:** el Keystore impide sacar la clave del dispositivo, así que un volcado del almacenamiento (o
+una copia de seguridad) no revela las claves privadas. El formato y las comprobaciones de integridad
+se prueban en la JVM con una clave en memoria; solo el Keystore real necesita un dispositivo.
+**Alternativas:** `EncryptedFile`/Jetpack Security (obsoleto); exigir autenticación biométrica para
+cada uso (`setUserAuthenticationRequired`): mejor seguridad pero rompe la conexión de un toque.
+**Impacto:** como la clave del Keystore no sale del dispositivo, las claves de SSH **no se pueden
+restaurar tal cual en otro móvil** con la copia de seguridad (T15). Habrá que exportarlas (descifradas,
+con aviso) o cifrarlas con una contraseña del usuario, como ya hace Deck con las sesiones.
+
+### D-T14-5 · 2026-10-04 · Cómo llega la clave a `ssh`: un fichero temporal 0600 en el rootfs
+**Decisión:** al conectar, `SshConnector` descifra la clave y la escribe en
+`<rootfs>/tmp/.ut-ssh-<16 hex aleatorios>` (solo legible por la app, escritura atómica), pasa
+`-i /tmp/.ut-ssh-…` a `ssh` y borra el fichero cuando la sesión termina o se cierra. Los ficheros que
+deje un cierre brusco se borran al iniciar la siguiente conexión, salvo los de sesiones vivas. Las
+rutas pasan por `FileTrees.resolveInside`, que rechaza un enlace simbólico en el camino: el `/tmp` de un
+rootfs ajeno no puede apuntar fuera del almacenamiento.
+**Motivo:** `ssh -i` necesita un fichero. Es lo más simple que funciona con cualquier distro.
+**Alternativas:** `ssh-agent` dentro de la distro con `ssh-add -` leyendo la clave por la entrada
+estándar (la clave no llegaría a un fichero, pero hace falta orquestar el agente y su socket en cada
+pestaña); una FIFO (`ssh` abre la clave más de una vez); la variable de entorno (visible en
+`/proc/<pid>/environ`). El agente es la mejora natural si el modelo de amenazas lo pide.
+**Impacto:** la clave está en claro en el almacenamiento privado mientras dura la sesión (ver D-T14-6).
+
+### D-T14-6 · 2026-10-04 · Modelo de amenazas
+**Protege contra:** un volcado del almacenamiento o una copia de seguridad del sistema con la app
+cerrada (las claves están selladas con una clave que no sale del Keystore); una clave que acabe en
+un log (los tipos de clave no imprimen sus campos, y la interfaz solo recibe partes públicas); un host
+con caracteres de shell o que se lea como opción de `ssh` (D-T14-1); un `/tmp` enlazado fuera del
+almacenamiento; borrar una clave que aún usa un host.
+**No protege contra:** otra app con el mismo UID (ninguna) o con root en el dispositivo, que pueden leer
+el fichero temporal de la clave mientras la sesión está abierta o la memoria del proceso; un dispositivo
+desbloqueado en manos de otra persona (no se pide autenticación para usar la clave, ver D-T14-4);
+programas dentro de la distro, que pueden leer `/tmp/.ut-ssh-…` mientras dura la sesión; que el
+usuario guarde la clave privada exportada en un sitio inseguro (la pantalla avisa antes).
+**Impacto:** es un nivel parecido al de `~/.ssh/id_*` sin passphrase en cualquier Linux, con la
+ventaja de que en reposo está cifrada.
+
+### D-T14-7 · 2026-10-04 · Hueco encontrado: nada conectaba proot con las sesiones
+**Decisión:** T09 y T07 dejaron el `distroId` guardado en cada pestaña, pero `AndroidSessionFactory`
+solo sabía arrancar el shell de Android; `ProotCommandBuilder` (T02) no estaba en la inyección. T14 lo
+necesita para ejecutar `ssh` en una distro, así que añade el mínimo: `SessionLaunch` (comando, entorno
+y limpieza), `LaunchingSessionFactory` (una factoría que además sabe ejecutar un comando),
+`SessionController.newSession(distroId, launch)` y `DistroLaunchFactory`, que arma la línea de proot.
+`ProotCommandBuilder` queda inyectado en `SshModule`.
+**Motivo:** sin esto el botón "Conectar" no podría abrir nada.
+**Alternativas:** cambiar la firma de `SessionFactory` (rompía los tests de T08 y T09).
+**Impacto:** **las pestañas normales de una distro siguen abriendo el shell de Android**: lanzar proot
+en una pestaña sin comando es la misma pieza pero no se ha conectado al botón "+" de la barra
+(`TabsController.newTabIn`) para no tocar T09. Queda como tarea pendiente y es lo primero que habrá
+que hacer para que las distros sirvan para algo más que `ssh`. Tampoco hay "reiniciar" para una
+pestaña de `ssh`: `restartActive` abre un shell de Android.
+
+### D-T14-8 · 2026-10-04 · DNS dentro de proot
+**Decisión:** antes de conectar, `SshConnector` escribe `/etc/resolv.conf` del rootfs con
+`1.1.1.1` y `9.9.9.9` si falta o está vacío. No toca uno que el usuario haya configurado.
+**Motivo:** Android no tiene un `resolv.conf` que compartir y el de un rootfs recién instalado no
+funciona (el de Ubuntu es un enlace a un fichero que no existe), así que `ssh servidor.ejemplo`
+fallaría al resolver el nombre aunque la red funcione.
+**Alternativas:** leer los DNS del sistema (una app no puede, desde Android 8); montar uno propio con
+`-b`; no hacerlo (solo funcionarían las IP).
+**Impacto:** hay una decisión de privacidad: los nombres se resuelven con esos resolutores públicos,
+no con los de la red del usuario. Es solo para la distro. **Debería ser configurable** (T16).
+
+### D-T14-9 · 2026-10-04 · Pantallas, ViewModels y punto de entrada
+**Decisión:** dos pantallas (hosts y claves) con un ViewModel cada una (`SshViewModel`,
+`SshKeysViewModel`); la lista de claves de la pantalla de hosts es de solo lectura. La exportación de
+la clave privada y la importación desde fichero usan el selector del sistema (`CreateDocument` y
+`OpenDocument`), con un aviso antes de guardar la privada. La clave pública se copia al portapapeles.
+Una clave en uso por algún host no se puede borrar (`KeyInUse`). Botón "SSH" provisional junto al de
+"Distros" en `MainActivity`; debe ir al menú de "nueva pestaña" que T09 posee (como D-T07-7).
+**Motivo:** el límite de funciones por clase de detekt, y que cada pantalla tenga un solo trabajo.
+**Alternativas:** un único ViewModel (superaba el límite de funciones).
+**Impacto:** hosts sin clave abren `ssh` normal y piden la contraseña en la terminal.
+
+### D-T14-10 · 2026-10-04 · `known_hosts` y verificación de la clave del servidor
+**Decisión:** no se toca. `ssh` pregunta por la huella la primera vez y guarda `known_hosts` en
+`~/.ssh` del rootfs, como en cualquier Linux. No se pasa `StrictHostKeyChecking=no`.
+**Motivo:** desactivarlo anularía la protección contra un servidor suplantado.
+**Impacto:** el historial vive en el rootfs, así que viaja con la copia de seguridad de la distro.
+
+### D-T14-11 · 2026-10-04 · Verificado contra OpenSSH real, en el host
+**Decisión:** además de los tests unitarios, el formato de claves se contrastó con `ssh-keygen` y
+`sshd` de OpenSSH 10.2 en la máquina de desarrollo (no en un dispositivo): se leyeron claves
+generadas por `ssh-keygen` (OpenSSH Ed25519 y RSA, PKCS#1, PKCS#8) y las huellas coincidieron con
+`ssh-keygen -l`; `ssh-keygen -y` aceptó las copias que escribe `OpenSshKeyFormat` y dedujo la misma
+clave pública; las claves Ed25519 y RSA 3072 generadas por `JcaSshKeyGenerator` fueron aceptadas por
+`ssh-keygen`, y un `sshd` de usuario en el puerto 2222 de loopback las admitió con la misma forma de
+comando que construye `SshCommand` (`-p … -i … -o IdentitiesOnly=yes -- usuario@host`) y rechazó una
+clave ajena. Una clave ECDSA y las dos con passphrase (PEM y OpenSSH) se rechazaron con el error
+esperado.
+**Motivo:** que un formato "parezca" correcto no basta: solo `ssh` real dice si lo acepta.
+**Impacto:** no se commitean claves de prueba (un escáner de secretos las marcaría); el contraste se
+hizo con claves desechables y no es un test automático. Los tests unitarios cubren el round trip,
+la corrupción y los casos hostiles; si cambia el formato hay que repetir esta comprobación a mano.
+
+### T14: lo que NO se ha validado (sin dispositivo)
+- **Keystore real:** que `KeystoreSecretKey` cree la clave AES-256 y que `AesGcmSecretBox` selle y
+  abra con ella en Android 8 a 16 (el formato se probó con una clave en memoria, no con el Keystore).
+- **Generación en el móvil:** el tiempo real de RSA 3072 en un móvil de gama baja, y que Ed25519 esté
+  disponible en Android 13 o posterior (`supportedTypes` lo decide en tiempo de ejecución).
+- **`ssh` dentro de proot:** que la distro tenga `openssh-client` (no se instala; el usuario debe hacer
+  `apt install openssh-client` o `apk add openssh`; la pantalla no lo avisa todavía), que proot ejecute
+  `ssh` con la línea de `DistroLaunchFactory`, que `-i` acepte el fichero 0600 cuando proot simula root
+  (propietario y permisos vistos desde dentro) y que la red y el DNS funcionen (D-T14-8).
+- **Limpieza de la clave:** que el fichero temporal desaparezca al cerrar la pestaña y al morir el
+  proceso, y que los restos se borren en la siguiente conexión.
+- **Selector de archivos del sistema** (importar y exportar) y el portapapeles; la rotación con los
+  diálogos abiertos (`HostDraft` se guarda con `listSaver`); TalkBack y los 48 dp.
+- **Pestañas normales de una distro**: siguen abriendo el shell de Android (D-T14-7).
 
 ## T13 — Acceso a los archivos del dispositivo
 
