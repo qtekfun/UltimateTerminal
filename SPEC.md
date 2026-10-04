@@ -22,7 +22,7 @@ Terminal para Android pensada para **mantenedores de servidores** y sucesora esp
 | Distribución | F-Droid y GitHub Releases |
 | Emulador de terminal | Reutilizar `terminal-emulator` de Termux (Apache-2.0, PTY por JNI), con vista y UI propias en Compose |
 | Userland | **Solo distros con proot**, estilo WSL. Sin bootstrap/paquetes propios tipo `pkg` ni prefijo `com.termux` |
-| Distros del MVP | Debian, Ubuntu y Alpine. Rootfs oficiales descargados al instalar, verificados con SHA-256. Arch y Fedora, en backlog |
+| Distros del MVP | Debian, Ubuntu y Alpine; **Fedora se añade como T24** (petición del usuario: es su distro habitual). Rootfs oficiales descargados al instalar, verificados con SHA-256. Arch, en backlog |
 | proot | **Compilado desde fuente** en el build (NDK; fuentes de proot y talloc fijadas por hash), empaquetado como `.so`. Reproducible y compatible con F-Droid |
 | Entorno gráfico | Ninguno. Ni X11 ni Wayland ni VNC |
 | Licencia | GPL-3.0-or-later |
