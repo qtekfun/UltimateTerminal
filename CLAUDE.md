@@ -23,6 +23,7 @@ Lee siempre `SPEC.md` (qué construir) y `PLAN.md` (en qué orden) antes de empe
 - **Prohibido**: Firebase, Google Play Services, Crashlytics, analíticas, SDKs propietarios, cualquier dependencia no libre. **Prohibida** toda telemetría.
 - Antes de añadir una dependencia: comprueba su licencia (compatible con GPLv3) y pregunta al usuario.
 - No incluir binarios precompilados de terceros en el repo ni en el APK: proot se compila en el build; los rootfs se **descargan** de fuentes oficiales con verificación SHA-256.
+- **Créditos y licencias:** todo código, librería, fuente o recurso de terceros que se añada, actualice o quite actualiza `THIRD_PARTY_NOTICES.md` en el mismo cambio. Se conservan intactos los avisos de copyright y las cabeceras originales. Solo se reutiliza código compatible con GPL-3.0-or-later: de `termux-app` **solo** `terminal-emulator` y `terminal-view` (Apache-2.0); el resto es GPL-3.0-only y no se copia. No usar el nombre, logo ni marca de Termux, Debian, Ubuntu, Alpine ni otros de forma que sugiera afiliación.
 - Metadatos de publicación en formato fastlane: `fastlane/metadata/android/{en-US,es-ES}/`.
 - Builds reproducibles: sin timestamps ni valores no deterministas.
 
