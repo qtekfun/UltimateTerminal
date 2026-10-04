@@ -262,3 +262,96 @@ Sin validar:
 5. Que la actividad no se recrea en ninguno de esos cambios (el test solo comprueba el manifest).
 6. Que 120 ms de debounce se siente bien y no hace saltar el contenido.
 7. Redimensionar la ventana flotante arrastrando (freeform) en tablets con ese modo.
+
+## T11
+
+### D-T11-1 · 2026-10-04 · Un solo enrutador decide qué significa cada entrada
+- **Decisión:** `InputRouter` (en `domain/terminal`) recibe todo lo que llega del teclado (teclas
+  físicas, texto del teclado en pantalla y toques en la fila de teclas extra) y devuelve
+  `RoutedInput`: atajo de la app, tecla para el shell, texto, o nada. `TerminalKeyboard` solo
+  ejecuta ese resultado. Así Ctrl/Alt pegajosos valen igual para los tres orígenes (tocar CTRL y
+  escribir `c` en el teclado en pantalla envía Ctrl+C) y todo se prueba en el host.
+- **Teclas modificadoras solas** (Shift, Ctrl, Alt, Meta, Bloq Mayús...) se ignoran y no gastan un
+  modificador armado.
+- **Alternativas:** dejar la lógica en `TerminalInputView` (no se puede probar en host).
+
+### D-T11-2 · 2026-10-04 · Ctrl/Alt pegajosos: un toque arma, otro bloquea
+- **Decisión:** cada toque cicla apagado → armado (solo la siguiente tecla) → bloqueado → apagado.
+  "Doble toque = bloqueado" se implementa como un segundo toque mientras sigue armado, sin ventana
+  de tiempo: es determinista y no depende de cuánto tarde el usuario.
+- **Alternativa:** pulsación larga para bloquear (como Termux). Descartada: más difícil de descubrir
+  y de hacer accesible.
+- **Accesibilidad:** el estado (activa para la próxima tecla / bloqueada) se anuncia con
+  `stateDescription`; los nombres hablados de cada tecla están en `strings.xml` (en/es).
+
+### D-T11-3 · 2026-10-04 · Configuración de teclas extra y atajos como texto, sin dependencia nueva
+- **Decisión:** `ExtraKeysConfig` y `ShortcutMap` son modelos puros e inmutables con
+  `serialize()`/`parse()` en texto plano (una fila por línea con ids; `ctrl+shift+t=new_tab`).
+  El `parse` es tolerante: descarta lo desconocido y lo devuelve en una lista de rechazos, y si no
+  queda nada usa el valor por defecto. `ExtraKeysStore` es solo una interfaz: la persistencia
+  (ajustes/Room) la hace otra tarea.
+- **Motivo:** el formato JSON previsto para el backup (SPEC §5) pediría `kotlinx-serialization`,
+  una dependencia nueva que aquí no hace falta. Cuando exista la copia de configuración (T15), estos
+  textos pueden ir tal cual como campos de ese JSON.
+- **Fila por defecto:** dos filas de siete teclas, que caben en 360 dp con el tamaño táctil de 48 dp.
+
+### D-T11-4 · 2026-10-04 · Atajos por defecto y sus choques conocidos
+- **Valores:** Ctrl+Shift+T nueva pestaña, Ctrl+Shift+W cerrar, Ctrl+Tab / Ctrl+Shift+Tab siguiente
+  y anterior, Alt+1..9 ir a la pestaña n, Ctrl+Shift+C / Ctrl+Insert copiar, Ctrl+Shift+V /
+  Shift+Insert pegar, Ctrl+Shift+`+` / Ctrl+Shift+`-` / Ctrl+Shift+0 zoom (más Ctrl+`+` y
+  Ctrl+`-` del teclado numérico).
+- **Choques:** Alt+dígito choca con los argumentos numéricos de readline (la SPEC lo pide, es
+  reasignable). Ctrl+`-` y Ctrl+0 normales **no** se usan para el zoom porque el terminal los
+  necesita (`^_` deshacer en readline).
+- **Regla:** un atajo debe llevar Ctrl o Alt (Shift solo escribe mayúsculas), con la única
+  excepción de Shift+Insert; `bind` y `parse` rechazan lo demás, de modo que un atajo mal
+  configurado no puede quitarle al usuario la escritura normal.
+- **Sin efecto todavía:** los atajos de pestañas salen como eventos (`appShortcuts`) que nadie
+  atiende hasta T09. Copiar, pegar y zoom sí actúan. Con Ctrl+Shift+C y sin selección no se envía
+  nada al shell.
+
+### D-T11-5 · 2026-10-04 · Pegado: se usa el del emulador
+- **Decisión:** no se reimplementa. `TerminalEmulator.paste` ya quita ESC y los C1, convierte los
+  saltos de línea en retorno de carro y envuelve con `ESC[200~ … ESC[201~` si el programa activó el
+  modo bracketed. `PasteTest` lo comprueba con el emulador real, incluido que un texto pegado que
+  contiene `ESC[201~` no puede cerrar el corchete antes de tiempo.
+- **Pendiente:** el texto que llega por `commitText` del teclado en pantalla (autocompletado de
+  texto largo) se envía sin bracketed paste: es escritura, no pegado. Si algún teclado pega así,
+  habrá que tratarlo.
+
+### D-T11-6 · 2026-10-04 · Zoom con pellizco: tamaño exacto aparte del mostrado
+- **Decisión:** `FontZoom` guarda el tamaño exacto (entre 8 y 40 sp) y muestra el redondeado a
+  medio punto. Un pellizco lento da muchos factores muy pequeños; redondear cada uno haría que el
+  tamaño no se moviera nunca. Los pasos de atajo son de 1 sp y el reinicio vuelve a 14 sp.
+- **Efecto:** al cambiar el tamaño cambia la celda, y el layout se recalcula (T04) y llega al pty
+  con el debounce de siempre. Sin persistencia todavía.
+
+### D-T11-7 · 2026-10-04 · La fila de teclas extra reserva su alto en el layout
+- **Decisión:** la fila va encima del teclado y las barras; su alto (filas × 48 dp, o 0 si está
+  oculta) se suma al borde inferior con `EdgeInsets.reserveBottom` antes de calcular la rejilla,
+  así el pty no cuenta ese espacio. Alto fijo de 48 dp por fila, el mínimo táctil de accesibilidad.
+- **Fila oculta:** la configuración tiene `visible`; el ajuste que lo cambia llega con T16.
+
+### T11: lo que NO se ha validado (sin dispositivo) y lo que falta
+Cubierto en host (todo en `domain/terminal`): estados pegajosos, catálogo y (de)serialización de
+teclas extra, coincidencia exacta de modificadores y (de)serialización de atajos, el enrutador con
+`KeyEncoder` real (Ctrl+C, Alt+x, Ctrl+flecha...), zoom, reserva de alto y pegado con el emulador
+real.
+Sin validar en dispositivo:
+1. **Tres gestos en el mismo nodo** (toque, desplazamiento vertical, pulsación larga) más el nuevo
+   pellizco. El pellizco va el último en la cadena de `pointerInput` para ver los eventos primero y
+   solo consume con dos o más dedos, pero no se ha comprobado que no compita con el desplazamiento
+   (un dedo que ya arrastró antes de que entre el segundo) ni con la selección.
+2. **IME real:** `commitText`, `setComposingText` y las teclas de otros teclados con Ctrl/Alt
+   pegajosos (un teclado que manda el carácter ya compuesto no pasa por `KeyEvent`).
+3. **Teclado físico real:** que `onKeyDown` reciba Alt+dígito, Ctrl+Tab y Ctrl+Shift+letra (el
+   sistema o el teclado pueden quedárselos), el `numLock` y los teclados no estadounidenses (el
+   código de `+` y de `=` cambia con la distribución).
+4. **La fila de teclas extra:** que tocarla no le quite el foco a la vista de entrada y cierre el
+   teclado; su aspecto; su altura real frente a los 48 dp calculados.
+5. **Rendimiento del zoom:** recrear el `TerminalPainter` en cada paso del pellizco.
+6. **Portapapeles real** con Ctrl+Shift+C/V.
+Falta por hacer:
+- **Ratón y rueda** (reporte de ratón al shell, rueda para el historial): no está en este cambio.
+- **Persistencia y ajuste de la fila y de los atajos:** otra tarea (ajustes, T16).
+- **Efecto de los atajos de pestañas:** T09.

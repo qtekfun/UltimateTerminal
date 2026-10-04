@@ -108,6 +108,11 @@ class TerminalSessionHost(private val context: Context) : TerminalSessionClient 
         if (!text.isNullOrEmpty()) paste(text.toString())
     }
 
+    /** Pastes the clipboard into the shell (bracketed when the program asked for it). */
+    fun pasteFromClipboard() {
+        session?.let(::onPasteTextFromClipboard)
+    }
+
     fun copyToClipboard(text: String) {
         context.getSystemService(ClipboardManager::class.java)
             ?.setPrimaryClip(ClipData.newPlainText(CLIP_LABEL, text))

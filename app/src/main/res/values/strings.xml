@@ -7,4 +7,25 @@
     <string name="app_name">UltimateTerminal</string>
     <string name="terminal_copy">Copy</string>
     <string name="terminal_session_ended">Session ended (exit %1$d). Tap to restart</string>
+    <string name="extra_key_esc">Escape</string>
+    <string name="extra_key_tab">Tab</string>
+    <string name="extra_key_ctrl">Control</string>
+    <string name="extra_key_alt">Alt</string>
+    <string name="extra_key_up">Up arrow</string>
+    <string name="extra_key_down">Down arrow</string>
+    <string name="extra_key_left">Left arrow</string>
+    <string name="extra_key_right">Right arrow</string>
+    <string name="extra_key_home">Home</string>
+    <string name="extra_key_end">End</string>
+    <string name="extra_key_pgup">Page up</string>
+    <string name="extra_key_pgdn">Page down</string>
+    <string name="extra_key_ins">Insert</string>
+    <string name="extra_key_del">Delete</string>
+    <string name="extra_key_slash">Slash</string>
+    <string name="extra_key_dash">Hyphen</string>
+    <string name="extra_key_pipe">Vertical bar</string>
+    <string name="extra_key_tilde">Tilde</string>
+    <string name="extra_key_backslash">Backslash</string>
+    <string name="extra_key_armed">Active for the next key</string>
+    <string name="extra_key_locked">Locked</string>
 </resources>
