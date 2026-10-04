@@ -3,6 +3,7 @@
 
 package com.qtekfun.ultimateterminal.domain.session
 
+import com.qtekfun.ultimateterminal.domain.model.SplitOrientation
 import com.qtekfun.ultimateterminal.domain.terminal.GridSize
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -235,5 +236,38 @@ class SessionControllerTest {
 
         assertEquals(1, handle.stopped)
         assertTrue(racing.state.value.items.isEmpty())
+    }
+
+    @Test
+    fun aSessionRemembersTheDistroItWasOpenedIn() {
+        val id = controller.newSession(distroId = 4L)
+
+        assertEquals(4L, controller.state.value.items.single { it.id == id }.distroId)
+    }
+
+    @Test
+    fun theDistroIsPublishedBeforeTheShellStartsSoTheFactoryCanReadIt() {
+        var seen: Long? = null
+        lateinit var probing: SessionController
+        probing = SessionController(
+            { id, _, _ ->
+                seen = probing.state.value.items.firstOrNull { it.id == id }?.distroId
+                FakeHandle()
+            },
+            service
+        )
+
+        probing.newSession(distroId = 9L)
+
+        assertEquals(9L, seen)
+    }
+
+    @Test
+    fun aSplitOpensInTheSameDistro() {
+        controller.newSession(distroId = 4L)
+
+        val split = checkNotNull(controller.splitActive(SplitOrientation.HORIZONTAL))
+
+        assertEquals(4L, controller.state.value.items.single { it.id == split }.distroId)
     }
 }

@@ -79,7 +79,12 @@ private const val ENDED_TAB_ALPHA = 0.6f
  * validated on a device yet (see DECISIONS.md, T09).
  */
 @Composable
-fun TabBar(tabs: TabsController, placement: TabBarPlacement, modifier: Modifier = Modifier) {
+fun TabBar(
+    tabs: TabsController,
+    placement: TabBarPlacement,
+    links: TabBarLinks,
+    modifier: Modifier = Modifier
+) {
     val items by tabs.tabs.collectAsStateWithLifecycle()
     val choices by tabs.distroChoices.collectAsStateWithLifecycle()
     val closing by tabs.closeConfirmation.collectAsStateWithLifecycle()
@@ -103,7 +108,14 @@ fun TabBar(tabs: TabsController, placement: TabBarPlacement, modifier: Modifier 
                 TabChip(item, items.size, vertical, drag, actions)
             }
         },
-        newTab = { NewTabButton(choices, onNewTab = tabs::newTab, onNewTabIn = tabs::newTabIn) }
+        newTab = {
+            NewTabButton(
+                choices,
+                onNewTab = tabs::newTab,
+                onNewTabIn = { tabs.newTabIn(it) },
+                links = links
+            )
+        }
     )
 
     renaming?.let { item ->
@@ -165,6 +177,14 @@ private class TabDrag {
         offsetPx = 0f
     }
 }
+
+/** What the "+" menu opens besides new tabs: other screens, and the split of the focused pane. */
+class TabBarLinks(
+    val openDistros: () -> Unit,
+    val openSsh: () -> Unit,
+    val splitRight: () -> Unit,
+    val splitDown: () -> Unit
+)
 
 /** What touching one tab does. */
 private class TabChipActions(
@@ -298,7 +318,8 @@ private fun TabMenu(name: String, actions: TabChipActions) {
 private fun NewTabButton(
     choices: List<DistroOption>,
     onNewTab: () -> Unit,
-    onNewTabIn: (Long?) -> Unit
+    onNewTabIn: (Long?) -> Unit,
+    links: TabBarLinks
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val label = stringResource(R.string.tab_new)
@@ -326,6 +347,35 @@ private fun NewTabButton(
                     }
                 )
             }
+            // The split of the pane that has the keyboard: here, and not as a button over the text.
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.pane_split_right)) },
+                onClick = {
+                    menuOpen = false
+                    links.splitRight()
+                }
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.pane_split_down)) },
+                onClick = {
+                    menuOpen = false
+                    links.splitDown()
+                }
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.ssh_open)) },
+                onClick = {
+                    menuOpen = false
+                    links.openSsh()
+                }
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.tab_manage_distros)) },
+                onClick = {
+                    menuOpen = false
+                    links.openDistros()
+                }
+            )
         }
     }
 }

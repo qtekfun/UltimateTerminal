@@ -27,11 +27,15 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
+import java.nio.file.Path
 import java.security.MessageDigest
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 import kotlinx.coroutines.Dispatchers
+
+/** Free space as the host JVM reports it; on a device the app asks the file system instead. */
+private val JVM_FREE_SPACE: (Path) -> Long = { it.toFile().usableSpace }
 
 /** The backup file is plain ASCII where it matters, so tests can find and change its bytes. */
 fun sha256Hex(bytes: ByteArray): String =
@@ -51,7 +55,7 @@ fun BackupResult<*>.errorOrNull() = (this as? BackupResult.Failure)?.error
  */
 class Device(root: File) : AutoCloseable {
     val storageRoot = File(root, "storage").also { it.mkdirs() }
-    val fileSystem = NioFileSystemRepository(storageRoot.toPath(), Dispatchers.IO)
+    val fileSystem = NioFileSystemRepository(storageRoot.toPath(), Dispatchers.IO, JVM_FREE_SPACE)
     private val db: UltimateTerminalDatabase = inMemoryDatabase()
     val settings = RoomSettingsRepository(db.settingDao())
     val profiles = RoomProfileRepository(db.profileDao())

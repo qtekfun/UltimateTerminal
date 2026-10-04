@@ -24,6 +24,19 @@ Reglas: una tarea cada vez, en su rama `feat/<tarea>`, con `./gradlew check` en 
 
 ## Fase 2 — Sesiones y terminal
 - [~] **T08 Servicio en primer plano y sesiones**: el servicio posee PTY y procesos; la UI se reconecta; notificación persistente, wakelock opcional, aviso de batería y tipo de servicio para Android 14+. *(ciclo de vida de sesiones, servicio, notificación, wake lock y avisos implementados; lógica y manifiesto probados en host, sin validar en dispositivo; ver D-T08-1 a D-T08-6 en `DECISIONS.md`)*
+- [~] **T08b Conectar proot a las sesiones** *(añadida: faltaba en el plan)*: T07 instala distros y T09 abre pestañas con
+  la distro elegida, pero nada lanzaba proot: toda pestaña abría el shell de Android. Un planificador decide qué arranca
+  cada pestaña (distro `READY` con proot, o shell de Android con aviso, o error explicado), con `/etc/resolv.conf`,
+  el usuario de la distro, los montajes de T13 y un modo de compatibilidad sin seccomp. Incluye el punto de extensión
+  unifica con el `SessionLaunch` de T14 en un único mecanismo de «qué ejecutar» por pestaña, corrige la ruta del rootfs
+  de T13 y mueve los botones «Distros» y «SSH» al menú de «nueva pestaña».
+  *(Lógica probada en host; **no se ha ejecutado proot en ningún dispositivo**: ver `DECISIONS.md`, T08b.)*
+- [~] **T08c Correcciones halladas en hardware** *(añadida: sale de las primeras pruebas reales en un Pixel 8)*: permiso de batería
+  con el diálogo del sistema, interruptor de almacenamiento que no engaña, cabecera de la pantalla de Distros
+  sin solapes, `/proc` falso dentro de proot (`top`, `uptime`, `free`) y un pulido mínimo del terminal (margen del
+  texto y el botón de paneles fuera de la primera línea).
+  - *Verificación:* tests de host (`BatteryExemptionTest`, `StorageToggleTest`, `FakeProcTest`, `TerminalLayoutTest`,
+    planificador). *Sin probar en hardware*: hay que volver a comprobarlos en el Pixel 8 (ver `DECISIONS.md`, T08c).
 - [~] **T09 Multitab**: crear, cerrar, renombrar y reordenar pestañas; confirmación al cerrar con procesos vivos. *(implementada y probada solo en host; la barra no se ha visto en ningún dispositivo; ver `DECISIONS.md`, T09)*
 - [~] **T10 Paneles divididos** (pantallas anchas): dividir en horizontal/vertical con separadores arrastrables, y layout por `WindowSizeClass` (barra lateral o superior).
   - *Nota:* implementada y probada solo con tests de host; sin validar en dispositivo (ver `DECISIONS.md`, D-T10-9). Perfiles, layouts guardados y emisión a varios paneles son T12b.

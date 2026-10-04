@@ -161,8 +161,12 @@ class DistroInstaller(
     companion object {
         private const val ARCHIVE_NAME = "archive"
 
-        /** The directory inside a distro's own directory that holds the root filesystem (proot's `-r`). */
-        const val UNPACKED_NAME = "rootfs"
+        /**
+         * The folder the archive is unpacked into inside the staging directory. It is only a staging
+         * name: publishing moves it to the distro's directory, so afterwards that directory itself
+         * is the root filesystem (proot's `-r`) and no `rootfs` folder exists inside it.
+         */
+        private const val UNPACKED_NAME = "rootfs"
     }
 }
 

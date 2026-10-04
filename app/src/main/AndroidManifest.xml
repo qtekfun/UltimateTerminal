@@ -3,15 +3,26 @@
   SPDX-FileCopyrightText: 2026 UltimateTerminal contributors
   SPDX-License-Identifier: GPL-3.0-or-later
 -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Only to download the official root filesystem of a distro the user chooses to install. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Only to read the device's DNS servers, written to a distro's /etc/resolv.conf (T08b). A normal
+         permission: Android grants it without asking. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Keeps the shells alive in the background (SPEC RF-07). specialUse: see DECISIONS.md D-T08-2. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <!-- Shows the persistent notification of that service (Android 13+). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Lets the app ask the user, with the system dialog, to run without battery optimisation so a long
+         task (an SSH session) is not paused with the screen off (T08c, D-T08c-1). It only opens that
+         dialog: nothing changes unless the user accepts. F-Droid allows it; Google Play restricts it,
+         and this app is not published there (targetSdk 28), hence the Lint suppression. -->
+    <uses-permission
+        android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
+        tools:ignore="BatteryLife" />
     <!-- The optional wake lock of the "keep awake" setting. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 

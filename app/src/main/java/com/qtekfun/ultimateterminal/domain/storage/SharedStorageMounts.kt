@@ -4,7 +4,6 @@
 package com.qtekfun.ultimateterminal.domain.storage
 
 import com.qtekfun.ultimateterminal.domain.Outcome
-import com.qtekfun.ultimateterminal.domain.distro.DistroInstaller
 import com.qtekfun.ultimateterminal.domain.getOrNull
 import com.qtekfun.ultimateterminal.domain.model.Distro
 import com.qtekfun.ultimateterminal.domain.repository.FileSystemRepository
@@ -34,8 +33,9 @@ class SharedStorageMounts(
     }
 
     private suspend fun createMountPoints(distro: Distro, plan: StorageMountPlan.Active): Boolean {
-        val rootfs =
-            distro.directory.child(DistroInstaller.UNPACKED_NAME).getOrNull() ?: return false
+        // The distro's directory is the root filesystem itself (DistroInstaller moves what it
+        // unpacked there), so the mount points go straight under it.
+        val rootfs = distro.directory
         return plan.binds.all { bind ->
             val mountPoint = rootfs.child(bind.guestPath.trimStart('/')).getOrNull()
             mountPoint != null && fileSystem.createDirectories(mountPoint) is Outcome.Success

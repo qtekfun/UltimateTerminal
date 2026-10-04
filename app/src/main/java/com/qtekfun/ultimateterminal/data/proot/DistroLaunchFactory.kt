@@ -17,12 +17,20 @@ import kotlinx.coroutines.launch
 class DistroLaunchFactory(
     private val proot: ProotCommandBuilder,
     private val fileSystem: FileSystemRepository,
-    private val cleanupScope: CoroutineScope
+    private val dns: ResolvConfSource,
+    private val cleanupScope: CoroutineScope,
+    private val fakeProc: FakeProcSource = FakeProcSource.None
 ) {
-    fun create(plan: SshLaunchPlan): SessionLaunch {
+    /**
+     * The same resolver as every other tab gets (the device's DNS, see [ResolvConfSource]), bound over
+     * the distro's own `/etc/resolv.conf`, so `ssh` can resolve a host name.
+     */
+    suspend fun create(plan: SshLaunchPlan): SessionLaunch {
         val session = ProotSession(
             rootfs = fileSystem.absolutePathOf(plan.distro.directory),
-            shell = plan.guestCommand
+            binds = ProotSession.DEFAULT_BINDS + resolvConfBinds(dns.hostFile()) +
+                fakeProcBinds(fakeProc.hostFiles()),
+            command = plan.guestCommand
         )
         val launch = proot.build(session)
         return SessionLaunch(launch.command, launch.environment) {

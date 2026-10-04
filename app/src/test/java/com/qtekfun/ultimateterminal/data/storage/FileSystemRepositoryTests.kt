@@ -29,7 +29,7 @@ class NioFileSystemRepositoryTest : FileSystemRepositoryContract() {
 
     override fun create(): FileSystemRepository {
         Files.createDirectories(root)
-        return NioFileSystemRepository(root, Dispatchers.Unconfined)
+        return NioFileSystemRepository(root, Dispatchers.Unconfined, JVM_FREE_SPACE)
     }
 
     override fun put(path: String, content: String) {
@@ -48,8 +48,40 @@ class NioFileSystemRepositoryTest : FileSystemRepositoryContract() {
     }
 
     @Test
+    fun `the repository never asks for a FileStore, which Android denies to apps`() {
+        // Files.getFileStore reads /proc/mounts: fine on the JVM, SecurityException on a device
+        // (it crashed every distro install on a Pixel 8), so host tests cannot see it.
+        val source = java.io.File(
+            "src/main/java/com/qtekfun/ultimateterminal/data/storage/NioFileSystemRepository.kt"
+        ).readText()
+
+        assertFalse(
+            source.lines().any {
+                it.contains("Files.getFileStore(") &&
+                    !it.trim().startsWith("*")
+            }
+        )
+    }
+
+    @Test
+    fun `freeSpaceBytes is zero when the probe is refused or the path is invalid`() = runTest {
+        val denied =
+            NioFileSystemRepository(root, Dispatchers.Unconfined) {
+                throw SecurityException("denied")
+            }
+        val invalid =
+            NioFileSystemRepository(root, Dispatchers.Unconfined) {
+                throw IllegalArgumentException("gone")
+            }
+
+        assertEquals(0L, denied.freeSpaceBytes())
+        assertEquals(0L, invalid.freeSpaceBytes())
+    }
+
+    @Test
     fun `freeSpaceBytes is zero when the storage is missing`() = runTest {
-        val missing = NioFileSystemRepository(tempDir.resolve("gone"), Dispatchers.Unconfined)
+        val missing =
+            NioFileSystemRepository(tempDir.resolve("gone"), Dispatchers.Unconfined, JVM_FREE_SPACE)
 
         assertEquals(0L, missing.freeSpaceBytes())
     }
@@ -237,3 +269,6 @@ class InMemoryFileSystemRepositoryTest : FileSystemRepositoryContract() {
         assertEquals(42L, InMemoryFileSystemRepository(freeSpace = 42L).freeSpaceBytes())
     }
 }
+
+/** The JVM stand-in for `StatFs`: tests run on the host, where `android.os` is not available. */
+private val JVM_FREE_SPACE: (Path) -> Long = { it.toFile().usableSpace }

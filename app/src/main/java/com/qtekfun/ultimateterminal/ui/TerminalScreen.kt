@@ -54,13 +54,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qtekfun.ultimateterminal.R
 import com.qtekfun.ultimateterminal.domain.session.TabBarPlacement
+import com.qtekfun.ultimateterminal.domain.session.TabsController
 import com.qtekfun.ultimateterminal.domain.session.reserveForTabBar
 import com.qtekfun.ultimateterminal.domain.session.tabBarPlacement
 import com.qtekfun.ultimateterminal.domain.terminal.CellPosition
 import com.qtekfun.ultimateterminal.domain.terminal.EdgeInsets
+import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.extraKeysHeightPx
 import com.qtekfun.ultimateterminal.domain.terminal.reserveBottom
 import com.qtekfun.ultimateterminal.domain.terminal.terminalLayoutFor
+import com.qtekfun.ultimateterminal.domain.terminal.withTextMargin
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
 import com.qtekfun.ultimateterminal.terminal.TerminalInputView
 import com.qtekfun.ultimateterminal.terminal.TerminalPainter
@@ -69,6 +72,9 @@ import com.qtekfun.ultimateterminal.terminal.TerminalViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
+
+/** Air around the text, so it does not touch the edge of the screen (T08c). */
+private val TextMargin = 6.dp
 
 /**
  * The terminal: a Compose canvas that draws the emulator, plus an invisible view that takes the
@@ -83,6 +89,8 @@ fun TerminalScreen(
     scheme: TerminalColorScheme,
     initialFontSizeSp: Float,
     onFontSizeChanged: (Float) -> Unit,
+    onOpenDistros: () -> Unit,
+    onOpenSsh: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: TerminalViewModel = viewModel()
 ) {
@@ -91,7 +99,6 @@ fun TerminalScreen(
     SchemeAndFontEffects(viewModel, scheme, initialFontSizeSp, onFontSizeChanged)
     val fontSizeSp by viewModel.fontSize.sizeSp.collectAsStateWithLifecycle()
     val extraKeys by viewModel.extraKeys.collectAsStateWithLifecycle()
-    val sticky by viewModel.stickyModifiers.collectAsStateWithLifecycle()
     val painter = rememberTerminalPainter(fontSizeSp, scheme)
     val inputView = remember { arrayOfNulls<TerminalInputView>(1) }
 
@@ -105,13 +112,15 @@ fun TerminalScreen(
     val tabBarPx = with(density) {
         (if (placement == TabBarPlacement.Top) TabBarHeight else TabBarSideWidth).roundToPx()
     }
-    LaunchedEffect(windowSize, insets, extraKeysPx, placement, tabBarPx, painter) {
+    val textMarginPx = with(density) { TextMargin.roundToPx() }
+    LaunchedEffect(windowSize, insets, extraKeysPx, placement, tabBarPx, painter, textMarginPx) {
         if (windowSize != IntSize.Zero) {
             viewModel.onLayoutChanged(
                 terminalLayoutFor(
                     windowSize.width,
                     windowSize.height,
-                    insets.reserveBottom(extraKeysPx).reserveForTabBar(placement, tabBarPx),
+                    insets.reserveBottom(extraKeysPx).reserveForTabBar(placement, tabBarPx)
+                        .withTextMargin(textMarginPx),
                     painter.cellWidth,
                     painter.cellHeight
                 )
@@ -127,25 +136,68 @@ fun TerminalScreen(
         }
     ) {
         val padded = Modifier.fillMaxSize().padding(insets.toPadding(density))
+        val links = TabBarLinks(
+            openDistros = onOpenDistros,
+            openSsh = onOpenSsh,
+            splitRight = viewModel.panes::splitVertical,
+            splitDown = viewModel.panes::splitHorizontal
+        )
         val pane = @Composable { paneModifier: Modifier ->
-            Column(paneModifier) {
-                TerminalPanes(viewModel, painter, inputView, Modifier.weight(1f).fillMaxWidth())
-                if (extraKeys.visible) {
-                    ExtraKeysRow(extraKeys, sticky, viewModel.keyboard::onExtraKey)
-                }
-            }
+            TerminalPane(viewModel, painter, inputView, extraKeys, onOpenDistros, paneModifier)
         }
         if (placement == TabBarPlacement.Top) {
             Column(padded) {
-                TabBar(viewModel.tabs, placement, Modifier.fillMaxWidth().height(TabBarHeight))
+                TabBarSlot(viewModel.tabs, placement, links)
                 pane(Modifier.weight(1f).fillMaxWidth())
             }
         } else {
             Row(padded) {
-                TabBar(viewModel.tabs, placement, Modifier.fillMaxHeight().width(TabBarSideWidth))
+                TabBarSlot(viewModel.tabs, placement, links)
                 pane(Modifier.weight(1f).fillMaxHeight())
             }
         }
+    }
+}
+
+/** The tab bar at the size its placement reserves, which the grid of the terminal leaves out. */
+@Composable
+private fun TabBarSlot(tabs: TabsController, placement: TabBarPlacement, links: TabBarLinks) {
+    val size = if (placement == TabBarPlacement.Top) {
+        Modifier.fillMaxWidth().height(TabBarHeight)
+    } else {
+        Modifier.fillMaxHeight().width(TabBarSideWidth)
+    }
+    TabBar(tabs, placement, links, size)
+}
+
+/** The terminal, the extra-keys row under it and, over the first rows, what the tab could not start. */
+@Composable
+private fun TerminalPane(
+    viewModel: TerminalViewModel,
+    painter: TerminalPainter,
+    inputView: Array<TerminalInputView?>,
+    extraKeys: ExtraKeysConfig,
+    onOpenDistros: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val sticky by viewModel.stickyModifiers.collectAsStateWithLifecycle()
+    val launchMessage by viewModel.launchMessage.collectAsStateWithLifecycle()
+    Box(modifier) {
+        Column(Modifier.fillMaxSize()) {
+            // The margin is applied before the panes measure their area, so the grid they give each
+            // pty is the padded one, and `withTextMargin` makes the first layout agree with it.
+            TerminalPanes(
+                viewModel,
+                painter,
+                inputView,
+                Modifier.weight(1f).fillMaxWidth().padding(TextMargin)
+            )
+            if (extraKeys.visible) {
+                ExtraKeysRow(extraKeys, sticky, viewModel.keyboard::onExtraKey)
+            }
+        }
+        // Over the first rows, so the pty's size does not change when it appears.
+        LaunchMessageBanner(launchMessage, onOpenDistros, Modifier.align(Alignment.TopCenter))
     }
 }
 

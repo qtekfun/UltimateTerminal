@@ -6,6 +6,7 @@ package com.qtekfun.ultimateterminal.di
 import android.content.Context
 import com.qtekfun.ultimateterminal.data.storage.NioFileSystemRepository
 import com.qtekfun.ultimateterminal.domain.repository.FileSystemRepository
+import com.qtekfun.ultimateterminal.platform.AndroidFreeSpace
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -27,6 +28,6 @@ object StorageModule {
     ): FileSystemRepository {
         val root = context.filesDir.toPath().resolve("storage")
         Files.createDirectories(root)
-        return NioFileSystemRepository(root, ioDispatcher)
+        return NioFileSystemRepository(root, ioDispatcher, AndroidFreeSpace)
     }
 }

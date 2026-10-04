@@ -26,4 +26,19 @@ object StorageToggle {
     /** The user answered the permission dialog: the feature turns on only if it was granted. */
     fun onPermissionResult(granted: Boolean): StorageToggleAction =
         if (granted) StorageToggleAction.ENABLE else StorageToggleAction.DISABLE
+
+    /**
+     * Whether every permission of a dialog result was granted. An empty result means the request
+     * was interrupted, not that all of nothing was granted: `all` on an empty map is `true`, which
+     * would turn the feature on without any permission.
+     */
+    fun allGranted(results: Map<String, Boolean>): Boolean =
+        results.isNotEmpty() && results.values.all { it }
+
+    /**
+     * What the switch shows. The feature needs the permission, so a stored "on" without it is shown
+     * as off: the switch never claims something that would not work.
+     */
+    fun isShownOn(enabled: Boolean, permissionGranted: Boolean): Boolean =
+        enabled && permissionGranted
 }

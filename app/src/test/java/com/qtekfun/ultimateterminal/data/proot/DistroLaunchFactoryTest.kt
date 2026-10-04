@@ -37,13 +37,15 @@ class DistroLaunchFactoryTest {
     )
     private val builder = ProotCommandBuilder("/data/app/lib/arm64", "/data/cache/proot-tmp")
     private val storage = InMemoryFileSystemRepository(rootPath = "/data/files/storage")
+    private var resolvConf: String? = "/data/files/resolv.conf"
+    private val dns = ResolvConfSource { resolvConf }
 
     @Test
     fun theCommandRunsTheGuestCommandInsideTheDistrosRootfs() = runTest {
         val scope = TestScope(StandardTestDispatcher(testScheduler))
         var cleaned = 0
         val plan = SshLaunchPlan(distro, listOf("ssh", "--", "u@h")) { cleaned++ }
-        val launch = DistroLaunchFactory(builder, storage, scope).create(plan)
+        val launch = DistroLaunchFactory(builder, storage, dns, scope).create(plan)
         val rootAt = launch.command.indexOf("-r")
         assertEquals("/data/files/storage/distros/abc", launch.command[rootAt + 1])
         assertEquals(listOf("ssh", "--", "u@h"), launch.command.takeLast(3))
@@ -57,7 +59,7 @@ class DistroLaunchFactoryTest {
         val scope = TestScope(StandardTestDispatcher(testScheduler))
         var cleaned = 0
         val plan = SshLaunchPlan(distro, listOf("ssh", "u@h")) { cleaned++ }
-        val launch = DistroLaunchFactory(builder, storage, scope).create(plan)
+        val launch = DistroLaunchFactory(builder, storage, dns, scope).create(plan)
         launch.onClosed()
         scope.advanceUntilIdle()
         assertEquals(1, cleaned)
@@ -67,7 +69,29 @@ class DistroLaunchFactoryTest {
     fun theLaunchDoesNotPrintItsCommandLine() = runTest {
         val scope = TestScope(StandardTestDispatcher(testScheduler))
         val plan = SshLaunchPlan(distro, listOf("ssh", "-i", "/tmp/.ut-ssh-key", "u@h")) {}
-        val launch = DistroLaunchFactory(builder, storage, scope).create(plan)
+        val launch = DistroLaunchFactory(builder, storage, dns, scope).create(plan)
         assertFalse(launch.toString().contains(".ut-ssh"))
+    }
+
+    @Test
+    fun theDevicesResolverIsBoundOverTheDistrosOwn() = runTest {
+        val scope = TestScope(StandardTestDispatcher(testScheduler))
+        val plan = SshLaunchPlan(distro, listOf("ssh", "u@h")) {}
+
+        val launch = DistroLaunchFactory(builder, storage, dns, scope).create(plan)
+
+        assertTrue("/data/files/resolv.conf:/etc/resolv.conf" in launch.command)
+    }
+
+    @Test
+    fun withoutAResolverFileTheConnectionStillStartsWithoutTheBind() = runTest {
+        val scope = TestScope(StandardTestDispatcher(testScheduler))
+        resolvConf = null
+        val plan = SshLaunchPlan(distro, listOf("ssh", "u@h")) {}
+
+        val launch = DistroLaunchFactory(builder, storage, dns, scope).create(plan)
+
+        assertFalse(launch.command.any { it.endsWith(":/etc/resolv.conf") })
+        assertEquals(listOf("ssh", "u@h"), launch.command.takeLast(2))
     }
 }

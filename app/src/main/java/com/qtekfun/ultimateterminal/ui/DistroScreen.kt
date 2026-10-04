@@ -55,6 +55,7 @@ fun DistroScreen(onClose: () -> Unit, viewModel: DistroViewModel = viewModel()) 
             Header(state, onClose, onInstall = { dialog = DistroDialog.Install })
             StorageAccessCard()
             BackupCard()
+            ProotOptionsCard()
             state.installing?.let { InstallProgressCard(it, viewModel::cancelInstall) }
             state.message?.let { MessageBar(it, viewModel::dismissMessage) }
             DistroList(
@@ -132,22 +133,28 @@ private fun DistroDialogHost(
 
 @Composable
 private fun Header(state: DistroUiState, onClose: () -> Unit, onInstall: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(stringResource(R.string.distros_title), style = MaterialTheme.typography.headlineSmall)
-        Row {
-            Button(
-                onClick = onInstall,
-                enabled = state.ready && state.installing == null,
-                modifier = Modifier.heightIn(min = MIN_TOUCH)
-            ) { Text(stringResource(R.string.distros_install)) }
+    // Title and close share a row; the install button gets its own, so nothing overlaps whatever
+    // the width or the font scale (on a 360 dp phone the title alone fills most of a row).
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                stringResource(R.string.distros_title),
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.weight(1f)
+            )
             TextButton(onClick = onClose, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
                 Text(stringResource(R.string.distros_close))
             }
         }
+        Button(
+            onClick = onInstall,
+            enabled = state.ready && state.installing == null,
+            modifier = Modifier.fillMaxWidth().heightIn(min = MIN_TOUCH)
+        ) { Text(stringResource(R.string.distros_install)) }
     }
 }
 

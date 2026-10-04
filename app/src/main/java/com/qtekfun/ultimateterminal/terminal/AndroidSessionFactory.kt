@@ -4,20 +4,44 @@
 package com.qtekfun.ultimateterminal.terminal
 
 import android.content.Context
+import com.qtekfun.ultimateterminal.data.proot.LaunchPlan
+import com.qtekfun.ultimateterminal.data.proot.ProotLaunch
+import com.qtekfun.ultimateterminal.data.proot.ProotSessionPlanner
+import com.qtekfun.ultimateterminal.domain.launch.LaunchProblem
 import com.qtekfun.ultimateterminal.domain.session.LaunchingSessionFactory
+import com.qtekfun.ultimateterminal.domain.session.SessionController
 import com.qtekfun.ultimateterminal.domain.session.SessionHandle
 import com.qtekfun.ultimateterminal.domain.session.SessionId
 import com.qtekfun.ultimateterminal.domain.session.SessionLaunch
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 /**
  * Starts a [TerminalSessionHost] per session and keeps them by id so the screen can find the one it
- * shows. It needs a real pty, so it is exercised on a device, not in unit tests. [context] must be
- * the application context: the hosts outlive any activity.
+ * shows. What each one runs has a single source:
+ *
+ *  - a [SessionLaunch] given by the caller (the SSH hosts screen passes proot running `ssh`), used
+ *    as it is; or
+ *  - none, and then the [planner] decides from the distro the tab was opened in: proot with that
+ *    distro, or Android's shell.
+ *
+ * The plan arrives a moment after the host exists, so [start] returns at once and the shell begins
+ * when the plan and the screen's size are both known. What a launch put on disk (a key file) goes
+ * away once, whichever way the session ends. It needs a real pty, so it is exercised on a device,
+ * not in unit tests. [context] must be the application context: the hosts outlive any activity.
+ * [scope] must run on the main thread: the emulator library delivers its callbacks there.
  */
-class AndroidSessionFactory(private val context: Context) : LaunchingSessionFactory {
+class AndroidSessionFactory(
+    private val context: Context,
+    private val planner: ProotSessionPlanner,
+    private val distroOf: (SessionId) -> Long?,
+    private val scope: CoroutineScope
+) : LaunchingSessionFactory {
     private val hosts = mutableMapOf<SessionId, TerminalSessionHost>()
     private var scheme: TerminalColorScheme? = null
 
@@ -29,39 +53,83 @@ class AndroidSessionFactory(private val context: Context) : LaunchingSessionFact
         hosts.values.forEach { it.applyScheme(newScheme) }
     }
 
-    // The pty or the fork can fail in ways the library reports as plain runtime exceptions; a shell
-    // that cannot start is reported as a failed session instead of crashing the service.
-    @Suppress("TooGenericExceptionCaught")
     override fun start(
         id: SessionId,
         layout: TerminalLayout,
         launch: SessionLaunch?,
         onExit: (Int) -> Unit
-    ): SessionHandle? {
-        // What the launch put on disk (a key file) goes away once, whichever way the session ends.
+    ): SessionHandle {
         val closed = AtomicBoolean(false)
         val cleanup: () -> Unit = {
             if (closed.compareAndSet(false, true)) launch?.onClosed?.invoke()
         }
-        val host = TerminalSessionHost(context, { status ->
+        val host = TerminalSessionHost(context) { status ->
             cleanup()
             onExit(status)
-        }, launch)
+        }
         scheme?.let(host::applyScheme)
-        return try {
-            host.resize(layout.grid, layout.cellWidthPx, layout.cellHeightPx)
-            hosts[id] = host
-            Handle(id, host, cleanup)
+        hosts[id] = host
+        host.resize(layout.grid, layout.cellWidthPx, layout.cellHeightPx)
+        val job = scope.launch { begin(host, id, launch, onExit) }
+        return Handle(id, host, job, cleanup)
+    }
+
+    // The planner reads the database and the disk, and the pty or the fork can fail in ways the
+    // library reports as plain runtime exceptions; either way the tab shows a message and ends as a
+    // failed session instead of crashing the service.
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun begin(
+        host: TerminalSessionHost,
+        id: SessionId,
+        launch: SessionLaunch?,
+        onExit: (Int) -> Unit
+    ) {
+        try {
+            val home = context.filesDir.absolutePath
+            val tmp = context.cacheDir.absolutePath
+            val inherited = System.getenv()
+            if (launch != null) {
+                val start = ShellStart.proot(
+                    ProotLaunch(launch.command, launch.environment),
+                    home,
+                    tmp,
+                    inherited
+                )
+                host.launch(start)
+            } else {
+                when (val plan = planner.plan(distroOf(id))) {
+                    LaunchPlan.AndroidShell ->
+                        host.launch(ShellStart.androidShell(home, tmp, inherited))
+
+                    is LaunchPlan.FallbackToAndroid ->
+                        host.launch(ShellStart.androidShell(home, tmp, inherited), plan.notice)
+
+                    is LaunchPlan.InDistro ->
+                        host.launch(
+                            ShellStart.proot(plan.launch, home, tmp, inherited),
+                            plan.notice
+                        )
+
+                    is LaunchPlan.Failed -> failed(host, plan.problem, onExit)
+                }
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: RuntimeException) {
             host.stop()
-            cleanup()
-            null
+            failed(host, LaunchProblem.Unexpected, onExit)
         }
+    }
+
+    private fun failed(host: TerminalSessionHost, problem: LaunchProblem, onExit: (Int) -> Unit) {
+        host.fail(problem)
+        onExit(SessionController.START_FAILED)
     }
 
     private inner class Handle(
         private val id: SessionId,
         private val host: TerminalSessionHost,
+        private val job: Job,
         private val cleanup: () -> Unit
     ) : SessionHandle {
         override fun resize(layout: TerminalLayout) {
@@ -69,6 +137,7 @@ class AndroidSessionFactory(private val context: Context) : LaunchingSessionFact
         }
 
         override fun stop() {
+            job.cancel()
             host.stop()
             hosts.remove(id)
             cleanup()

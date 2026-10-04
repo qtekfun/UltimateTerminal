@@ -6,9 +6,9 @@ package com.qtekfun.ultimateterminal.terminal
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import com.qtekfun.ultimateterminal.domain.session.SessionLaunch
+import com.qtekfun.ultimateterminal.domain.launch.LaunchNotice
+import com.qtekfun.ultimateterminal.domain.launch.LaunchProblem
 import com.qtekfun.ultimateterminal.domain.terminal.GridSize
-import com.qtekfun.ultimateterminal.domain.terminal.ShellEnvironment
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
 import com.termux.terminal.TerminalColors
 import com.termux.terminal.TerminalEmulator
@@ -23,16 +23,16 @@ import kotlinx.coroutines.flow.asStateFlow
  * into state the UI can observe. Must be created and used on the main thread: the library delivers
  * its callbacks there.
  *
- * It runs Android's own `/system/bin/sh` for now; the proot distributions arrive with T07. The
- * foreground service (T08) owns these objects through the session manager, so a shell outlives the
- * activity. It needs a real pty and a device to be exercised, so it is not covered by unit tests.
+ * It does not choose what to run: [launch] hands it a [ShellStart] (Android's shell or proot with a
+ * distro, decided by the planner), and until then it only remembers the size the screen asked for.
+ * The foreground service (T08) owns these objects through the session manager, so a shell outlives
+ * the activity. It needs a real pty and a device to be exercised, so it is not covered by unit tests.
  */
 // The callback interface is imposed by the emulator library and has many methods.
 @Suppress("TooManyFunctions")
 class TerminalSessionHost(
     private val context: Context,
-    private val onFinished: (Int) -> Unit = {},
-    private val launch: SessionLaunch? = null
+    private val onFinished: (Int) -> Unit = {}
 ) : TerminalSessionClient,
     TerminalOutput {
     private val frameState = MutableStateFlow(0)
@@ -46,53 +46,69 @@ class TerminalSessionHost(
     /** The shell's exit status once it has ended, null while it runs. */
     val exitStatus: StateFlow<Int?> = exitState.asStateFlow()
 
+    private val noticeState = MutableStateFlow<LaunchNotice?>(null)
+    private val problemState = MutableStateFlow<LaunchProblem?>(null)
+
+    /** Something worth telling the user about the shell that started, null if nothing. */
+    val notice: StateFlow<LaunchNotice?> = noticeState.asStateFlow()
+
+    /** Why nothing started, null if a shell did or is about to. */
+    val problem: StateFlow<LaunchProblem?> = problemState.asStateFlow()
+
     private var session: TerminalSession? = null
     private var scheme: TerminalColorScheme? = null
+    private var start: ShellStart? = null
+    private var pendingSize: PendingSize? = null
+
+    private class PendingSize(val grid: GridSize, val cellWidthPx: Int, val cellHeightPx: Int)
 
     override val emulator: TerminalEmulator? get() = session?.emulator
 
-    /** Starts the shell at [grid] size, or resizes the running one (this also resizes the pty). */
+    /**
+     * Starts the shell at [grid] size, or resizes the running one (this also resizes the pty). Until
+     * [launch] says what to run, the size is only remembered.
+     */
     fun resize(grid: GridSize, cellWidthPx: Int, cellHeightPx: Int) {
         val current = session
         if (current == null) {
-            exitState.value = null
-            // A new emulator reads its starting colors from the library's shared default scheme.
-            scheme?.writeInto(TerminalColors.COLOR_SCHEME.mDefaultColors)
-            val home = context.filesDir.absolutePath
-            val environment = ShellEnvironment.build(
-                home,
-                context.cacheDir.absolutePath,
-                System.getenv()
-            )
-            val created = launch?.let { start ->
-                // The command line is proot's, with the distro's `env -i` inside it: the
-                // variables here are only for proot itself (its loader and temporary directory).
-                val extra = start.environment.map { (key, value) -> "$key=$value" }
-                TerminalSession(
-                    start.command.first(),
-                    home,
-                    start.command.toTypedArray(),
-                    environment + extra,
-                    TRANSCRIPT_ROWS,
-                    this
-                )
-            }
-                ?: TerminalSession(
-                    SHELL,
-                    home,
-                    arrayOf(SHELL_NAME),
-                    environment,
-                    TRANSCRIPT_ROWS,
-                    this
-                )
-            session = created
-            created.updateSize(grid.columns, grid.rows, cellWidthPx, cellHeightPx)
+            pendingSize = PendingSize(grid, cellWidthPx, cellHeightPx)
+            start?.let { spawn(it, grid, cellWidthPx, cellHeightPx) }
         } else if (exitState.value == null &&
             (grid.columns != current.emulator.mColumns || grid.rows != current.emulator.mRows)
         ) {
             current.updateSize(grid.columns, grid.rows, cellWidthPx, cellHeightPx)
         }
         frameState.value++
+    }
+
+    /** Says what to run; the shell starts now if the screen already told its size, else on it. */
+    fun launch(shellStart: ShellStart, launchNotice: LaunchNotice? = null) {
+        if (session != null) return
+        start = shellStart
+        noticeState.value = launchNotice
+        pendingSize?.let { spawn(shellStart, it.grid, it.cellWidthPx, it.cellHeightPx) }
+    }
+
+    /** Nothing will start: remember why, so the screen can say it. */
+    fun fail(why: LaunchProblem) {
+        problemState.value = why
+        frameState.value++
+    }
+
+    private fun spawn(shellStart: ShellStart, grid: GridSize, cellWidthPx: Int, cellHeightPx: Int) {
+        exitState.value = null
+        // A new emulator reads its starting colors from the library's shared default scheme.
+        scheme?.writeInto(TerminalColors.COLOR_SCHEME.mDefaultColors)
+        val created = TerminalSession(
+            shellStart.executable,
+            shellStart.workingDirectory,
+            shellStart.arguments.toTypedArray(),
+            shellStart.environment,
+            TRANSCRIPT_ROWS,
+            this
+        )
+        session = created
+        created.updateSize(grid.columns, grid.rows, cellWidthPx, cellHeightPx)
     }
 
     /**
@@ -106,10 +122,11 @@ class TerminalSessionHost(
         frameState.value++
     }
 
-    /** Ends the shell (if running) and forgets the session, so the next [resize] starts a new one. */
+    /** Ends the shell (if running) and forgets the session; nothing starts again until [launch]. */
     fun stop() {
         session?.finishIfRunning()
         session = null
+        start = null
     }
 
     override fun write(text: String) {
@@ -189,8 +206,6 @@ class TerminalSessionHost(
     override fun logStackTrace(tag: String?, e: Exception?) = Unit
 
     private companion object {
-        const val SHELL = "/system/bin/sh"
-        const val SHELL_NAME = "sh"
         const val CLIP_LABEL = "terminal"
 
         /** SPEC RF-01: the default scrollback is 10 000 lines. */
