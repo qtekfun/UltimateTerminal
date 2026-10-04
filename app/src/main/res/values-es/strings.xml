@@ -44,4 +44,23 @@
     <string name="prompt_allow">Permitir</string>
     <string name="prompt_open_settings">Abrir ajustes</string>
     <string name="prompt_not_now">Ahora no</string>
+    <string name="tab_default_title">Shell %1$d</string>
+    <string name="tab_bar_description">Pestañas</string>
+    <string name="tab_new">Nueva pestaña</string>
+    <string name="tab_new_choose">Elegir dónde abrir una pestaña nueva</string>
+    <string name="tab_shell_option">Shell de Android</string>
+    <string name="tab_menu">Opciones de %1$s</string>
+    <string name="tab_rename">Renombrar</string>
+    <string name="tab_close">Cerrar pestaña</string>
+    <string name="tab_state_running">en ejecución</string>
+    <string name="tab_state_ended">terminada</string>
+    <string name="tab_description">%1$s, pestaña %2$d de %3$d, %4$s</string>
+    <string name="tab_rename_title">Renombrar pestaña</string>
+    <string name="tab_rename_label">Nombre</string>
+    <string name="tab_rename_hint">Déjalo vacío para usar el nombre por defecto</string>
+    <string name="tab_save">Guardar</string>
+    <string name="tab_cancel">Cancelar</string>
+    <string name="tab_close_title">¿Cerrar esta pestaña?</string>
+    <string name="tab_close_message">Todavía hay un programa en ejecución y se detendrá.</string>
+    <string name="tab_close_confirm">Cerrar</string>
 </resources>

@@ -3,12 +3,11 @@
 
 package com.qtekfun.ultimateterminal.terminal
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.qtekfun.ultimateterminal.UltimateTerminalApp
+import com.qtekfun.ultimateterminal.domain.repository.DistroRepository
 import com.qtekfun.ultimateterminal.domain.session.SessionState
-import com.qtekfun.ultimateterminal.domain.terminal.AppShortcut
+import com.qtekfun.ultimateterminal.domain.session.TabsController
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.InputRouter
 import com.qtekfun.ultimateterminal.domain.terminal.ScrollAccumulator
@@ -16,14 +15,14 @@ import com.qtekfun.ultimateterminal.domain.terminal.StickyState
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
 import com.qtekfun.ultimateterminal.domain.terminal.clampTopRow
 import com.qtekfun.ultimateterminal.domain.terminal.settled
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -36,19 +35,21 @@ import kotlinx.coroutines.launch
  * they keep running when the activity is recreated or closed, and this view model reconnects to the
  * active one (SPEC RF-07).
  */
-class TerminalViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class TerminalViewModel @Inject constructor(
+    private val manager: SessionManager,
+    distros: DistroRepository
+) : ViewModel() {
     private val requestedLayouts = MutableSharedFlow<TerminalLayout>(
         replay = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
-    private val manager: SessionManager = (application as UltimateTerminalApp).sessionManager
     private val frameState = MutableStateFlow(0)
     private var started = false
     private val scroll = ScrollAccumulator()
     private val topRowState = MutableStateFlow(0)
     private val stickyState = MutableStateFlow(StickyState())
     private val router = InputRouter(onStickyChanged = { stickyState.value = it })
-    private val shortcutEvents = MutableSharedFlow<AppShortcut>(extraBufferCapacity = 8)
 
     // The stored configuration (settings, Room) arrives later; until then the default is used.
     private val extraKeysState = MutableStateFlow(ExtraKeysConfig.default())
@@ -62,8 +63,10 @@ class TerminalViewModel(application: Application) : AndroidViewModel(application
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val fontSize = FontSizeController()
     val selection = SelectionController(manager::currentHost)
-    private val shortcuts =
-        ShortcutHandler(selection::copy, ::pasteFromClipboard, fontSize, shortcutEvents)
+
+    /** The tab bar: one tab per session, so switching never interrupts the other shells. */
+    val tabs = TabsController(manager.editor, distros.observeAll(), viewModelScope)
+    private val shortcuts = ShortcutHandler(selection::copy, ::pasteFromClipboard, fontSize, tabs)
     val keyboard = TerminalKeyboard(
         ActiveSessionOutput(manager),
         router,
@@ -73,9 +76,6 @@ class TerminalViewModel(application: Application) : AndroidViewModel(application
 
     val extraKeys: StateFlow<ExtraKeysConfig> = extraKeysState.asStateFlow()
     val stickyModifiers: StateFlow<StickyState> = stickyState.asStateFlow()
-
-    /** Shortcuts nothing here handles yet (tabs, T09). */
-    val appShortcuts: SharedFlow<AppShortcut> = shortcutEvents.asSharedFlow()
 
     /** 0 shows the live screen; negative values scroll back through the history. */
     val topRow: StateFlow<Int> = topRowState.asStateFlow()
@@ -89,6 +89,13 @@ class TerminalViewModel(application: Application) : AndroidViewModel(application
             requestedLayouts.settled(RESIZE_DEBOUNCE_MILLIS).collect(::applyLayout)
         }
         viewModelScope.launch { followActiveSession() }
+        // The scroll position and the selection belong to one screen: a tab starts at the bottom.
+        viewModelScope.launch {
+            manager.activeHost.collect {
+                scrollToLiveScreen()
+                selection.clear()
+            }
+        }
     }
 
     // A frame counter that restarts for every host would repeat values when the active session

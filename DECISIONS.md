@@ -28,6 +28,11 @@ funcionando:
   notificación aparezca y sus acciones (nueva sesión, salir) funcionen, que el shell sobreviva a
   cerrar la actividad y a apagar la pantalla, y que la UI se reconecte a la sesión viva. También el
   wake lock real y el efecto del *phantom process killer* (ver D-T08-5).
+- T09, pestañas: los gestos de la barra (tocar, doble toque, pulsación larga + arrastre para
+  reordenar, scroll de la propia barra) pueden competir entre sí; los menús desplegables, los
+  diálogos, la barra lateral en pantallas anchas (y con idioma de derecha a izquierda), los 48 dp
+  táctiles, TalkBack, y que al cambiar de pestaña el pty de la que pasa a primer plano reciba el
+  tamaño correcto (ver D-T09-8).
 
 Lo que sí está verificado sin dispositivo: compila para las tres ABIs, los ejecutables se empaquetan
 en el APK con el tipo ELF y los puntos de entrada esperados, `./gradlew check` y el CI en verde.
@@ -708,3 +713,89 @@ los avisos (`SessionPromptsTest`) y el manifiesto del servicio (`ManifestService
 - La extracción, la elección de arquitectura con `Build.SUPPORTED_ABIS` (`Architecture.fromAbis`) y el
   reintento por `HashMismatch` de Debian son de T07; aquí solo están las interfaces `RootfsCatalog` y
   `RootfsDownloader` y sus implementaciones.
+
+## T09 — Pestañas
+
+### D-T09-1 · 2026-10-04 · Una pestaña es una sesión; el modelo vive en `Sessions`
+**Decisión:** no hay un modelo de pestañas aparte. `SessionInfo` gana `title` (lo que escribe el
+usuario, null = nombre por defecto) y `distroId`, y `Sessions` gana reducers puros: `renamed`,
+`moved`, `switched(TabSwitch)` y `closeAction`. El orden de las pestañas es el orden de `items`.
+**Motivo:** una pestaña no tiene vida propia sin su sesión; un segundo modelo habría que mantenerlo
+sincronizado (¿qué pasa si el shell termina?). Así toda la lógica es inmutable y se prueba en host.
+**Alternativas:** `Tab` separado con referencia a `SessionId` (más piezas, mismo comportamiento).
+**Impacto:** `SessionInfo` cambia con valores por defecto, por lo que el código y los tests de T08
+siguen compilando.
+
+### D-T09-2 · 2026-10-04 · Los cambios puros pasan por `SessionEditor.edit`
+**Decisión:** `SessionController` implementa `SessionEditor` (`state`, `newSession(distroId)`,
+`close`, `edit { ... }`). Renombrar, reordenar y cambiar de pestaña son un `edit` que no toca los
+shells; solo si cambia la pestaña activa se redimensiona el pty que pasa a primer plano al tamaño
+actual (lo mismo que ya hacía `activate`, que ahora es un `edit`).
+**Motivo:** añadir una función por operación al controlador superaba el límite de `TooManyFunctions`
+de detekt (11), que no se relaja, y mezclaba el ciclo de vida de los procesos con ediciones que no
+lo cambian. La interfaz permite probar `TabsController` con el controlador real y fakes.
+**Alternativas:** una función por operación (rompe detekt); `TabsController` dependiendo de
+`SessionManager` (Android, sin pruebas de host).
+
+### D-T09-3 · 2026-10-04 · Cerrar: confirmación solo si el shell sigue vivo
+**Decisión:** cerrar una pestaña cuyo shell ya terminó la cierra sin preguntar; si sigue en marcha,
+`TabsController` guarda la pestaña en `closeConfirmation` y la UI muestra un diálogo; solo al
+confirmar se detiene el shell. Una pregunta sobre una pestaña que desaparece mientras tanto (el
+shell se cerró por otro lado) se descarta sola. Cerrar la última pestaña cierra la app, igual que
+«Salir» de la notificación (comportamiento de T08: sin sesiones, la pantalla se cierra).
+**Motivo:** SPEC RF-02 («al cerrar una sesión con procesos en curso se pide confirmación»); no
+perder trabajo por un toque accidental.
+**Alternativa:** abrir una pestaña nueva al cerrar la última. Más cómodo, pero contradice «Salir» y
+deja el servicio en primer plano sin que el usuario lo pida.
+
+### D-T09-4 · 2026-10-04 · La distro de cada pestaña se registra, pero aún no se usa para arrancar
+**Decisión:** una pestaña nueva se abre en la distro predeterminada si está `READY` (`defaultDistroId`)
+y, si no hay ninguna, en el shell de Android. Una pulsación larga en «+» ofrece elegir entre el shell
+y las distros `READY` (`distroOptions`). El `distroId` queda guardado en la sesión, y «reiniciar» una
+sesión terminada la abre en la misma distro. `AndroidSessionFactory` sigue arrancando el shell de
+Android sea cual sea la distro: enlazar `ProotCommandBuilder` llega con T07, que es quien instala
+distros. «Nueva sesión» de la notificación abre siempre el shell de Android.
+**Motivo:** SPEC RF-02/RF-04; dejar el selector y el modelo listos sin inventar un arranque que aún
+no se puede probar (no hay distros instaladas).
+**Impacto:** cuando T07 enlace el arranque, bastará con que la fábrica lea el `distroId`.
+
+### D-T09-5 · 2026-10-04 · Barra superior o lateral según el ancho, sin dependencia nueva
+**Decisión:** `tabBarPlacement(anchoDp)`: lateral (columna de 192 dp) desde 600 dp, superior (48 dp)
+por debajo. Es el umbral de la clase «medium» de las guías de Material, calculado a mano. El espacio
+de la barra se descuenta del layout del pty con `reserveForTabBar`, igual que la fila de teclas
+extra en T04, de modo que `stty size` debería seguir coincidiendo con lo visible.
+**Motivo:** `WindowSizeClass` es otra dependencia (Apache-2.0) para una sola comparación.
+**Alternativas:** `material3-window-size-class`.
+**Pendiente:** la barra lateral va siempre en el borde izquierdo físico, también con idioma de derecha
+a izquierda (la terminal es de izquierda a derecha); sin validar en dispositivo.
+
+### D-T09-6 · 2026-10-04 · Atajos de pestañas con efecto real
+**Decisión:** `ShortcutHandler` recibe un `TabCommands` y resuelve todos los atajos (ya no existe el
+flujo de «atajos sin manejar»). `Alt+n` selecciona la pestaña n contando desde 1 y no hace nada si no
+existe (no salta a la última como en los navegadores); `Ctrl+Tab` y `Ctrl+Shift+Tab` avanzan y
+retroceden dando la vuelta.
+**Aviso:** `Alt+dígito` choca con los argumentos numéricos de readline (ver T11); se mantiene porque lo
+pide la SPEC y se puede reasignar.
+
+### D-T09-7 · 2026-10-04 · `TerminalViewModel` pasa a ser `@HiltViewModel`
+**Decisión:** recibe `SessionManager` y `DistroRepository` por inyección, en lugar de leer el gestor
+de la clase `Application`. `viewModel()` de Compose usa la fábrica de Hilt de la actividad
+(`@AndroidEntryPoint`), así que no hace falta `hilt-navigation-compose`. Al cambiar la sesión activa
+se vuelve al final del historial y se borra la selección.
+**Limitación:** la posición del scroll es del ViewModel, no de cada pestaña: al volver a una pestaña
+se empieza en la pantalla viva, no donde se dejó.
+**Alternativa:** guardar la posición por sesión (más estado; no se ha pedido).
+
+### D-T09-8 · 2026-10-04 · Qué NO está validado (sin dispositivo)
+Todo se probó con tests de host (380 en total, 47 nuevos de pestañas): reducers, reordenación por
+arrastre (`dropIndex`), estado de la barra, controlador con el `SessionController` real y los
+atajos. No se ha visto la barra en ninguna pantalla. Pendiente en una tablet y un móvil reales:
+1. Que los gestos de cada pestaña (toque, doble toque, pulsación larga + arrastre) no se pisen entre
+   sí ni con el scroll de la barra, y que el doble toque para renombrar se reconozca sin retrasar el
+   toque simple.
+2. Los menús desplegables y los diálogos (renombrar, confirmar cierre) y que el teclado no los tape.
+3. La barra lateral: ancho, desplazamiento con muchas pestañas y la pantalla dividida (umbral de 600 dp).
+4. Que al cambiar de pestaña el pty recibe el tamaño correcto (`stty size` y `SIGWINCH`).
+5. Accesibilidad: descripciones de TalkBack («Shell 2, pestaña 2 de 3, en ejecución»), tamaños
+   táctiles de 48 dp y el rol de pestaña.
+6. El efecto de tener muchas pestañas con el *phantom process killer* de Android 12+ (SPEC §8).

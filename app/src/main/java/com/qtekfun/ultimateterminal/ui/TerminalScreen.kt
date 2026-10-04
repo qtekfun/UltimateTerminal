@@ -12,14 +12,18 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -49,6 +53,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qtekfun.ultimateterminal.R
+import com.qtekfun.ultimateterminal.domain.session.TabBarPlacement
+import com.qtekfun.ultimateterminal.domain.session.reserveForTabBar
+import com.qtekfun.ultimateterminal.domain.session.tabBarPlacement
 import com.qtekfun.ultimateterminal.domain.terminal.CellPosition
 import com.qtekfun.ultimateterminal.domain.terminal.EdgeInsets
 import com.qtekfun.ultimateterminal.domain.terminal.extraKeysHeightPx
@@ -81,13 +88,19 @@ fun TerminalScreen(modifier: Modifier = Modifier, viewModel: TerminalViewModel =
     val insets = coveredEdges()
     // The extra-keys row sits above the keyboard, so its height is not terminal area.
     val extraKeysPx = extraKeysHeightPx(extraKeys, with(density) { ExtraKeyRowHeight.roundToPx() })
-    LaunchedEffect(windowSize, insets, extraKeysPx, painter) {
+    // The tab bar is a row on top of narrow windows and a column beside the terminal on wide ones;
+    // either way the grid must not count the space it takes.
+    val placement = tabBarPlacement(with(density) { windowSize.width.toDp().value.toInt() })
+    val tabBarPx = with(density) {
+        (if (placement == TabBarPlacement.Top) TabBarHeight else TabBarSideWidth).roundToPx()
+    }
+    LaunchedEffect(windowSize, insets, extraKeysPx, placement, tabBarPx, painter) {
         if (windowSize != IntSize.Zero) {
             viewModel.onLayoutChanged(
                 terminalLayoutFor(
                     windowSize.width,
                     windowSize.height,
-                    insets.reserveBottom(extraKeysPx),
+                    insets.reserveBottom(extraKeysPx).reserveForTabBar(placement, tabBarPx),
                     painter.cellWidth,
                     painter.cellHeight
                 )
@@ -98,13 +111,27 @@ fun TerminalScreen(modifier: Modifier = Modifier, viewModel: TerminalViewModel =
     // The black background fills the whole window, bars included; the content is padded by the
     // same insets the layout was computed with, so what is drawn is exactly what the pty is told.
     Box(modifier.fillMaxSize().background(Color.Black).onSizeChanged { windowSize = it }) {
-        Column(Modifier.fillMaxSize().padding(insets.toPadding(density))) {
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                TerminalCanvas(viewModel, painter, onTap = { inputView[0]?.showKeyboard() })
-                TerminalOverlays(viewModel, inputView)
+        val padded = Modifier.fillMaxSize().padding(insets.toPadding(density))
+        val pane = @Composable { paneModifier: Modifier ->
+            Column(paneModifier) {
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    TerminalCanvas(viewModel, painter, onTap = { inputView[0]?.showKeyboard() })
+                    TerminalOverlays(viewModel, inputView)
+                }
+                if (extraKeys.visible) {
+                    ExtraKeysRow(extraKeys, sticky, viewModel.keyboard::onExtraKey)
+                }
             }
-            if (extraKeys.visible) {
-                ExtraKeysRow(extraKeys, sticky, viewModel.keyboard::onExtraKey)
+        }
+        if (placement == TabBarPlacement.Top) {
+            Column(padded) {
+                TabBar(viewModel.tabs, placement, Modifier.fillMaxWidth().height(TabBarHeight))
+                pane(Modifier.weight(1f).fillMaxWidth())
+            }
+        } else {
+            Row(padded) {
+                TabBar(viewModel.tabs, placement, Modifier.fillMaxHeight().width(TabBarSideWidth))
+                pane(Modifier.weight(1f).fillMaxHeight())
             }
         }
     }

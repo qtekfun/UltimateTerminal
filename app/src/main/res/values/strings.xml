@@ -44,4 +44,23 @@
     <string name="prompt_allow">Allow</string>
     <string name="prompt_open_settings">Open settings</string>
     <string name="prompt_not_now">Not now</string>
+    <string name="tab_default_title">Shell %1$d</string>
+    <string name="tab_bar_description">Tabs</string>
+    <string name="tab_new">New tab</string>
+    <string name="tab_new_choose">Choose where to open a new tab</string>
+    <string name="tab_shell_option">Android shell</string>
+    <string name="tab_menu">Options for %1$s</string>
+    <string name="tab_rename">Rename</string>
+    <string name="tab_close">Close tab</string>
+    <string name="tab_state_running">running</string>
+    <string name="tab_state_ended">ended</string>
+    <string name="tab_description">%1$s, tab %2$d of %3$d, %4$s</string>
+    <string name="tab_rename_title">Rename tab</string>
+    <string name="tab_rename_label">Name</string>
+    <string name="tab_rename_hint">Leave it empty to use the default name</string>
+    <string name="tab_save">Save</string>
+    <string name="tab_cancel">Cancel</string>
+    <string name="tab_close_title">Close this tab?</string>
+    <string name="tab_close_message">A program is still running in it and will be stopped.</string>
+    <string name="tab_close_confirm">Close</string>
 </resources>
