@@ -4,6 +4,7 @@
 package com.qtekfun.ultimateterminal.domain.terminal
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class EdgeInsetsTest {
@@ -99,5 +100,35 @@ class TerminalLayoutForTest {
         val layout = layout(1000, 1000)
         assertEquals(12, layout.cellWidthPx)
         assertEquals(30, layout.cellHeightPx)
+    }
+
+    @Test
+    fun `a text margin is taken from every edge`() {
+        val inner = EdgeInsets(left = 10, top = 20, right = 30, bottom = 40).withTextMargin(6)
+
+        assertEquals(EdgeInsets(left = 16, top = 26, right = 36, bottom = 46), inner)
+    }
+
+    @Test
+    fun `a negative margin takes nothing`() {
+        assertEquals(EdgeInsets.NONE, EdgeInsets.NONE.withTextMargin(-4))
+    }
+
+    @Test
+    fun `the margin makes the grid smaller by the cells it covers, never bigger`() {
+        val window = 1080 to 2000
+        val plain = terminalLayoutFor(window.first, window.second, EdgeInsets.NONE, 15f, 40)
+        val padded = terminalLayoutFor(
+            window.first,
+            window.second,
+            EdgeInsets.NONE.withTextMargin(36),
+            15f,
+            40
+        )
+
+        assertTrue(padded.grid.columns <= plain.grid.columns)
+        assertTrue(padded.grid.rows <= plain.grid.rows)
+        assertEquals((1080 - 72) / 15, padded.grid.columns)
+        assertEquals((2000 - 72) / 40, padded.grid.rows)
     }
 }

@@ -149,7 +149,10 @@ private fun FocusedControls(
     val rect = focused?.let { scene.rectOf(it) } ?: return
     PanePlacement(rect, description = null, outlined = false) {
         TerminalOverlays(viewModel, inputView)
-        PaneMenu(viewModel, scene, focused, Modifier.align(Alignment.TopStart))
+        // A lone pane has nothing to swap, zoom or close, and its split lives in the tab bar's "+"
+        // menu: the button would only sit over the first line of the text (found on a Pixel 8).
+        val isSplit by viewModel.panes.isSplit.collectAsStateWithLifecycle()
+        if (isSplit) PaneMenu(viewModel, scene, focused, Modifier.align(Alignment.TopEnd))
     }
 }
 

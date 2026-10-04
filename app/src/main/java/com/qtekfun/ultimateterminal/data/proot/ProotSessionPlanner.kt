@@ -32,7 +32,8 @@ class ProotSessionPlanner @Inject constructor(
     private val settings: SettingsRepository,
     private val mounts: SharedStorageMounts,
     private val runtime: ProotRuntime,
-    private val dns: ResolvConfSource
+    private val dns: ResolvConfSource,
+    private val fakeProc: FakeProcSource = FakeProcSource.None
 ) {
     /** [distroId] is the distro the tab was opened in, null for the Android shell. */
     suspend fun plan(distroId: Long?): LaunchPlan {
@@ -73,7 +74,8 @@ class ProotSessionPlanner @Inject constructor(
             rootfs = fileSystem.absolutePathOf(distro.directory),
             // `su -l` changes to the user's home itself; a path that may not exist cannot be `-w`.
             workingDirectory = if (user == null) home else "/",
-            binds = ProotSession.DEFAULT_BINDS + resolvConfBinds(resolvConf),
+            binds = ProotSession.DEFAULT_BINDS + resolvConfBinds(resolvConf) +
+                fakeProcBinds(fakeProc.hostFiles()),
             disableSeccomp = app.prootCompatibilityMode,
             user = user
         ).withSharedStorage(storage)

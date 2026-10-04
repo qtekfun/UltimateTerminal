@@ -4,12 +4,13 @@
 package com.qtekfun.ultimateterminal.ui
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
-import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
@@ -28,14 +29,15 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.qtekfun.ultimateterminal.R
+import com.qtekfun.ultimateterminal.domain.session.BatteryExemption
 import com.qtekfun.ultimateterminal.domain.session.PromptInputs
 import com.qtekfun.ultimateterminal.domain.session.SessionPrompt
 import com.qtekfun.ultimateterminal.domain.session.nextPrompt
 
 /**
  * Asks, once and in context, for what keeps the shells alive in the background: the notification
- * permission (Android 13+) and, as advice only, to leave the battery optimisation. Nothing is
- * forced: both can be declined, and the answer is not asked again until the app is restarted.
+ * permission (Android 13+) and to run without battery optimisation, with the system dialog. Nothing
+ * is forced: both can be declined, and the answer is not asked again until the app is restarted.
  */
 @Composable
 fun SessionPrompts(hasRunningSession: Boolean) {
@@ -83,13 +85,31 @@ fun SessionPrompts(hasRunningSession: Boolean) {
         SessionPrompt.BatteryOptimization -> PromptDialog(
             title = R.string.prompt_battery_title,
             message = R.string.prompt_battery_message,
-            confirm = R.string.prompt_open_settings,
+            confirm = R.string.prompt_allow,
             onConfirm = {
                 batteryDeclined = true
-                context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                requestBatteryExemption(context)
             },
             onDismiss = { batteryDeclined = true }
         )
+    }
+}
+
+/**
+ * Opens the system dialog that asks to exempt the app from battery optimisation and, where the
+ * device does not have it, the general list. Nothing changes unless the user accepts there.
+ */
+private fun requestBatteryExemption(context: Context) {
+    for (spec in BatteryExemption.intentsFor(context.packageName)) {
+        val intent = Intent(spec.action).apply { spec.dataUri?.let { data = Uri.parse(it) } }
+        try {
+            context.startActivity(intent)
+            return
+        } catch (_: ActivityNotFoundException) {
+            // This device has no such screen: try the next one.
+        } catch (_: SecurityException) {
+            // The permission was refused: try the next one.
+        }
     }
 }
 

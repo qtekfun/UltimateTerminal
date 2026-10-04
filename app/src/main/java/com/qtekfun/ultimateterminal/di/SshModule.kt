@@ -5,6 +5,7 @@ package com.qtekfun.ultimateterminal.di
 
 import android.content.Context
 import com.qtekfun.ultimateterminal.data.proot.DistroLaunchFactory
+import com.qtekfun.ultimateterminal.data.proot.FakeProcSource
 import com.qtekfun.ultimateterminal.data.proot.ProotCommandBuilder
 import com.qtekfun.ultimateterminal.data.proot.ResolvConfSource
 import com.qtekfun.ultimateterminal.data.ssh.AesGcmSecretBox
@@ -96,12 +97,19 @@ object SshModule {
         @ApplicationContext context: Context,
         fileSystem: FileSystemRepository,
         dns: ResolvConfSource,
+        fakeProc: FakeProcSource,
         @IoDispatcher io: CoroutineDispatcher
     ): DistroLaunchFactory {
         // proot's temporary files need a private directory; /tmp does not exist on Android.
         val tmp = context.cacheDir.toPath().resolve("proot-tmp")
         Files.createDirectories(tmp)
         val proot = ProotCommandBuilder(context.applicationInfo.nativeLibraryDir, tmp.toString())
-        return DistroLaunchFactory(proot, fileSystem, dns, CoroutineScope(SupervisorJob() + io))
+        return DistroLaunchFactory(
+            proot,
+            fileSystem,
+            dns,
+            CoroutineScope(SupervisorJob() + io),
+            fakeProc
+        )
     }
 }

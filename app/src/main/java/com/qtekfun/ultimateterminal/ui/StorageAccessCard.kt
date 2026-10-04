@@ -31,6 +31,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qtekfun.ultimateterminal.R
+import com.qtekfun.ultimateterminal.domain.storage.StorageToggle
 import com.qtekfun.ultimateterminal.storage.StorageAccessViewModel
 
 private val MIN_TOUCH = 48.dp
@@ -45,7 +46,7 @@ fun StorageAccessCard(viewModel: StorageAccessViewModel = viewModel()) {
     val context = LocalContext.current
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { results -> viewModel.onPermissionResult(results.values.all { it }) }
+    ) { results -> viewModel.onPermissionResult(StorageToggle.allGranted(results)) }
     // The permission may have been changed in the system settings while the app was away.
     LifecycleResumeEffect(Unit) {
         viewModel.refreshPermission()
@@ -63,7 +64,7 @@ fun StorageAccessCard(viewModel: StorageAccessViewModel = viewModel()) {
                     modifier = Modifier.weight(1f)
                 )
                 Switch(
-                    checked = state.enabled,
+                    checked = StorageToggle.isShownOn(state.enabled, state.permissionGranted),
                     onCheckedChange = { turnOn ->
                         if (viewModel.onToggled(turnOn)) {
                             launcher.launch(

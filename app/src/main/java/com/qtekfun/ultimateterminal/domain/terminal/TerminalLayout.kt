@@ -30,6 +30,15 @@ data class EdgeInsets(val left: Int, val top: Int, val right: Int, val bottom: I
     }
 }
 
+/**
+ * Leaves [marginPx] free around the text on every side, so it does not touch the edge of the screen.
+ * The margin is not grid: the pty is told a smaller area, and the screen pads by the same amount.
+ */
+fun EdgeInsets.withTextMargin(marginPx: Int): EdgeInsets {
+    val margin = marginPx.coerceAtLeast(0)
+    return EdgeInsets(left + margin, top + margin, right + margin, bottom + margin)
+}
+
 /** What the pty has to be told: the grid, and the size of a cell in pixels. */
 data class TerminalLayout(val grid: GridSize, val cellWidthPx: Int, val cellHeightPx: Int)
 
