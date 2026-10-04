@@ -23,6 +23,7 @@ internal object SettingKeys {
     const val OLED_BLACK = "oled_black"
     const val DYNAMIC_COLOR = "dynamic_color"
     const val KEEP_AWAKE = "keep_awake"
+    const val SHARED_STORAGE = "shared_storage"
     const val DEFAULT_SCROLLBACK_LINES = "default_scrollback_lines"
     const val TERMINAL_SCHEME = "terminal_scheme"
     const val TERMINAL_FONT_SIZE_SP = "terminal_font_size_sp"
@@ -52,6 +53,8 @@ class RoomSettingsRepository @Inject constructor(private val dao: SettingDao) : 
                 ?: defaults.dynamicColor,
             keepAwake =
                 values[SettingKeys.KEEP_AWAKE]?.toBooleanStrictOrNull() ?: defaults.keepAwake,
+            sharedStorage = values[SettingKeys.SHARED_STORAGE]?.toBooleanStrictOrNull()
+                ?: defaults.sharedStorage,
             defaultScrollbackLines = values[SettingKeys.DEFAULT_SCROLLBACK_LINES]
                 ?.toIntOrNull()
                 ?.takeIf { it in Profile.SCROLLBACK_RANGE }
@@ -76,6 +79,7 @@ class RoomSettingsRepository @Inject constructor(private val dao: SettingDao) : 
         SettingEntity(SettingKeys.OLED_BLACK, settings.oledBlack.toString()),
         SettingEntity(SettingKeys.DYNAMIC_COLOR, settings.dynamicColor.toString()),
         SettingEntity(SettingKeys.KEEP_AWAKE, settings.keepAwake.toString()),
+        SettingEntity(SettingKeys.SHARED_STORAGE, settings.sharedStorage.toString()),
         SettingEntity(
             SettingKeys.DEFAULT_SCROLLBACK_LINES,
             settings.defaultScrollbackLines.coerceIn(Profile.SCROLLBACK_RANGE).toString()

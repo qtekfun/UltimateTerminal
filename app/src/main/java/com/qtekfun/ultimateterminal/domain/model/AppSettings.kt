@@ -17,6 +17,8 @@ data class AppSettings(
     val dynamicColor: Boolean = true,
     /** Keep the CPU awake while sessions run (SPEC RF-07). */
     val keepAwake: Boolean = false,
+    /** Mount the device's shared storage in `~/storage` of every distro (SPEC RF-05). Off by default. */
+    val sharedStorage: Boolean = false,
     val defaultScrollbackLines: Int = Profile.DEFAULT_SCROLLBACK,
     /** The id of the terminal color scheme in use: a built-in one or an imported one. */
     val terminalSchemeId: String = BuiltInSchemes.DEFAULT_ID,

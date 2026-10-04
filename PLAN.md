@@ -34,7 +34,7 @@ Reglas: una tarea cada vez, en su rama `feat/<tarea>`, con `./gradlew check` en 
   - *Verificación:* un layout guardado se restaura con la misma estructura, perfiles y comandos.
 
 ## Fase 3 — Integración
-- [ ] **T13 Acceso a archivos**: bind-mount de `/sdcard` y Descargas en `~/storage`, con petición del permiso solo al activarlo.
+- [~] **T13 Acceso a archivos** *(lógica y pantalla implementadas y probadas en host; el permiso y el montaje reales sin validar, y proot aún no está conectado a las sesiones; ver `DECISIONS.md`, T13)*: bind-mount de `/sdcard` y Descargas en `~/storage`, con petición del permiso solo al activarlo.
   - *Verificación:* `cp` desde la distro aparece en Descargas del dispositivo.
 - [ ] **T14 Gestor de hosts SSH y claves**: hosts guardados, generar/importar/exportar claves cifradas con Keystore, lanzar `ssh` en una pestaña.
 - [ ] **T15 Copias de seguridad y restauración**: exportar una distro, solo la configuración o todo a `.tar.zst` (la configuración incluye tema, perfiles, atajos, layouts, teclas extra y hosts, en formato versionado), cifrado opcional AES-256-GCM/PBKDF2, restaurar también desde la bienvenida. **100 % de cobertura** en formato y cifrado.

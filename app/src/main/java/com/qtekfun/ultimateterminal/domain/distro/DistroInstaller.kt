@@ -158,8 +158,10 @@ class DistroInstaller(
         is Outcome.Failure -> error("not a safe path: ${this.error}")
     }
 
-    private companion object {
-        const val ARCHIVE_NAME = "archive"
+    companion object {
+        private const val ARCHIVE_NAME = "archive"
+
+        /** The directory inside a distro's own directory that holds the root filesystem (proot's `-r`). */
         const val UNPACKED_NAME = "rootfs"
     }
 }

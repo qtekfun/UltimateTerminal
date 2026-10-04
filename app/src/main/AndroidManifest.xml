@@ -15,6 +15,11 @@
     <!-- The optional wake lock of the "keep awake" setting. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- Only requested when the user turns on the shared storage (T13). The app targets API 28, where
+         these are the model for reading and writing /sdcard. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
     <application
         android:name=".UltimateTerminalApp"
         android:allowBackup="false"

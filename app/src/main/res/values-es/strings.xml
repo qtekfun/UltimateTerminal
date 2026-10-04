@@ -107,6 +107,10 @@
     <string name="tab_close_title">¿Cerrar esta pestaña?</string>
     <string name="tab_close_message">Todavía hay un programa en ejecución y se detendrá.</string>
     <string name="tab_close_confirm">Cerrar</string>
+    <string name="storage_switch_label">Almacenamiento del dispositivo en ~/storage</string>
+    <string name="storage_explanation">Permite que tus distros lean y escriban las Descargas, Documentos, fotos y otras carpetas de este dispositivo, en ~/storage. El permiso de almacenamiento solo se pide al activarlo.</string>
+    <string name="storage_permission_missing">Permiso no concedido: ~/storage queda vacío hasta que lo permitas.</string>
+    <string name="storage_open_settings">Abrir ajustes de la app</string>
 
     <string name="pane_menu">Opciones del panel</string>
     <string name="pane_description">Panel %1$d de %2$d</string>

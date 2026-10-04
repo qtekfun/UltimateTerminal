@@ -110,6 +110,10 @@
     <string name="tab_close_title">Close this tab?</string>
     <string name="tab_close_message">A program is still running in it and will be stopped.</string>
     <string name="tab_close_confirm">Close</string>
+    <string name="storage_switch_label">Device storage in ~/storage</string>
+    <string name="storage_explanation">Lets your distros read and write the Downloads, Documents, photos and other folders of this device, in ~/storage. The storage permission is requested only when you turn this on.</string>
+    <string name="storage_permission_missing">Permission not granted: ~/storage stays empty until you allow it.</string>
+    <string name="storage_open_settings">Open app settings</string>
 
     <string name="pane_menu">Pane options</string>
     <string name="pane_description">Pane %1$d of %2$d</string>
