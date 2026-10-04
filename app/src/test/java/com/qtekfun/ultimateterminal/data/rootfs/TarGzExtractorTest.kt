@@ -32,7 +32,9 @@ class TarGzExtractorTest {
 
     private val storageRoot get() = File(dir, "storage").also { it.mkdirs() }
     private val outside get() = File(dir, "outside").also { it.mkdirs() }
-    private val fileSystem get() = NioFileSystemRepository(storageRoot.toPath(), Dispatchers.IO)
+    private val fileSystem get() = NioFileSystemRepository(storageRoot.toPath(), Dispatchers.IO) {
+        Long.MAX_VALUE
+    }
 
     private fun path(raw: String) = (FsPath.of(raw) as Outcome.Success).value
 

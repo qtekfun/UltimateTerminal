@@ -24,7 +24,8 @@ import kotlinx.coroutines.withContext
  */
 class NioFileSystemRepository(
     private val root: Path,
-    private val ioDispatcher: CoroutineDispatcher
+    private val ioDispatcher: CoroutineDispatcher,
+    private val freeSpace: (Path) -> Long
 ) : FileSystemRepository {
     override suspend fun exists(path: FsPath): Boolean = withContext(ioDispatcher) {
         val target = FileTrees.resolveInside(root, path).getOrNull()
@@ -83,10 +84,18 @@ class NioFileSystemRepository(
         }
     }
 
+    /**
+     * The probe is injected: on a device it is `StatFs` (see `AndroidFreeSpace`). `Files.getFileStore`
+     * is not an option, since on Android it reads `/proc/mounts`, which SELinux denies to apps, and
+     * throws `SecurityException` (found on a Pixel 8, where it crashed the install of every distro).
+     * A directory that does not exist reports 0.
+     */
     override suspend fun freeSpaceBytes(): Long = withContext(ioDispatcher) {
         try {
-            Files.getFileStore(root).usableSpace
-        } catch (_: IOException) {
+            freeSpace(root)
+        } catch (_: SecurityException) {
+            0L
+        } catch (_: IllegalArgumentException) {
             0L
         }
     }
