@@ -54,6 +54,7 @@ fun DistroScreen(onClose: () -> Unit, viewModel: DistroViewModel = viewModel()) 
         Column(modifier = Modifier.safeDrawingPadding().padding(16.dp)) {
             Header(state, onClose, onInstall = { dialog = DistroDialog.Install })
             StorageAccessCard()
+            BackupCard()
             ProotOptionsCard()
             state.installing?.let { InstallProgressCard(it, viewModel::cancelInstall) }
             state.message?.let { MessageBar(it, viewModel::dismissMessage) }

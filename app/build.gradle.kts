@@ -206,9 +206,13 @@ fun KoverReportFilter.generatedAndUiCode() {
         "*_Impl$*",
         // Kotlin compatibility bridges for interface default methods
         "*\$DefaultImpls",
-        "*ComposableSingletons*"
+        "*ComposableSingletons*",
+        "*\$\$serializer"
     )
+    // Data classes that only carry fields for kotlinx.serialization: their generated code has
+    // branches no test can reach, and they have no logic of their own.
     annotatedBy(
+        "kotlinx.serialization.Serializable",
         "androidx.compose.ui.tooling.preview.Preview",
         "dagger.Module",
         "dagger.hilt.android.HiltAndroidApp",
