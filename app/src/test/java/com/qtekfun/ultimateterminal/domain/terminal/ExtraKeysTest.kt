@@ -67,6 +67,43 @@ class ExtraKeysTest {
     }
 
     @Test
+    fun theRowFollowsTheKeyboardByDefault() {
+        val config = ExtraKeysConfig.default()
+
+        assertTrue(config.onlyWithKeyboard)
+        assertTrue(config.shownWith(keyboardVisible = true).visible)
+        assertFalse(config.shownWith(keyboardVisible = false).visible)
+    }
+
+    @Test
+    fun aRowThatDoesNotFollowTheKeyboardStaysAsConfigured() {
+        val always = ExtraKeysConfig.default().copy(onlyWithKeyboard = false)
+        val never = always.copy(visible = false)
+
+        assertTrue(always.shownWith(keyboardVisible = false).visible)
+        assertFalse(never.shownWith(keyboardVisible = true).visible)
+    }
+
+    @Test
+    fun aHiddenKeyboardTakesNoHeightFromTheTerminal() {
+        val config = ExtraKeysConfig.default()
+
+        assertEquals(0, extraKeysHeightPx(config.shownWith(keyboardVisible = false), 100))
+        assertEquals(200, extraKeysHeightPx(config.shownWith(keyboardVisible = true), 100))
+    }
+
+    @Test
+    fun followingTheKeyboardIsStoredAndOldTextStillMeansYes() {
+        val stored = ExtraKeysConfig.default().copy(onlyWithKeyboard = false)
+
+        assertEquals(stored, ExtraKeysConfig.parse(stored.serialize()).first)
+        assertTrue(ExtraKeysConfig.parse("visible=true\nesc tab\n").first.onlyWithKeyboard)
+        assertFalse(
+            ExtraKeysConfig.parse("onlyWithKeyboard=false\nesc tab\n").first.onlyWithKeyboard
+        )
+    }
+
+    @Test
     fun keyActionsAreWhatTheLabelsPromise() {
         assertEquals(
             ExtraKeyAction.Press(KeyEvent.KEYCODE_ESCAPE),

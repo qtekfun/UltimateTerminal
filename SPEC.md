@@ -80,7 +80,7 @@ Terminal para Android pensada para **mantenedores de servidores** y sucesora esp
 - Restaurar pestañas tras un cierre real (no procesos): **(DEFECTO) backlog**.
 
 ### RF-08 Entrada
-- **Fila de teclas extra** (Esc, Tab, Ctrl, Alt, flechas, etc.), configurable, con Ctrl/Alt pegajosos.
+- **Fila de teclas extra** (Esc, Tab, Ctrl, Alt, flechas, etc.), configurable, con Ctrl/Alt pegajosos. **Solo se muestra mientras el teclado en pantalla está visible**: al ocultarlo desaparece y devuelve su espacio al terminal (opción "ocultar con el teclado", activa por defecto, para quien prefiera verla siempre).
 - **Teclado físico completo:** F1–F12, combinaciones Ctrl/Alt, atajos de la app (**(DEFECTO)** `Ctrl+Shift+T` nueva pestaña, `Alt+n` cambiar de pestaña), ratón y rueda.
 - Copiar/pegar, selección táctil con asas, zoom con pellizco.
 
@@ -104,7 +104,15 @@ Terminal para Android pensada para **mantenedores de servidores** y sucesora esp
 
 ### RF-11 Ajustes e internacionalización
 - Inglés y español; sigue el idioma del sistema.
-- Ajustes: tema y modo OLED, fuente, scrollback, perfiles, atajos, layouts, teclas extra, distro predeterminada, wakelock, copias de seguridad.
+- **Pantalla de Ajustes siempre accesible:** un icono permanente (⚙) en la barra de pestañas y una entrada en el menú de "+". No puede depender de abrir antes otra pantalla.
+- Secciones: **Apariencia** (tema, modo OLED, esquema, fuente, tamaño, márgenes, cursor; RF-10 y T12c), **Terminal** (scrollback, campana), **Teclado** (filas de teclas extra, ocultar con el teclado, atajos), **Sesiones** (wakelock, permiso de segundo plano), **Distros** (instalar, predeterminada, modo de compatibilidad), **Almacenamiento** (`~/storage`), **Red** (DNS de respaldo), **Copias de seguridad** (RF-06) y **Acerca de** (versión, licencias y créditos).
+- **Criterios:** todos los ajustes del MVP se cambian desde esa pantalla, sin editar ficheros ni usar adb; se conservan al reiniciar y viajan en la copia de configuración (RF-06).
+
+### RF-13 Arranque y primera ejecución
+- Al abrir la app, la primera pestaña abre la **distro predeterminada** (proot) si está lista; con la app cerrada del todo y reabierta ocurre lo mismo.
+- Si no hay ninguna distro instalada, abre el shell de Android y muestra un aviso, con un acceso directo a instalar una (hoy "Gestionar distros…").
+- Las pestañas se nombran con su distro (p. ej. "Alpine"), no con "Shell N", salvo que el usuario las renombre.
+- **Criterio:** instalada una distro, cerrar la app y volver a abrirla deja un prompt de esa distro en la primera pestaña. (Comprobado en un Pixel 8; el nombre de la pestaña, pendiente.)
 
 ## 4. Fuera de alcance (MVP)
 - Cualquier entorno gráfico (X11, Wayland, VNC).

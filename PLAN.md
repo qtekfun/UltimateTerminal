@@ -38,9 +38,11 @@ Reglas: una tarea cada vez, en su rama `feat/<tarea>`, con `./gradlew check` en 
   - *Verificación:* tests de host (`BatteryExemptionTest`, `StorageToggleTest`, `FakeProcTest`, `TerminalLayoutTest`,
     planificador). *Sin probar en hardware*: hay que volver a comprobarlos en el Pixel 8 (ver `DECISIONS.md`, T08c).
 - [~] **T09 Multitab**: crear, cerrar, renombrar y reordenar pestañas; confirmación al cerrar con procesos vivos. *(implementada y probada solo en host; la barra no se ha visto en ningún dispositivo; ver `DECISIONS.md`, T09)*
+- [ ] **T09b Pestañas con nombre de distro y repintado** (RF-13): una pestaña nueva se queda en blanco hasta cambiar de pestaña y volver (hallado en un Pixel 8: la vista no se repinta al activar una sesión nueva ni tras escribir en ella); nombrar la pestaña con su distro en vez de "Shell N"; con una sola distro lista, la primera pestaña al arrancar ya abre esa distro (comprobado) y lo dice en su título.
 - [~] **T10 Paneles divididos** (pantallas anchas): dividir en horizontal/vertical con separadores arrastrables, y layout por `WindowSizeClass` (barra lateral o superior).
   - *Nota:* implementada y probada solo con tests de host; sin validar en dispositivo (ver `DECISIONS.md`, D-T10-9). Perfiles, layouts guardados y emisión a varios paneles son T12b.
 - [~] **T11 Entrada** *(lógica y UI implementadas y probadas en host; sin validar en dispositivo y sin ratón; ver `DECISIONS.md`, T11)*: fila de teclas extra configurable con Ctrl/Alt pegajosos; teclado físico, atajos, ratón, copiar/pegar y zoom con pellizco.
+  - *Cambio (2026-10-04):* la fila de teclas extra solo se muestra con el teclado en pantalla visible (opción `onlyWithKeyboard`, activa por defecto): probada en host, pendiente de ver en el dispositivo.
 - [~] **T12 Temas, modo OLED y fuentes**: esquemas de color, claro/oscuro/sistema y modo OLED (negro puro), fuente incluida y tamaño.
   - *Nota:* lógica y aplicación probadas en host; sin validar en dispositivo y sin pantalla de ajustes (T16). Ver `DECISIONS.md`, T12.
 - [ ] **T12b Perfiles, layouts y atajos (estilo Terminator)**: perfiles, layouts de paneles guardados con nombre, atajos configurables y emisión a varios paneles.
@@ -53,7 +55,8 @@ Reglas: una tarea cada vez, en su rama `feat/<tarea>`, con `./gradlew check` en 
 - [~] **T15 Copias de seguridad y restauración**: exportar una distro, solo la configuración o todo a `.tar.zst` (la configuración incluye tema, perfiles, atajos, layouts, teclas extra y hosts, en formato versionado), cifrado opcional AES-256-GCM/PBKDF2, restaurar también desde la bienvenida. **100 % de cobertura** en formato y cifrado.
   - *Nota:* implementada y probada en host (100 % de línea y de rama en `data.backup`); sin validar en dispositivo. Desviación de la SPEC: partes comprimidas con **gzip**, no `.tar.zst` (ver `DECISIONS.md`, T15). El selector de archivos es el del sistema (SAF); no hay aún pantalla de bienvenida propia, la acción de restaurar está en la pantalla de distros.
   - *Verificación:* exportar en un dispositivo y restaurar en otro conserva permisos, propietarios y enlaces simbólicos; restaurar solo la configuración reproduce el mismo aspecto, atajos, perfiles y layouts.
-- [ ] **T16 Ajustes e i18n**: idioma, tema, scrollback, teclas extra, wakelock, copias de seguridad.
+- [ ] **T16 Ajustes e i18n** (RF-11, ampliada tras las primeras pruebas en un Pixel 8, donde el usuario no veía ningún menú de ajustes): icono ⚙ permanente en la barra de pestañas y entrada en el menú de "+"; pantalla con secciones Apariencia (enlaza T12c), Terminal, Teclado (filas de teclas extra, "ocultar con el teclado", atajos), Sesiones (wakelock y permiso de segundo plano), Distros, Almacenamiento, Red (DNS de respaldo configurables), Copias de seguridad (T15) y Acerca de (versión, licencias y créditos desde `THIRD_PARTY_NOTICES.md`); idioma.
+  - *Verificación:* cada ajuste se cambia desde la pantalla y persiste tras reiniciar; todo cabe en la copia de configuración de T15.
 
 ## Fase 4 — Cierre del MVP
 - [ ] **T17 Accesibilidad y rendimiento**: TalkBack en la UI, tamaños táctiles, fuente grande; medir arranque hasta prompt y salida masiva.
