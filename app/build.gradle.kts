@@ -1,12 +1,15 @@
 // SPDX-FileCopyrightText: 2026 UltimateTerminal contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import com.android.build.api.variant.ApplicationAndroidComponentsExtension
 import io.gitlab.arturbosch.detekt.Detekt
 import kotlinx.kover.gradle.plugin.dsl.CoverageUnit
 import kotlinx.kover.gradle.plugin.dsl.KoverReportFilter
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.api.artifacts.result.ResolvedDependencyResult
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.RegularFileProperty
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -143,6 +146,37 @@ android {
 
     androidResources {
         generateLocaleConfig = true
+    }
+}
+
+/**
+ * Settings > About shows THIRD_PARTY_NOTICES.md, the credits of the third-party code. The app reads
+ * it from its assets, and this copies the file there at build time, so there is one file to keep up
+ * to date and the APK can never carry an older copy of it.
+ */
+abstract class CopyNotices : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val notices: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        val target = outputDir.get().asFile.also { it.mkdirs() }
+        notices.get().asFile.copyTo(target.resolve("THIRD_PARTY_NOTICES.md"), overwrite = true)
+    }
+}
+
+val copyNotices = tasks.register<CopyNotices>("copyNotices") {
+    notices.set(rootProject.layout.projectDirectory.file("THIRD_PARTY_NOTICES.md"))
+    outputDir.set(layout.buildDirectory.dir("generated/notices"))
+}
+
+extensions.configure<ApplicationAndroidComponentsExtension> {
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(copyNotices, CopyNotices::outputDir)
     }
 }
 

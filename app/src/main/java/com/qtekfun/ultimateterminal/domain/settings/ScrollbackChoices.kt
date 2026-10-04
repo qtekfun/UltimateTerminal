@@ -12,7 +12,12 @@ import kotlin.math.abs
 object ScrollbackChoices {
     const val MIN_LINES = 100
     const val MAX_LINES = 50_000
-    val options = listOf(1_000, 2_000, 5_000, 10_000, 20_000, MAX_LINES)
+    private const val LINES_1K = 1_000
+    private const val LINES_2K = 2_000
+    private const val LINES_5K = 5_000
+    private const val LINES_10K = 10_000
+    private const val LINES_20K = 20_000
+    val options = listOf(LINES_1K, LINES_2K, LINES_5K, LINES_10K, LINES_20K, MAX_LINES)
 
     /** The option closest to [lines], for a stored value that is not one of them. */
     fun nearest(lines: Int): Int = options.minBy { abs(it - lines) }

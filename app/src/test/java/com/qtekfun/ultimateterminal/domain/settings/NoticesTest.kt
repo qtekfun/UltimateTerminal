@@ -56,4 +56,17 @@ class NoticesTest {
         assertTrue(Notices.parse("## Empty\n\n## Also empty\n").isEmpty())
         assertTrue(Notices.parse("").isEmpty())
     }
+
+    @Test
+    fun theRealCreditsFileGivesSectionsThatTheAboutPageCanShow() {
+        // The build copies this very file into the APK, so what Settings shows is what this reads.
+        val text = java.io.File("../THIRD_PARTY_NOTICES.md").readText()
+
+        val sections = Notices.parse(text)
+
+        assertTrue(sections.size >= 2, "the file has several sections")
+        assertTrue(sections.any { it.title == "Used now" })
+        assertTrue(sections.flatMap { it.lines }.any { "Apache-2.0" in it })
+        assertTrue(sections.flatMap { it.lines }.none { "](" in it || "**" in it })
+    }
 }

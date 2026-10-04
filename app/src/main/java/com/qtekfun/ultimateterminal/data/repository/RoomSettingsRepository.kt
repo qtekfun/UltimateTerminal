@@ -95,15 +95,19 @@ class RoomSettingsRepository @Inject constructor(private val dao: SettingDao) : 
             customFonts = values[SettingKeys.CUSTOM_FONTS]
                 ?.let(FontCatalog::decodeList)
                 ?.take(FontCatalog.MAX_CUSTOM_FONTS)
-                ?: defaults.customFonts,
-            extraKeys = values[SettingKeys.EXTRA_KEYS]
-                ?.let { ExtraKeysConfig.parse(it).first }
-                ?: defaults.extraKeys,
-            dnsFallbackServers = values[SettingKeys.DNS_FALLBACK]
-                ?.let { DnsServers.parse(it).servers }
-                ?: defaults.dnsFallbackServers
-        )
+                ?: defaults.customFonts
+        ).withKeysAndDns(values)
     }
+
+    /** The extra keys and the DNS servers; a missing or unreadable value keeps its default. */
+    private fun AppSettings.withKeysAndDns(values: Map<String, String>): AppSettings = copy(
+        extraKeys = values[SettingKeys.EXTRA_KEYS]
+            ?.let { ExtraKeysConfig.parse(it).first }
+            ?: extraKeys,
+        dnsFallbackServers = values[SettingKeys.DNS_FALLBACK]
+            ?.let { DnsServers.parse(it).servers }
+            ?: dnsFallbackServers
+    )
 
     /** Each value that is missing or unreadable keeps its default; numbers are clamped into range. */
     private fun parseAppearance(values: Map<String, String>): TerminalAppearance {
