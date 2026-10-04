@@ -3,6 +3,8 @@
 
 package com.qtekfun.ultimateterminal.data.proot
 
+import com.qtekfun.ultimateterminal.domain.launch.GuestUser
+
 /** Where the guest sees a host directory. */
 data class ProotBind(val hostPath: String, val guestPath: String = hostPath)
 
@@ -20,7 +22,18 @@ data class ProotSession(
      * proot misbehave. Off by default.
      */
     val disableSeccomp: Boolean = false,
-    val term: String = "xterm-256color"
+    val term: String = "xterm-256color",
+    /**
+     * The user the shell runs as, null for root. A user other than root goes through `su -l`, which
+     * needs the fake root (`-0`) to be allowed to change identity.
+     */
+    val user: String? = null,
+    /**
+     * A program and arguments to run instead of [shell] (an argument list, never a shell line). It
+     * runs as proot's own identity (root with [fakeRoot]), not as [user]: only the SSH connection
+     * uses it, and it has no use for another user.
+     */
+    val command: List<String>? = null
 ) {
     companion object {
         val DEFAULT_SHELL = listOf("/bin/sh", "-l")
@@ -66,7 +79,7 @@ class ProotCommandBuilder(private val nativeLibraryDir: String, private val tmpD
                     "PATH=$GUEST_PATH"
                 )
             )
-            addAll(session.shell)
+            addAll(guestCommand(session))
         }
         val environment = buildMap {
             put("PROOT_LOADER", "$nativeLibraryDir/$LOADER_BINARY")
@@ -76,7 +89,20 @@ class ProotCommandBuilder(private val nativeLibraryDir: String, private val tmpD
         return ProotLaunch(command, environment)
     }
 
-    private fun homeOf(session: ProotSession) = if (session.fakeRoot) "/root" else "/home"
+    private fun homeOf(session: ProotSession) = if (session.user != null) {
+        GuestUser.homeOf(session.user)
+    } else if (session.fakeRoot) {
+        "/root"
+    } else {
+        "/home"
+    }
+
+    /** What the guest runs: the command, or the login shell as root or through `su -l <user>`. */
+    private fun guestCommand(session: ProotSession): List<String> = when {
+        session.command != null -> session.command
+        GuestUser.isRoot(session.user) -> session.shell
+        else -> listOf("su", "-l", requireNotNull(session.user))
+    }
 
     companion object {
         const val PROOT_BINARY = "libproot.so"

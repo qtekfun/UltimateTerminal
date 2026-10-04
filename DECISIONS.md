@@ -26,6 +26,10 @@ funcionando:
   coincida con lo visible tras redimensionar (ver D-T03-4 a D-T03-6 y T04).
 - T03, release con R8: que los métodos nativos de `JNI` sobrevivan a la minificación (las reglas por
   defecto de Android conservan los nombres de los `native`, pero no se ha comprobado en un APK real).
+- T08b, arranque de una pestaña en una distro: que `libproot.so` se ejecute desde `nativeLibraryDir` con
+  `targetSdk` 28, que `uname -a` y `apk update` funcionen dentro de Alpine, que haya red (DNS), que `su -l <usuario>`
+  funcione, que los montajes de T13 se vean y que el modo de compatibilidad (sin seccomp) arregle lo que falle
+  (ver D-T08b-8 con el criterio de aceptación de la primera prueba en la tablet).
 - T14, SSH: el Keystore real, `ssh` dentro de proot con la clave temporal, el selector de archivos y la
   limpieza del fichero de la clave (ver "T14: lo que NO se ha validado").
 - T08, servicio en primer plano: que Android lo arranque con el tipo `specialUse` en 12–16, que la
@@ -1187,6 +1191,10 @@ fallaría al resolver el nombre aunque la red funcione.
 `-b`; no hacerlo (solo funcionarían las IP).
 **Impacto:** hay una decisión de privacidad: los nombres se resuelven con esos resolutores públicos,
 no con los de la red del usuario. Es solo para la distro. **Debería ser configurable** (T16).
+**Sustituida por D-T08b-6 (2026-10-04):** ahora hay un único mecanismo para todas las pestañas. Se usan los
+DNS de la red activa y `1.1.1.1`/`9.9.9.9` solo como último recurso. `SshConnector` ya no escribe nada en el
+rootfs. Nota sobre la alternativa descartada aquí: una app sí puede leer los DNS del sistema con
+`ConnectivityManager.getLinkProperties` (lo que no puede desde Android 8 es leer `net.dns1` con `getprop`).
 
 ### D-T14-9 · 2026-10-04 · Pantallas, ViewModels y punto de entrada
 **Decisión:** dos pantallas (hosts y claves) con un ViewModel cada una (`SshViewModel`,
@@ -1277,3 +1285,71 @@ la corrupción y los casos hostiles; si cambia el formato hay que repetir esta c
 3. Que proot monte (`-b`) esas rutas con `--link2symlink` y `--kill-on-exit` sin error, y que `ls ~/storage` muestre los puntos de montaje.
 4. La pantalla: el interruptor, el cambio del permiso en los ajustes del sistema mientras la app está en segundo plano y el botón «Abrir ajustes de la app».
 5. Que desactivar el interruptor no deje montajes colgados en una sesión ya abierta (cambia al abrir la siguiente).
+
+## T08b — Conectar proot a las sesiones
+
+Contexto: tras T07 (instalar distros), T09 (pestañas) y T13 (montajes) nadie lanzaba proot: la fábrica de sesiones
+arrancaba siempre `/system/bin/sh`. T08b une las piezas. **Nada de esto se ha ejecutado en un dispositivo**: todas las
+decisiones sobre el comportamiento real de proot son hipótesis hasta la primera prueba en la tablet (D-T08b-8).
+
+### D-T08b-1 · 2026-10-04 · Un planificador puro decide; la fábrica solo ejecuta
+- **Decisión:** `ProotSessionPlanner` (`data/proot`) recibe el `distroId` de la pestaña (null = shell de Android) y devuelve un `LaunchPlan`: `AndroidShell`, `FallbackToAndroid(aviso)`, `InDistro(proot, aviso?)` o `Failed(problema)`. No toca procesos. `AndroidSessionFactory` lo ejecuta. Solo se usa cuando el que abre la pestaña **no** trae un `SessionLaunch` propio (ver D-T08b-9).
+- **Motivo:** todas las reglas (qué distro, qué usuario, qué montajes, qué errores) quedan probadas en la JVM. Lo único que necesita un dispositivo es el `fork/exec`.
+- **Alternativas:** decidir dentro de `TerminalSessionHost` (imposible de probar sin PTY); un `runBlocking` en el hilo principal (bloquearía la UI al consultar Room y el disco).
+- **Impacto:** `data/proot` pasa a cubrir también la política de arranque (Kover ≥85 % en `data`). El planificador se inyecta por constructor; los puertos del dispositivo (`ProotRuntime`, `ResolvConfSource`) tienen su implementación Android en `platform/`, sin lógica propia.
+
+### D-T08b-2 · 2026-10-04 · El arranque es asíncrono: el host espera al plan y al tamaño
+- **Decisión:** `SessionFactory.start` no cambia de firma y devuelve el manejador al instante. El host recuerda el tamaño que pide la pantalla; la fábrica lanza una corrutina (hilo principal, que es donde la librería del emulador entrega sus callbacks) que obtiene el plan y llama a `host.launch(...)`. El PTY se crea cuando se conocen **las dos cosas**: qué ejecutar y qué tamaño tiene.
+- **Motivo:** el plan necesita Room y el disco (suspend). Evita tocar la interfaz `SessionFactory` y sus fakes de test. El distro de la pestaña se lee del estado que el controlador ya publica antes de llamar a la fábrica, y hay un test que lo fija. La fábrica implementa `LaunchingSessionFactory` (de T14), así que la firma que ve el controlador no cambia.
+- **Alternativas:** añadir el `ShellRequest` a `SessionFactory.start` (rompe los fakes y no resuelve la parte suspend).
+- **Impacto:** `TerminalSessionHost.stop()` olvida lo que había que ejecutar; «reiniciar» abre una sesión nueva (ya era así). Un `Handle.stop()` cancela la corrutina, así que una pestaña cerrada mientras arrancaba no deja nada.
+
+### D-T08b-3 · 2026-10-04 · Qué se hace cuando no se puede abrir la distro
+- **Decisión:** sin distro pedida → shell de Android sin aviso (es la elección explícita «Android shell»). Distro pedida que no está lista o ya no existe → **shell de Android con un aviso descartable** y acceso a la pantalla de distros. Distro lista pero sin sus archivos, proot ausente, usuario no válido o sin carpeta temporal → **error explicado** (`LaunchProblem`) y la sesión termina como fallida; nunca una excepción.
+- **Una pestaña con `SessionLaunch` propio (ssh) no pasa por aquí**, así que nunca cae al shell de Android: si no puede arrancar, falla con su propio mensaje.
+- **Motivo:** la SPEC pide «sin distro lista, fallback al shell de Android» y «errores sellados, nunca un crash». Se separa «no hay distro todavía» (normal en un primer arranque) de «algo está roto».
+- **Impacto:** el aviso se dibuja encima de las primeras filas (no cambia el tamaño del PTY) y los textos están en inglés y español.
+
+### D-T08b-4 · 2026-10-04 · Pestaña por defecto: la distro predeterminada si está lista
+- **Decisión:** al arrancar la app y desde la notificación, `SessionManager.newDefaultSession()` consulta la distro predeterminada y abre en ella solo si está `READY`; si no, shell de Android. El botón «+» ya hacía lo mismo.
+- **Motivo:** antes el arranque pasaba siempre `null` (shell de Android) aunque hubiera una distro predeterminada.
+- **Alternativas:** abrir siempre el shell de Android (ignora la distro predeterminada).
+
+### D-T08b-5 · 2026-10-04 · Usuario de la distro: `su -l`, con el nombre validado
+- **Decisión:** `root` ejecuta el shell directamente (`-0`). Otro usuario pasa por `su -l <usuario>`. El nombre se valida con `[a-z_][a-z0-9_-]{0,31}`: un nombre que empiece por `-` se leería como opción de `su`. Un comando (`ProotSession.command`, lo usa la conexión SSH) es una **lista de argumentos**, nunca una línea de shell, y corre con la identidad de proot (root), no con la del usuario.
+- **Motivo:** el nombre llega de la base de datos; validarlo en el planificador protege aunque una fila antigua no lo estuviera. Hay tests con nombres hostiles.
+- **Hipótesis sin validar:** que `su -l` funcione con proot y `-0` en Debian, Ubuntu y Alpine (busybox `su`), y que el usuario exista en la distro; si no existe, el shell termina con error de `su`.
+- **Límite:** `/bin/sh -l` es el shell de login por defecto en las tres distros (dash en Debian/Ubuntu, ash en Alpine); no se elige `bash` aunque exista.
+
+### D-T08b-6 · 2026-10-04 · `/etc/resolv.conf` desde los DNS del dispositivo, con permiso `ACCESS_NETWORK_STATE`
+- **Decisión:** la app escribe `filesDir/resolv.conf` con los DNS de la red activa (`ConnectivityManager`) y lo monta con `-b` sobre `/etc/resolv.conf` de la distro. Solo se admiten literales IPv4/IPv6 (sin zona ni nombres ni saltos de línea) y como máximo tres (límite de glibc). Si el dispositivo no informa de ninguno, se usan `1.1.1.1` y `9.9.9.9`. Si no se puede escribir el fichero, la sesión arranca igual con un aviso.
+- **Motivo:** Android no tiene `/etc/resolv.conf` y el de un rootfs apunta a un resolvedor inexistente. No se depende de rutas de Termux. Montar un fichero evita modificar el rootfs.
+- **Un solo mecanismo (unificado con T14):** lo usan las pestañas normales (`ProotSessionPlanner`) y la conexión SSH (`DistroLaunchFactory`) por igual, a través de `ResolvConfSource` y `resolvConfBinds`. `SshConnector.ensureResolver` y su decisión D-T14-8 (escribir `1.1.1.1`/`9.9.9.9` en el rootfs) desaparecen. Los DNS del dispositivo van primero; los públicos son **último recurso**, constante `ResolvConf.FALLBACK_SERVERS`, para que T16 los haga configurables.
+- **Privacidad (para `PRIVACY.md`, T21):** los DNS de reserva son resolvedores públicos de terceros (Cloudflare y Quad9); solo se usan cuando el dispositivo no da ninguno. `ACCESS_NETWORK_STATE` es un permiso normal (no se pide al usuario) y solo sirve para leer esos servidores.
+- **Alternativas:** escribir `8.8.8.8` siempre (envía todo a un tercero aunque la red tenga DNS propio, y rompe DNS internos); copiar el `/etc/resolv.conf` del sistema (no existe desde Android 8).
+- **Sin validar:** que `getLinkProperties(activeNetwork)` devuelva servidores en todas las redes (VPN, datos móviles) y que el bind de un fichero sobre `/etc/resolv.conf` funcione con proot.
+
+### D-T08b-7 · 2026-10-04 · Modo de compatibilidad (proot sin seccomp) como ajuste visible
+- **Decisión:** `AppSettings.prootCompatibilityMode` (clave `proot_compatibility_mode`, desactivado) pone `PROOT_NO_SECCOMP=1`. Hay un interruptor en la pantalla de distros y se aplica a las pestañas que se abran después.
+- **Motivo:** en algunos núcleos el filtro seccomp hace que proot falle o se cuelgue; es lo primero que hay que probar si una distro no arranca, y sin ajuste habría que recompilar la app para probarlo en la tablet. Entra en la copia de ajustes de T15 con el resto.
+- **Coste:** sin seccomp, proot intercepta todas las llamadas al sistema con `ptrace`: es notablemente más lento.
+
+### D-T08b-8 · 2026-10-04 · Hipótesis sin validar y criterio de aceptación de la primera prueba real
+- **Ejecutar desde `nativeLibraryDir`:** el manifiesto ya declara `android:extractNativeLibs="true"` y Gradle `useLegacyPackaging = true`, así que los binarios son ficheros reales. Con `targetSdk` 28 la app puede ejecutarlos; no se ha comprobado en Android 10–16 (SELinux de `untrusted_app_27/28`).
+- **`PROOT_TMP_DIR`:** `cacheDir/proot-tmp`; proot no tiene `/tmp` en Android.
+- **Binds:** `/dev`, `/proc`, `/sys`, `/etc/resolv.conf` y los de T13. Android 8+ no deja leer `/proc/stat` ni `/proc/loadavg` a las apps: `top`, `uptime` o `free` pueden fallar. Termux lo resuelve con ficheros falsos; no se hace aquí todavía.
+- **El *phantom process killer* de Android 12+** puede matar procesos hijo de proot aunque el servicio esté en primer plano (D-T08-5).
+- **Criterio de aceptación (primera prueba en la tablet, solo cuando el usuario la autorice):** (1) instalar Alpine desde la pantalla de distros; (2) abrir una pestaña nueva y comprobar que el prompt es el de Alpine, no el de Android; (3) `uname -a` y `cat /etc/os-release` muestran Alpine; (4) `apk update` descarga índices (red y DNS); (5) con el almacenamiento compartido activado, `ls ~/storage/downloads`; (6) cerrar y reabrir la app con la sesión viva; (7) si (2) o (3) fallan, repetir con el modo de compatibilidad activado y anotar el resultado aquí. Hasta entonces, ninguna de estas afirmaciones es cierta.
+
+### D-T08b-9 · 2026-10-04 · Un solo mecanismo de «qué ejecutar» por pestaña: `SessionLaunch`
+- **Contexto:** T14 (ya en `master`) añadió `SessionLaunch(command, environment, onClosed)` para que la pantalla de hosts abra una pestaña con `ssh`, y yo había añadido un `initialCommand` por pestaña con el mismo fin. Eran dos caminos para lo mismo.
+- **Decisión:** gana `SessionLaunch`, porque lleva la limpieza `onClosed` (el fichero de la clave SSH se borra pase lo que pase con la sesión) y ya la usa la pantalla de hosts. Mi `initialCommand`, `ShellRequest`, los problemas `InvalidCommand`/`CommandNeedsDistro` y el citado `su -c` (`ShellQuote`) se eliminan: sin comandos del planificador no tenían uso.
+- **Reglas:** (1) con `SessionLaunch` se ejecuta tal cual, con proot ya construido por quien lo crea (`DistroLaunchFactory`); (2) sin él, decide `ProotSessionPlanner` según el distro de la pestaña. Nunca los dos.
+- **«+» y los demás atajos** abren por (2): distro predeterminada si está lista, shell de Android si no, con aviso.
+- **Reiniciar una pestaña SSH que terminó** (`restartActive`) abre un shell normal **de la misma distro** (por el planificador), no el de Android; el fichero de clave ya se borró al terminar, así que no se puede repetir la conexión: hay que reconectar desde la pantalla de hosts. Si la distro ya no sirve, se ve el aviso de «shell de Android» o el error; no pasa en silencio.
+- **Entradas de menú:** los botones provisionales «Distros» (T07) y «SSH» (T14) de `MainActivity` pasan al menú de «nueva pestaña» (pulsación larga en «+»).
+
+### D-T08b-10 · 2026-10-04 · Corrección de un fallo de T13: el directorio de la distro **es** el rootfs
+- **Hallazgo:** `DistroInstaller.publish` mueve lo que extrajo (`staging/rootfs`) a `distro.directory`; por tanto la raíz de la distro es `distro.directory` y no existe una carpeta `rootfs` dentro. T14 lo usa bien, pero `SharedStorageMounts` (T13, ya mergeada) creaba los puntos de montaje en `distro.directory/rootfs/…` (no existía, así que el montaje de `~/storage` no habría aparecido) y mi primera versión del planificador usaba la misma ruta (habría dado toda distro como «dañada»).
+- **Decisión:** `SharedStorageMounts` y el planificador usan `distro.directory`. `DistroInstaller.UNPACKED_NAME` pasa a ser privada (es solo el nombre de la carpeta de preparación) y su comentario, que decía lo contrario, se corrige. Los tests de T13 usaban la misma ruta equivocada y se corrigen; hay un test nuevo que fija `-r` en `distros/<token>`.
+- **Por qué no lo cazaron los tests:** el fake de sistema de ficheros y los tests de T13 construían la ruta con el mismo supuesto equivocado que el código. Lección: un test que comparte el supuesto con el código no lo comprueba; hace falta una prueba de extremo a extremo con un rootfs real en la primera prueba en la tablet.

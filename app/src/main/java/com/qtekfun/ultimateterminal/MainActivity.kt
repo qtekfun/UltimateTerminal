@@ -11,10 +11,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -25,9 +21,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.qtekfun.ultimateterminal.domain.model.AppSettings
 import com.qtekfun.ultimateterminal.domain.repository.SettingsRepository
@@ -104,16 +97,10 @@ class MainActivity : ComponentActivity() {
                     scope.launch {
                         settingsRepository.update { it.copy(terminalFontSizeSp = size) }
                     }
-                }
+                },
+                onOpenDistros = { showDistros = true },
+                onOpenSsh = { showSsh = true }
             )
-            // Temporary entry points to the distro (T07) and SSH (T14) screens: they belong in the
-            // tab bar's "new tab" menu, which T09 owns; see DECISIONS.md, D-T07-7 and D-T14.
-            Row(modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding()) {
-                TextButton(onClick = { showSsh = true }) { Text(stringResource(R.string.ssh_open)) }
-                TextButton(onClick = {
-                    showDistros = true
-                }) { Text(stringResource(R.string.distros_open)) }
-            }
             if (showDistros) DistroScreen(onClose = { showDistros = false })
             if (showSsh) SshScreen(onClose = { showSsh = false })
         }

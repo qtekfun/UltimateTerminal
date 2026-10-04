@@ -1,0 +1,91 @@
+// SPDX-FileCopyrightText: 2026 UltimateTerminal contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package com.qtekfun.ultimateterminal.data.proot
+
+import com.qtekfun.ultimateterminal.domain.launch.GuestUser
+import com.qtekfun.ultimateterminal.domain.launch.LaunchNotice
+import com.qtekfun.ultimateterminal.domain.launch.LaunchProblem
+import com.qtekfun.ultimateterminal.domain.model.Distro
+import com.qtekfun.ultimateterminal.domain.model.DistroState
+import com.qtekfun.ultimateterminal.domain.repository.DistroRepository
+import com.qtekfun.ultimateterminal.domain.repository.FileSystemRepository
+import com.qtekfun.ultimateterminal.domain.repository.SettingsRepository
+import com.qtekfun.ultimateterminal.domain.storage.SharedStorageMounts
+import com.qtekfun.ultimateterminal.domain.storage.StorageMountPlan
+import javax.inject.Inject
+import kotlinx.coroutines.flow.first
+
+/**
+ * Decides what a new tab starts when the caller did not give a launch of its own: the Android shell,
+ * or proot with a distro and everything it needs (the root filesystem, the shared storage of T13, a
+ * resolv.conf, the user). A caller with its own command (the SSH hosts screen) builds its launch
+ * itself and never reaches this class: there is one source of "what to run" per tab (D-T08b-9).
+ *
+ * It touches no process: it returns a [LaunchPlan] that the session factory carries out, so every
+ * rule here is tested on the host. It never throws for a problem a user can have; those come back
+ * as [LaunchPlan.Failed] or as a notice.
+ */
+class ProotSessionPlanner @Inject constructor(
+    private val distros: DistroRepository,
+    private val fileSystem: FileSystemRepository,
+    private val settings: SettingsRepository,
+    private val mounts: SharedStorageMounts,
+    private val runtime: ProotRuntime,
+    private val dns: ResolvConfSource
+) {
+    /** [distroId] is the distro the tab was opened in, null for the Android shell. */
+    suspend fun plan(distroId: Long?): LaunchPlan {
+        if (distroId == null) return LaunchPlan.AndroidShell
+        val distro = distros.get(distroId)
+        return if (distro == null || distro.state != DistroState.READY) {
+            LaunchPlan.FallbackToAndroid(LaunchNotice.DistroUnavailable(distro?.name))
+        } else {
+            launchIn(distro)
+        }
+    }
+
+    private suspend fun launchIn(distro: Distro): LaunchPlan {
+        val user = distro.defaultUser
+        // The distro's directory is the root filesystem itself: the installer moves what it unpacked
+        // there (see DistroInstaller), so there is no `rootfs` folder inside it.
+        val problem = when {
+            !GuestUser.isValid(user) -> LaunchProblem.InvalidUser(user)
+            !fileSystem.exists(distro.directory) -> LaunchProblem.DistroCorrupt(distro.name)
+            !runtime.hasBinaries() -> LaunchProblem.ProotMissing
+            else -> null
+        }
+        val tmpDir = if (problem == null) runtime.prepareTmpDir() else null
+        return when {
+            problem != null -> LaunchPlan.Failed(problem)
+            tmpDir == null -> LaunchPlan.Failed(LaunchProblem.TempDirUnavailable)
+            else -> buildLaunch(distro, tmpDir)
+        }
+    }
+
+    private suspend fun buildLaunch(distro: Distro, tmpDir: String): LaunchPlan {
+        val user = distro.defaultUser.takeUnless(GuestUser::isRoot)
+        val home = GuestUser.homeOf(user)
+        val app = settings.observe().first()
+        val storage = mounts.prepare(distro, app.sharedStorage, home)
+        val resolvConf = dns.hostFile()
+        val session = ProotSession(
+            rootfs = fileSystem.absolutePathOf(distro.directory),
+            // `su -l` changes to the user's home itself; a path that may not exist cannot be `-w`.
+            workingDirectory = if (user == null) home else "/",
+            binds = ProotSession.DEFAULT_BINDS + resolvConfBinds(resolvConf),
+            disableSeccomp = app.prootCompatibilityMode,
+            user = user
+        ).withSharedStorage(storage)
+        val notice = when {
+            storage is StorageMountPlan.Degraded -> LaunchNotice.StorageNotMounted(storage.reason)
+            resolvConf == null -> LaunchNotice.DnsNotConfigured
+            else -> null
+        }
+        return LaunchPlan.InDistro(
+            launch = ProotCommandBuilder(runtime.nativeLibraryDir, tmpDir).build(session),
+            distroName = distro.name,
+            notice = notice
+        )
+    }
+}

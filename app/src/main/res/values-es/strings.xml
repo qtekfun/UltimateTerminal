@@ -31,7 +31,6 @@
 
     <!-- Gestión de distros (T07) -->
     <string name="distros_title">Distribuciones</string>
-    <string name="distros_open">Distros</string>
     <string name="distros_close">Cerrar</string>
     <string name="distros_install">Instalar una distro</string>
     <string name="distros_empty">Aún no hay distros. Instala una para tener un shell Linux.</string>
@@ -191,4 +190,22 @@
     <string name="pane_too_small">No hay espacio suficiente para dividir aquí</string>
     <string name="pane_close_title">¿Cerrar este panel?</string>
     <string name="pane_close_message">Todavía se está ejecutando un programa en él y se detendrá.</string>
+
+    <!-- Arranque de una pestaña en una distro (T08b) -->
+    <string name="tab_manage_distros">Gestionar distros…</string>
+    <string name="launch_action_distros">Distros</string>
+    <string name="launch_action_dismiss">Cerrar</string>
+    <string name="launch_notice_distro_unavailable">Esa distro no está disponible, así que esta pestaña abrió el shell de Android.</string>
+    <string name="launch_notice_distro_unavailable_named">\"%1$s\" no está lista, así que esta pestaña abrió el shell de Android.</string>
+    <string name="launch_notice_storage_permission">No se montó el almacenamiento compartido: falta el permiso de almacenamiento.</string>
+    <string name="launch_notice_storage_unavailable">No se montó el almacenamiento compartido: ahora no está disponible.</string>
+    <string name="launch_notice_storage_mount_point">No se montó el almacenamiento compartido: no se pudieron crear sus carpetas en la distro.</string>
+    <string name="launch_notice_dns">Puede que los nombres de red no se resuelvan: la app no pudo escribir la configuración DNS de la distro.</string>
+    <string name="launch_problem_proot_missing">Falta proot en esta compilación, así que las distros no pueden arrancar.</string>
+    <string name="launch_problem_distro_corrupt">\"%1$s\" está dañada: faltan sus archivos. Elimínala e instálala de nuevo.</string>
+    <string name="launch_problem_invalid_user">El nombre de usuario \"%1$s\" de la distro no es válido.</string>
+    <string name="launch_problem_tmp">La app no tiene una carpeta privada para los archivos temporales de proot.</string>
+    <string name="launch_problem_unexpected">No se pudo arrancar el shell.</string>
+    <string name="proot_compat_label">Modo de compatibilidad</string>
+    <string name="proot_compat_explanation">Ejecuta proot sin su filtro seccomp. Es más lento, pero pruébalo si una distro no arranca. Se aplica a las pestañas que abras después.</string>
 </resources>
