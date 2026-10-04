@@ -107,6 +107,9 @@ class TerminalViewModel @Inject constructor(
 
     val emulator get() = manager.currentHost()?.emulator
 
+    /** Goes up whenever a session's host appears or goes; a pane that draws [hostOf] reads it. */
+    val hostChanges: StateFlow<Int> get() = manager.hostChanges
+
     private val transcriptRows: Int get() = emulator?.screen?.activeTranscriptRows ?: 0
 
     init {

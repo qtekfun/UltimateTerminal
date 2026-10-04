@@ -3,13 +3,16 @@
 
 package com.qtekfun.ultimateterminal.ui
 
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.qtekfun.ultimateterminal.R
 import com.qtekfun.ultimateterminal.domain.session.DistroOption
+import com.qtekfun.ultimateterminal.ui.ios.IosContextMenu
+import com.qtekfun.ultimateterminal.ui.ios.IosGlyph
+import com.qtekfun.ultimateterminal.ui.ios.IosMenuItem
+
+/** One entry of the "+" menu. */
+private class NewTabEntry(val label: String, val glyph: IosGlyph, val run: () -> Unit)
 
 /** Where a new tab can open, and the other screens: the split, SSH, distros and the appearance. */
 @Composable
@@ -20,28 +23,53 @@ internal fun NewTabMenu(
     onNewTabIn: (Long?) -> Unit,
     links: TabBarLinks
 ) {
-    DropdownMenu(expanded = open, onDismissRequest = close) {
+    val shell = stringResource(R.string.tab_shell_option)
+    val entries = buildList {
         choices.forEach { choice ->
-            MenuLink(choice.name ?: stringResource(R.string.tab_shell_option), close) {
-                onNewTabIn(choice.id)
-            }
+            add(NewTabEntry(choice.name ?: shell, IosGlyph.TERMINAL) { onNewTabIn(choice.id) })
         }
         // The split of the pane that has the keyboard: here, and not as a button over the text.
-        MenuLink(stringResource(R.string.pane_split_right), close, links.splitRight)
-        MenuLink(stringResource(R.string.pane_split_down), close, links.splitDown)
-        MenuLink(stringResource(R.string.ssh_open), close, links.openSsh)
-        MenuLink(stringResource(R.string.tab_manage_distros), close, links.openDistros)
-        MenuLink(stringResource(R.string.appearance_open), close, links.openAppearance)
+        add(
+            NewTabEntry(
+                stringResource(R.string.pane_split_right),
+                IosGlyph.CHEVRON_RIGHT,
+                links.splitRight
+            )
+        )
+        add(
+            NewTabEntry(
+                stringResource(R.string.pane_split_down),
+                IosGlyph.CHEVRON_DOWN,
+                links.splitDown
+            )
+        )
+        add(NewTabEntry(stringResource(R.string.ssh_open), IosGlyph.KEY, links.openSsh))
+        add(
+            NewTabEntry(
+                stringResource(R.string.tab_manage_distros),
+                IosGlyph.FOLDER,
+                links.openDistros
+            )
+        )
+        add(
+            NewTabEntry(
+                stringResource(R.string.appearance_open),
+                IosGlyph.SETTINGS,
+                links.openAppearance
+            )
+        )
     }
-}
-
-@Composable
-private fun MenuLink(text: String, close: () -> Unit, action: () -> Unit) {
-    DropdownMenuItem(
-        text = { Text(text) },
-        onClick = {
-            close()
-            action()
+    IosContextMenu(expanded = open, onDismiss = close) {
+        entries.forEachIndexed { index, entry ->
+            IosMenuItem(
+                label = entry.label,
+                onClick = {
+                    close()
+                    entry.run()
+                },
+                glyph = entry.glyph,
+                showSeparator = index < entries.lastIndex
+            )
         }
-    )
+    }
 }

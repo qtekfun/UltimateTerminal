@@ -90,6 +90,7 @@
     <string name="prompt_allow">Allow</string>
     <string name="prompt_not_now">Not now</string>
     <string name="tab_default_title">Shell %1$d</string>
+    <string name="tab_distro_numbered">%1$s %2$d</string>
     <string name="tab_bar_description">Tabs</string>
     <string name="tab_new">New tab</string>
     <string name="tab_new_choose">Choose where to open a new tab</string>

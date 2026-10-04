@@ -47,9 +47,16 @@ class SessionManager @Inject constructor(
     /** What the tab bar edits the sessions through. */
     val editor: PaneEditor get() = controller
 
-    /** The host of the active session, emitted again when the active session changes. */
+    /**
+     * The host of the active session, emitted again when the active session changes and when its
+     * host is registered: the state names a new tab before its host exists, and looking the host up
+     * only then left a new tab blank until something else changed (found on a Pixel 8).
+     */
     val activeHost: Flow<TerminalSessionHost?> =
-        controller.state.map { factory.host(it.activeId) }.distinctUntilChanged()
+        factory.hosts.follow(controller.state.map { it.activeId })
+
+    /** Goes up whenever a host is registered or removed: whoever reads [hostOf] reads again. */
+    val hostChanges: StateFlow<Int> get() = factory.hosts.changes
 
     fun currentHost(): TerminalSessionHost? = factory.host(controller.state.value.activeId)
 
