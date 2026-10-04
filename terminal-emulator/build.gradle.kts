@@ -10,7 +10,8 @@ plugins {
 android {
     namespace = "com.qtekfun.ultimateterminal.emulator"
     compileSdk = 37
-    ndkVersion = "29.0.14206865"
+    // Same NDK as :app (D-004), so one toolchain builds every native library.
+    ndkVersion = "28.2.13676358"
 
     defaultConfig {
         minSdk = 26

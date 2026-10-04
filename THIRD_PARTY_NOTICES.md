@@ -17,13 +17,25 @@ third-party code are kept untouched.
 | AndroidX, Jetpack Compose and Material 3, © The Android Open Source Project | Apache-2.0 | UI toolkit |
 | Dagger / Hilt, © The Dagger Authors | Apache-2.0 | Dependency injection |
 | JUnit 5, © the JUnit team | EPL-2.0 | Tests only; not shipped in the APK |
+| JUnit 4, © the JUnit team | EPL-1.0 | Tests only; not shipped in the APK. Runs the emulator's upstream tests |
+| `terminal-emulator` from [termux-app](https://github.com/termux/termux-app), © Termux developers, derived from [Android Terminal Emulator](https://github.com/jackpal/Android-Terminal-Emulator) © Jack Palevich | Apache-2.0 (see the note below) | Vendored **unmodified** in `terminal-emulator/` at tag `v0.118.3` (commit `5b657c6adf4304e5198951ce815fe0205dcac29c`): the Java sources, the JNI `termux.c` and upstream's unit tests. Only this library is used: the rest of `termux-app` is **GPL-3.0-only** and is not copied, and `terminal-view` is not used (the view is our own, in Compose). License text: `terminal-emulator/LICENSE` |
+| `WcWidth.java` (inside the library above) derives from [jquast/wcwidth](https://github.com/jquast/wcwidth), © 2014 Jeff Quast, and Markus Kuhn's wcwidth | MIT, and Kuhn's permission notice | Notice reproduced in `terminal-emulator/NOTICE-wcwidth.txt` |
 | [PRoot](https://github.com/proot-me/proot), © STMicroelectronics (Cédric Vincent and contributors), through the [Termux fork](https://github.com/termux/proot) (Android patches), pinned at tag `v5.1.107.96` as the git submodule `third_party/proot` | GPL-2.0-or-later | Built from source in this project's build and shipped as `libproot.so` and `libproot-loader.so`. Its full source is this repository's submodule and the upstream repositories; its license is `third_party/proot/COPYING` |
 | [talloc](https://talloc.samba.org/) 2.5.0, © Andrew Tridgell, Stefan Metzmacher and the Samba Team | LGPL-3.0-or-later | Vendored unmodified in `third_party/talloc` (license in `COPYING`) and statically linked into `libproot.so`. A hand-written `replace.h` replaces Samba's generated one; the library can be relinked from the vendored sources |
+
+### Note on the license of `terminal-emulator`
+
+None of the files of upstream's `terminal-emulator/` carries a license header, and the directory has no
+license file. The only statement is in termux-app's `LICENSE.md`: the repository is GPL-3.0-only
+**except** that the code derived from Android Terminal Emulator, in the `terminal-view` and
+`terminal-emulator` libraries, is Apache-2.0. It is not stated file by file, and the library has grown
+since (for instance the sixel and bitmap support). We use it under that statement, unmodified and
+credited; it is an open point in `DECISIONS.md` (D-T03-2) that the maintainers should confirm before a
+public release.
 
 ## Planned (listed here so the credit is not forgotten; moved to "Used now" when integrated)
 
 | Component | License | Task | Notes |
 |---|---|---|---|
-| `terminal-emulator` and `terminal-view` from [termux-app](https://github.com/termux/termux-app), © Termux developers, derived from [Android Terminal Emulator](https://github.com/jackpal/Android-Terminal-Emulator) © Jack Palevich | Apache-2.0 | T03 | Only these two libraries. The rest of `termux-app` is **GPL-3.0-only** and must not be copied. Per-file headers are checked when the code is imported |
 | Debian, Ubuntu and Alpine Linux root filesystems | Per-package free licenses | T06 | Downloaded by the user's device from the official mirrors at install time; **not redistributed** in the APK |
 | Monospace font (to be chosen) | To be checked (SIL OFL-1.1 expected) | T12 | License text shipped with the font |

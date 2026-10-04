@@ -18,4 +18,4 @@ own license header, and there is no license file inside upstream's `terminal-emu
 so that exception is the only license statement. See `DECISIONS.md` (T03) and
 `THIRD_PARTY_NOTICES.md`. `WcWidth.java` also derives from jquast/wcwidth (MIT).
 
-The Apache-2.0 text is in `LICENSE`.
+The Apache-2.0 text is in `LICENSE`; the notice of the wcwidth code is in `NOTICE-wcwidth.txt`.

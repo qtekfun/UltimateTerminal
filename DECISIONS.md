@@ -16,6 +16,12 @@ funcionando:
   armeabi-v7a y x86_64.
 - Comportamiento de seccomp, `ptrace`, `/proc` y `--link2symlink` en Android moderno (API 26–37).
 - Ejecutar binarios desde `nativeLibraryDir` con `targetSdk` 28 en Android 15+/16.
+- T03, todo lo que necesita un PTY real o una pantalla: que `libtermux.so` cargue y el `fork/exec` de
+  `/system/bin/sh` funcione; que el dibujo (colores, cursor, texto ancho, fuente) sea correcto y fluido;
+  el teclado en pantalla (IME), el teclado físico, los gestos (scroll y selección) y que `stty size`
+  coincida con lo visible tras redimensionar (ver D-T03-4 a D-T03-6 y T04).
+- T03, release con R8: que los métodos nativos de `JNI` sobrevivan a la minificación (las reglas por
+  defecto de Android conservan los nombres de los `native`, pero no se ha comprobado en un APK real).
 
 Lo que sí está verificado sin dispositivo: compila para las tres ABIs, los ejecutables se empaquetan
 en el APK con el tipo ELF y los puntos de entrada esperados, `./gradlew check` y el CI en verde.
@@ -103,3 +109,95 @@ en el APK con el tipo ELF y los puntos de entrada esperados, `./gradlew check` y
   (arm64): nadie lo referencia, pero proot localiza su offset en runtime. Se detectó porque
   `loader-info` fallaba en release; sin esa comprobación habría sido un fallo silencioso.
 - **Impacto:** el offset generado es idéntico en debug y release (1016 en arm64).
+
+## T03 — Terminal (emulador y vista)
+
+### D-T03-1 · 2026-10-04 · `terminal-emulator` vendorizado como módulo, no por JitPack
+- **Decisión:** los fuentes de `terminal-emulator` de Termux (tag `v0.118.3`) van **sin modificar** en el
+  módulo Gradle `:terminal-emulator` (Java, JNI `termux.c` y sus tests). Solo son nuestros su
+  `build.gradle.kts` y un `CMakeLists.txt` que sustituye al `Android.mk`.
+- **Motivo:** F-Droid compila desde fuente y no admite un binario ya compilado por terceros (el artefacto
+  de JitPack); además el JNI hay que compilarlo con el NDK de todos modos, y así se fija el commit exacto
+  y el build es reproducible.
+- **Alternativas:** dependencia `com.termux.termux-app:terminal-emulator` de JitPack (comodidad, pero un
+  binario ajeno y un repositorio más); escribir un emulador propio (SPEC §8: meses de trabajo y riesgo).
+- **Impacto:** 3 ABIs (arm64-v8a, armeabi-v7a, x86_64) y el mismo NDK que `:app`. Actualizar Termux es
+  copiar de nuevo desde otro tag. Los 145 tests de upstream pasan en la JVM del host
+  (`:terminal-emulator:testDebugUnitTest`) con JUnit 4 (solo test).
+
+### D-T03-2 · 2026-10-04 · Licencia del emulador: punto abierto que hay que confirmar
+- **Qué se encontró:** ningún fichero de `terminal-emulator/` lleva cabecera de licencia y el directorio
+  no tiene `LICENSE`. La única declaración es el `LICENSE.md` raíz de termux-app: el repositorio es
+  GPL-3.0-only **salvo** el código derivado de Android Terminal Emulator (Jack Palevich), en las
+  librerías `terminal-view` y `terminal-emulator`, que es Apache-2.0. No lo dice fichero a fichero y la
+  librería ha crecido desde entonces (p. ej. soporte sixel y bitmap).
+- **Decisión:** se usa bajo esa declaración, sin modificar, con el texto Apache-2.0 en
+  `terminal-emulator/LICENSE`, el crédito a Termux y a Jack Palevich, y el aviso MIT de
+  `jquast/wcwidth` (del que deriva `WcWidth.java`) en `terminal-emulator/NOTICE-wcwidth.txt`. No se
+  copia nada más de termux-app.
+- **Riesgo:** si alguna parte fuera en realidad GPL-3.0-only, seguiría siendo compatible con nuestra
+  GPL-3.0-or-later, pero **no** con la parte "or-later" ni con la etiqueta Apache-2.0. Es una
+  incertidumbre de upstream, no algo que podamos resolver desde aquí.
+- **Acción propuesta (la decide el usuario):** pedir a los mantenedores de Termux que confirmen la
+  licencia de la librería (o que añadan cabeceras) antes de publicar en F-Droid; si no la confirman,
+  sustituir el emulador por uno propio. Esto no es asesoría legal.
+
+### D-T03-3 · 2026-10-04 · Vista propia en Compose; `terminal-view` no se usa
+- **Decisión:** se escribió desde cero un `TerminalPainter` (Android `Canvas` dentro de un `Canvas` de
+  Compose) que solo lee el emulador. No se copió código de `TerminalRenderer` ni de `terminal-view`;
+  esa clase se leyó para entender cómo se interpretan los estilos (color indexado y de 24 bits, negrita
+  con colores brillantes, atenuado a 2/3, inverso).
+- **Motivo:** SPEC §2 pide una vista propia en Compose y evita depender de la parte con licencia dudosa
+  (D-T03-2). Las reglas de color se aislaron en `domain/terminal/CellStyles` para probarlas en host.
+- **Impacto:** el pintado agrupa celdas ASCII del mismo estilo en una sola llamada y dibuja aparte el
+  resto (CJK, emoji, combinados), encogiéndolos a sus celdas si no miden lo esperado. Sin parpadeo
+  (`blink`), sin sixel ni imágenes, sin subrayados especiales: fuera del prototipo.
+
+### D-T03-4 · 2026-10-04 · Teclado mediante una `View` invisible, no el protocolo de texto de Compose
+- **Decisión:** el teclado en pantalla y el físico llegan a una `TerminalInputView` (1 dp, enfocable) con
+  `onCreateInputConnection`. Se pide entrada de contraseña visible sin sugerencias para que el teclado
+  envíe los caracteres según se escriben; lo que llegue como "composición" se retiene y se envía al
+  confirmarla. Retroceso se envía como `DEL`, Enter como `\r`.
+- **Motivo:** es el patrón que ya usan los terminales Android y no depende de las APIs experimentales de
+  Compose (`PlatformTextInputModifierNode`). Sin dispositivo no se puede validar ninguna de las dos, así
+  que se eligió la de menor riesgo.
+- **Impacto:** **no validado**: queda por comprobar Gboard y otros teclados (composición, autocorrector,
+  retroceso en campo vacío, teclas muertas), Ctrl/Alt pegajosos (T11) y el foco al volver a la app.
+
+### D-T03-5 · 2026-10-04 · Gestos y selección: mínimos, sin validar
+- **Decisión:** un toque pide el teclado; arrastre vertical recorre el scrollback; pulsación larga y
+  arrastre seleccionan por flujo y aparece "Copiar". Todavía no hay botón de pegar (el emulador ya
+  sabe pegar con bracketed paste; falta la acción en la interfaz).
+- **Motivo:** cubrir lo imprescindible (RF-01, RF-08) para el prototipo. Los tres detectores de gestos
+  van en el mismo nodo y **podrían competir** (arrastre vertical frente a pulsación larga): no se ha
+  podido comprobar sin dispositivo.
+- **Impacto:** pendientes para T11: asas de selección, selección por palabra, pegar, ratón (mouse
+  reporting), rueda, zoom con pellizco y desplazamiento con inercia.
+
+### D-T03-6 · 2026-10-04 · Rendimiento: no medido
+- **Estado:** no se ha medido nada (no hay dispositivo). El diseño evita reservar memoria por fotograma
+  (una sola `Run` y un `Paint` reutilizados) y agrupa texto en tramos; es una expectativa, no un dato.
+- **Pendiente:** medir con salida masiva (`cat` de un fichero grande, `yes`) y desplazamiento, con el
+  criterio de SPEC §6 (fluido sin bloquear la UI). Si no basta, se evalúa un caché de filas o pintar en
+  una `SurfaceView`/capa propia.
+
+### D-T03-7 · 2026-10-04 · Lint relajado solo en el módulo vendorizado
+- **Decisión:** en `:terminal-emulator` Lint no trata los avisos como errores (`warningsAsErrors=false`,
+  `abortOnError=false`, `checkReleaseBuilds=false`). En `:app` sigue estricto.
+- **Motivo:** es código de terceros que no se modifica a propósito; sus hallazgos de Lint no son
+  nuestros. Es una excepción a la regla de `CLAUDE.md` "no relajes Lint", acotada a ese módulo.
+- **Alternativas:** parchear los fuentes upstream (rompería "sin modificar" y la actualización fácil).
+
+### D-T03-8 · 2026-10-04 · Prototipo: shell de Android y lógica en `domain/terminal`
+- **Decisión:** el prototipo lanza `/system/bin/sh` con un entorno mínimo (`TERM=xterm-256color`,
+  `COLORTERM=truecolor`, `HOME` y `TMPDIR` privados, `PATH` del sistema y solo las variables de
+  `ANDROID_*` del proceso). El proot se conectará en T07/T08. Todo lo que no toca Android (estilos de
+  celda, tamaño de rejilla, scroll, selección, codificación de teclas, entorno) está en
+  `domain/terminal` y se prueba en host; el pegamento Android (`TerminalSessionHost`, `TerminalPainter`,
+  `TerminalInputView`, la pantalla) queda fuera de Kover, como la UI.
+- **Impacto:** secuencias como las que imprimen `ls --color` y `top` (colores, posicionamiento del
+  cursor, borrado, pantalla alterna, scrollback, ancho doble, redimensionado) se verifican contra el
+  emulador real con tests de host (`EmulatorScreenTest`). Programas reales (vim, tmux, htop, `ls`,
+  `top`) no se han ejecutado: no hay distro ni dispositivo.
+- **Logs:** el cliente de la librería descarta sus mensajes de log: pueden contener texto de la
+  terminal y SPEC §6 prohíbe registrarlo.
