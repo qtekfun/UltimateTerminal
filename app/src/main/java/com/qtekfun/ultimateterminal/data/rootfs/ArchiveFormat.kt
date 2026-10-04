@@ -7,6 +7,7 @@ import com.qtekfun.ultimateterminal.domain.distro.ExtractionError
 import java.io.BufferedInputStream
 import java.io.InputStream
 import java.util.zip.GZIPInputStream
+import org.tukaani.xz.XZInputStream
 
 /** The compression of a root filesystem archive, told apart by the first bytes of the file. */
 internal enum class ArchiveFormat(val label: String, magicHex: String) {
@@ -30,6 +31,14 @@ internal enum class ArchiveFormat(val label: String, magicHex: String) {
         private const val LOOKAHEAD = 6
 
         /**
+         * The most memory an xz stream may ask the decoder for. It is the size of its dictionary: an
+         * ordinary `xz -6` file wants 8 MiB and Fedora's a good deal less, while `xz -9` wants 64 MiB,
+         * which is also what a phone's Java heap can give without trouble. A stream that wants more
+         * is refused instead of running the app out of memory.
+         */
+        private const val XZ_MEMORY_LIMIT_KIB = 64 * 1024
+
+        /**
          * Fills [buffer] from [input], or as much as there is. `InputStream.readNBytes` does this but
          * only exists from API 33 and the app supports 26, so it is done by hand; one `read` call is
          * allowed to return fewer bytes than asked without being at the end.
@@ -48,8 +57,9 @@ internal enum class ArchiveFormat(val label: String, magicHex: String) {
             entries.firstOrNull { it.matches(head, length) } ?: PLAIN_TAR
 
         /**
-         * A stream of the plain tar inside [input]. Only gzip and plain tar are read: the others
-         * are named in the error so the user is told what was wrong with the file.
+         * A stream of the plain tar inside [input]. gzip, xz (Fedora's) and plain tar are read: the
+         * others are named in the error so the user is told what was wrong with the file. The
+         * format comes from the first bytes, never from the file's name.
          */
         fun open(input: BufferedInputStream): Result {
             input.mark(LOOKAHEAD)
@@ -58,6 +68,7 @@ internal enum class ArchiveFormat(val label: String, magicHex: String) {
             input.reset()
             return when (val format = detect(head, read)) {
                 GZIP -> Result.Opened(GZIPInputStream(input))
+                XZ -> Result.Opened(XZInputStream(input, XZ_MEMORY_LIMIT_KIB))
                 PLAIN_TAR -> Result.Opened(input)
                 else -> Result.Unsupported(ExtractionError.UnsupportedFormat(format.label))
             }

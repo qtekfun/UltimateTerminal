@@ -174,6 +174,7 @@ internal fun DistroFamily.toType(): DistroType = when (this) {
     DistroFamily.DEBIAN -> DistroType.DEBIAN
     DistroFamily.UBUNTU -> DistroType.UBUNTU
     DistroFamily.ALPINE -> DistroType.ALPINE
+    DistroFamily.FEDORA -> DistroType.FEDORA
 }
 
 internal fun DomainError.describe(): String = when (this) {

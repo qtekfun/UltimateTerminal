@@ -325,10 +325,7 @@ class TarGzExtractorTest {
 
     @Test
     fun otherCompressionFormatsAreReportedByName() {
-        assertEquals(
-            ExtractionError.UnsupportedFormat("xz"),
-            failure(unpack(byteArrayOf(0xfd.toByte(), 0x37, 0x7a, 0x58, 0x5a, 0x00, 1, 2)))
-        )
+        // xz is no longer here: Fedora's image needs it, see TarXzExtractorTest.
         assertEquals(
             ExtractionError.UnsupportedFormat("bzip2"),
             failure(unpack(byteArrayOf(0x42, 0x5a, 0x68, 0x39, 1, 2)))

@@ -16,8 +16,8 @@ enum class Architecture(val abi: String) {
     }
 }
 
-/** Distributions offered in the MVP (SPEC §2). */
-enum class DistroFamily { DEBIAN, UBUNTU, ALPINE }
+/** Distributions offered (SPEC §2; Fedora was added by T24). */
+enum class DistroFamily { DEBIAN, UBUNTU, ALPINE, FEDORA }
 
 /**
  * An official root filesystem archive: where to download it and what it must hash to.

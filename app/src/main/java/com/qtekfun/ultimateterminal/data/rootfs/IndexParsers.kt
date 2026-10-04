@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 /**
- * Parsers for the three official indexes. They are pure functions over the text of the index, so they
+ * Parsers for the official indexes. They are pure functions over the text of the index, so they
  * are tested with real samples and do not touch the network. Each returns null when the index does not
  * contain a usable entry.
  */
@@ -88,6 +88,54 @@ internal object IndexParsers {
         }
     }
 
+    /** The image and checksum file names of a Fedora release, as listed in `Container/<arch>/images/`. */
+    data class FedoraImage(val file: String, val checksumFile: String)
+
+    /** What Fedora's signed `CHECKSUM` file says about one file. */
+    data class FedoraChecksum(val sha256: String, val sizeBytes: Long?)
+
+    /**
+     * The release numbers in the directory listing of `releases/`, highest first. The newest one may
+     * be a branch that has no container image yet, which is why the caller tries a few.
+     */
+    fun fedoraVersions(listing: String): List<Int> = FEDORA_RELEASE_LINK.findAll(listing)
+        .mapNotNull { it.groupValues[1].toIntOrNull() }
+        .distinct()
+        .sortedDescending()
+        .toList()
+
+    /**
+     * The base image of [version] for [arch] and its `CHECKSUM` file, from the listing of
+     * `Container/<arch>/images/`. The plain `Base` image carries `dnf`; the `Minimal` one, whose name
+     * has one word more, does not match.
+     */
+    fun fedoraImage(listing: String, version: Int, arch: String): FedoraImage? {
+        val compose = "[0-9][0-9.]*"
+        val image = Regex(
+            """href="(Fedora-Container-Base-(?:Generic-)?$version-$compose\.$arch\.oci\.tar\.xz)""""
+        )
+            .find(listing)?.groupValues?.get(1)
+        val checksum = Regex("""href="(Fedora-Container-$version-$compose-$arch-CHECKSUM)"""")
+            .find(listing)?.groupValues?.get(1)
+        return if (image != null && checksum != null) FedoraImage(image, checksum) else null
+    }
+
+    /**
+     * The hash and size of [file] in Fedora's `CHECKSUM`, a clear-signed text with lines such as
+     * `SHA256 (<file>) = <hex>` and `# <file>: <n> bytes`. The signature is not checked (see
+     * `DECISIONS.md`, D-T06-2 and T24): the hash arrives over HTTPS from the project's own server.
+     */
+    fun fedoraChecksum(text: String, file: String): FedoraChecksum? {
+        val name = Regex.escape(file)
+        val sha256 = Regex(
+            """SHA256 \($name\) = ([0-9a-fA-F]{64})"""
+        ).find(text)?.groupValues?.get(1)
+        val size = Regex(
+            """# $name: ([0-9]+) bytes"""
+        ).find(text)?.groupValues?.get(1)?.toLongOrNull()
+        return sha256?.let { FedoraChecksum(it.lowercase(), size) }
+    }
+
     private fun compareVersions(a: String, b: String): Int {
         val left = a.split('.').map { it.toIntOrNull() ?: 0 }
         val right = b.split('.').map { it.toIntOrNull() ?: 0 }
@@ -98,6 +146,7 @@ internal object IndexParsers {
         return 0
     }
 
+    private val FEDORA_RELEASE_LINK = Regex("""href="([0-9]+)/"""")
     private val ALPINE_KEYS = listOf("file", "version", "sha256", "size")
     private const val SHA256_PREFIX = "sha256:"
     private val ALPINE_FIELD = Regex("""^  ([a-z0-9_]+): (.*)$""")

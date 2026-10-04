@@ -49,4 +49,39 @@ internal object Samples {
          "layers":[{"mediaType":"application/vnd.oci.image.layer.v1.tar+gzip",
                     "digest":"sha256:$DEBIAN_SHA","size":30189691}]}
     """.trimIndent()
+
+    const val FEDORA_SHA = "eca19542a48a8e39b84e869713a1fa2408cbcc578de26c25ae72e3334ef968c1"
+    const val FEDORA_SIZE = 66_049_080L
+
+    /** The listing of `releases/` as the mirror serves it: the newest branch may have no images yet. */
+    val FEDORA_RELEASES = """
+        <a href="?C=N;O=D">Name</a><hr><a href="/pub/fedora/linux/">Parent Directory</a>
+        <a href="42/">42/</a>   <a href="43/">43/</a>   <a href="44/">44/</a>   <a href="45/">45/</a>
+        <a href="test/">test/</a>
+    """.trimIndent()
+
+    /** `Container/aarch64/images/` of Fedora 44; the `Minimal` image has one word more in its name. */
+    val FEDORA_IMAGES = """
+        <a href="?C=N;O=D">Name</a><a href="/pub/fedora/linux/releases/44/Container/aarch64/">Parent Directory</a>
+        <a href="Fedora-Container-44-1.7-aarch64-CHECKSUM">Fedora-Container-44-1.7-aarch64-CHECKSUM</a>
+        <a href="Fedora-Container-Base-Generic-44-1.7.aarch64.oci.tar.xz">Fedora-Container-Base-Generic-44-1.7.aarch64.oci.tar.xz</a>
+        <a href="Fedora-Container-Base-Generic-Minimal-44-1.7.aarch64.oci.tar.xz">Fedora-Container-Base-Generic-Minimal-44-1.7.aarch64.oci.tar.xz</a>
+        <a href="Fedora-Container-Toolbox-44-1.7.aarch64.oci.tar.xz">Fedora-Container-Toolbox-44-1.7.aarch64.oci.tar.xz</a>
+    """.trimIndent()
+
+    /** The signed `CHECKSUM` of that directory; only the clear text is read. */
+    val FEDORA_CHECKSUM = """
+        -----BEGIN PGP SIGNED MESSAGE-----
+        Hash: SHA256
+
+        # Fedora-Container-Base-Generic-44-1.7.aarch64.oci.tar.xz: 66049080 bytes
+        SHA256 (Fedora-Container-Base-Generic-44-1.7.aarch64.oci.tar.xz) = $FEDORA_SHA
+        # Fedora-Container-Base-Generic-Minimal-44-1.7.aarch64.oci.tar.xz: 51427176 bytes
+        SHA256 (Fedora-Container-Base-Generic-Minimal-44-1.7.aarch64.oci.tar.xz) = 2c00fc0e7890a5bfecbd243561e5a2d07d2661667e1b897eab549b83f6b1db9a
+        -----BEGIN PGP SIGNATURE-----
+
+        iQIzBAEBCAAdFiEENvYS3PJ/fRpIqDXk2/z3HG2fkKYFAmnrjWcACgkQ2/z3HG2f
+        =zStF
+        -----END PGP SIGNATURE-----
+    """.trimIndent()
 }

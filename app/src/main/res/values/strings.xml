@@ -46,6 +46,7 @@
     <string name="family_debian" translatable="false">Debian</string>
     <string name="family_ubuntu" translatable="false">Ubuntu</string>
     <string name="family_alpine" translatable="false">Alpine Linux</string>
+    <string name="family_fedora" translatable="false">Fedora</string>
     <string name="install_title">Install a distro</string>
     <string name="install_name_label">Name</string>
     <string name="install_user_label">Default user</string>

@@ -27,6 +27,8 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
+import org.tukaani.xz.MemoryLimitException
+import org.tukaani.xz.XZIOException
 
 /** Ceilings far above any real root filesystem, so only a decompression bomb reaches them. */
 data class ExtractionLimits(
@@ -42,7 +44,9 @@ data class ExtractionLimits(
 }
 
 /**
- * Unpacks a `.tar.gz` (or plain `.tar`) root filesystem with Apache Commons Compress.
+ * Unpacks a root filesystem with Apache Commons Compress: a `.tar.gz`, a `.tar.xz`, a plain `.tar`,
+ * or an OCI image archive (Fedora's `.oci.tar.xz`) whose single layer is the rootfs. The format is
+ * read from the first bytes, never from the name.
  *
  * Security (see `DECISIONS.md`, T07): an entry is written only inside the destination, and never
  * through a symbolic link, because the next entries of a rootfs could otherwise be steered
@@ -110,18 +114,43 @@ class TarGzExtractor(
     ): ExtractionStats {
         val total = maxOf(totalBytes, 1L)
         CountingInputStream(input).use { counting ->
-            val tarStream = when (val opened = ArchiveFormat.open(BufferedInputStream(counting))) {
-                is ArchiveFormat.Result.Unsupported -> throw ExtractionFailure(opened.error)
-                is ArchiveFormat.Result.Opened -> opened.stream
+            val progress = {
+                onProgress((counting.count.toDouble() / total).toFloat().coerceIn(0f, 1f))
             }
-            TarArchiveInputStream(tarStream).use { tar ->
-                val pass = TarPass(scope, SafeTreeWriter(root, limits.maxPathLength), limits, tar)
-                return pass.run {
-                    onProgress((counting.count.toDouble() / total).toFloat().coerceIn(0f, 1f))
+            TarArchiveInputStream(openTar(counting)).use { outer ->
+                val first = outer.nextEntry
+                val writer = SafeTreeWriter(root, limits.maxPathLength)
+                return if (first != null && OciArchive.isOci(first.name)) {
+                    unpackOciLayer(scope, outer, first, writer, progress)
+                } else {
+                    TarPass(scope, writer, limits, outer, first).run(progress)
                 }
             }
         }
     }
+
+    /** The one layer of an OCI image, checked against the digest its blob is named after. */
+    private fun unpackOciLayer(
+        scope: CoroutineScope,
+        outer: TarArchiveInputStream,
+        first: TarArchiveEntry,
+        writer: SafeTreeWriter,
+        progress: () -> Unit
+    ): ExtractionStats {
+        val layer = OciArchive.findLayer(outer, first)
+        val stats = TarArchiveInputStream(openTar(layer.stream)).use { inner ->
+            TarPass(scope, writer, limits, inner, null).run(progress)
+        }
+        layer.verify()
+        OciArchive.requireNoOtherLayer(outer)
+        return stats
+    }
+
+    private fun openTar(source: InputStream): InputStream =
+        when (val opened = ArchiveFormat.open(BufferedInputStream(source))) {
+            is ArchiveFormat.Result.Unsupported -> throw ExtractionFailure(opened.error)
+            is ArchiveFormat.Result.Opened -> opened.stream
+        }
 }
 
 /** Lets a part of a bigger stream be read without the reader closing the whole thing. */
@@ -132,6 +161,14 @@ private class NonClosingInputStream(input: InputStream) : FilterInputStream(inpu
 internal fun IOException.toExtractionError(): ExtractionError {
     val text = message.orEmpty()
     return when {
+        // The xz decoder's own errors: a stream that asks for more memory than allowed is a bomb or
+        // not an archive for this device; anything else it rejects is damage.
+        this is MemoryLimitException -> ExtractionError.TooLarge(
+            "xz needs more memory than allowed"
+        )
+
+        this is XZIOException -> ExtractionError.Corrupt(text.ifEmpty { "bad xz data" })
+
         text.contains("No space left", ignoreCase = true) ||
             text.contains("quota exceeded", ignoreCase = true) -> ExtractionError.NoSpace
 
@@ -165,8 +202,11 @@ private class TarPass(
     private val scope: CoroutineScope,
     private val writer: SafeTreeWriter,
     private val limits: ExtractionLimits,
-    private val tar: TarArchiveInputStream
+    private val tar: TarArchiveInputStream,
+    firstEntry: TarArchiveEntry?
 ) {
+    /** The caller reads the first entry to tell a rootfs from an OCI archive, so it is handed over. */
+    private var pending: TarArchiveEntry? = firstEntry
     private var entries = 0L
     private var bytes = 0L
     private var skipped = 0L
@@ -175,7 +215,7 @@ private class TarPass(
         writer.begin()
         while (true) {
             scope.ensureActive()
-            val entry: TarArchiveEntry = tar.nextEntry ?: break
+            val entry: TarArchiveEntry = next() ?: break
             entries++
             if (entries > limits.maxEntries) {
                 throw ExtractionFailure(
@@ -190,6 +230,8 @@ private class TarPass(
         writer.finish()
         return ExtractionStats(entries, bytes, skipped)
     }
+
+    private fun next(): TarArchiveEntry? = pending?.also { pending = null } ?: tar.nextEntry
 
     private fun handle(entry: TarArchiveEntry) {
         if (entry.isGlobalPaxHeader) return

@@ -21,6 +21,7 @@ third-party code are kept untouched.
 | [OkHttp](https://square.github.io/okhttp/) 5.5.0 and [Okio](https://square.github.io/okio/), © Square, Inc. | Apache-2.0 | HTTP client used to find and download the root filesystems (T06). `MockWebServer` (same project) is used in tests only and is not shipped in the APK |
 | AndroidX Startup, © The Android Open Source Project | Apache-2.0 | Transitive dependency of OkHttp on Android |
 | [Apache Commons Compress](https://commons.apache.org/proper/commons-compress/) 1.28.0, with Commons IO 2.20.0, Commons Codec 1.19.0 and Commons Lang 3.18.0, © The Apache Software Foundation | Apache-2.0 | Reads the `.tar.gz` root filesystems when a distro is installed (T07). Only gzip and plain tar are read; the optional xz, zstd and brotli codecs are not shipped. Android's packaging drops the libraries' own `NOTICE` and `LICENSE` files, so their texts are copied unchanged into `app/src/main/res/raw/third_party_notices_apache.txt`, which ships in the APK (checked in the release build) |
+| [XZ for Java](https://tukaani.org/xz/java.html) (`org.tukaani:xz`) 1.12, © The XZ for Java authors and contributors | 0BSD | Decompresses the `.tar.xz` root filesystem of Fedora (T24). 0BSD asks for no notice to be kept; it is credited all the same |
 | [Jakarta Injection API](https://github.com/eclipse-ee4j/injection-api) 2.0.1 (`jakarta.inject-api`), © Eclipse Foundation and contributors | Apache-2.0 | Dagger/Hilt annotations (`@Inject`). Transitive dependency of Hilt. Its `NOTICE.md` and license are bundled with the app (see T23). |
 | `kotlinx-serialization-json` 1.11.0, © JetBrains s.r.o. and contributors | Apache-2.0 | Reads the OCI manifest that locates the Debian root filesystem (T06) |
 | [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) 2.304, © 2020 The JetBrains Mono Project Authors | SIL OFL-1.1 | Terminal font, bundled unmodified (Regular, Bold, Italic, Bold Italic; checked identical to the official release). License text in the APK, `assets/licenses/JetBrainsMono-OFL-1.1.txt` |
@@ -36,7 +37,7 @@ third-party code are kept untouched.
 | `WcWidth.java` (inside the library above) derives from [jquast/wcwidth](https://github.com/jquast/wcwidth), © 2014 Jeff Quast, and Markus Kuhn's wcwidth | MIT, and Kuhn's permission notice | Notice reproduced in `terminal-emulator/NOTICE-wcwidth.txt` |
 | [PRoot](https://github.com/proot-me/proot), © STMicroelectronics (Cédric Vincent and contributors), through the [Termux fork](https://github.com/termux/proot) (Android patches), pinned at tag `v5.1.107.96` as the git submodule `third_party/proot` | GPL-2.0-or-later | Built from source in this project's build and shipped as `libproot.so` and `libproot-loader.so`. Its full source is this repository's submodule and the upstream repositories; its license is `third_party/proot/COPYING` |
 | [talloc](https://talloc.samba.org/) 2.5.0, © Andrew Tridgell, Stefan Metzmacher and the Samba Team | LGPL-3.0-or-later | Vendored unmodified in `third_party/talloc` (license in `COPYING`) and statically linked into `libproot.so`. A hand-written `replace.h` replaces Samba's generated one; the library can be relinked from the vendored sources |
-| Debian, Ubuntu and Alpine Linux root filesystems (see the note below) | Per-package free licenses | Downloaded by the user's device from the official sources at install time (T06); **not redistributed** in the APK or in this repository. The app only reads each project's own public index to learn the current file name, size and SHA-256 |
+| Debian, Ubuntu, Alpine Linux and Fedora root filesystems (see the note below) | Per-package free licenses | Downloaded by the user's device from the official sources at install time (T06); **not redistributed** in the APK or in this repository. The app only reads each project's own public index to learn the current file name, size and SHA-256 |
 
 ### Note on the color schemes
 
@@ -66,12 +67,13 @@ The app finds the current archive in each project's own index and verifies its S
 
 - **Alpine Linux** `alpine-minirootfs`, from `dl-cdn.alpinelinux.org` (`latest-releases.yaml`).
 - **Ubuntu Base**, from `cdimage.ubuntu.com` (`SHA256SUMS`).
+- **Fedora** Container Base image, from `dl.fedoraproject.org` (the `Container/<arch>/images/` directory of the newest release, with the SHA-256 of its signed `CHECKSUM` file). It is an OCI image archive compressed with xz; its single layer is the root filesystem.
 - **Debian** `slim` root filesystem, built with [debuerreotype](https://github.com/debuerreotype/debuerreotype) and published as an OCI image in
   [debuerreotype/docker-debian-artifacts](https://github.com/debuerreotype/docker-debian-artifacts) (Apache-2.0 repository).
 
 Their contents are free software under each package's own license; the license texts are inside the
-archives once installed. Names such as Debian, Ubuntu and Alpine Linux belong to their owners (Debian
-is a registered trademark of Software in the Public Interest, Inc.; Ubuntu of Canonical Ltd.).
+archives once installed. Names such as Debian, Ubuntu, Alpine Linux and Fedora belong to their owners (Debian
+is a registered trademark of Software in the Public Interest, Inc.; Ubuntu of Canonical Ltd.; Fedora and the Fedora logo of Red Hat, Inc.).
 
 ### Note on the iOS-style design
 

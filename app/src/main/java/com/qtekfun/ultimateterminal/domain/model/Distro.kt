@@ -5,7 +5,7 @@ package com.qtekfun.ultimateterminal.domain.model
 
 import java.time.Instant
 
-enum class DistroType { DEBIAN, UBUNTU, ALPINE }
+enum class DistroType { DEBIAN, UBUNTU, ALPINE, FEDORA }
 
 /** Installing and failed distros are kept as rows so an interrupted install can be cleaned up. */
 enum class DistroState { INSTALLING, READY, FAILED }

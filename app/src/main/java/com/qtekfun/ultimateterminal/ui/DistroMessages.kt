@@ -33,6 +33,7 @@ internal fun DistroFamily.nameRes(): Int = when (this) {
     DistroFamily.DEBIAN -> R.string.family_debian
     DistroFamily.UBUNTU -> R.string.family_ubuntu
     DistroFamily.ALPINE -> R.string.family_alpine
+    DistroFamily.FEDORA -> R.string.family_fedora
 }
 
 @StringRes
@@ -40,6 +41,7 @@ internal fun DistroType.nameRes(): Int = when (this) {
     DistroType.DEBIAN -> R.string.family_debian
     DistroType.UBUNTU -> R.string.family_ubuntu
     DistroType.ALPINE -> R.string.family_alpine
+    DistroType.FEDORA -> R.string.family_fedora
 }
 
 internal fun formatSize(context: Context, bytes: Long): String =
