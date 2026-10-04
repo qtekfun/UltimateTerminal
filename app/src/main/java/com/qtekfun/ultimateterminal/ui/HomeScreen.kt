@@ -27,7 +27,10 @@ fun HomeScreen() {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(stringResource(R.string.home_title), style = MaterialTheme.typography.headlineMedium)
+            Text(
+                stringResource(R.string.home_title),
+                style = MaterialTheme.typography.headlineMedium
+            )
             Text(stringResource(R.string.home_subtitle), style = MaterialTheme.typography.bodyLarge)
         }
     }
