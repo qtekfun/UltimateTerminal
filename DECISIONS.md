@@ -26,6 +26,15 @@ funcionando:
   coincida con lo visible tras redimensionar (ver D-T03-4 a D-T03-6 y T04).
 - T03, release con R8: que los métodos nativos de `JNI` sobrevivan a la minificación (las reglas por
   defecto de Android conservan los nombres de los `native`, pero no se ha comprobado en un APK real).
+- T08, servicio en primer plano: que Android lo arranque con el tipo `specialUse` en 12–16, que la
+  notificación aparezca y sus acciones (nueva sesión, salir) funcionen, que el shell sobreviva a
+  cerrar la actividad y a apagar la pantalla, y que la UI se reconecte a la sesión viva. También el
+  wake lock real y el efecto del *phantom process killer* (ver D-T08-5).
+- T09, pestañas: los gestos de la barra (tocar, doble toque, pulsación larga + arrastre para
+  reordenar, scroll de la propia barra) pueden competir entre sí; los menús desplegables, los
+  diálogos, la barra lateral en pantallas anchas (y con idioma de derecha a izquierda), los 48 dp
+  táctiles, TalkBack, y que al cambiar de pestaña el pty de la que pasa a primer plano reciba el
+  tamaño correcto (ver D-T09-8).
 
 Lo que sí está verificado sin dispositivo: compila para las tres ABIs, los ejecutables se empaquetan
 en el APK con el tipo ELF y los puntos de entrada esperados, `./gradlew check` y el CI en verde.
@@ -449,6 +458,117 @@ Falta por hacer:
 - **Persistencia y ajuste de la fila y de los atajos:** otra tarea (ajustes, T16).
 - **Efecto de los atajos de pestañas:** T09.
 
+## T08 — Servicio en primer plano y sesiones
+
+### D-T08-1 · 2026-10-04 · El ciclo de vida de las sesiones es lógica pura en `domain/session`
+
+- **Decisión:** `Sessions` (instantánea inmutable) y `SessionController` (con `SessionFactory`,
+  `SessionHandle` y `ServiceControl` como interfaces) deciden qué sesiones existen, cuál es la activa
+  y cuándo debe correr el servicio. No usan tipos de Android.
+- **Motivo:** CLAUDE.md pide la lógica de negocio en `domain`, y así las reglas de la SPEC RF-07
+  («el servicio vive mientras corra un shell y solo entonces») se prueban en el host.
+- **Reglas:** el servicio corre si hay al menos un shell *en ejecución*; una sesión terminada sigue
+  listada, para poder leer su salida o reiniciarla, pero no mantiene el servicio. Al cerrar la
+  activa se prefiere una en ejecución. Los ids no se reutilizan. Un shell que no puede arrancar queda
+  como sesión terminada con estado `-1`; uno que termina antes de que `start` devuelva se registra
+  igualmente (la sesión se publica antes de arrancar el shell).
+- **Impacto:** `SessionManager` (Android, `@Singleton`) es solo un adaptador fino. La capa Android no
+  tiene tests de host porque necesita un PTY.
+
+### D-T08-2 · 2026-10-04 · Tipo de servicio `specialUse`, no `dataSync`
+
+- **Decisión:** `foregroundServiceType="specialUse"` con el subtipo `terminal_sessions`, más los
+  permisos `FOREGROUND_SERVICE` y `FOREGROUND_SERVICE_SPECIAL_USE`.
+- **Motivo:** ningún tipo estándar describe un terminal. `dataSync` es el que se usa por costumbre,
+  pero está pensado para transferencias finitas y Android 15 le pone un tope de 6 horas por día
+  cuando el `targetSdk` es ≥ 35; cortaría un SSH largo. `specialUse` no tiene tope. La revisión que
+  Google Play exige para `specialUse` no aplica: no se publica allí (SPEC §2).
+- **Alternativas:** no declarar tipo (lo que hace Termux con `targetSdk` 28), válido hoy porque el
+  tipo solo es obligatorio con `targetSdk` ≥ 34; se declara de todos modos para no tener que
+  tocarlo el día que se suba el `targetSdk`.
+- **Impacto:** `ServiceCompat.startForeground` pasa el tipo solo desde API 34. **Sin validar en
+  dispositivo.** Si algún Android rechazara `specialUse` con `targetSdk` 28, la alternativa es quitar
+  el tipo y dejar solo los permisos.
+
+### D-T08-3 · 2026-10-04 · El servicio no posee las sesiones; las posee `SessionManager`
+
+- **Decisión:** las sesiones viven en un singleton de Hilt con la vida del proceso. El servicio solo
+  mantiene vivo el proceso, muestra la notificación, sostiene el wake lock y se detiene solo.
+  `TerminalViewModel` ya no arranca ni para el shell: se reconecta al activo. Cerrar la actividad
+  con «atrás» no mata el shell mientras el servicio corra.
+- **Motivo:** la UI se reconecta a sesiones vivas tras recrear o cerrar la actividad (SPEC RF-07),
+  y un servicio *bound* o un `Binder` habría añadido un ciclo de vida más sin ganar nada: servicio y
+  actividad comparten proceso.
+- **Detalles:** el contador de fotogramas del ViewModel cuenta cada emisión del host activo, porque
+  los contadores de dos hosts pueden coincidir y la pantalla no se redibujaría al cambiar de
+  sesión. «Salir» en la notificación cierra todas las sesiones y la actividad; después del primer
+  layout el ViewModel no vuelve a crear una sesión por su cuenta, para no resucitar el shell
+  mientras la pantalla se cierra.
+- **Pendiente:** el cambio entre sesiones desde la UI (pestañas) es T09; aquí solo hay una activa a
+  la vez, creada al abrir o desde la notificación.
+
+### D-T08-4 · 2026-10-04 · Permisos pedidos en contexto y optimización de batería solo como aviso
+
+- **Decisión:** cuando hay un shell en ejecución se muestra, una vez por arranque y como diálogo con
+  explicación, primero el permiso de notificaciones (API 33+) y después el aviso de batería. El
+  orden y las condiciones están en `nextPrompt`, probado. Lo rechazado no se vuelve a pedir en ese
+  arranque (persistirlo, con los ajustes, es T16).
+- **Batería:** se abre `ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS`, la pantalla de ajustes del
+  sistema. **No** se declara `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, que mostraría un diálogo de
+  exclusión directa: la app no se excluye sola y un test lo vigila. Es el «sin exclusión forzada»
+  que pidió el plan.
+- **Notificaciones con `targetSdk` 28:** Android 13+ solo exige el permiso en tiempo de ejecución a
+  apps con `targetSdk` ≥ 33, y a las demás les muestra su propio aviso al crear el canal. La app lo
+  pide explícitamente, con su explicación, antes de que ocurra. **Sin validar en dispositivo** cuál
+  de los dos aparece primero.
+- **Wake lock:** `PARTIAL_WAKE_LOCK` sin tiempo máximo, mientras haya un shell y el ajuste
+  `keepAwake` (modelo de T05) esté activo; se suelta al terminar el último shell y en `onDestroy`.
+  `WakelockTimeout` de Lint está suprimido en ese punto, con motivo: un tope anularía la función.
+  Cambiar el ajuste desde la UI llega con T16.
+
+### D-T08-5 · 2026-10-04 · Phantom process killer (Android 12+): documentado, sin mitigación en código
+
+- **Qué es:** desde Android 12 el sistema limita a 32 los procesos hijo («fantasma») por app y mata
+  el más antiguo al pasarse, **aunque haya un servicio en primer plano**. Cada programa que lance un
+  shell (y con proot, cada programa de la distro) cuenta. Un `tmux` con muchos paneles o varias
+  sesiones con SSH, `ssh` y `top` pueden llegar al límite y morir sin aviso.
+- **Qué hace falta del usuario hoy:** en Android 14 QPR1 y posteriores, Opciones de desarrollador →
+  «Desactivar restricciones de procesos secundarios». En 12–13 solo se desactiva con `adb`
+  (`settings put global settings_enable_monitor_phantom_procs false`, o
+  `device_config put activity_manager max_phantom_processes 2147483647`).
+- **Decisión:** la app no puede cambiar ese ajuste (necesita un permiso de sistema), así que no se
+  intenta nada en código. Se documentará en el README y la política de privacidad (T21) y es
+  un punto a explicar en la primera ejecución cuando exista la pantalla de ayuda.
+- **Impacto:** el servicio mantiene vivo el proceso, pero no garantiza que sobrevivan todos sus hijos.
+  **Sin medir:** no se sabe cuántos procesos fantasma cuenta cada shell con proot (T07).
+
+### D-T08-7 · 2026-10-04 · La selección sale del `ViewModel` a `SelectionController`
+
+- **Decisión:** `SelectionController` (en `terminal/`, como `FontSizeController`) guarda la selección y
+  copia el texto del host activo. `TerminalViewModel` la expone como `selection` y la pantalla llama a
+  `viewModel.selection.start/extend/clear/copy`.
+- **Motivo:** detekt (`TooManyFunctions`, 11/11) falló en `TerminalViewModel` al sumar el ciclo de vida
+  de sesiones. No se relajó la regla (CLAUDE.md): se movió la lógica a un colaborador, el patrón que ya
+  usaban el zoom y los atajos.
+- **Impacto:** cambio de API interna sin efecto visible. Sin validar en dispositivo, como el resto.
+
+### D-T08-8 · 2026-10-04 · `POST_NOTIFICATIONS` con guarda de `SDK_INT`, y un test corregido
+
+- **Decisión:** el permiso se pide solo si `SDK_INT >= 33`, con una comprobación explícita en lugar de
+  silenciar `InlinedApi`. El diálogo ya solo se mostraba en API 33+, pero Lint no lo sabía.
+- **Test corregido:** `activatingASessionResizesItToTheCurrentLayout` suponía que la sesión no activa
+  recibía el cambio de tamaño, pero tras `newSession()` la activa es la última, así que el
+  comportamiento del controlador era el correcto y el test, erróneo. Ahora comprueba que la sesión
+  inactiva solo se redimensiona al activarla y que la activa lo hace en `onLayout`.
+
+### D-T08-6 · 2026-10-04 · Qué NO está validado en T08
+
+Todo lo que necesita un dispositivo, por la prohibición del usuario: arranque del servicio y su tipo
+en cada versión de Android, la notificación y sus acciones, la reconexión de la UI al cambiar de
+actividad, el wake lock real, el comportamiento tras «Salir» y los diálogos de permisos. En el host
+están probados el ciclo de vida de las sesiones (`SessionsTest`, `SessionControllerTest`), el orden de
+los avisos (`SessionPromptsTest`) y el manifiesto del servicio (`ManifestServiceTest`).
+
 ## T19 — Versionado y releases
 
 ### D-T19-1 · 2026-10-04 · Release solo con clave: el workflow se niega a publicar sin firma
@@ -714,3 +834,88 @@ tars sintéticos hostiles):
 - **Rendimiento de la extracción** con el almacenamiento real, y que cancelar responda a tiempo en un fichero
   muy grande.
 
+## T09 — Pestañas
+
+### D-T09-1 · 2026-10-04 · Una pestaña es una sesión; el modelo vive en `Sessions`
+**Decisión:** no hay un modelo de pestañas aparte. `SessionInfo` gana `title` (lo que escribe el
+usuario, null = nombre por defecto) y `distroId`, y `Sessions` gana reducers puros: `renamed`,
+`moved`, `switched(TabSwitch)` y `closeAction`. El orden de las pestañas es el orden de `items`.
+**Motivo:** una pestaña no tiene vida propia sin su sesión; un segundo modelo habría que mantenerlo
+sincronizado (¿qué pasa si el shell termina?). Así toda la lógica es inmutable y se prueba en host.
+**Alternativas:** `Tab` separado con referencia a `SessionId` (más piezas, mismo comportamiento).
+**Impacto:** `SessionInfo` cambia con valores por defecto, por lo que el código y los tests de T08
+siguen compilando.
+
+### D-T09-2 · 2026-10-04 · Los cambios puros pasan por `SessionEditor.edit`
+**Decisión:** `SessionController` implementa `SessionEditor` (`state`, `newSession(distroId)`,
+`close`, `edit { ... }`). Renombrar, reordenar y cambiar de pestaña son un `edit` que no toca los
+shells; solo si cambia la pestaña activa se redimensiona el pty que pasa a primer plano al tamaño
+actual (lo mismo que ya hacía `activate`, que ahora es un `edit`).
+**Motivo:** añadir una función por operación al controlador superaba el límite de `TooManyFunctions`
+de detekt (11), que no se relaja, y mezclaba el ciclo de vida de los procesos con ediciones que no
+lo cambian. La interfaz permite probar `TabsController` con el controlador real y fakes.
+**Alternativas:** una función por operación (rompe detekt); `TabsController` dependiendo de
+`SessionManager` (Android, sin pruebas de host).
+
+### D-T09-3 · 2026-10-04 · Cerrar: confirmación solo si el shell sigue vivo
+**Decisión:** cerrar una pestaña cuyo shell ya terminó la cierra sin preguntar; si sigue en marcha,
+`TabsController` guarda la pestaña en `closeConfirmation` y la UI muestra un diálogo; solo al
+confirmar se detiene el shell. Una pregunta sobre una pestaña que desaparece mientras tanto (el
+shell se cerró por otro lado) se descarta sola. Cerrar la última pestaña cierra la app, igual que
+«Salir» de la notificación (comportamiento de T08: sin sesiones, la pantalla se cierra).
+**Motivo:** SPEC RF-02 («al cerrar una sesión con procesos en curso se pide confirmación»); no
+perder trabajo por un toque accidental.
+**Alternativa:** abrir una pestaña nueva al cerrar la última. Más cómodo, pero contradice «Salir» y
+deja el servicio en primer plano sin que el usuario lo pida.
+
+### D-T09-4 · 2026-10-04 · La distro de cada pestaña se registra, pero aún no se usa para arrancar
+**Decisión:** una pestaña nueva se abre en la distro predeterminada si está `READY` (`defaultDistroId`)
+y, si no hay ninguna, en el shell de Android. Una pulsación larga en «+» ofrece elegir entre el shell
+y las distros `READY` (`distroOptions`). El `distroId` queda guardado en la sesión, y «reiniciar» una
+sesión terminada la abre en la misma distro. `AndroidSessionFactory` sigue arrancando el shell de
+Android sea cual sea la distro: enlazar `ProotCommandBuilder` llega con T07, que es quien instala
+distros. «Nueva sesión» de la notificación abre siempre el shell de Android.
+**Motivo:** SPEC RF-02/RF-04; dejar el selector y el modelo listos sin inventar un arranque que aún
+no se puede probar (no hay distros instaladas).
+**Impacto:** cuando T07 enlace el arranque, bastará con que la fábrica lea el `distroId`.
+
+### D-T09-5 · 2026-10-04 · Barra superior o lateral según el ancho, sin dependencia nueva
+**Decisión:** `tabBarPlacement(anchoDp)`: lateral (columna de 192 dp) desde 600 dp, superior (48 dp)
+por debajo. Es el umbral de la clase «medium» de las guías de Material, calculado a mano. El espacio
+de la barra se descuenta del layout del pty con `reserveForTabBar`, igual que la fila de teclas
+extra en T04, de modo que `stty size` debería seguir coincidiendo con lo visible.
+**Motivo:** `WindowSizeClass` es otra dependencia (Apache-2.0) para una sola comparación.
+**Alternativas:** `material3-window-size-class`.
+**Pendiente:** la barra lateral va siempre en el borde izquierdo físico, también con idioma de derecha
+a izquierda (la terminal es de izquierda a derecha); sin validar en dispositivo.
+
+### D-T09-6 · 2026-10-04 · Atajos de pestañas con efecto real
+**Decisión:** `ShortcutHandler` recibe un `TabCommands` y resuelve todos los atajos (ya no existe el
+flujo de «atajos sin manejar»). `Alt+n` selecciona la pestaña n contando desde 1 y no hace nada si no
+existe (no salta a la última como en los navegadores); `Ctrl+Tab` y `Ctrl+Shift+Tab` avanzan y
+retroceden dando la vuelta.
+**Aviso:** `Alt+dígito` choca con los argumentos numéricos de readline (ver T11); se mantiene porque lo
+pide la SPEC y se puede reasignar.
+
+### D-T09-7 · 2026-10-04 · `TerminalViewModel` pasa a ser `@HiltViewModel`
+**Decisión:** recibe `SessionManager` y `DistroRepository` por inyección, en lugar de leer el gestor
+de la clase `Application`. `viewModel()` de Compose usa la fábrica de Hilt de la actividad
+(`@AndroidEntryPoint`), así que no hace falta `hilt-navigation-compose`. Al cambiar la sesión activa
+se vuelve al final del historial y se borra la selección.
+**Limitación:** la posición del scroll es del ViewModel, no de cada pestaña: al volver a una pestaña
+se empieza en la pantalla viva, no donde se dejó.
+**Alternativa:** guardar la posición por sesión (más estado; no se ha pedido).
+
+### D-T09-8 · 2026-10-04 · Qué NO está validado (sin dispositivo)
+Todo se probó con tests de host (380 en total, 47 nuevos de pestañas): reducers, reordenación por
+arrastre (`dropIndex`), estado de la barra, controlador con el `SessionController` real y los
+atajos. No se ha visto la barra en ninguna pantalla. Pendiente en una tablet y un móvil reales:
+1. Que los gestos de cada pestaña (toque, doble toque, pulsación larga + arrastre) no se pisen entre
+   sí ni con el scroll de la barra, y que el doble toque para renombrar se reconozca sin retrasar el
+   toque simple.
+2. Los menús desplegables y los diálogos (renombrar, confirmar cierre) y que el teclado no los tape.
+3. La barra lateral: ancho, desplazamiento con muchas pestañas y la pantalla dividida (umbral de 600 dp).
+4. Que al cambiar de pestaña el pty recibe el tamaño correcto (`stty size` y `SIGWINCH`).
+5. Accesibilidad: descripciones de TalkBack («Shell 2, pestaña 2 de 3, en ejecución»), tamaños
+   táctiles de 48 dp y el rol de pestaña.
+6. El efecto de tener muchas pestañas con el *phantom process killer* de Android 12+ (SPEC §8).

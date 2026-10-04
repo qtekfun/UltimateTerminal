@@ -10,6 +10,16 @@ import com.qtekfun.ultimateterminal.domain.terminal.KeyEncoder
 import com.qtekfun.ultimateterminal.domain.terminal.KeyInput
 import com.qtekfun.ultimateterminal.domain.terminal.KeyOutput
 import com.qtekfun.ultimateterminal.domain.terminal.RoutedInput
+import com.termux.terminal.TerminalEmulator
+
+/** What the keyboard needs from a shell: write to it and read the modes its program set. */
+interface TerminalOutput {
+    val emulator: TerminalEmulator?
+
+    fun write(text: String)
+
+    fun writeCodePoint(escapePrefix: Boolean, codePoint: Int)
+}
 
 /** Where the keyboard (soft or hardware) sends what the user types. */
 interface TerminalInputSink {
@@ -27,7 +37,7 @@ interface TerminalInputSink {
  * prompt when the user types while scrolled up. [onShortcut] receives the application shortcuts.
  */
 class TerminalKeyboard(
-    private val host: TerminalSessionHost,
+    private val host: TerminalOutput,
     private val router: InputRouter,
     private val onInput: () -> Unit,
     private val onShortcut: (AppShortcut) -> Unit
