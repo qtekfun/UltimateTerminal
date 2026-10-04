@@ -443,6 +443,21 @@ class BackupRestoreTest {
     }
 
     @Test
+    fun aPartThatGrowsBetweenThePassesIsCaughtByItsSizeWhateverTheCompressor() = runBlocking {
+        // The extractor stops at the end of the archive and ignores what follows it, so this part
+        // unpacks fine: only the byte count tells it is not the one the first pass checked. The test
+        // does not depend on how well the JDK's zlib compresses, unlike a swapped file of similar size.
+        val rootfs = BackupBuilder.rootfs("etc/a" to "one")
+        val good = BackupBuilder("ALL").config().distro(0, rootfs).build()
+        val grown = BackupBuilder("ALL").config().distro(0, rootfs + ByteArray(37)).build()
+
+        val result = new.restorer().restore(BytesSource(good, grown))
+
+        assertEquals(BackupError.HashMismatch("distros/0.tar.gz"), result.errorOrNull())
+        assertUntouched()
+    }
+
+    @Test
     fun aReplacementOfTheSameSizeButOtherContentIsCaughtByTheHash() = runBlocking {
         val good = BackupBuilder(
             "ALL"
