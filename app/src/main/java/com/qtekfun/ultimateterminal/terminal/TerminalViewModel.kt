@@ -5,20 +5,27 @@ package com.qtekfun.ultimateterminal.terminal
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.qtekfun.ultimateterminal.domain.terminal.CellPosition
-import com.qtekfun.ultimateterminal.domain.terminal.GridSize
 import com.qtekfun.ultimateterminal.domain.terminal.ScrollAccumulator
+import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalSelection
 import com.qtekfun.ultimateterminal.domain.terminal.clampTopRow
+import com.qtekfun.ultimateterminal.domain.terminal.settled
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 /** State of the terminal screen; survives configuration changes, so the shell keeps running. */
 class TerminalViewModel(application: Application) : AndroidViewModel(application) {
-    private class Layout(val grid: GridSize, val cellWidthPx: Int, val cellHeightPx: Int)
-
-    private var layout: Layout? = null
+    private var layout: TerminalLayout? = null
+    private val requestedLayouts = MutableSharedFlow<TerminalLayout>(
+        replay = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
     private val host = TerminalSessionHost(application)
     private val scroll = ScrollAccumulator()
     private val topRowState = MutableStateFlow(0)
@@ -36,10 +43,24 @@ class TerminalViewModel(application: Application) : AndroidViewModel(application
 
     private val transcriptRows: Int get() = emulator?.screen?.activeTranscriptRows ?: 0
 
-    /** The terminal area changed size: start the shell on first call, resize it afterwards. */
-    fun onGridChanged(grid: GridSize, cellWidthPx: Int, cellHeightPx: Int) {
-        layout = Layout(grid, cellWidthPx, cellHeightPx)
-        host.resize(grid, cellWidthPx, cellHeightPx)
+    init {
+        viewModelScope.launch {
+            requestedLayouts.settled(RESIZE_DEBOUNCE_MILLIS).collect(::applyLayout)
+        }
+    }
+
+    /**
+     * The terminal area changed size. The shell starts on the first call; later changes reach the
+     * pty only once they settle, so a keyboard animation or a window drag does not flood it with
+     * resizes.
+     */
+    fun onLayoutChanged(newLayout: TerminalLayout) {
+        requestedLayouts.tryEmit(newLayout)
+    }
+
+    private fun applyLayout(newLayout: TerminalLayout) {
+        layout = newLayout
+        host.resize(newLayout.grid, newLayout.cellWidthPx, newLayout.cellHeightPx)
         topRowState.value = clampTopRow(topRowState.value, transcriptRows)
     }
 
@@ -88,5 +109,10 @@ class TerminalViewModel(application: Application) : AndroidViewModel(application
 
     override fun onCleared() {
         host.stop()
+    }
+
+    private companion object {
+        /** Long enough to skip the frames of a keyboard animation, short enough to feel instant. */
+        const val RESIZE_DEBOUNCE_MILLIS = 120L
     }
 }
