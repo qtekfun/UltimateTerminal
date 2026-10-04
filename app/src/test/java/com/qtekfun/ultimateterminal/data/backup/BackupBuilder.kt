@@ -82,5 +82,12 @@ internal class BackupBuilder(private val kind: String = "ALL") {
             files.forEach { (name, content) -> tar.file(name, content) }
             return tar.gzip()
         }
+
+        /** A [rootfs] whose size depends only on the length of its files, not on what they say. */
+        fun rootfsStored(vararg files: Pair<String, String>): ByteArray {
+            val tar = TarBuilder().dir("etc")
+            files.forEach { (name, content) -> tar.file(name, content) }
+            return tar.gzipStored()
+        }
     }
 }

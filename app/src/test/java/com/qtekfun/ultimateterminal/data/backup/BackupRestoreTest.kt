@@ -443,6 +443,22 @@ class BackupRestoreTest {
     }
 
     @Test
+    fun aPartOfTheSameSizeButOtherContentIsCaughtByTheHashWhateverTheCompressor() = runBlocking {
+        // Same length, valid archive, other bytes: neither the extractor nor the byte count can
+        // tell, only the hash can. With stored gzip the two parts are the same size by construction.
+        val one = BackupBuilder.rootfsStored("etc/a" to "one")
+        val two = BackupBuilder.rootfsStored("etc/a" to "two")
+        assertEquals(one.size, two.size)
+        val good = BackupBuilder("ALL").config().distro(0, one).build()
+        val other = BackupBuilder("ALL").config().distro(0, two).build()
+
+        val result = new.restorer().restore(BytesSource(good, other))
+
+        assertEquals(BackupError.HashMismatch("distros/0.tar.gz"), result.errorOrNull())
+        assertUntouched()
+    }
+
+    @Test
     fun aPartThatGrowsBetweenThePassesIsCaughtByItsSizeWhateverTheCompressor() = runBlocking {
         // The extractor stops at the end of the archive and ignores what follows it, so this part
         // unpacks fine: only the byte count tells it is not the one the first pass checked. The test

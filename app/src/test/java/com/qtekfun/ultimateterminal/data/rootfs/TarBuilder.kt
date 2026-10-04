@@ -5,6 +5,7 @@ package com.qtekfun.ultimateterminal.data.rootfs
 
 import java.io.ByteArrayOutputStream
 import java.util.Date
+import java.util.zip.Deflater
 import java.util.zip.GZIPOutputStream
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
@@ -21,7 +22,13 @@ class TarBuilder {
     }
 
     fun dir(name: String, mode: Int = 0b111_101_101): TarBuilder = apply {
-        add(TarArchiveEntry(name.trimEnd('/') + "/", true).also { it.mode = mode })
+        add(
+            TarArchiveEntry(name.trimEnd('/') + "/", true).also {
+                it.mode = mode
+                it.modTime =
+                    FIXED_TIME
+            }
+        )
         tar.closeArchiveEntry()
     }
 
@@ -30,7 +37,7 @@ class TarBuilder {
         val entry = TarArchiveEntry(name, true).also {
             it.size = data.size.toLong()
             it.mode = mode
-            it.modTime = Date(MODIFIED_MILLIS)
+            it.modTime = FIXED_TIME
         }
         add(entry)
         tar.write(data)
@@ -38,17 +45,29 @@ class TarBuilder {
     }
 
     fun symlink(name: String, target: String): TarBuilder = apply {
-        add(TarArchiveEntry(name, TarConstants.LF_SYMLINK, true).also { it.linkName = target })
+        add(
+            TarArchiveEntry(name, TarConstants.LF_SYMLINK, true).also {
+                it.linkName = target
+                it.modTime =
+                    FIXED_TIME
+            }
+        )
         tar.closeArchiveEntry()
     }
 
     fun hardLink(name: String, target: String): TarBuilder = apply {
-        add(TarArchiveEntry(name, TarConstants.LF_LINK, true).also { it.linkName = target })
+        add(
+            TarArchiveEntry(name, TarConstants.LF_LINK, true).also {
+                it.linkName = target
+                it.modTime =
+                    FIXED_TIME
+            }
+        )
         tar.closeArchiveEntry()
     }
 
     fun device(name: String): TarBuilder = apply {
-        add(TarArchiveEntry(name, TarConstants.LF_CHR, true))
+        add(TarArchiveEntry(name, TarConstants.LF_CHR, true).also { it.modTime = FIXED_TIME })
         tar.closeArchiveEntry()
     }
 
@@ -96,8 +115,18 @@ class TarBuilder {
 
     fun gzip(): ByteArray = gzipped(tar())
 
+    /** Like [gzip], without compression; see [gzippedStored]. */
+    fun gzipStored(): ByteArray = gzippedStored(tar())
+
     companion object {
         const val MODIFIED_MILLIS = 1_700_000_000_000L
+
+        /**
+         * Every entry carries this time, never the clock: an archive built a second later must be
+         * the same bytes, or its compressed size, and so which branch a restore test reaches,
+         * changes from run to run (it left a critical branch uncovered in two runs of six).
+         */
+        private val FIXED_TIME = Date(MODIFIED_MILLIS)
         private val PAX_COMMENT = "16 comment=test\n".toByteArray()
         private const val TAR_BLOCK = 512
         private const val MODE_OFFSET = 100
@@ -113,6 +142,22 @@ class TarBuilder {
         fun gzipped(data: ByteArray): ByteArray {
             val out = ByteArrayOutputStream()
             GZIPOutputStream(out).use { it.write(data) }
+            return out.toByteArray()
+        }
+
+        /**
+         * A gzip that does not compress: its length depends only on the length of [data], so two
+         * archives with different content of the same length are the same size, which no
+         * compressing level can promise.
+         */
+        fun gzippedStored(data: ByteArray): ByteArray {
+            val out = ByteArrayOutputStream()
+            val stream = object : GZIPOutputStream(out) {
+                init {
+                    def.setLevel(Deflater.NO_COMPRESSION)
+                }
+            }
+            stream.use { it.write(data) }
             return out.toByteArray()
         }
     }
