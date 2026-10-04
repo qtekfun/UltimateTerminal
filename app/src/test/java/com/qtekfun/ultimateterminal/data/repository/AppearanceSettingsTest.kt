@@ -6,13 +6,13 @@ package com.qtekfun.ultimateterminal.data.repository
 import com.qtekfun.ultimateterminal.data.local.UltimateTerminalDatabase
 import com.qtekfun.ultimateterminal.data.local.entity.SettingEntity
 import com.qtekfun.ultimateterminal.data.local.inMemoryDatabase
+import com.qtekfun.ultimateterminal.data.local.runDatabaseTest
 import com.qtekfun.ultimateterminal.domain.appearance.ChromeStyle
 import com.qtekfun.ultimateterminal.domain.appearance.CursorShape
 import com.qtekfun.ultimateterminal.domain.appearance.CustomFont
 import com.qtekfun.ultimateterminal.domain.appearance.FontCatalog
 import com.qtekfun.ultimateterminal.domain.appearance.TerminalAppearance
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
@@ -35,7 +35,7 @@ class AppearanceSettingsTest {
         db.settingDao().upsert(listOf(SettingEntity(key, value)))
 
     @Test
-    fun aFreshInstallUsesTheDefaultAppearanceAndNoFonts() = runTest {
+    fun aFreshInstallUsesTheDefaultAppearanceAndNoFonts() = runDatabaseTest {
         val stored = settings.observe().first()
 
         assertEquals(TerminalAppearance(), stored.appearance)
@@ -43,7 +43,7 @@ class AppearanceSettingsTest {
     }
 
     @Test
-    fun theWholeAppearanceAndTheFontsAreStored() = runTest {
+    fun theWholeAppearanceAndTheFontsAreStored() = runDatabaseTest {
         val font = CustomFont("font-fira-1", "Fira Code", "font-fira-1.ttf")
         val mine = TerminalAppearance(
             fontId = font.id,
@@ -64,7 +64,7 @@ class AppearanceSettingsTest {
     }
 
     @Test
-    fun numbersOutOfRangeAreClampedWhenSavedAndWhenRead() = runTest {
+    fun numbersOutOfRangeAreClampedWhenSavedAndWhenRead() = runDatabaseTest {
         settings.update {
             it.copy(appearance = TerminalAppearance(marginDp = 500, lineSpacing = 9f))
         }
@@ -81,7 +81,7 @@ class AppearanceSettingsTest {
     }
 
     @Test
-    fun unreadableValuesKeepTheirDefaults() = runTest {
+    fun unreadableValuesKeepTheirDefaults() = runDatabaseTest {
         store("appearance_line_spacing", "wide")
         store("appearance_margin_dp", "many")
         store("appearance_cursor_shape", "STAR")
