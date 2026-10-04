@@ -335,12 +335,15 @@ dependencies {
 
     implementation(libs.room.runtime)
     ksp(libs.room.compiler)
+    implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(libs.okhttp.mockwebserver.junit5)
     testImplementation(libs.turbine)
     testImplementation(libs.mockk)
     // Host JVM build of the bundled SQLite, so Room runs in local unit tests.

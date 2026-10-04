@@ -474,3 +474,122 @@ Falta por hacer:
 - **Pendiente:** huella real del certificado, tag real y revisión de antifeatures. Los campos
   `ndk:` y `submodules:` siguen la sintaxis de fdroiddata pero no se han validado con `fdroid lint`.
 - **Fuera de alcance aquí:** metadatos fastlane y capturas (T20).
+
+## T06 — Descarga y verificación de rootfs
+
+### D-T06-1 · 2026-10-04 · De dónde sale la URL y el hash: el índice oficial de cada distro
+- **Decisión:** el catálogo (`OfficialRootfsCatalog`) no lleva URLs ni hashes escritos en el código.
+  Lee en el momento el índice que publica cada proyecto, y de ahí sale el fichero actual:
+  - **Alpine:** `https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/<arch>/latest-releases.yaml`.
+    La entrada `alpine-minirootfs` trae `file`, `version`, `size` y `sha256`. Arquitecturas: `aarch64`,
+    `armv7`, `x86_64`.
+  - **Ubuntu:** `https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/SHA256SUMS`, con líneas
+    `<sha256> *ubuntu-base-<versión>-base-<arch>.tar.gz`. Hay varias versiones puntuales en la misma
+    carpeta, así que se elige la más alta comparando números (24.04.10 > 24.04.9). El índice no da
+    tamaños: el tamaño de Ubuntu es `null` y solo se verifica el hash. Arquitecturas: `arm64`, `armhf`,
+    `amd64`.
+  - **Debian:** el rootfs oficial `slim` que construye [debuerreotype] y publica como imagen OCI el
+    repositorio `debuerreotype/docker-debian-artifacts` (ramas `dist-arm64v8`, `dist-arm32v7`,
+    `dist-amd64`). El `image-manifest.json` da el `digest` (SHA-256) y el tamaño de la única capa, y el
+    fichero es `<suite>/slim/oci/blobs/rootfs.tar.gz` (un `tar.gz`, unos 30 MB), servido por
+    `raw.githubusercontent.com`.
+- **Motivo:** las URLs de los mirrors caducan (cada versión puntual sustituye a la anterior y las
+  antiguas se retiran). Descubrirlas en el índice evita publicar una versión de la app solo para
+  actualizar una URL, y el hash viaja siempre junto al fichero que describe.
+- **Alternativas descartadas:**
+  - *URLs y hashes fijos en el código:* se rompen con la siguiente versión puntual.
+  - *Debian con `debootstrap` en el dispositivo:* necesita red, es lento y complejo bajo proot, y deja el
+    resultado sin un hash único que verificar.
+  - *Imágenes cloud de Debian:* son discos `qcow2`/`raw`, no un rootfs.
+  - *`rootfs.tar.xz` del mismo repositorio:* solo existe su `.sha256`; el fichero no está en la rama.
+    El que se publica y se puede descargar es el `tar.gz` de la capa OCI.
+- **Impacto:** se usan las constantes de `RootfsEndpoints` (Alpine `latest-stable`, Ubuntu `24.04` LTS,
+  Debian `trixie`); cambiar de versión mayor es una actualización de la app, a propósito (ver D-T06-4).
+
+[debuerreotype]: https://github.com/debuerreotype/debuerreotype
+
+### D-T06-2 · 2026-10-04 · Hash sobre HTTPS, sin comprobar firma GPG (riesgo aceptado, a mejorar)
+- **Decisión:** la integridad se basa en el **SHA-256 publicado por el propio proyecto**, obtenido por
+  HTTPS, y en comprobar el tamaño cuando el índice lo da. **No** se verifican las firmas GPG que
+  publican Ubuntu (`SHA256SUMS.gpg`), Alpine (`.asc`) o Debian (`InRelease`).
+- **Motivo:** verificar firmas exige una biblioteca OpenPGP y llevar dentro las claves públicas de cada
+  proyecto (y mantenerlas al día), lo que añade una dependencia y una superficie de errores grande para
+  el MVP.
+- **Riesgo (qué NO protege esto):** quien controle a la vez el mirror (o la cuenta de GitHub, para
+  Debian) y su hash, o rompa la validación TLS, puede servir un rootfs manipulado que pasaría la
+  comprobación. El hash sí protege de descargas corruptas o cortadas, de mirrors que sirven un fichero
+  distinto al del índice y de equivocaciones en la reanudación.
+- **Mejora pendiente (backlog):** comprobar la firma de `SHA256SUMS`/`InRelease` con claves incluidas en
+  la app (y revisar su licencia y distribución). No se hace sin consultar al usuario.
+
+### D-T06-3 · 2026-10-04 · Debian: manifiesto y capa se leen en dos peticiones sobre una rama que cambia
+- **Riesgo:** `dist-*` es una rama que se reescribe con frecuencia (se republica al reconstruir la imagen).
+  Entre leer el `image-manifest.json` y descargar el `rootfs.tar.gz` puede publicarse una versión nueva,
+  y entonces el hash del manifiesto ya no corresponde al fichero.
+- **Decisión:** no se intenta evitar en T06. El descargador lo trata como lo que es, un `HashMismatch`:
+  borra el parcial y no instala nada. T07 debe **volver a resolver el catálogo y reintentar una vez**
+  antes de mostrar el error. (Se podría fijar a un commit con la API de GitHub, pero añade una consulta
+  con límite de peticiones; se descarta de momento.)
+
+### D-T06-4 · 2026-10-04 · Versiones elegidas
+- **Decisión:** Alpine `latest-stable` (se actualiza solo), Ubuntu **24.04 LTS** (la última puntual de
+  esa serie) y Debian **trixie**. `RootfsEndpoints` las agrupa.
+- **Motivo:** una versión estable y con soporte largo es más segura para un usuario que mantiene
+  servidores; Alpine es la que más se mueve y por eso sigue `latest-stable`.
+- **Impacto:** al salir otra LTS o estable hay que cambiar la constante a mano y publicar la app.
+
+### D-T06-5 · 2026-10-04 · Protocolo de descarga: parcial, Range, reintentos e instalación atómica
+- **Decisión (`HttpRootfsDownloader`):**
+  - Descarga a `<destino>.part`; el fichero solo aparece en `<destino>` tras verificarlo, con un
+    `ATOMIC_MOVE` en el mismo directorio (existe completo o no existe). Un destino anterior se sustituye.
+  - **Reanudación:** si hay parcial, se pide `Range: bytes=<n>-`. Con `206` se añade al parcial, pero
+    solo si `Content-Range` empieza exactamente en `<n>`; si no, se descarta el parcial y se reintenta.
+    Con `200` (el servidor ignoró el rango) se empieza de cero. Con `416` se verifica el parcial: si ya
+    es el fichero completo se instala, y si no se borra y se reintenta.
+  - **Reintentos:** hasta 4 intentos con espera exponencial (1 s, 2 s, 4 s) ante errores de red, `5xx`,
+    `408` y `429`; el parcial se conserva para continuar. Cualquier otro `4xx` (p. ej. `404`) falla sin
+    reintentar. (OkHttp ya reintenta él solo un primer `408`.)
+  - **Verificación:** el tamaño (si se conoce) y el SHA-256 se comprueban sobre el fichero completo. Si
+    fallan, se **borra el parcial** y se devuelve `SizeMismatch`/`HashMismatch`: no hay reintento, porque
+    repetir la descarga de lo mismo no arregla un hash que no corresponde.
+  - **Cancelación:** se comprueba en cada bloque leído; el parcial se conserva para reanudar después.
+  - Errores con tipos sellados (`RootfsError`/`RootfsResult`), no excepciones hacia la UI.
+- **Motivo:** son las garantías que pedía la spec (RF-04): un fallo de red a mitad no deja una distro
+  corrupta y no se instala nada sin verificar.
+
+### D-T06-6 · 2026-10-04 · Solo HTTPS, aplicado en el código
+- **Decisión:** el descargador rechaza (`InsecureUrl`) cualquier URL que no sea `https://`, sin hacer la
+  petición. Un parámetro `requireHttps` (por defecto `true`) existe solo para los tests con
+  `MockWebServer`.
+- **Motivo:** con `targetSdk` 28 el tráfico en claro está permitido por defecto en Android, así que no
+  se puede delegar en el sistema.
+
+### D-T06-7 · 2026-10-04 · Dependencias nuevas
+- **Decisión:** OkHttp 5.5.0 (Apache-2.0; arrastra Okio y AndroidX Startup, también Apache-2.0),
+  `kotlinx-serialization-json` 1.11.0 (Apache-2.0) y, solo para tests, `mockwebserver3` y
+  `mockwebserver3-junit5`. Son las mismas versiones y bibliotecas que usa UltimateDeck. Anotadas en
+  `THIRD_PARTY_NOTICES.md`; pasan `licensee` (solo Apache-2.0) y `checkForbiddenDependencies`.
+- **Motivo del JSON:** `org.json` de Android está vacío en los tests de host, y una expresión regular
+  sobre JSON es frágil. El YAML de Alpine y `SHA256SUMS` son formatos planos y se leen a mano, sin
+  añadir un parser de YAML.
+
+### D-T06-8 · 2026-10-04 · Cobertura crítica del paquete `data.rootfs.verify`
+- **Decisión:** `Sha256Verifier` (tamaño y SHA-256) está al **100 % de líneas y ramas** con tests de
+  host que cubren: coincidencia, hash en mayúsculas, tamaño desconocido, tamaño o hash erróneos,
+  fichero mayor que el búfer, fichero vacío, checksum mal formado y fichero ilegible. Las constantes
+  están a nivel de archivo porque en un `companion object` privado Kover contaba el accesor sintético
+  como una línea sin cubrir.
+- **Impacto:** `koverVerifyCritical` mide ya código real; antes el paquete estaba vacío.
+
+### T06: lo que NO está validado
+- Los índices reales se consultaron con `curl` el 2026-10-04 y los tests usan extractos de esas
+  respuestas, pero **la app no ha descargado todavía de los mirrors reales** (sin dispositivo ni
+  autorización para usar la red desde uno). El formato de esos índices puede cambiar.
+- Comportamiento de red real en Android: tiempos de espera (el cliente de OkHttp por defecto corta tras
+  10 s sin datos y se reintenta), cambios de red a mitad, ahorro de datos y la validación TLS del
+  sistema.
+- Que `ATOMIC_MOVE` funcione en el almacenamiento privado de la app en todos los dispositivos (es el
+  mismo directorio, así que debería).
+- La extracción, la elección de arquitectura con `Build.SUPPORTED_ABIS` (`Architecture.fromAbis`) y el
+  reintento por `HashMismatch` de Debian son de T07; aquí solo están las interfaces `RootfsCatalog` y
+  `RootfsDownloader` y sus implementaciones.
