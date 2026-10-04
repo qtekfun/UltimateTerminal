@@ -27,6 +27,25 @@ fun interface SessionFactory {
     fun start(id: SessionId, layout: TerminalLayout, onExit: (Int) -> Unit): SessionHandle?
 }
 
+/**
+ * A [SessionFactory] that can also run a given command (proot running `ssh`, say) instead of
+ * Android's own shell. Kept separate so the plain factory stays a single-method interface.
+ */
+interface LaunchingSessionFactory : SessionFactory {
+    fun start(
+        id: SessionId,
+        layout: TerminalLayout,
+        launch: SessionLaunch?,
+        onExit: (Int) -> Unit
+    ): SessionHandle?
+
+    override fun start(
+        id: SessionId,
+        layout: TerminalLayout,
+        onExit: (Int) -> Unit
+    ): SessionHandle? = start(id, layout, null, onExit)
+}
+
 /** Starts and stops the foreground service that keeps the shells alive. */
 fun interface ServiceControl {
     /** Called only when the answer changes, so an implementation need not be idempotent. */
@@ -67,11 +86,20 @@ class SessionController(
 
     override val state: StateFlow<Sessions> = mutableState.asStateFlow()
 
-    override fun newSession(distroId: Long?): SessionId {
+    override fun newSession(distroId: Long?): SessionId = newSession(distroId, null)
+
+    /** Like [newSession], running [launch] instead of the Android shell when it is not null. */
+    fun newSession(distroId: Long?, launch: SessionLaunch?): SessionId {
         val (next, id) = mutableState.value.created(distroId)
         // Published first: a shell that ends at once reports to a session that exists.
         publish(next)
-        val handle = factory.start(id, layout) { status -> onExited(id, status) }
+        val onExit = { status: Int -> onExited(id, status) }
+        // One start only: a launch that fails must not fall back to a second, plain shell.
+        val handle = if (factory is LaunchingSessionFactory) {
+            factory.start(id, layout, launch, onExit)
+        } else {
+            factory.start(id, layout, onExit)
+        }
         if (handle == null) {
             onExited(id, START_FAILED)
         } else if (mutableState.value.items.any { it.id == id }) {

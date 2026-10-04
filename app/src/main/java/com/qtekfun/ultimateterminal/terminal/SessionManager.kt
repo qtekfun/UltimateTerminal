@@ -7,6 +7,7 @@ import android.content.Context
 import com.qtekfun.ultimateterminal.domain.session.SessionController
 import com.qtekfun.ultimateterminal.domain.session.SessionEditor
 import com.qtekfun.ultimateterminal.domain.session.SessionId
+import com.qtekfun.ultimateterminal.domain.session.SessionLaunch
 import com.qtekfun.ultimateterminal.domain.session.Sessions
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
@@ -40,6 +41,10 @@ class SessionManager @Inject constructor(@ApplicationContext context: Context) {
     fun currentHost(): TerminalSessionHost? = factory.host(controller.state.value.activeId)
 
     fun newSession(distroId: Long? = null): SessionId = controller.newSession(distroId)
+
+    /** Opens a tab that runs [launch] (for example `ssh` in a distro) instead of the Android shell. */
+    fun newSession(distroId: Long?, launch: SessionLaunch): SessionId =
+        controller.newSession(distroId, launch)
 
     fun close(id: SessionId) = controller.close(id)
 

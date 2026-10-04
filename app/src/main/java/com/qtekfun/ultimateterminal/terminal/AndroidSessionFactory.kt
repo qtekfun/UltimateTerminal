@@ -4,18 +4,20 @@
 package com.qtekfun.ultimateterminal.terminal
 
 import android.content.Context
-import com.qtekfun.ultimateterminal.domain.session.SessionFactory
+import com.qtekfun.ultimateterminal.domain.session.LaunchingSessionFactory
 import com.qtekfun.ultimateterminal.domain.session.SessionHandle
 import com.qtekfun.ultimateterminal.domain.session.SessionId
+import com.qtekfun.ultimateterminal.domain.session.SessionLaunch
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Starts a [TerminalSessionHost] per session and keeps them by id so the screen can find the one it
  * shows. It needs a real pty, so it is exercised on a device, not in unit tests. [context] must be
  * the application context: the hosts outlive any activity.
  */
-class AndroidSessionFactory(private val context: Context) : SessionFactory {
+class AndroidSessionFactory(private val context: Context) : LaunchingSessionFactory {
     private val hosts = mutableMapOf<SessionId, TerminalSessionHost>()
     private var scheme: TerminalColorScheme? = null
 
@@ -33,22 +35,35 @@ class AndroidSessionFactory(private val context: Context) : SessionFactory {
     override fun start(
         id: SessionId,
         layout: TerminalLayout,
+        launch: SessionLaunch?,
         onExit: (Int) -> Unit
     ): SessionHandle? {
-        val host = TerminalSessionHost(context, onExit)
+        // What the launch put on disk (a key file) goes away once, whichever way the session ends.
+        val closed = AtomicBoolean(false)
+        val cleanup: () -> Unit = {
+            if (closed.compareAndSet(false, true)) launch?.onClosed?.invoke()
+        }
+        val host = TerminalSessionHost(context, { status ->
+            cleanup()
+            onExit(status)
+        }, launch)
         scheme?.let(host::applyScheme)
         return try {
             host.resize(layout.grid, layout.cellWidthPx, layout.cellHeightPx)
             hosts[id] = host
-            Handle(id, host)
+            Handle(id, host, cleanup)
         } catch (_: RuntimeException) {
             host.stop()
+            cleanup()
             null
         }
     }
 
-    private inner class Handle(private val id: SessionId, private val host: TerminalSessionHost) :
-        SessionHandle {
+    private inner class Handle(
+        private val id: SessionId,
+        private val host: TerminalSessionHost,
+        private val cleanup: () -> Unit
+    ) : SessionHandle {
         override fun resize(layout: TerminalLayout) {
             host.resize(layout.grid, layout.cellWidthPx, layout.cellHeightPx)
         }
@@ -56,6 +71,7 @@ class AndroidSessionFactory(private val context: Context) : SessionFactory {
         override fun stop() {
             host.stop()
             hosts.remove(id)
+            cleanup()
         }
     }
 }
