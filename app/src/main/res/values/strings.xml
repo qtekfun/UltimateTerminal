@@ -86,9 +86,8 @@
     <string name="prompt_notifications_title">Keep sessions alive</string>
     <string name="prompt_notifications_message">Android shows a notification while terminal sessions run in the background. Without it the system may stop them when you leave the app. Allow it to keep them alive.</string>
     <string name="prompt_battery_title">Battery optimisation</string>
-    <string name="prompt_battery_message">Battery saving can pause long tasks such as an SSH connection when the screen is off. You can exempt this app in the system settings; nothing changes unless you choose it there.</string>
+    <string name="prompt_battery_message">Battery saving can pause long tasks such as an SSH connection when the screen is off. Allow the app to always run in the background and Android will ask you in its own dialog; nothing changes unless you accept it there.</string>
     <string name="prompt_allow">Allow</string>
-    <string name="prompt_open_settings">Open settings</string>
     <string name="prompt_not_now">Not now</string>
     <string name="tab_default_title">Shell %1$d</string>
     <string name="tab_bar_description">Tabs</string>

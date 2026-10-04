@@ -63,6 +63,7 @@ import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.extraKeysHeightPx
 import com.qtekfun.ultimateterminal.domain.terminal.reserveBottom
 import com.qtekfun.ultimateterminal.domain.terminal.terminalLayoutFor
+import com.qtekfun.ultimateterminal.domain.terminal.withTextMargin
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
 import com.qtekfun.ultimateterminal.terminal.TerminalInputView
 import com.qtekfun.ultimateterminal.terminal.TerminalPainter
@@ -71,6 +72,9 @@ import com.qtekfun.ultimateterminal.terminal.TerminalViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
+
+/** Air around the text, so it does not touch the edge of the screen (T08c). */
+private val TextMargin = 6.dp
 
 /**
  * The terminal: a Compose canvas that draws the emulator, plus an invisible view that takes the
@@ -108,13 +112,15 @@ fun TerminalScreen(
     val tabBarPx = with(density) {
         (if (placement == TabBarPlacement.Top) TabBarHeight else TabBarSideWidth).roundToPx()
     }
-    LaunchedEffect(windowSize, insets, extraKeysPx, placement, tabBarPx, painter) {
+    val textMarginPx = with(density) { TextMargin.roundToPx() }
+    LaunchedEffect(windowSize, insets, extraKeysPx, placement, tabBarPx, painter, textMarginPx) {
         if (windowSize != IntSize.Zero) {
             viewModel.onLayoutChanged(
                 terminalLayoutFor(
                     windowSize.width,
                     windowSize.height,
-                    insets.reserveBottom(extraKeysPx).reserveForTabBar(placement, tabBarPx),
+                    insets.reserveBottom(extraKeysPx).reserveForTabBar(placement, tabBarPx)
+                        .withTextMargin(textMarginPx),
                     painter.cellWidth,
                     painter.cellHeight
                 )
@@ -130,17 +136,23 @@ fun TerminalScreen(
         }
     ) {
         val padded = Modifier.fillMaxSize().padding(insets.toPadding(density))
+        val links = TabBarLinks(
+            openDistros = onOpenDistros,
+            openSsh = onOpenSsh,
+            splitRight = viewModel.panes::splitVertical,
+            splitDown = viewModel.panes::splitHorizontal
+        )
         val pane = @Composable { paneModifier: Modifier ->
             TerminalPane(viewModel, painter, inputView, extraKeys, onOpenDistros, paneModifier)
         }
         if (placement == TabBarPlacement.Top) {
             Column(padded) {
-                TabBarSlot(viewModel.tabs, placement, onOpenDistros, onOpenSsh)
+                TabBarSlot(viewModel.tabs, placement, links)
                 pane(Modifier.weight(1f).fillMaxWidth())
             }
         } else {
             Row(padded) {
-                TabBarSlot(viewModel.tabs, placement, onOpenDistros, onOpenSsh)
+                TabBarSlot(viewModel.tabs, placement, links)
                 pane(Modifier.weight(1f).fillMaxHeight())
             }
         }
@@ -149,18 +161,13 @@ fun TerminalScreen(
 
 /** The tab bar at the size its placement reserves, which the grid of the terminal leaves out. */
 @Composable
-private fun TabBarSlot(
-    tabs: TabsController,
-    placement: TabBarPlacement,
-    onOpenDistros: () -> Unit,
-    onOpenSsh: () -> Unit
-) {
+private fun TabBarSlot(tabs: TabsController, placement: TabBarPlacement, links: TabBarLinks) {
     val size = if (placement == TabBarPlacement.Top) {
         Modifier.fillMaxWidth().height(TabBarHeight)
     } else {
         Modifier.fillMaxHeight().width(TabBarSideWidth)
     }
-    TabBar(tabs, placement, onOpenDistros, onOpenSsh, size)
+    TabBar(tabs, placement, links, size)
 }
 
 /** The terminal, the extra-keys row under it and, over the first rows, what the tab could not start. */
@@ -177,7 +184,14 @@ private fun TerminalPane(
     val launchMessage by viewModel.launchMessage.collectAsStateWithLifecycle()
     Box(modifier) {
         Column(Modifier.fillMaxSize()) {
-            TerminalPanes(viewModel, painter, inputView, Modifier.weight(1f).fillMaxWidth())
+            // The margin is applied before the panes measure their area, so the grid they give each
+            // pty is the padded one, and `withTextMargin` makes the first layout agree with it.
+            TerminalPanes(
+                viewModel,
+                painter,
+                inputView,
+                Modifier.weight(1f).fillMaxWidth().padding(TextMargin)
+            )
             if (extraKeys.visible) {
                 ExtraKeysRow(extraKeys, sticky, viewModel.keyboard::onExtraKey)
             }

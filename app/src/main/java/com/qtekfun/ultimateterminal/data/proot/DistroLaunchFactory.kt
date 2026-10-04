@@ -18,7 +18,8 @@ class DistroLaunchFactory(
     private val proot: ProotCommandBuilder,
     private val fileSystem: FileSystemRepository,
     private val dns: ResolvConfSource,
-    private val cleanupScope: CoroutineScope
+    private val cleanupScope: CoroutineScope,
+    private val fakeProc: FakeProcSource = FakeProcSource.None
 ) {
     /**
      * The same resolver as every other tab gets (the device's DNS, see [ResolvConfSource]), bound over
@@ -27,7 +28,8 @@ class DistroLaunchFactory(
     suspend fun create(plan: SshLaunchPlan): SessionLaunch {
         val session = ProotSession(
             rootfs = fileSystem.absolutePathOf(plan.distro.directory),
-            binds = ProotSession.DEFAULT_BINDS + resolvConfBinds(dns.hostFile()),
+            binds = ProotSession.DEFAULT_BINDS + resolvConfBinds(dns.hostFile()) +
+                fakeProcBinds(fakeProc.hostFiles()),
             command = plan.guestCommand
         )
         val launch = proot.build(session)

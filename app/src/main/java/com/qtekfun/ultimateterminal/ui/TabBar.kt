@@ -82,8 +82,7 @@ private const val ENDED_TAB_ALPHA = 0.6f
 fun TabBar(
     tabs: TabsController,
     placement: TabBarPlacement,
-    onOpenDistros: () -> Unit,
-    onOpenSsh: () -> Unit,
+    links: TabBarLinks,
     modifier: Modifier = Modifier
 ) {
     val items by tabs.tabs.collectAsStateWithLifecycle()
@@ -114,8 +113,7 @@ fun TabBar(
                 choices,
                 onNewTab = tabs::newTab,
                 onNewTabIn = { tabs.newTabIn(it) },
-                onOpenDistros = onOpenDistros,
-                onOpenSsh = onOpenSsh
+                links = links
             )
         }
     )
@@ -179,6 +177,14 @@ private class TabDrag {
         offsetPx = 0f
     }
 }
+
+/** What the "+" menu opens besides new tabs: other screens, and the split of the focused pane. */
+class TabBarLinks(
+    val openDistros: () -> Unit,
+    val openSsh: () -> Unit,
+    val splitRight: () -> Unit,
+    val splitDown: () -> Unit
+)
 
 /** What touching one tab does. */
 private class TabChipActions(
@@ -313,8 +319,7 @@ private fun NewTabButton(
     choices: List<DistroOption>,
     onNewTab: () -> Unit,
     onNewTabIn: (Long?) -> Unit,
-    onOpenDistros: () -> Unit,
-    onOpenSsh: () -> Unit
+    links: TabBarLinks
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val label = stringResource(R.string.tab_new)
@@ -342,18 +347,33 @@ private fun NewTabButton(
                     }
                 )
             }
+            // The split of the pane that has the keyboard: here, and not as a button over the text.
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.pane_split_right)) },
+                onClick = {
+                    menuOpen = false
+                    links.splitRight()
+                }
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.pane_split_down)) },
+                onClick = {
+                    menuOpen = false
+                    links.splitDown()
+                }
+            )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.ssh_open)) },
                 onClick = {
                     menuOpen = false
-                    onOpenSsh()
+                    links.openSsh()
                 }
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.tab_manage_distros)) },
                 onClick = {
                     menuOpen = false
-                    onOpenDistros()
+                    links.openDistros()
                 }
             )
         }

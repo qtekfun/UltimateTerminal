@@ -1353,3 +1353,102 @@ decisiones sobre el comportamiento real de proot son hipótesis hasta la primera
 - **Hallazgo:** `DistroInstaller.publish` mueve lo que extrajo (`staging/rootfs`) a `distro.directory`; por tanto la raíz de la distro es `distro.directory` y no existe una carpeta `rootfs` dentro. T14 lo usa bien, pero `SharedStorageMounts` (T13, ya mergeada) creaba los puntos de montaje en `distro.directory/rootfs/…` (no existía, así que el montaje de `~/storage` no habría aparecido) y mi primera versión del planificador usaba la misma ruta (habría dado toda distro como «dañada»).
 - **Decisión:** `SharedStorageMounts` y el planificador usan `distro.directory`. `DistroInstaller.UNPACKED_NAME` pasa a ser privada (es solo el nombre de la carpeta de preparación) y su comentario, que decía lo contrario, se corrige. Los tests de T13 usaban la misma ruta equivocada y se corrigen; hay un test nuevo que fija `-r` en `distros/<token>`.
 - **Por qué no lo cazaron los tests:** el fake de sistema de ficheros y los tests de T13 construían la ruta con el mismo supuesto equivocado que el código. Lección: un test que comparte el supuesto con el código no lo comprueba; hace falta una prueba de extremo a extremo con un rootfs real en la primera prueba en la tablet.
+
+## T08c — Correcciones halladas en hardware
+
+Salen de las primeras pruebas reales en un Pixel 8 (Android 17, API 37, app con `targetSdk` 28), hechas
+por el orquestador cuando el usuario las autorizó; este fork no tocó ningún dispositivo. **Lo que
+funcionó** (informado por el orquestador): el shell con PTY real en una pestaña, la entrada, el área
+del terminal encogiéndose por encima del teclado y de la fila de teclas extra (`stty size` = 18×49, lo
+visible), el servicio en primer plano (`specialUse`) y proot con un rootfs de Alpine lanzado a mano
+desde `nativeLibraryDir` (red, `apk update`, `ssh`, `nmap` y `python3` instalados dentro). **Lo que
+falló o se veía mal** es lo que corrige esta sección. Todo lo de abajo está probado solo en el host.
+
+### D-T08c-1 · 2026-10-04 · Permiso de batería: el diálogo del sistema (sustituye a D-T08-4 en este punto)
+
+- **Qué se vio:** el diálogo «Mantener las sesiones activas» (notificaciones) y, encadenado, el aviso
+  de batería llevaban a la lista general *Uso de batería de las aplicaciones* de Ajustes. El usuario
+  quiere la pantalla de permitir de verdad.
+- **Decisión:** el aviso de batería ahora pulsa «Permitir» y lanza
+  `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` con `package:<la app>`, que es el diálogo del sistema
+  «¿Permitir que la app se ejecute siempre en segundo plano?». Si el dispositivo no lo tiene
+  (`ActivityNotFoundException`) o lo rechaza (`SecurityException`), se abre la lista general
+  (`ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS`). El orden y los datos están en `BatteryExemption`,
+  probados; abrir las pantallas es Android y queda por comprobar. No se pide si la app ya está
+  exenta (`nextPrompt` no cambia).
+- **Permiso:** se declara `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` (permiso normal, sin pregunta de
+  instalación). **Solo abre ese diálogo: no cambia nada salvo que el usuario acepte allí.** F-Droid lo
+  admite; Google Play lo restringe, y esta app no se publica allí (`targetSdk` 28, SPEC §2). Lint
+  avisa con `BatteryLife`: se suprime **solo en esa línea del manifiesto**, con el motivo escrito
+  al lado, no en la configuración global.
+- **Por qué se sustituye D-T08-4:** la anterior era «sin exclusión forzada», y un diálogo del sistema
+  que el usuario acepta o rechaza no fuerza nada. Lo demás de D-T08-4 (orden de los avisos, una vez
+  por arranque, wake lock) sigue igual.
+- **Para `PRIVACY.md` (T21):** explicar que el permiso existe para que una conexión SSH o una tarea
+  larga no se pause con la pantalla apagada, que no recoge datos y que solo abre el diálogo.
+- **Sin validar en dispositivo:** que el diálogo del sistema aparezca en Android 17 con `targetSdk` 28.
+
+### D-T08c-2 · 2026-10-04 · Interruptor de almacenamiento: no se pudo reproducir; dos fallos reales corregidos
+
+- **Qué se vio:** en una instalación limpia, la tarjeta «Almacenamiento del dispositivo en `~/storage`»
+  mostraba el interruptor **activado**, aunque T13 (D-T13-2) lo documenta apagado por defecto.
+- **Qué se comprobó:** ningún código escribe `shared_storage = true` por su cuenta; el valor por
+  defecto de `AppSettings` es `false` y un test ya lo vigila (`SharedStorageSettingTest`). Así que
+  **la causa exacta no se ha podido determinar sin el dispositivo**.
+- **Fallo latente 1 (probable causa):** el callback del permiso usaba `results.values.all { it }`, y
+  `all` sobre un mapa vacío es `true`: un resultado vacío (petición interrumpida) activaba la
+  función **sin ningún permiso**. Ahora `StorageToggle.allGranted` exige que el resultado no esté vacío.
+- **Fallo latente 2:** la UI mostraba `enabled` sin mirar si el permiso estaba concedido, así que un
+  «activado» guardado sin permiso se veía como si funcionara. Ahora el interruptor se muestra
+  encendido solo si el ajuste está activo **y** el permiso concedido (`StorageToggle.isShownOn`).
+- **Pendiente:** reinstalar en limpio y comprobar el interruptor. Si sigue apareciendo activado, la
+  causa es otra y hay que mirar el estado real de `setting` en el dispositivo.
+
+### D-T08c-3 · 2026-10-04 · Pantalla de Distros: la cabecera en dos filas
+
+El título «Distribuciones» y el botón «Instalar una distro» compartían fila y se solapaban en un
+móvil de ~360 dp. Ahora el título y «Cerrar» comparten fila (el título con `weight(1f)`) y el botón
+de instalar ocupa la suya, a todo el ancho. Así no se solapa con ningún ancho ni escala de fuente.
+Sin validar en dispositivo (el solape sí se vio; la corrección es de diseño).
+
+### D-T08c-4 · 2026-10-04 · `/proc` falso dentro de proot (aproximado a propósito)
+
+- **Qué se vio:** dentro de proot, `/proc/stat`, `uptime`, `loadavg`, `version`, `vmstat` y otros dan
+  `Permission denied` (SELinux no deja a una app leerlos), así que `top`, `uptime`, `free`, `vmstat`
+  y `htop` no funcionan.
+- **Decisión:** como hace proot-distro, cada lanzamiento escribe en el almacenamiento privado
+  (`files/fake-proc/`) cinco ficheros falsos y los monta con `-b <fichero>:/proc/<nombre>` **después**
+  de `-b /proc` (los binds se aplican en orden). Rige en las pestañas normales y en las de SSH
+  (`ProotSessionPlanner` y `DistroLaunchFactory`). Si no se pueden escribir, la sesión arranca sin
+  ellos (`FakeProcSource.None`), sin error.
+- **Qué contiene (`FakeProc`, puro y probado):** el **formato** es exacto para que lo lean `procps` y
+  `busybox`; los **valores son inventados**: `stat` reparte el tiempo de CPU en proporciones fijas
+  del uptime (3 % usuario, 4 % sistema, 1 % iowait, 1 % softirq, el resto ocioso) con una línea por
+  CPU real y contadores que crecen con el uptime; `uptime` es el real del dispositivo (con el ocioso
+  de todas las CPU); `loadavg` es una constante (`0.12 0.07 0.02`); `version` lleva la versión de
+  kernel real (saneada: sin saltos de línea ni caracteres de control, para que un valor raro no
+  inyecte líneas); `vmstat` tiene los contadores que `procps` pide, con valores plausibles.
+- **Consecuencia:** `top` y `htop` mostrarán un uso de CPU **falso** y constante en el tiempo. Sirve
+  para que arranquen, no para medir nada. `/proc/meminfo` y las carpetas por proceso **no** se
+  falsean: se asumen legibles (sin comprobar en el dispositivo).
+- **No se falsea:** `cpuinfo` (parcial en el listado visto), `/proc/sys/kernel/cap_last_cap`.
+- **Sin validar en dispositivo:** que proot admita el bind de un fichero sobre uno de `/proc` en
+  Android 17 (proot-distro lo hace en Termux) y que `top`, `uptime` y `free` queden funcionando.
+
+### D-T08c-5 · 2026-10-04 · El círculo oscuro era el menú de paneles; margen del texto
+
+- **El círculo:** no era un asa ni un artefacto: es el botón «⋮» del menú de paneles de T10
+  (`PaneMenu`), dibujado siempre en la esquina superior izquierda del panel enfocado, con un fondo
+  oscuro redondo. Tapaba el principio de la primera línea aunque no hubiera ninguna división.
+- **Decisión:** el botón solo aparece cuando la pestaña está dividida (entonces sirve para zoom,
+  cerrar e intercambiar) y pasa a la esquina **superior derecha**. Dividir un panel que está solo se
+  hace desde el menú «+» de la barra de pestañas (pulsación larga), junto a SSH y Distros, con
+  «Dividir a la derecha» y «Dividir hacia abajo»; los atajos de T11 siguen igual. Los enlaces de ese
+  menú se agrupan en `TabBarLinks` por el límite de parámetros de detekt.
+- **Margen:** 6 dp alrededor del texto (hoy tocaba el borde de la pantalla). No es rejilla: se
+  resta del área (`EdgeInsets.withTextMargin`, probado) y la pantalla rellena lo mismo
+  (`padding` antes de medir el área de los paneles), así que el PTY sigue sabiendo exactamente el
+  tamaño que se dibuja. 6 dp es una elección de ojo, sin ver el resultado.
+- **Fuera de alcance, para T12c:** fuentes propias, editor de esquemas y estilo de pestañas.
+- **Sin validar en dispositivo:** que el margen quede bien en móvil y tablet, que el tamaño de rejilla
+  siga coincidiendo con lo visible (`stty size`) y que dividir desde el menú «+» funcione.

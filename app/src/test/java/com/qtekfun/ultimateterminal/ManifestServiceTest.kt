@@ -62,9 +62,18 @@ class ManifestServiceTest {
     }
 
     @Test
-    fun noPermissionBeyondTheOnesTheFeaturesNeedIsDeclared() {
-        // Battery optimisation is only advised, through the settings screen, which needs none.
-        assertTrue("android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" !in permissions)
+    fun theBatteryExemptionIsAskedWithTheSystemDialogAndNothingBroaderIsDeclared() {
+        // D-T08c-1 (replaces D-T08-4): the app opens the system dialog that asks to run without
+        // battery optimisation, which needs this permission. It changes nothing unless the user accepts.
+        assertTrue("android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" in permissions)
+        // Nothing that would let the app change power or all-files access on its own.
+        val broader = setOf(
+            "android.permission.MANAGE_EXTERNAL_STORAGE",
+            "android.permission.WRITE_SETTINGS",
+            "android.permission.REQUEST_INSTALL_PACKAGES",
+            "android.permission.SYSTEM_ALERT_WINDOW"
+        )
+        assertTrue(permissions.none { it in broader }, "declared: ${permissions intersect broader}")
     }
 
     private companion object {

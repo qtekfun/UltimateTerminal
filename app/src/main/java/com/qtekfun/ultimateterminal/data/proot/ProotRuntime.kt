@@ -27,3 +27,21 @@ const val RESOLV_CONF_GUEST_PATH = "/etc/resolv.conf"
 /** The bind that puts [hostFile] over the guest's resolv.conf; none if the file could not be written. */
 fun resolvConfBinds(hostFile: String?): List<ProotBind> =
     listOfNotNull(hostFile?.let { ProotBind(it, RESOLV_CONF_GUEST_PATH) })
+
+/**
+ * Provides the host files that are bound over the `/proc` files Android denies to apps (T08c).
+ * The map goes from the name under `/proc` (`uptime`) to the absolute path of the file; empty if
+ * they could not be written, in which case the session starts without them.
+ */
+fun interface FakeProcSource {
+    suspend fun hostFiles(): Map<String, String>
+
+    companion object {
+        /** No fake files: the real `/proc` only. */
+        val None = FakeProcSource { emptyMap() }
+    }
+}
+
+/** The binds of the fake files, over the real `/proc`: they must come after `-b /proc`. */
+fun fakeProcBinds(files: Map<String, String>): List<ProotBind> =
+    files.toSortedMap().map { (name, hostFile) -> ProotBind(hostFile, "/proc/$name") }

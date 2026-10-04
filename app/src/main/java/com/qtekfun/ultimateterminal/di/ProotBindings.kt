@@ -3,8 +3,10 @@
 
 package com.qtekfun.ultimateterminal.di
 
+import com.qtekfun.ultimateterminal.data.proot.FakeProcSource
 import com.qtekfun.ultimateterminal.data.proot.ProotRuntime
 import com.qtekfun.ultimateterminal.data.proot.ResolvConfSource
+import com.qtekfun.ultimateterminal.platform.AndroidFakeProcSource
 import com.qtekfun.ultimateterminal.platform.AndroidProotRuntime
 import com.qtekfun.ultimateterminal.platform.AndroidResolvConfSource
 import dagger.Binds
@@ -21,4 +23,7 @@ abstract class ProotBindings {
 
     @Binds
     abstract fun resolvConf(impl: AndroidResolvConfSource): ResolvConfSource
+
+    @Binds
+    abstract fun fakeProc(impl: AndroidFakeProcSource): FakeProcSource
 }

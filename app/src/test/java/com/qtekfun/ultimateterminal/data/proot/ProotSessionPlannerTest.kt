@@ -43,6 +43,10 @@ private class FakeDns(var file: String? = "/files/resolv.conf") : ResolvConfSour
     }
 }
 
+private class FakeProcFiles(var files: Map<String, String> = emptyMap()) : FakeProcSource {
+    override suspend fun hostFiles(): Map<String, String> = files
+}
+
 class ProotSessionPlannerTest {
     private val distros = FakeDistroRepository()
     private val fileSystem = InMemoryFileSystemRepository()
@@ -50,13 +54,15 @@ class ProotSessionPlannerTest {
     private val access = FakeSharedStorageAccess()
     private val runtime = FakeRuntime()
     private val dns = FakeDns()
+    private val fakeProc = FakeProcFiles()
     private val planner = ProotSessionPlanner(
         distros,
         fileSystem,
         settings,
         SharedStorageMounts(fileSystem, access),
         runtime,
-        dns
+        dns,
+        fakeProc
     )
 
     private fun path(raw: String) = checkNotNull(FsPath.of(raw).getOrNull())
@@ -131,6 +137,34 @@ class ProotSessionPlannerTest {
         val command = inDistro(planner.plan(distro.id)).launch.command
 
         assertTrue("/files/resolv.conf:/etc/resolv.conf" in command)
+    }
+
+    @Test
+    fun `the fake proc files are bound over the real proc, after it`() = runTest {
+        val distro = install()
+        fakeProc.files =
+            mapOf("uptime" to "/files/fake-proc/uptime", "stat" to "/files/fake-proc/stat")
+
+        val command = inDistro(planner.plan(distro.id)).launch.command
+
+        // The binds are applied in order: a file over /proc only works if /proc came first.
+        val proc = command.indexOf("/proc:/proc")
+        val stat = command.indexOf("/files/fake-proc/stat:/proc/stat")
+        val uptime = command.indexOf("/files/fake-proc/uptime:/proc/uptime")
+        assertTrue(proc >= 0)
+        assertTrue(stat > proc)
+        assertTrue(uptime > stat)
+        assertEquals("-b", command[stat - 1])
+    }
+
+    @Test
+    fun `without fake proc files the real proc is all there is and the shell starts`() = runTest {
+        val distro = install()
+        fakeProc.files = emptyMap()
+
+        val command = inDistro(planner.plan(distro.id)).launch.command
+
+        assertFalse(command.any { it.contains(":/proc/") })
     }
 
     @Test
