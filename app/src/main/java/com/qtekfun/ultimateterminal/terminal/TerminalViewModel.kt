@@ -6,8 +6,12 @@ package com.qtekfun.ultimateterminal.terminal
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.qtekfun.ultimateterminal.domain.terminal.AppShortcut
 import com.qtekfun.ultimateterminal.domain.terminal.CellPosition
+import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
+import com.qtekfun.ultimateterminal.domain.terminal.InputRouter
 import com.qtekfun.ultimateterminal.domain.terminal.ScrollAccumulator
+import com.qtekfun.ultimateterminal.domain.terminal.StickyState
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalSelection
 import com.qtekfun.ultimateterminal.domain.terminal.clampTopRow
@@ -15,7 +19,9 @@ import com.qtekfun.ultimateterminal.domain.terminal.settled
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
@@ -30,10 +36,25 @@ class TerminalViewModel(application: Application) : AndroidViewModel(application
     private val scroll = ScrollAccumulator()
     private val topRowState = MutableStateFlow(0)
     private val selectionState = MutableStateFlow<TerminalSelection?>(null)
+    private val stickyState = MutableStateFlow(StickyState())
+    private val router = InputRouter(onStickyChanged = { stickyState.value = it })
+    private val shortcutEvents = MutableSharedFlow<AppShortcut>(extraBufferCapacity = 8)
+
+    // The stored configuration (settings, Room) arrives later; until then the default is used.
+    private val extraKeysState = MutableStateFlow(ExtraKeysConfig.default())
 
     val frame: StateFlow<Int> = host.frame
     val exitStatus: StateFlow<Int?> = host.exitStatus
-    val keyboard: TerminalInputSink = TerminalKeyboard(host, ::scrollToLiveScreen)
+    val fontSize = FontSizeController()
+    private val shortcuts =
+        ShortcutHandler(::copySelection, host::pasteFromClipboard, fontSize, shortcutEvents)
+    val keyboard = TerminalKeyboard(host, router, ::scrollToLiveScreen, shortcuts::handle)
+
+    val extraKeys: StateFlow<ExtraKeysConfig> = extraKeysState.asStateFlow()
+    val stickyModifiers: StateFlow<StickyState> = stickyState.asStateFlow()
+
+    /** Shortcuts nothing here handles yet (tabs, T09). */
+    val appShortcuts: SharedFlow<AppShortcut> = shortcutEvents.asSharedFlow()
 
     /** 0 shows the live screen; negative values scroll back through the history. */
     val topRow: StateFlow<Int> = topRowState.asStateFlow()

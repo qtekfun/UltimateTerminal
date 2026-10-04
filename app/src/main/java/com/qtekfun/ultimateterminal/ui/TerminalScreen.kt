@@ -10,10 +10,12 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -49,12 +51,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qtekfun.ultimateterminal.R
 import com.qtekfun.ultimateterminal.domain.terminal.CellPosition
 import com.qtekfun.ultimateterminal.domain.terminal.EdgeInsets
+import com.qtekfun.ultimateterminal.domain.terminal.extraKeysHeightPx
+import com.qtekfun.ultimateterminal.domain.terminal.reserveBottom
 import com.qtekfun.ultimateterminal.domain.terminal.terminalLayoutFor
 import com.qtekfun.ultimateterminal.terminal.TerminalInputView
 import com.qtekfun.ultimateterminal.terminal.TerminalPainter
 import com.qtekfun.ultimateterminal.terminal.TerminalViewModel
-
-private const val TEXT_SIZE_SP = 14
 
 /**
  * The terminal: a Compose canvas that draws the emulator, plus an invisible view that takes the
@@ -67,20 +69,25 @@ private const val TEXT_SIZE_SP = 14
 @Composable
 fun TerminalScreen(modifier: Modifier = Modifier, viewModel: TerminalViewModel = viewModel()) {
     val density = LocalDensity.current
-    val painter = remember(density) {
-        TerminalPainter(Typeface.MONOSPACE, with(density) { TEXT_SIZE_SP.sp.toPx() })
+    val fontSizeSp by viewModel.fontSize.sizeSp.collectAsStateWithLifecycle()
+    val extraKeys by viewModel.extraKeys.collectAsStateWithLifecycle()
+    val sticky by viewModel.stickyModifiers.collectAsStateWithLifecycle()
+    val painter = remember(density, fontSizeSp) {
+        TerminalPainter(Typeface.MONOSPACE, with(density) { fontSizeSp.sp.toPx() })
     }
     val inputView = remember { arrayOfNulls<TerminalInputView>(1) }
 
     var windowSize by remember { mutableStateOf(IntSize.Zero) }
     val insets = coveredEdges()
-    LaunchedEffect(windowSize, insets, painter) {
+    // The extra-keys row sits above the keyboard, so its height is not terminal area.
+    val extraKeysPx = extraKeysHeightPx(extraKeys, with(density) { ExtraKeyRowHeight.roundToPx() })
+    LaunchedEffect(windowSize, insets, extraKeysPx, painter) {
         if (windowSize != IntSize.Zero) {
             viewModel.onLayoutChanged(
                 terminalLayoutFor(
                     windowSize.width,
                     windowSize.height,
-                    insets,
+                    insets.reserveBottom(extraKeysPx),
                     painter.cellWidth,
                     painter.cellHeight
                 )
@@ -91,9 +98,14 @@ fun TerminalScreen(modifier: Modifier = Modifier, viewModel: TerminalViewModel =
     // The black background fills the whole window, bars included; the content is padded by the
     // same insets the layout was computed with, so what is drawn is exactly what the pty is told.
     Box(modifier.fillMaxSize().background(Color.Black).onSizeChanged { windowSize = it }) {
-        Box(Modifier.fillMaxSize().padding(insets.toPadding(density))) {
-            TerminalCanvas(viewModel, painter, onTap = { inputView[0]?.showKeyboard() })
-            TerminalOverlays(viewModel, inputView)
+        Column(Modifier.fillMaxSize().padding(insets.toPadding(density))) {
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                TerminalCanvas(viewModel, painter, onTap = { inputView[0]?.showKeyboard() })
+                TerminalOverlays(viewModel, inputView)
+            }
+            if (extraKeys.visible) {
+                ExtraKeysRow(extraKeys, sticky, viewModel.keyboard::onExtraKey)
+            }
         }
     }
 }
@@ -136,6 +148,7 @@ private fun TerminalCanvas(
     val frame by viewModel.frame.collectAsStateWithLifecycle()
     val topRow by viewModel.topRow.collectAsStateWithLifecycle()
     val selection by viewModel.selection.collectAsStateWithLifecycle()
+    val onPinch = remember(viewModel) { viewModel.fontSize::pinch }
 
     fun cellAt(offset: Offset) = CellPosition(
         column = (offset.x / painter.cellWidth).toInt().coerceAtLeast(0),
@@ -162,6 +175,8 @@ private fun TerminalCanvas(
                     onDrag = { change, _ -> viewModel.extendSelection(cellAt(change.position)) }
                 )
             }
+            // Last, so it sees the events first and can take a two-finger pinch for itself.
+            .pinchToZoom(onPinch)
     ) {
         // Reading the frame here makes only the drawing, not the composition, depend on it.
         val emulator = viewModel.emulator
