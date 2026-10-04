@@ -98,7 +98,10 @@ fun TerminalScreen(
     // Before the layout effect below, so a shell that starts on the first layout has the colors.
     SchemeAndFontEffects(viewModel, scheme, initialFontSizeSp, onFontSizeChanged)
     val fontSizeSp by viewModel.fontSize.sizeSp.collectAsStateWithLifecycle()
-    val extraKeys by viewModel.extraKeys.collectAsStateWithLifecycle()
+    val configuredKeys by viewModel.extraKeys.collectAsStateWithLifecycle()
+    // The row follows the keyboard: it is hidden, and gives its space back, when the keyboard is.
+    val keyboardVisible = WindowInsets.ime.getBottom(density) > 0
+    val extraKeys = configuredKeys.shownWith(keyboardVisible)
     val painter = rememberTerminalPainter(fontSizeSp, scheme)
     val inputView = remember { arrayOfNulls<TerminalInputView>(1) }
 

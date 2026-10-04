@@ -1452,3 +1452,24 @@ Sin validar en dispositivo (el solape sí se vio; la corrección es de diseño).
 - **Fuera de alcance, para T12c:** fuentes propias, editor de esquemas y estilo de pestañas.
 - **Sin validar en dispositivo:** que el margen quede bien en móvil y tablet, que el tamaño de rejilla
   siga coincidiendo con lo visible (`stty size`) y que dividir desde el menú «+» funcione.
+
+## Requisitos añadidos tras las primeras pruebas en hardware (2026-10-04)
+
+El usuario probó la app en un Pixel 8 y pidió tres cosas. Se anotan aquí qué requisito se tocó y por qué.
+
+### D-REQ-1 · 2026-10-04 · La fila de teclas extra sigue al teclado en pantalla
+- **Decisión:** `ExtraKeysConfig.onlyWithKeyboard` (por defecto `true`): la fila se dibuja solo mientras el teclado está visible (`WindowInsets.ime`), y su altura deja de reservarse en el cálculo de la rejilla cuando no se ve. SPEC RF-08 actualizado.
+- **Motivo:** con el teclado cerrado la fila (dos filas de 48 dp) comía terminal sin servir para escribir.
+- **Alternativas:** ocultarla siempre y mostrarla con un botón (más toques); atarla a "hay teclado físico" (no es fiable en Android). Se deja la opción para verla siempre.
+- **Impacto:** el cambio de tamaño del pty al abrir y cerrar el teclado ya estaba debounced (D-T04-2); la fila entra y sale con el teclado. El formato de texto guardado añade la línea `onlyWithKeyboard=`; un texto antiguo sin ella cuenta como `true`.
+- **Sin validar en el dispositivo:** que no haya parpadeo de la rejilla al animarse el teclado.
+
+### D-REQ-2 · 2026-10-04 · Arranque en la distro predeterminada: ya cumplido, con requisito explícito (RF-13)
+- **Comprobado en un Pixel 8:** con Alpine instalada, cerrar la app del todo y reabrirla deja `localhost:~#` (proot) en la primera pestaña.
+- **Decisión:** se convierte en el requisito RF-13 y se añade T09b para lo que falta: nombrar las pestañas con su distro y el repintado de pestañas nuevas.
+
+### D-REQ-3 · 2026-10-04 · La pantalla de Ajustes pasa a ser un requisito de acceso, no solo de contenido
+- **Hallazgo:** no existía ninguna forma de llegar a unos ajustes (T12, T13, T14 y T15 dejaron cada uno su tarjeta en la pantalla de distros). T16 era una tarea del final del plan.
+- **Decisión:** RF-11 exige un icono ⚙ permanente y secciones definidas; T16 se amplía con ellas y sube de prioridad.
+- **Motivo:** sin ajustes visibles, T12c (apariencia) y todas las opciones de T11–T15 no se pueden usar.
+
