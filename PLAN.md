@@ -17,15 +17,18 @@ Reglas: una tarea cada vez, en su rama `feat/<tarea>`, con `./gradlew check` en 
 ## Fase 1 — Distros y datos
 - [x] **T05 Modelo Room y repositorios**: distros, perfiles, layouts, hosts SSH y ajustes; abstracción de rootfs/ficheros; migraciones y tests.
   - *Hecho (solo verificado en JVM de host, ver `DECISIONS.md` D-T05-1..9):* esquema v1 exportado, `MigrationTest`, repositorios Room con fakes verificados por contrato, `FileSystemRepository` sobre `java.nio` que no sigue enlaces simbólicos. Pendiente de validar en Android: cableado Hilt, `AndroidSQLiteDriver` y `java.nio` en el almacenamiento de la app.
-- [ ] **T06 Descarga y verificación de rootfs**: Debian, Ubuntu y Alpine desde fuentes oficiales, SHA-256, progreso, reanudación y reintentos. **100 % de cobertura** en la verificación.
-- [ ] **T07 Instalación y gestión de distros**: extraer a almacenamiento privado, transaccional (sin distros a medias), listar, renombrar, duplicar y eliminar; usuario por defecto y distro predeterminada.
+- [x] **T06 Descarga y verificación de rootfs**: Debian, Ubuntu y Alpine desde fuentes oficiales, SHA-256, progreso, reanudación y reintentos. **100 % de cobertura** en la verificación.
+  - *Nota:* verificado con tests de host (MockWebServer) y con las fuentes reales consultadas por `curl`; la app no ha descargado aún de los mirrors reales (ver `DECISIONS.md`, T06). La instalación y la reconexión al `RootfsCatalog`/`RootfsDownloader` llegan en T07.
+- [~] **T07 Instalación y gestión de distros**: extraer a almacenamiento privado, transaccional (sin distros a medias), listar, renombrar, duplicar y eliminar; usuario por defecto y distro predeterminada.
+  - *Nota:* implementada y probada solo en el host (385 tests, extracción contra tars hostiles, cancelación a mitad, reintento por hash obsoleto). No se ha instalado ninguna distro en un dispositivo ni se ha comprobado que el rootfs extraído arranque con proot (ver `DECISIONS.md`, T07). La instalación vive en el `ViewModel` hasta que T08 la pase al servicio.
 
 ## Fase 2 — Sesiones y terminal
-- [ ] **T08 Servicio en primer plano y sesiones**: el servicio posee PTY y procesos; la UI se reconecta; notificación persistente, wakelock opcional, aviso de batería y tipo de servicio para Android 14+.
-- [ ] **T09 Multitab**: crear, cerrar, renombrar y reordenar pestañas; confirmación al cerrar con procesos vivos.
+- [~] **T08 Servicio en primer plano y sesiones**: el servicio posee PTY y procesos; la UI se reconecta; notificación persistente, wakelock opcional, aviso de batería y tipo de servicio para Android 14+. *(ciclo de vida de sesiones, servicio, notificación, wake lock y avisos implementados; lógica y manifiesto probados en host, sin validar en dispositivo; ver D-T08-1 a D-T08-6 en `DECISIONS.md`)*
+- [~] **T09 Multitab**: crear, cerrar, renombrar y reordenar pestañas; confirmación al cerrar con procesos vivos. *(implementada y probada solo en host; la barra no se ha visto en ningún dispositivo; ver `DECISIONS.md`, T09)*
 - [ ] **T10 Paneles divididos** (pantallas anchas): dividir en horizontal/vertical con separadores arrastrables, y layout por `WindowSizeClass` (barra lateral o superior).
 - [~] **T11 Entrada** *(lógica y UI implementadas y probadas en host; sin validar en dispositivo y sin ratón; ver `DECISIONS.md`, T11)*: fila de teclas extra configurable con Ctrl/Alt pegajosos; teclado físico, atajos, ratón, copiar/pegar y zoom con pellizco.
-- [ ] **T12 Temas, modo OLED y fuentes**: esquemas de color, claro/oscuro/sistema y modo OLED (negro puro), fuente incluida y tamaño.
+- [~] **T12 Temas, modo OLED y fuentes**: esquemas de color, claro/oscuro/sistema y modo OLED (negro puro), fuente incluida y tamaño.
+  - *Nota:* lógica y aplicación probadas en host; sin validar en dispositivo y sin pantalla de ajustes (T16). Ver `DECISIONS.md`, T12.
 - [ ] **T12b Perfiles, layouts y atajos (estilo Terminator)**: perfiles, layouts de paneles guardados con nombre, atajos configurables y emisión a varios paneles.
   - *Verificación:* un layout guardado se restaura con la misma estructura, perfiles y comandos.
 
@@ -40,7 +43,7 @@ Reglas: una tarea cada vez, en su rama `feat/<tarea>`, con `./gradlew check` en 
 ## Fase 4 — Cierre del MVP
 - [ ] **T17 Accesibilidad y rendimiento**: TalkBack en la UI, tamaños táctiles, fuente grande; medir arranque hasta prompt y salida masiva.
 - [ ] **T18 Tests de UI e integración clave**: instalar distro, ejecutar comando, redimensionar, exportar y restaurar.
-- [ ] **T19 Versionado y releases**: SemVer en `gradle.properties` con código derivado, firma propia por variables de entorno, builds reproducibles y workflow de release por tag (`RELEASING.md`).
+- [x] **T19 Versionado y releases**: SemVer en `gradle.properties` con código derivado, firma propia por variables de entorno, builds reproducibles y workflow de release por tag (`RELEASING.md`).
 - [ ] **T20 Metadatos F-Droid**: `fastlane/metadata/android/{en-US,es-ES}/`, iconos, capturas, descripciones; revisar reproducibilidad y ausencia de dependencias no libres.
 - [ ] **T21 Documentación**: `README.md`, `CONTRIBUTING.md`, política de privacidad, `CHANGELOG.md`. Explicar cada permiso y decisión (almacenamiento, servicio en primer plano, optimización de batería, `targetSdk` 28, phantom process killer).
 

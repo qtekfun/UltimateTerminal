@@ -23,8 +23,8 @@ class SchemeCatalogTest {
 
     @Test
     fun anUnknownIdFallsBackToTheDefault() {
-        assertSame(BuiltInSchemes.tango, SchemeCatalog.resolve("custom-gone", emptyList()))
-        assertSame(BuiltInSchemes.tango, SchemeCatalog.resolve("", emptyList()))
+        assertSame(BuiltInSchemes.dracula, SchemeCatalog.resolve("custom-gone", emptyList()))
+        assertSame(BuiltInSchemes.dracula, SchemeCatalog.resolve("", emptyList()))
     }
 
     @Test

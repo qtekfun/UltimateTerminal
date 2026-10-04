@@ -16,6 +16,8 @@ funcionando:
   armeabi-v7a y x86_64.
 - Comportamiento de seccomp, `ptrace`, `/proc` y `--link2symlink` en Android moderno (API 26–37).
 - Ejecutar binarios desde `nativeLibraryDir` con `targetSdk` 28 en Android 15+/16.
+- T07, instalación de distros: descargar, descomprimir y mover un rootfs real en el almacenamiento privado,
+  el cálculo de espacio libre y la pantalla de gestión (ver "T07: lo que NO se ha validado").
 - Capa de datos (T05): el cableado de Hilt, `AndroidSQLiteDriver` y `java.nio` (enlaces simbólicos,
   permisos, `ATOMIC_MOVE`) en el almacenamiento privado de la app (ver D-T05-9).
 - T03, todo lo que necesita un PTY real o una pantalla: que `libtermux.so` cargue y el `fork/exec` de
@@ -24,6 +26,15 @@ funcionando:
   coincida con lo visible tras redimensionar (ver D-T03-4 a D-T03-6 y T04).
 - T03, release con R8: que los métodos nativos de `JNI` sobrevivan a la minificación (las reglas por
   defecto de Android conservan los nombres de los `native`, pero no se ha comprobado en un APK real).
+- T08, servicio en primer plano: que Android lo arranque con el tipo `specialUse` en 12–16, que la
+  notificación aparezca y sus acciones (nueva sesión, salir) funcionen, que el shell sobreviva a
+  cerrar la actividad y a apagar la pantalla, y que la UI se reconecte a la sesión viva. También el
+  wake lock real y el efecto del *phantom process killer* (ver D-T08-5).
+- T09, pestañas: los gestos de la barra (tocar, doble toque, pulsación larga + arrastre para
+  reordenar, scroll de la propia barra) pueden competir entre sí; los menús desplegables, los
+  diálogos, la barra lateral en pantallas anchas (y con idioma de derecha a izquierda), los 48 dp
+  táctiles, TalkBack, y que al cambiar de pestaña el pty de la que pasa a primer plano reciba el
+  tamaño correcto (ver D-T09-8).
 
 Lo que sí está verificado sin dispositivo: compila para las tres ABIs, los ejecutables se empaquetan
 en el APK con el tipo ELF y los puntos de entrada esperados, `./gradlew check` y el CI en verde.
@@ -446,3 +457,515 @@ Falta por hacer:
 - **Ratón y rueda** (reporte de ratón al shell, rueda para el historial): no está en este cambio.
 - **Persistencia y ajuste de la fila y de los atajos:** otra tarea (ajustes, T16).
 - **Efecto de los atajos de pestañas:** T09.
+
+## T08 — Servicio en primer plano y sesiones
+
+### D-T08-1 · 2026-10-04 · El ciclo de vida de las sesiones es lógica pura en `domain/session`
+
+- **Decisión:** `Sessions` (instantánea inmutable) y `SessionController` (con `SessionFactory`,
+  `SessionHandle` y `ServiceControl` como interfaces) deciden qué sesiones existen, cuál es la activa
+  y cuándo debe correr el servicio. No usan tipos de Android.
+- **Motivo:** CLAUDE.md pide la lógica de negocio en `domain`, y así las reglas de la SPEC RF-07
+  («el servicio vive mientras corra un shell y solo entonces») se prueban en el host.
+- **Reglas:** el servicio corre si hay al menos un shell *en ejecución*; una sesión terminada sigue
+  listada, para poder leer su salida o reiniciarla, pero no mantiene el servicio. Al cerrar la
+  activa se prefiere una en ejecución. Los ids no se reutilizan. Un shell que no puede arrancar queda
+  como sesión terminada con estado `-1`; uno que termina antes de que `start` devuelva se registra
+  igualmente (la sesión se publica antes de arrancar el shell).
+- **Impacto:** `SessionManager` (Android, `@Singleton`) es solo un adaptador fino. La capa Android no
+  tiene tests de host porque necesita un PTY.
+
+### D-T08-2 · 2026-10-04 · Tipo de servicio `specialUse`, no `dataSync`
+
+- **Decisión:** `foregroundServiceType="specialUse"` con el subtipo `terminal_sessions`, más los
+  permisos `FOREGROUND_SERVICE` y `FOREGROUND_SERVICE_SPECIAL_USE`.
+- **Motivo:** ningún tipo estándar describe un terminal. `dataSync` es el que se usa por costumbre,
+  pero está pensado para transferencias finitas y Android 15 le pone un tope de 6 horas por día
+  cuando el `targetSdk` es ≥ 35; cortaría un SSH largo. `specialUse` no tiene tope. La revisión que
+  Google Play exige para `specialUse` no aplica: no se publica allí (SPEC §2).
+- **Alternativas:** no declarar tipo (lo que hace Termux con `targetSdk` 28), válido hoy porque el
+  tipo solo es obligatorio con `targetSdk` ≥ 34; se declara de todos modos para no tener que
+  tocarlo el día que se suba el `targetSdk`.
+- **Impacto:** `ServiceCompat.startForeground` pasa el tipo solo desde API 34. **Sin validar en
+  dispositivo.** Si algún Android rechazara `specialUse` con `targetSdk` 28, la alternativa es quitar
+  el tipo y dejar solo los permisos.
+
+### D-T08-3 · 2026-10-04 · El servicio no posee las sesiones; las posee `SessionManager`
+
+- **Decisión:** las sesiones viven en un singleton de Hilt con la vida del proceso. El servicio solo
+  mantiene vivo el proceso, muestra la notificación, sostiene el wake lock y se detiene solo.
+  `TerminalViewModel` ya no arranca ni para el shell: se reconecta al activo. Cerrar la actividad
+  con «atrás» no mata el shell mientras el servicio corra.
+- **Motivo:** la UI se reconecta a sesiones vivas tras recrear o cerrar la actividad (SPEC RF-07),
+  y un servicio *bound* o un `Binder` habría añadido un ciclo de vida más sin ganar nada: servicio y
+  actividad comparten proceso.
+- **Detalles:** el contador de fotogramas del ViewModel cuenta cada emisión del host activo, porque
+  los contadores de dos hosts pueden coincidir y la pantalla no se redibujaría al cambiar de
+  sesión. «Salir» en la notificación cierra todas las sesiones y la actividad; después del primer
+  layout el ViewModel no vuelve a crear una sesión por su cuenta, para no resucitar el shell
+  mientras la pantalla se cierra.
+- **Pendiente:** el cambio entre sesiones desde la UI (pestañas) es T09; aquí solo hay una activa a
+  la vez, creada al abrir o desde la notificación.
+
+### D-T08-4 · 2026-10-04 · Permisos pedidos en contexto y optimización de batería solo como aviso
+
+- **Decisión:** cuando hay un shell en ejecución se muestra, una vez por arranque y como diálogo con
+  explicación, primero el permiso de notificaciones (API 33+) y después el aviso de batería. El
+  orden y las condiciones están en `nextPrompt`, probado. Lo rechazado no se vuelve a pedir en ese
+  arranque (persistirlo, con los ajustes, es T16).
+- **Batería:** se abre `ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS`, la pantalla de ajustes del
+  sistema. **No** se declara `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, que mostraría un diálogo de
+  exclusión directa: la app no se excluye sola y un test lo vigila. Es el «sin exclusión forzada»
+  que pidió el plan.
+- **Notificaciones con `targetSdk` 28:** Android 13+ solo exige el permiso en tiempo de ejecución a
+  apps con `targetSdk` ≥ 33, y a las demás les muestra su propio aviso al crear el canal. La app lo
+  pide explícitamente, con su explicación, antes de que ocurra. **Sin validar en dispositivo** cuál
+  de los dos aparece primero.
+- **Wake lock:** `PARTIAL_WAKE_LOCK` sin tiempo máximo, mientras haya un shell y el ajuste
+  `keepAwake` (modelo de T05) esté activo; se suelta al terminar el último shell y en `onDestroy`.
+  `WakelockTimeout` de Lint está suprimido en ese punto, con motivo: un tope anularía la función.
+  Cambiar el ajuste desde la UI llega con T16.
+
+### D-T08-5 · 2026-10-04 · Phantom process killer (Android 12+): documentado, sin mitigación en código
+
+- **Qué es:** desde Android 12 el sistema limita a 32 los procesos hijo («fantasma») por app y mata
+  el más antiguo al pasarse, **aunque haya un servicio en primer plano**. Cada programa que lance un
+  shell (y con proot, cada programa de la distro) cuenta. Un `tmux` con muchos paneles o varias
+  sesiones con SSH, `ssh` y `top` pueden llegar al límite y morir sin aviso.
+- **Qué hace falta del usuario hoy:** en Android 14 QPR1 y posteriores, Opciones de desarrollador →
+  «Desactivar restricciones de procesos secundarios». En 12–13 solo se desactiva con `adb`
+  (`settings put global settings_enable_monitor_phantom_procs false`, o
+  `device_config put activity_manager max_phantom_processes 2147483647`).
+- **Decisión:** la app no puede cambiar ese ajuste (necesita un permiso de sistema), así que no se
+  intenta nada en código. Se documentará en el README y la política de privacidad (T21) y es
+  un punto a explicar en la primera ejecución cuando exista la pantalla de ayuda.
+- **Impacto:** el servicio mantiene vivo el proceso, pero no garantiza que sobrevivan todos sus hijos.
+  **Sin medir:** no se sabe cuántos procesos fantasma cuenta cada shell con proot (T07).
+
+### D-T08-7 · 2026-10-04 · La selección sale del `ViewModel` a `SelectionController`
+
+- **Decisión:** `SelectionController` (en `terminal/`, como `FontSizeController`) guarda la selección y
+  copia el texto del host activo. `TerminalViewModel` la expone como `selection` y la pantalla llama a
+  `viewModel.selection.start/extend/clear/copy`.
+- **Motivo:** detekt (`TooManyFunctions`, 11/11) falló en `TerminalViewModel` al sumar el ciclo de vida
+  de sesiones. No se relajó la regla (CLAUDE.md): se movió la lógica a un colaborador, el patrón que ya
+  usaban el zoom y los atajos.
+- **Impacto:** cambio de API interna sin efecto visible. Sin validar en dispositivo, como el resto.
+
+### D-T08-8 · 2026-10-04 · `POST_NOTIFICATIONS` con guarda de `SDK_INT`, y un test corregido
+
+- **Decisión:** el permiso se pide solo si `SDK_INT >= 33`, con una comprobación explícita en lugar de
+  silenciar `InlinedApi`. El diálogo ya solo se mostraba en API 33+, pero Lint no lo sabía.
+- **Test corregido:** `activatingASessionResizesItToTheCurrentLayout` suponía que la sesión no activa
+  recibía el cambio de tamaño, pero tras `newSession()` la activa es la última, así que el
+  comportamiento del controlador era el correcto y el test, erróneo. Ahora comprueba que la sesión
+  inactiva solo se redimensiona al activarla y que la activa lo hace en `onLayout`.
+
+### D-T08-6 · 2026-10-04 · Qué NO está validado en T08
+
+Todo lo que necesita un dispositivo, por la prohibición del usuario: arranque del servicio y su tipo
+en cada versión de Android, la notificación y sus acciones, la reconexión de la UI al cambiar de
+actividad, el wake lock real, el comportamiento tras «Salir» y los diálogos de permisos. En el host
+están probados el ciclo de vida de las sesiones (`SessionsTest`, `SessionControllerTest`), el orden de
+los avisos (`SessionPromptsTest`) y el manifiesto del servicio (`ManifestServiceTest`).
+
+## T19 — Versionado y releases
+
+### D-T19-1 · 2026-10-04 · Release solo con clave: el workflow se niega a publicar sin firma
+- **Decisión:** `release.yml` falla si `UT_KEYSTORE_BASE64` no está definido; también falla si el
+  `CHANGELOG.md` no tiene notas de esa versión. Sin variables `UT_*`, `assembleRelease` sigue
+  produciendo un APK sin firmar (lo que F-Droid compara).
+- **Motivo:** el workflow de UltimateDeck publicaría un APK sin firmar si faltara el secreto; un
+  usuario no podría actualizar después sobre él.
+- **Impacto:** el primer tag necesita la clave creada y los 4 secretos (ver `RELEASING.md`). No se creó
+  ninguna clave, secreto, tag ni release en esta tarea.
+
+### D-T19-2 · 2026-10-04 · Reproducibilidad: rutas fuera del código nativo
+- **Decisión:** `-ffile-prefix-map=<raíz del proyecto>=.` en las compilaciones C de `:app` (proot y
+  talloc) y de `:terminal-emulator`. No hay marcas de tiempo ni `git describe` en los scripts de
+  build (`PROOT_VERSION` es una constante). NDK y CMake siguen fijados.
+- **Comprobado:** en un clon fuera del repo, ninguna lib de proot ni del emulador contiene la ruta
+  del checkout.
+- **NO comprobado:** que dos máquinas distintas produzcan un APK idéntico bit a bit (`diffoscope`).
+  Queda como paso previo al primer envío a F-Droid (`RELEASING.md`).
+
+### D-T19-3 · 2026-10-04 · `fdroid/com.qtekfun.ultimateterminal.yml` con valores de ejemplo
+- **Decisión:** versión `0.1.0`, `submodules: true`, NDK `28.2.13676358` y `AllowedAPKSigningKeys` con un
+  marcador `REPLACE_WITH_THE_SHA256_OF_THE_RELEASE_CERTIFICATE`. Solo se ofrecen versiones finales
+  (`UpdateCheckMode: Tags ^v…$`, sin `-rc`).
+- **Pendiente:** huella real del certificado, tag real y revisión de antifeatures. Los campos
+  `ndk:` y `submodules:` siguen la sintaxis de fdroiddata pero no se han validado con `fdroid lint`.
+- **Fuera de alcance aquí:** metadatos fastlane y capturas (T20).
+
+## T06 — Descarga y verificación de rootfs
+
+### D-T06-1 · 2026-10-04 · De dónde sale la URL y el hash: el índice oficial de cada distro
+- **Decisión:** el catálogo (`OfficialRootfsCatalog`) no lleva URLs ni hashes escritos en el código.
+  Lee en el momento el índice que publica cada proyecto, y de ahí sale el fichero actual:
+  - **Alpine:** `https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/<arch>/latest-releases.yaml`.
+    La entrada `alpine-minirootfs` trae `file`, `version`, `size` y `sha256`. Arquitecturas: `aarch64`,
+    `armv7`, `x86_64`.
+  - **Ubuntu:** `https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/SHA256SUMS`, con líneas
+    `<sha256> *ubuntu-base-<versión>-base-<arch>.tar.gz`. Hay varias versiones puntuales en la misma
+    carpeta, así que se elige la más alta comparando números (24.04.10 > 24.04.9). El índice no da
+    tamaños: el tamaño de Ubuntu es `null` y solo se verifica el hash. Arquitecturas: `arm64`, `armhf`,
+    `amd64`.
+  - **Debian:** el rootfs oficial `slim` que construye [debuerreotype] y publica como imagen OCI el
+    repositorio `debuerreotype/docker-debian-artifacts` (ramas `dist-arm64v8`, `dist-arm32v7`,
+    `dist-amd64`). El `image-manifest.json` da el `digest` (SHA-256) y el tamaño de la única capa, y el
+    fichero es `<suite>/slim/oci/blobs/rootfs.tar.gz` (un `tar.gz`, unos 30 MB), servido por
+    `raw.githubusercontent.com`.
+- **Motivo:** las URLs de los mirrors caducan (cada versión puntual sustituye a la anterior y las
+  antiguas se retiran). Descubrirlas en el índice evita publicar una versión de la app solo para
+  actualizar una URL, y el hash viaja siempre junto al fichero que describe.
+- **Alternativas descartadas:**
+  - *URLs y hashes fijos en el código:* se rompen con la siguiente versión puntual.
+  - *Debian con `debootstrap` en el dispositivo:* necesita red, es lento y complejo bajo proot, y deja el
+    resultado sin un hash único que verificar.
+  - *Imágenes cloud de Debian:* son discos `qcow2`/`raw`, no un rootfs.
+  - *`rootfs.tar.xz` del mismo repositorio:* solo existe su `.sha256`; el fichero no está en la rama.
+    El que se publica y se puede descargar es el `tar.gz` de la capa OCI.
+- **Impacto:** se usan las constantes de `RootfsEndpoints` (Alpine `latest-stable`, Ubuntu `24.04` LTS,
+  Debian `trixie`); cambiar de versión mayor es una actualización de la app, a propósito (ver D-T06-4).
+
+[debuerreotype]: https://github.com/debuerreotype/debuerreotype
+
+### D-T06-2 · 2026-10-04 · Hash sobre HTTPS, sin comprobar firma GPG (riesgo aceptado, a mejorar)
+- **Decisión:** la integridad se basa en el **SHA-256 publicado por el propio proyecto**, obtenido por
+  HTTPS, y en comprobar el tamaño cuando el índice lo da. **No** se verifican las firmas GPG que
+  publican Ubuntu (`SHA256SUMS.gpg`), Alpine (`.asc`) o Debian (`InRelease`).
+- **Motivo:** verificar firmas exige una biblioteca OpenPGP y llevar dentro las claves públicas de cada
+  proyecto (y mantenerlas al día), lo que añade una dependencia y una superficie de errores grande para
+  el MVP.
+- **Riesgo (qué NO protege esto):** quien controle a la vez el mirror (o la cuenta de GitHub, para
+  Debian) y su hash, o rompa la validación TLS, puede servir un rootfs manipulado que pasaría la
+  comprobación. El hash sí protege de descargas corruptas o cortadas, de mirrors que sirven un fichero
+  distinto al del índice y de equivocaciones en la reanudación.
+- **Mejora pendiente (backlog):** comprobar la firma de `SHA256SUMS`/`InRelease` con claves incluidas en
+  la app (y revisar su licencia y distribución). No se hace sin consultar al usuario.
+
+### D-T06-3 · 2026-10-04 · Debian: manifiesto y capa se leen en dos peticiones sobre una rama que cambia
+- **Riesgo:** `dist-*` es una rama que se reescribe con frecuencia (se republica al reconstruir la imagen).
+  Entre leer el `image-manifest.json` y descargar el `rootfs.tar.gz` puede publicarse una versión nueva,
+  y entonces el hash del manifiesto ya no corresponde al fichero.
+- **Decisión:** no se intenta evitar en T06. El descargador lo trata como lo que es, un `HashMismatch`:
+  borra el parcial y no instala nada. T07 debe **volver a resolver el catálogo y reintentar una vez**
+  antes de mostrar el error. (Se podría fijar a un commit con la API de GitHub, pero añade una consulta
+  con límite de peticiones; se descarta de momento.)
+
+### D-T06-4 · 2026-10-04 · Versiones elegidas
+- **Decisión:** Alpine `latest-stable` (se actualiza solo), Ubuntu **24.04 LTS** (la última puntual de
+  esa serie) y Debian **trixie**. `RootfsEndpoints` las agrupa.
+- **Motivo:** una versión estable y con soporte largo es más segura para un usuario que mantiene
+  servidores; Alpine es la que más se mueve y por eso sigue `latest-stable`.
+- **Impacto:** al salir otra LTS o estable hay que cambiar la constante a mano y publicar la app.
+
+### D-T06-5 · 2026-10-04 · Protocolo de descarga: parcial, Range, reintentos e instalación atómica
+- **Decisión (`HttpRootfsDownloader`):**
+  - Descarga a `<destino>.part`; el fichero solo aparece en `<destino>` tras verificarlo, con un
+    `ATOMIC_MOVE` en el mismo directorio (existe completo o no existe). Un destino anterior se sustituye.
+  - **Reanudación:** si hay parcial, se pide `Range: bytes=<n>-`. Con `206` se añade al parcial, pero
+    solo si `Content-Range` empieza exactamente en `<n>`; si no, se descarta el parcial y se reintenta.
+    Con `200` (el servidor ignoró el rango) se empieza de cero. Con `416` se verifica el parcial: si ya
+    es el fichero completo se instala, y si no se borra y se reintenta.
+  - **Reintentos:** hasta 4 intentos con espera exponencial (1 s, 2 s, 4 s) ante errores de red, `5xx`,
+    `408` y `429`; el parcial se conserva para continuar. Cualquier otro `4xx` (p. ej. `404`) falla sin
+    reintentar. (OkHttp ya reintenta él solo un primer `408`.)
+  - **Verificación:** el tamaño (si se conoce) y el SHA-256 se comprueban sobre el fichero completo. Si
+    fallan, se **borra el parcial** y se devuelve `SizeMismatch`/`HashMismatch`: no hay reintento, porque
+    repetir la descarga de lo mismo no arregla un hash que no corresponde.
+  - **Cancelación:** se comprueba en cada bloque leído; el parcial se conserva para reanudar después.
+  - Errores con tipos sellados (`RootfsError`/`RootfsResult`), no excepciones hacia la UI.
+- **Motivo:** son las garantías que pedía la spec (RF-04): un fallo de red a mitad no deja una distro
+  corrupta y no se instala nada sin verificar.
+
+### D-T06-6 · 2026-10-04 · Solo HTTPS, aplicado en el código
+- **Decisión:** el descargador rechaza (`InsecureUrl`) cualquier URL que no sea `https://`, sin hacer la
+  petición. Un parámetro `requireHttps` (por defecto `true`) existe solo para los tests con
+  `MockWebServer`.
+- **Motivo:** con `targetSdk` 28 el tráfico en claro está permitido por defecto en Android, así que no
+  se puede delegar en el sistema.
+
+### D-T06-7 · 2026-10-04 · Dependencias nuevas
+- **Decisión:** OkHttp 5.5.0 (Apache-2.0; arrastra Okio y AndroidX Startup, también Apache-2.0),
+  `kotlinx-serialization-json` 1.11.0 (Apache-2.0) y, solo para tests, `mockwebserver3` y
+  `mockwebserver3-junit5`. Son las mismas versiones y bibliotecas que usa UltimateDeck. Anotadas en
+  `THIRD_PARTY_NOTICES.md`; pasan `licensee` (solo Apache-2.0) y `checkForbiddenDependencies`.
+- **Motivo del JSON:** `org.json` de Android está vacío en los tests de host, y una expresión regular
+  sobre JSON es frágil. El YAML de Alpine y `SHA256SUMS` son formatos planos y se leen a mano, sin
+  añadir un parser de YAML.
+
+### D-T06-8 · 2026-10-04 · Cobertura crítica del paquete `data.rootfs.verify`
+- **Decisión:** `Sha256Verifier` (tamaño y SHA-256) está al **100 % de líneas y ramas** con tests de
+  host que cubren: coincidencia, hash en mayúsculas, tamaño desconocido, tamaño o hash erróneos,
+  fichero mayor que el búfer, fichero vacío, checksum mal formado y fichero ilegible. Las constantes
+  están a nivel de archivo porque en un `companion object` privado Kover contaba el accesor sintético
+  como una línea sin cubrir.
+- **Impacto:** `koverVerifyCritical` mide ya código real; antes el paquete estaba vacío.
+
+### T06: lo que NO está validado
+- Los índices reales se consultaron con `curl` el 2026-10-04 y los tests usan extractos de esas
+  respuestas, pero **la app no ha descargado todavía de los mirrors reales** (sin dispositivo ni
+  autorización para usar la red desde uno). El formato de esos índices puede cambiar.
+- Comportamiento de red real en Android: tiempos de espera (el cliente de OkHttp por defecto corta tras
+  10 s sin datos y se reintenta), cambios de red a mitad, ahorro de datos y la validación TLS del
+  sistema.
+- Que `ATOMIC_MOVE` funcione en el almacenamiento privado de la app en todos los dispositivos (es el
+  mismo directorio, así que debería).
+- La extracción, la elección de arquitectura con `Build.SUPPORTED_ABIS` (`Architecture.fromAbis`) y el
+  reintento por `HashMismatch` de Debian son de T07; aquí solo están las interfaces `RootfsCatalog` y
+  `RootfsDownloader` y sus implementaciones.
+
+## T07 — Instalación y gestión de distros
+
+### D-T07-1 · 2026-10-04 · Una instalación es una transacción: preparar al lado y mover al final
+- **Decisión:** `DistroInstaller` registra la distro como `INSTALLING` **antes** de descargar (así un nombre
+  repetido falla sin gastar datos), descarga y descomprime en `distros-tmp/<token>/` y solo mueve el árbol
+  terminado a `distros/<token>` con un renombrado atómico; después marca la fila `READY`. Cada instalación
+  tiene su propio token (UUID), así que dos instalaciones, o una instalación y los restos de una caída, nunca
+  comparten directorio.
+- **Fallo o cancelación:** un `finally` bajo `NonCancellable` borra el directorio temporal, el destino y la
+  fila. Así, cancelar a mitad de la extracción no deja ni ficheros ni registros (hay un test que cancela con
+  el extractor detenido y comprueba ambas cosas).
+- **Si el proceso muere:** `DistroManager.recoverInterrupted()` borra toda fila que no sea `READY` con sus
+  ficheros y el área temporal. Se llama una vez al arrancar la pantalla, antes de permitir instalar.
+- **Alternativas descartadas:** extraer directamente en el destino y borrar si falla (un corte de energía
+  dejaría una distro a medias que parece válida); no registrar la fila hasta el final (permitiría descargar
+  100 MB para descubrir que el nombre ya existe).
+- **Impacto:** T08 mueve la instalación al servicio en primer plano; la lógica de limpieza no cambia.
+
+### D-T07-2 · 2026-10-04 · Ante un hash que no coincide, se vuelve a resolver el catálogo y se reintenta una vez
+- **Decisión:** cumple lo que pedía D-T06-3. Solo el error `HashMismatch` repite el intento completo (resolver,
+  descargar, verificar, extraer); cualquier otro fallo (red, 404, disco) se muestra sin repetir. Un segundo
+  `HashMismatch` se informa al usuario. Cada intento es una transacción entera, así que el primero ya no deja nada.
+- **Motivo:** la rama de Debian se reescribe a menudo y el hash del índice puede quedar obsoleto entre las dos
+  peticiones. No se repite ante fallos de red para no gastar datos del usuario en bucle.
+- **Riesgo:** un hash incorrecto *real* (un fichero manipulado) también se reintenta una vez; el segundo intento
+  vuelve a fallar y no se instala nada, así que el único coste es una descarga extra.
+
+### D-T07-3 · 2026-10-04 · Extractor propio sobre Apache Commons Compress, solo gzip y tar
+- **Decisión:** `TarGzExtractor` usa `commons-compress` 1.28.0 (Apache-2.0). Solo se leen **gzip y tar plano**,
+  que es lo que publican las tres fuentes de T06. xz, bzip2 y zstd se reconocen por su cabecera y se rechazan
+  con un error que nombra el formato (`ArchiveFormat`), en vez de un fallo genérico.
+- **Dependencias que entran en el APK** (comprobadas con `licensee`, todas Apache-2.0): `commons-compress`
+  1.28.0, `commons-io` 2.20.0, `commons-codec` 1.19.0 y `commons-lang3` 3.18.0. xz, zstd y brotli son
+  opcionales de Commons Compress y **no** se incluyen (reglas `-dontwarn` en R8).
+- **Alternativas descartadas:** `tar` del sistema vía `ProcessBuilder` (no está garantizado en Android y no se
+  puede probar en el host); escribir un lector de tar propio (reinventa un formato con muchas rarezas, PAX,
+  GNU long names…); añadir `xz` (otra dependencia para un formato que ninguna fuente usa hoy).
+- **Impacto:** si una fuente pasa a servir `.tar.xz` hay que añadir `org.tukaani:xz` (dominio público, se
+  puede usar) y quitar el rechazo.
+
+### D-T07-4 · 2026-10-04 · Reglas de seguridad de la extracción (lo más delicado de T07)
+Un rootfs descargado se trata como entrada hostil aunque su hash coincida, porque el hash solo prueba que es
+el fichero que publicó el proyecto, no que sea inofensivo. Reglas (código en `SafeTreeWriter`, probadas con
+tars sintéticos hostiles):
+- **Nada fuera del destino.** Un nombre con `..` se rechaza (`UnsafeEntry`). Las barras iniciales se quitan
+  como hace GNU tar.
+- **Nunca se escribe a través de un enlace simbólico.** Cada directorio padre se comprueba sin seguir enlaces:
+  si es un enlace, se rechaza todo el archivo. Esto cierra el ataque clásico de crear `link -> /ruta/fuera` y
+  luego escribir `link/fichero`.
+- **Los enlaces simbólicos en sí se guardan tal cual**, incluso los absolutos (`/bin/sh -> /bin/busybox`), porque
+  un rootfs normal está lleno de ellos y solo se resuelven dentro de proot, nunca en el sistema anfitrión.
+- **Enlaces duros:** solo hacia un fichero regular ya extraído dentro del destino; hacia fuera, hacia un enlace
+  simbólico o hacia la raíz se rechazan. Si el sistema de ficheros no admite enlaces duros, se copia el contenido.
+- **Un directorio no puede sustituir a un fichero ni al revés**, y un fichero no puede ocupar el sitio de un
+  directorio padre.
+- **Permisos:** se conservan los nueve bits rwx; **se descartan setuid, setgid y sticky**. Los directorios
+  siempre conservan rwx para el propietario (la app) para poder borrarlos; el modo real se aplica al final para
+  que un directorio de solo lectura no bloquee a sus hijos. No se restaura el propietario (todo es de la app).
+- **Dispositivos, sockets y FIFO se omiten** (no se pueden crear sin root) y se cuentan en `skippedSpecialFiles`.
+- **Límites contra bombas de descompresión:** 2 000 000 entradas, 16 GiB y 4096 caracteres por ruta (valores
+  muy por encima de cualquier rootfs real; configurables). Se rechaza un archivo **sin ninguna entrada** (un
+  fichero vacío o equivocado no es una distro).
+- **Un nombre con byte nulo no puede colar una ruta:** Commons Compress corta el nombre en el primer `\0`, como
+  `tar`, de modo que lo que se valida es lo que se escribe. Se comprobó con un tar construido a mano.
+- **Cancelación:** se comprueba entre entradas y cada MiB de datos, así que cancelar responde sin esperar a que
+  termine un fichero grande.
+
+### D-T07-5 · 2026-10-04 · Espacio libre: se comprueba antes de descargar
+- **Decisión:** se exige `max(64 MiB, 5 × tamaño del archivo)` (el archivo se conserva mientras se descomprime y
+  un rootfs ocupa unas 4 veces su tamaño comprimido); si el índice no da tamaño (Ubuntu) se asume 512 MiB.
+- **Motivo:** rechazar con un mensaje claro y el espacio necesario es mejor que llenar el disco y fallar al
+  final. Es una estimación **sin medir en un rootfs real**: queda pendiente de validar.
+
+### D-T07-6 · 2026-10-04 · Duplicar y eliminar son seguros ante interrupciones
+- **Duplicar:** la copia se construye junto a su destino y se renombra (`copyRecursively` de T05); su fila solo
+  pasa a `READY` después. Un fallo o una cancelación dejan sin copia ni fila. La copia no es la distro
+  predeterminada.
+- **Eliminar:** la fila se marca `FAILED` **antes** de borrar ficheros. Si el borrado se interrumpe, la distro
+  se ve como "dañada" (y se puede volver a eliminar) en vez de parecer intacta. No se puede eliminar una distro
+  que se está instalando.
+- **Predeterminada:** solo una distro `READY` puede serlo, para que una pestaña nueva siempre pueda abrirla.
+  Al eliminar la predeterminada, T05 ya pasa la marca a la más antigua que quede.
+
+### D-T07-7 · 2026-10-04 · Pantalla de gestión: mínima y provisional
+- **Decisión:** `DistroScreen` (lista, instalar, renombrar, duplicar, eliminar, predeterminada, progreso y
+  cancelar) sin lógica en los composables: el estado y las acciones están en `DistroViewModel`, con los
+  mensajes de error traducidos en `DistroMessages`. Se abre desde un botón provisional en `MainActivity`
+  que T09 (pestañas) sustituirá. Textos en `values/` y `values-es/`; botones de al menos 48 dp.
+- **La instalación vive en el `ViewModel`**: sobrevive a rotar la pantalla pero **no a cerrar la app**. T08 la
+  pasa al servicio en primer plano. Mientras tanto, si el proceso muere a mitad, `recoverInterrupted()` limpia
+  al arrancar.
+- **Permiso `INTERNET`:** añadido al manifiesto, solo para descargar el rootfs de la distro que el usuario elige
+  instalar. Debe explicarse en `PRIVACY.md` (T21).
+
+### D-T07-8 · 2026-10-04 · Créditos de Apache Commons: el APK no conserva sus avisos, se empaquetan a mano
+- **Hallazgo:** al comprobar el APK, Android Gradle Plugin **no incluye** los `META-INF/NOTICE.txt` ni
+  `LICENSE.txt` de estas librerías (el único `NOTICE` presente es el de Jakarta Injection). La Apache-2.0 exige
+  conservar el aviso al redistribuir en binario.
+- **Decisión:** los textos de las cuatro librerías se copian **sin modificar** a
+  `app/src/main/res/raw/third_party_apache_commons.txt`, con un `keep.xml` para que el *resource shrinker* no los
+  elimine. Se comprobó con `aapt2` en el APK de release que el recurso existe y es idéntico byte a byte al fuente.
+- **Abierto (no se ha tocado):** lo mismo puede afectar a **OkHttp y Okio** (T06) y al resto de dependencias que
+  ya estaban en `master`; hay que comprobarlo y, si es así, empaquetar también sus avisos y mostrar una pantalla
+  de licencias. Se deja para decidir; no se amplió el alcance de T07 sin preguntar.
+
+### T07: lo que NO se ha validado (sin dispositivo)
+- **Que la instalación funcione de principio a fin en un dispositivo:** descargar de los mirrors reales,
+  descomprimir un rootfs de verdad (decenas de miles de ficheros) y que `ATOMIC_MOVE` y los enlaces simbólicos
+  funcionen en el almacenamiento privado (ya señalado en D-T05-9).
+- **El tiempo y el espacio reales** de instalar Debian, Ubuntu y Alpine, y si el cálculo de espacio libre
+  (D-T07-5) es acertado.
+- **Que un rootfs extraído por esta vía arranque con proot** (T02 tampoco está validada): los permisos, los
+  enlaces absolutos y la ausencia de dispositivos pueden necesitar ajustes que solo se ven al ejecutarlo.
+- **La pantalla:** el aspecto y el uso real en móvil y tablet, la rotación durante una instalación, los
+  diálogos con el teclado, y TalkBack. Solo se han probado el `ViewModel` y la lógica, no los composables.
+- **Rendimiento de la extracción** con el almacenamiento real, y que cancelar responda a tiempo en un fichero
+  muy grande.
+
+## T09 — Pestañas
+
+### D-T09-1 · 2026-10-04 · Una pestaña es una sesión; el modelo vive en `Sessions`
+**Decisión:** no hay un modelo de pestañas aparte. `SessionInfo` gana `title` (lo que escribe el
+usuario, null = nombre por defecto) y `distroId`, y `Sessions` gana reducers puros: `renamed`,
+`moved`, `switched(TabSwitch)` y `closeAction`. El orden de las pestañas es el orden de `items`.
+**Motivo:** una pestaña no tiene vida propia sin su sesión; un segundo modelo habría que mantenerlo
+sincronizado (¿qué pasa si el shell termina?). Así toda la lógica es inmutable y se prueba en host.
+**Alternativas:** `Tab` separado con referencia a `SessionId` (más piezas, mismo comportamiento).
+**Impacto:** `SessionInfo` cambia con valores por defecto, por lo que el código y los tests de T08
+siguen compilando.
+
+### D-T09-2 · 2026-10-04 · Los cambios puros pasan por `SessionEditor.edit`
+**Decisión:** `SessionController` implementa `SessionEditor` (`state`, `newSession(distroId)`,
+`close`, `edit { ... }`). Renombrar, reordenar y cambiar de pestaña son un `edit` que no toca los
+shells; solo si cambia la pestaña activa se redimensiona el pty que pasa a primer plano al tamaño
+actual (lo mismo que ya hacía `activate`, que ahora es un `edit`).
+**Motivo:** añadir una función por operación al controlador superaba el límite de `TooManyFunctions`
+de detekt (11), que no se relaja, y mezclaba el ciclo de vida de los procesos con ediciones que no
+lo cambian. La interfaz permite probar `TabsController` con el controlador real y fakes.
+**Alternativas:** una función por operación (rompe detekt); `TabsController` dependiendo de
+`SessionManager` (Android, sin pruebas de host).
+
+### D-T09-3 · 2026-10-04 · Cerrar: confirmación solo si el shell sigue vivo
+**Decisión:** cerrar una pestaña cuyo shell ya terminó la cierra sin preguntar; si sigue en marcha,
+`TabsController` guarda la pestaña en `closeConfirmation` y la UI muestra un diálogo; solo al
+confirmar se detiene el shell. Una pregunta sobre una pestaña que desaparece mientras tanto (el
+shell se cerró por otro lado) se descarta sola. Cerrar la última pestaña cierra la app, igual que
+«Salir» de la notificación (comportamiento de T08: sin sesiones, la pantalla se cierra).
+**Motivo:** SPEC RF-02 («al cerrar una sesión con procesos en curso se pide confirmación»); no
+perder trabajo por un toque accidental.
+**Alternativa:** abrir una pestaña nueva al cerrar la última. Más cómodo, pero contradice «Salir» y
+deja el servicio en primer plano sin que el usuario lo pida.
+
+### D-T09-4 · 2026-10-04 · La distro de cada pestaña se registra, pero aún no se usa para arrancar
+**Decisión:** una pestaña nueva se abre en la distro predeterminada si está `READY` (`defaultDistroId`)
+y, si no hay ninguna, en el shell de Android. Una pulsación larga en «+» ofrece elegir entre el shell
+y las distros `READY` (`distroOptions`). El `distroId` queda guardado en la sesión, y «reiniciar» una
+sesión terminada la abre en la misma distro. `AndroidSessionFactory` sigue arrancando el shell de
+Android sea cual sea la distro: enlazar `ProotCommandBuilder` llega con T07, que es quien instala
+distros. «Nueva sesión» de la notificación abre siempre el shell de Android.
+**Motivo:** SPEC RF-02/RF-04; dejar el selector y el modelo listos sin inventar un arranque que aún
+no se puede probar (no hay distros instaladas).
+**Impacto:** cuando T07 enlace el arranque, bastará con que la fábrica lea el `distroId`.
+
+### D-T09-5 · 2026-10-04 · Barra superior o lateral según el ancho, sin dependencia nueva
+**Decisión:** `tabBarPlacement(anchoDp)`: lateral (columna de 192 dp) desde 600 dp, superior (48 dp)
+por debajo. Es el umbral de la clase «medium» de las guías de Material, calculado a mano. El espacio
+de la barra se descuenta del layout del pty con `reserveForTabBar`, igual que la fila de teclas
+extra en T04, de modo que `stty size` debería seguir coincidiendo con lo visible.
+**Motivo:** `WindowSizeClass` es otra dependencia (Apache-2.0) para una sola comparación.
+**Alternativas:** `material3-window-size-class`.
+**Pendiente:** la barra lateral va siempre en el borde izquierdo físico, también con idioma de derecha
+a izquierda (la terminal es de izquierda a derecha); sin validar en dispositivo.
+
+### D-T09-6 · 2026-10-04 · Atajos de pestañas con efecto real
+**Decisión:** `ShortcutHandler` recibe un `TabCommands` y resuelve todos los atajos (ya no existe el
+flujo de «atajos sin manejar»). `Alt+n` selecciona la pestaña n contando desde 1 y no hace nada si no
+existe (no salta a la última como en los navegadores); `Ctrl+Tab` y `Ctrl+Shift+Tab` avanzan y
+retroceden dando la vuelta.
+**Aviso:** `Alt+dígito` choca con los argumentos numéricos de readline (ver T11); se mantiene porque lo
+pide la SPEC y se puede reasignar.
+
+### D-T09-7 · 2026-10-04 · `TerminalViewModel` pasa a ser `@HiltViewModel`
+**Decisión:** recibe `SessionManager` y `DistroRepository` por inyección, en lugar de leer el gestor
+de la clase `Application`. `viewModel()` de Compose usa la fábrica de Hilt de la actividad
+(`@AndroidEntryPoint`), así que no hace falta `hilt-navigation-compose`. Al cambiar la sesión activa
+se vuelve al final del historial y se borra la selección.
+**Limitación:** la posición del scroll es del ViewModel, no de cada pestaña: al volver a una pestaña
+se empieza en la pantalla viva, no donde se dejó.
+**Alternativa:** guardar la posición por sesión (más estado; no se ha pedido).
+
+### D-T09-8 · 2026-10-04 · Qué NO está validado (sin dispositivo)
+Todo se probó con tests de host (380 en total, 47 nuevos de pestañas): reducers, reordenación por
+arrastre (`dropIndex`), estado de la barra, controlador con el `SessionController` real y los
+atajos. No se ha visto la barra en ninguna pantalla. Pendiente en una tablet y un móvil reales:
+1. Que los gestos de cada pestaña (toque, doble toque, pulsación larga + arrastre) no se pisen entre
+   sí ni con el scroll de la barra, y que el doble toque para renombrar se reconozca sin retrasar el
+   toque simple.
+2. Los menús desplegables y los diálogos (renombrar, confirmar cierre) y que el teclado no los tape.
+3. La barra lateral: ancho, desplazamiento con muchas pestañas y la pantalla dividida (umbral de 600 dp).
+4. Que al cambiar de pestaña el pty recibe el tamaño correcto (`stty size` y `SIGWINCH`).
+5. Accesibilidad: descripciones de TalkBack («Shell 2, pestaña 2 de 3, en ejecución»), tamaños
+   táctiles de 48 dp y el rol de pestaña.
+6. El efecto de tener muchas pestañas con el *phantom process killer* de Android 12+ (SPEC §8).
+
+## T12 — Temas, modo OLED y fuentes
+
+### D-T12-1 · 2026-10-04 · Fuente: JetBrains Mono 2.304, incluida sin modificar
+- **Decisión:** el terminal usa JetBrains Mono (Regular, Bold, Italic, Bold Italic) como fuente incluida, en `res/font`.
+- **Motivo:** licencia SIL OFL-1.1 verificada en el repositorio oficial (`Copyright 2020 The JetBrains Mono Project Authors`), compatible con distribuir la fuente dentro de una app GPL-3.0-or-later siempre que no se venda suelta y se incluya el texto de la licencia. Sin *Reserved Font Name*.
+- **Verificado:** los cuatro `.ttf` son idénticos byte a byte (SHA-256) a los de la release oficial `v2.304`. El texto de la OFL y la lista de autores van en el APK (`assets/licenses/`).
+- **Alternativas:** Fira Code, Hack o una Nerd Font (las Nerd Fonts son parches de otras fuentes con licencias mezcladas: más trabajo de verificar). **Impacto:** unos 1,1 MB más en el APK. **Pendiente:** las Nerd Fonts / iconos de powerline, por si el usuario los quiere (no es MVP).
+
+### D-T12-2 · 2026-10-04 · Esquemas incluidos y por qué NO está Tango
+- **Decisión:** vienen Dracula (predeterminado), Solarized Dark, Solarized Light, Gruvbox Dark, Nord y un esquema OLED propio. Se acreditan en `THIRD_PARTY_NOTICES.md` y con el texto MIT completo en `assets/licenses/ColorSchemes-MIT.txt`.
+- **Verificado en los repositorios oficiales:** Solarized (© 2011 Ethan Schoonover, MIT), Dracula (© 2023 Dracula Theme, MIT), Nord (© 2016-presente Sven Greb, MIT) y Gruvbox (© Pavel Pertsev; MIT/X11 según su README y `package.json`, aunque el repositorio no trae un fichero `LICENSE`).
+- **Tango, retirado:** el primer borrador lo incluía como predeterminado diciendo «dominio público». **No pude verificar esa afirmación**: las guías de Tango se publican bajo CC BY-SA 2.5, que no es compatible con GPLv3, y no encontré una declaración clara para la paleta. Al no poder comprobarlo y querer evitar reclamaciones, se quitó. Si más adelante se verifica una fuente clara de licencia, se puede añadir.
+- **Cambios a las paletas:** pequeños retoques de legibilidad documentados en `BuiltInSchemes.kt`. Los esquemas MIT permiten modificar con atribución.
+- **Impacto:** el esquema predeterminado cambia a Dracula. Un usuario que importe un esquema responde de su origen.
+
+### D-T12-3 · 2026-10-04 · Modo OLED = variante del tema oscuro
+- **Decisión:** `resolveTheme` solo activa OLED cuando el tema resultante es oscuro (`oled = oledBlack && dark`). En OLED, un esquema oscuro pasa a fondo `#000000` puro (`forOled()`); uno claro no se toca.
+- **Motivo:** apagar los píxeles solo tiene sentido en oscuro; un fondo negro con un esquema claro dejaría texto ilegible.
+- **Impacto:** la interfaz Material y la vista del terminal usan la misma decisión.
+
+### D-T12-4 · 2026-10-04 · El esquema se aplica a todas las sesiones, también a las futuras
+- **Decisión:** `SessionManager.applyScheme` delega en `AndroidSessionFactory`, que recuerda el esquema, lo aplica a todos los hosts en marcha y a cada host nuevo antes de arrancar su emulador.
+- **Motivo:** con varias pestañas (T09) un esquema por host dejaría pestañas con colores antiguos. La librería de Termux lee sus colores iniciales de una paleta estática compartida; se escribe ahí y se reinician los colores del emulador activo (los que un programa fijó con OSC 4/10/11 se descartan: el esquema nuevo manda).
+- **Impacto:** la integración con los cambios de T08/T09 se rehízo sobre `master`; el diseño de H, que asumía un único host, no valía tal cual.
+
+### D-T12-5 · 2026-10-04 · No se dibuja nada hasta tener los ajustes
+- **Decisión:** `MainActivity` espera a que lleguen los ajustes guardados (`produceState`) antes de componer la pantalla.
+- **Motivo:** evita un primer fotograma con el esquema y tamaño de fuente por defecto que luego salte a los guardados.
+- **Alternativa:** una pantalla de carga; descartada por ser un instante. **Riesgo:** si el repositorio tardara, se vería la ventana vacía; no medido.
+
+### D-T12-6 · 2026-10-04 · Persistencia y tamaño de fuente
+- **Decisión:** tema, modo OLED, colores dinámicos, esquema elegido, esquemas importados y tamaño de fuente viven en el repositorio de ajustes de T05 (clave-valor). El tamaño del zoom de T11 se restaura una vez y solo se guardan los cambios del usuario, con un *debounce* de 500 ms (un pellizco genera muchos valores).
+- **Importación/exportación:** JSON versionado (`version: 1`) con `kotlinx.serialization`, probado con ida y vuelta. Un fichero de una versión desconocida se rechaza.
+
+### D-T12-7 · 2026-10-04 · Contraste mínimo comprobado en tests
+- **Decisión:** cada esquema incluido debe cumplir: texto sobre fondo ≥ 4,5:1 (WCAG AA), cursor ≥ 3:1, texto sobre selección ≥ 3:1, cada color ANSI sobre el fondo ≥ 3:1 y el «negro brillante» ≥ 1,5:1; y lo mismo en su variante OLED.
+- **Motivo:** una paleta con colores ilegibles es un fallo de accesibilidad; el test lo caza antes de publicar.
+- **Nota:** el umbral de 1,5:1 del negro brillante es deliberadamente bajo: en muchos esquemas es el color de texto «atenuado» y subirlo lo desvirtúa.
+
+### D-T12-8 · 2026-10-04 · Las barras del sistema siguen al esquema
+- **Decisión:** los iconos de las barras de estado y navegación se eligen según el fondo del **esquema** (`SystemBarStyle.auto`), no según el tema del sistema, porque el terminal se dibuja bajo las barras.
+
+### Pendiente de validar en dispositivo (T12)
+Nada de esto se ha visto en pantalla; solo hay tests de host.
+1. Que los colores se ven bien de verdad: contraste real con brillo bajo y al sol, y que OLED apaga los píxeles.
+2. Que el cambio de esquema en caliente repinta todas las pestañas sin reiniciarlas, y los colores que un programa fijó con OSC.
+3. El renderizado de JetBrains Mono: negrita/cursiva con las cuatro variantes, ancho de celda correcto, y que no cambia el tamaño de la rejilla (`stty size`) respecto a la fuente del sistema.
+4. Iconos de las barras del sistema con esquemas claros y oscuros.
+5. La pantalla de ajustes para elegir esquema/tema aún no existe (T16): hoy solo se cambian por el repositorio de ajustes.

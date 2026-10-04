@@ -9,7 +9,7 @@ package com.qtekfun.ultimateterminal.domain.theme
  * color a program may print stays readable on the scheme's own background (checked by a test).
  */
 object BuiltInSchemes {
-    const val DEFAULT_ID = "tango"
+    const val DEFAULT_ID = "dracula"
 
     private fun c(rgb: Int) = rgb or TerminalColorScheme.BLACK
 
@@ -30,20 +30,6 @@ object BuiltInSchemes {
         cursor = c(cursor),
         selection = c(selection),
         builtIn = true
-    )
-
-    /** Tango, the GNOME terminal palette (public domain). */
-    val tango = scheme(
-        id = "tango",
-        name = "Tango",
-        ansi = listOf(
-            0x2E3436, 0xE23030, 0x4E9A06, 0xC4A000, 0x4F83C4, 0x75507B, 0x06989A, 0xD3D7CF,
-            0x555753, 0xEF2929, 0x8AE234, 0xFCE94F, 0x729FCF, 0xAD7FA8, 0x34E2E2, 0xEEEEEC
-        ),
-        foreground = 0xD3D7CF,
-        background = 0x1E2224,
-        cursor = 0xD3D7CF,
-        selection = 0x555753
     )
 
     /**
@@ -133,5 +119,5 @@ object BuiltInSchemes {
     )
 
     val all: List<TerminalColorScheme> =
-        listOf(tango, solarizedDark, solarizedLight, dracula, gruvboxDark, nord, oled)
+        listOf(dracula, solarizedDark, solarizedLight, gruvboxDark, nord, oled)
 }

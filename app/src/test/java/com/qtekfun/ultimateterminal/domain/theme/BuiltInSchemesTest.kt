@@ -19,10 +19,9 @@ class BuiltInSchemesTest {
         val ids = all.map { it.id }
         assertEquals(
             listOf(
-                "tango",
+                "dracula",
                 "solarized-dark",
                 "solarized-light",
-                "dracula",
                 "gruvbox-dark",
                 "nord",
                 "oled"

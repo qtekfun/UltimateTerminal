@@ -12,7 +12,7 @@ object SchemeCatalog {
 
     /** The scheme with [id], or the default one when it is gone (e.g. an imported one was removed). */
     fun resolve(id: String, custom: List<TerminalColorScheme>): TerminalColorScheme =
-        (BuiltInSchemes.all + custom).firstOrNull { it.id == id } ?: BuiltInSchemes.tango
+        (BuiltInSchemes.all + custom).firstOrNull { it.id == id } ?: BuiltInSchemes.dracula
 
     /** [custom] with [imported] added; names are unique among all schemes, ignoring case. */
     fun add(
