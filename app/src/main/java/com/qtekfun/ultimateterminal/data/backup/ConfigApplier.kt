@@ -4,6 +4,11 @@
 package com.qtekfun.ultimateterminal.data.backup
 
 import com.qtekfun.ultimateterminal.domain.Outcome
+import com.qtekfun.ultimateterminal.domain.appearance.ChromeStyle
+import com.qtekfun.ultimateterminal.domain.appearance.CursorShape
+import com.qtekfun.ultimateterminal.domain.appearance.CustomFont
+import com.qtekfun.ultimateterminal.domain.appearance.FontCatalog
+import com.qtekfun.ultimateterminal.domain.appearance.TerminalAppearance
 import com.qtekfun.ultimateterminal.domain.model.Layout
 import com.qtekfun.ultimateterminal.domain.model.Profile
 import com.qtekfun.ultimateterminal.domain.model.SshHost
@@ -13,10 +18,12 @@ import com.qtekfun.ultimateterminal.domain.repository.LayoutRepository
 import com.qtekfun.ultimateterminal.domain.repository.ProfileRepository
 import com.qtekfun.ultimateterminal.domain.repository.SettingsRepository
 import com.qtekfun.ultimateterminal.domain.repository.SshHostRepository
+import com.qtekfun.ultimateterminal.domain.settings.DnsServers
 import com.qtekfun.ultimateterminal.domain.ssh.SshKeyInfo
 import com.qtekfun.ultimateterminal.domain.ssh.SshKeyStore
 import com.qtekfun.ultimateterminal.domain.ssh.SshKeyType
 import com.qtekfun.ultimateterminal.domain.ssh.SshResult
+import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.FontZoom
 import com.qtekfun.ultimateterminal.domain.theme.BuiltInSchemes
 import com.qtekfun.ultimateterminal.domain.theme.SchemeCodec
@@ -166,7 +173,14 @@ internal class ConfigApplier(repositories: BackupRepositories) {
                     FontZoom.MIN_SP,
                     FontZoom.MAX_SP
                 ),
-                customSchemes = custom
+                customSchemes = custom,
+                prootCompatibilityMode = dto.prootCompatibilityMode ?: it.prootCompatibilityMode,
+                dnsFallbackServers = dto.dnsFallbackServers
+                    ?.let { servers -> DnsServers.parse(DnsServers.format(servers)).servers }
+                    ?: it.dnsFallbackServers,
+                extraKeys = dto.extraKeys?.let { text -> ExtraKeysConfig.parse(text).first }
+                    ?: it.extraKeys,
+                appearance = dto.appearance?.toAppearance(it.customFonts) ?: it.appearance
             )
         }
     }
@@ -195,4 +209,21 @@ private fun KeyDto.toInfo(): SshKeyInfo? {
     } else {
         SshKeyInfo(alias, name, keyType, publicKey, fingerprint, created)
     }
+}
+
+/** The appearance of the backup; a font this device does not have, or a name it does not know, falls back. */
+private fun AppearanceDto.toAppearance(fonts: List<CustomFont>): TerminalAppearance {
+    val defaults = TerminalAppearance()
+    return TerminalAppearance(
+        fontId = FontCatalog.idOrBundled(fontId, fonts),
+        lineSpacing = lineSpacing,
+        letterSpacing = letterSpacing,
+        marginDp = marginDp,
+        cursorShape =
+            CursorShape.entries.firstOrNull { it.name == cursorShape } ?: defaults.cursorShape,
+        cursorBlink = cursorBlink,
+        chromeStyle =
+            ChromeStyle.entries.firstOrNull { it.name == chromeStyle } ?: defaults.chromeStyle,
+        cornerRadiusDp = cornerRadiusDp
+    ).sanitized()
 }

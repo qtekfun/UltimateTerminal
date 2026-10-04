@@ -1,0 +1,130 @@
+// SPDX-FileCopyrightText: 2026 UltimateTerminal contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package com.qtekfun.ultimateterminal.data.backup
+
+import com.qtekfun.ultimateterminal.domain.appearance.CursorShape
+import com.qtekfun.ultimateterminal.domain.appearance.CustomFont
+import com.qtekfun.ultimateterminal.domain.appearance.FontCatalog
+import com.qtekfun.ultimateterminal.domain.appearance.TerminalAppearance
+import com.qtekfun.ultimateterminal.domain.launch.ResolvConf
+import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
+import java.io.File
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+
+/** What restoring a configuration does with the settings that came later (T16). */
+class ConfigRestoreSettingsTest {
+    @TempDir
+    lateinit var dir: File
+    private lateinit var device: Device
+
+    @BeforeEach
+    fun setUp() {
+        device = Device(File(dir, "device"))
+    }
+
+    @AfterEach
+    fun tearDown() = device.close()
+
+    private fun restore(settings: SettingsDto) = runBlocking {
+        val snapshot = sampleSnapshot().copy(settings = settings, distros = emptyList())
+        val bytes = BackupBuilder("CONFIG").config(snapshot).build()
+        device.restorer().restore(BytesSource(bytes)).value()
+        device.settings.observe().first()
+    }
+
+    @Test
+    fun aBackupFromBeforeTheseSettingsKeepsWhatTheDeviceHas() = runBlocking {
+        device.settings.update {
+            it.copy(
+                prootCompatibilityMode = true,
+                dnsFallbackServers = listOf("9.9.9.9"),
+                extraKeys = ExtraKeysConfig(listOf(listOf("esc"))),
+                appearance = TerminalAppearance(marginDp = 20)
+            )
+        }
+
+        // The sample has none of the new fields, which is what an older backup looks like.
+        val now = restore(sampleSettings())
+
+        assertTrue(now.prootCompatibilityMode)
+        assertEquals(listOf("9.9.9.9"), now.dnsFallbackServers)
+        assertEquals(listOf(listOf("esc")), now.extraKeys.rows)
+        assertEquals(20, now.appearance.marginDp)
+    }
+
+    @Test
+    fun aFontThisDeviceDoesNotHaveFallsBackToTheBundledOne() = runBlocking {
+        val appearance = AppearanceDto(
+            fontId = "custom-font-from-another-phone",
+            lineSpacing = 1f,
+            letterSpacing = 0f,
+            marginDp = 6,
+            cursorShape = "BAR",
+            cursorBlink = false,
+            chromeStyle = "SCHEME",
+            cornerRadiusDp = 8
+        )
+
+        val now = restore(sampleSettings().copy(appearance = appearance))
+
+        assertEquals(FontCatalog.BUNDLED_ID, now.appearance.fontId)
+        assertEquals(CursorShape.BAR, now.appearance.cursorShape)
+    }
+
+    @Test
+    fun aFontThatThisDeviceHasIsKept() = runBlocking {
+        val mine = CustomFont("mine", "Mine", "mine.ttf")
+        device.settings.update { it.copy(customFonts = listOf(mine)) }
+        val appearance = AppearanceDto("mine", 1f, 0f, 6, "BLOCK", false, "SCHEME", 8)
+
+        assertEquals(
+            "mine",
+            restore(sampleSettings().copy(appearance = appearance)).appearance.fontId
+        )
+    }
+
+    @Test
+    fun unknownNamesAndOutOfRangeNumbersFallBackToSafeValues() = runBlocking {
+        val appearance =
+            AppearanceDto("jetbrains-mono", 99f, -5f, 5_000, "TRIANGLE", true, "NEON", 999)
+
+        val now = restore(sampleSettings().copy(appearance = appearance)).appearance
+
+        assertEquals(CursorShape.BLOCK, now.cursorShape)
+        assertEquals(TerminalAppearance().chromeStyle, now.chromeStyle)
+        assertTrue(now.lineSpacing in TerminalAppearance.LINE_SPACING_RANGE)
+        assertTrue(now.marginDp in TerminalAppearance.MARGIN_RANGE)
+    }
+
+    @Test
+    fun theDnsServersAreCheckedNotTrusted() = runBlocking {
+        val now =
+            restore(sampleSettings().copy(dnsFallbackServers = listOf("9.9.9.9", "evil.example")))
+
+        assertEquals(listOf("9.9.9.9"), now.dnsFallbackServers)
+    }
+
+    @Test
+    fun anEmptyDnsListMeansTheBuiltInServers() = runBlocking {
+        val now = restore(sampleSettings().copy(dnsFallbackServers = emptyList()))
+
+        assertEquals(ResolvConf.FALLBACK_SERVERS, now.dnsFallbackServers)
+    }
+
+    @Test
+    fun anExtraKeysRowWithNothingUsableFallsBackToTheDefaultRow() = runBlocking {
+        val now = restore(sampleSettings().copy(extraKeys = "ghost nothing\n"))
+
+        assertEquals(ExtraKeysConfig.default().rows, now.extraKeys.rows)
+        assertFalse(now.extraKeys.rows.isEmpty())
+    }
+}

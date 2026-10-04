@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.qtekfun.ultimateterminal.domain.launch.LaunchMessage
 import com.qtekfun.ultimateterminal.domain.repository.DistroRepository
+import com.qtekfun.ultimateterminal.domain.repository.SettingsRepository
 import com.qtekfun.ultimateterminal.domain.session.PaneController
 import com.qtekfun.ultimateterminal.domain.session.SessionId
 import com.qtekfun.ultimateterminal.domain.session.SessionState
@@ -29,6 +30,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -43,7 +45,8 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class TerminalViewModel @Inject constructor(
     private val manager: SessionManager,
-    distros: DistroRepository
+    distros: DistroRepository,
+    settings: SettingsRepository
 ) : ViewModel() {
     private val requestedLayouts = MutableSharedFlow<TerminalLayout>(
         replay = 1,
@@ -56,7 +59,7 @@ class TerminalViewModel @Inject constructor(
     private val stickyState = MutableStateFlow(StickyState())
     private val router = InputRouter(onStickyChanged = { stickyState.value = it })
 
-    // The stored configuration (settings, Room) arrives later; until then the default is used.
+    // The stored configuration arrives from the settings (Room); until then the default is used.
     private val extraKeysState = MutableStateFlow(ExtraKeysConfig.default())
 
     /** Increments whenever the active session's screen changes or another session becomes active. */
@@ -113,6 +116,10 @@ class TerminalViewModel @Inject constructor(
     private val transcriptRows: Int get() = emulator?.screen?.activeTranscriptRows ?: 0
 
     init {
+        viewModelScope.launch {
+            settings.observe().map { it.extraKeys }.distinctUntilChanged()
+                .collect { extraKeysState.value = it }
+        }
         viewModelScope.launch {
             requestedLayouts.settled(RESIZE_DEBOUNCE_MILLIS).collect(::applyLayout)
         }

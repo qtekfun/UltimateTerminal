@@ -7,11 +7,13 @@ import android.content.Context
 import com.qtekfun.ultimateterminal.data.proot.ProotSessionPlanner
 import com.qtekfun.ultimateterminal.domain.model.DistroState
 import com.qtekfun.ultimateterminal.domain.repository.DistroRepository
+import com.qtekfun.ultimateterminal.domain.repository.SettingsRepository
 import com.qtekfun.ultimateterminal.domain.session.PaneEditor
 import com.qtekfun.ultimateterminal.domain.session.SessionController
 import com.qtekfun.ultimateterminal.domain.session.SessionId
 import com.qtekfun.ultimateterminal.domain.session.SessionLaunch
 import com.qtekfun.ultimateterminal.domain.session.Sessions
+import com.qtekfun.ultimateterminal.domain.settings.ScrollbackChoices
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -23,6 +25,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -35,11 +38,19 @@ import kotlinx.coroutines.launch
 class SessionManager @Inject constructor(
     @ApplicationContext context: Context,
     planner: ProotSessionPlanner,
-    private val distros: DistroRepository
+    private val distros: DistroRepository,
+    settings: SettingsRepository
 ) {
     // The emulator library delivers its callbacks on the main thread, so everything starts there.
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val factory = AndroidSessionFactory(context, planner, { distroOf(it) }, scope)
+    private val factory = AndroidSessionFactory(
+        context,
+        planner,
+        { distroOf(it) },
+        scope,
+        // Read when a shell starts, so a change in Settings reaches the tabs opened afterwards.
+        { ScrollbackChoices.forEmulator(settings.observe().first().defaultScrollbackLines) }
+    )
     private val controller = SessionController(factory, ServiceLauncher(context))
 
     val state: StateFlow<Sessions> get() = controller.state
