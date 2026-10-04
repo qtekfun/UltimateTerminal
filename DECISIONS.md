@@ -2218,3 +2218,23 @@ Petición del usuario (Fedora es su distro habitual). Hecho sin dispositivo: pro
   2. Abrir una pestaña: `cat /etc/fedora-release` (debe decir Fedora Linux 44) y `echo $0`.
   3. `dnf --version` y `dnf install -y nano` (red, DNS del dispositivo, escritura en `/var/lib` y `/var/cache`); `nano --version`.
   4. Si `dnf` falla: probar el modo de compatibilidad (proot sin seccomp) y apuntar el error exacto.
+
+### Tercera ronda (Pixel 8, 2026-10-04, APK de `master` con T16, T22d y T24)
+
+**Fedora (T24), verificado de extremo a extremo en el dispositivo.**
+- **Instalación desde la app:** "Fedora" aparece en la hoja "Instalar una distro", junto a Debian, Ubuntu y Alpine. Descarga con barra de progreso y botón de cancelar, verifica y extrae el tar.xz: Fedora 44 queda "lista", con **195 MB** descomprimidos.
+- **Pestaña:** el menú del "+" ofrece "Fedora" y abre un bash propio (`[root@localhost ~]#`) bajo proot.
+- **`dnf` bajo proot (el mayor riesgo de T24): funciona.** `dnf --version` da dnf5 5.4.1 con sus plugins; `dnf install -y nano` carga los repositorios de Fedora 44 (65,4 MiB y 11,6 MiB de metadatos), descarga 724 KiB y la transacción de `rpm` termina en "Complete!". Después `nano --version` da 8.7.1 y `rpm -q nano bash` responde con `nano-8.7.1-2.fc44.aarch64` y `bash-5.3.9-3.fc44.aarch64`, así que la base de datos de `rpm` es válida.
+- `clear` no existe en la imagen mínima de Fedora: no es un fallo de la app.
+
+**Ajustes (T16) y Distros (T22c).**
+- El ⚙ se ve siempre junto al "+" y abre la pantalla de Ajustes (título grande, listas agrupadas con chevrons, "Listo"), con las nueve secciones. La página de Red muestra los DNS de respaldo con su explicación; la de Distribuciones enlaza "Gestionar distribuciones" y el modo de compatibilidad.
+- La pantalla de Distribuciones rehecha (lista agrupada, "+" para instalar, hoja modal con asa) ya no choca el título con el botón.
+- **No probado todavía:** las páginas Terminal, Teclado, Sesiones, Almacenamiento, Copias de seguridad y Acerca de; el diálogo de segundo plano, que sigue con aspecto de Material.
+
+**Teclas especiales (T22d):** las tres variantes funcionan y se eligen en Apariencia con vista previa en vivo. Planas (por defecto): símbolos con separadores finos, sin cápsulas; Cápsulas: cápsulas tenues con Ctrl armado en acento; Clásicas: teclas con filo inferior en grises derivados del esquema.
+
+**Fallo hallado y corregido: el botón/gesto de "atrás" no hacía nada en ninguna pantalla** (ni en Ajustes, ni en Apariencia, ni desde el terminal). Causa: `MainActivity` no declaraba `android:enableOnBackInvokedCallback` y, con `targetSdk` 28 en Android 17, los `BackHandler` de Compose no recibían el evento. Una línea en el manifiesto lo arregla (PR #44) y está verificado en el dispositivo: atrás vuelve de una página de Ajustes a la raíz, cierra Ajustes y vuelve de Apariencia. Un test del manifiesto lo protege. Observación de la versión anterior: pulsar "atrás" varias veces dentro del terminal acababa mostrando "Display all 395 possibilities?" de bash, lo que sugiere que la tecla llegaba al shell como un tabulador; **hay que comprobar con la build nueva que "atrás" en el terminal ya no escribe nada en el shell.**
+
+**Retirado: el supuesto fallo de "Negro OLED activado y ningún esquema seleccionado".** No era de la app: el esquema seleccionado era "OLED Black" (el sexto de la lista, fuera de pantalla en mi captura) y Negro OLED estaba activado, coherente entre sí. Casi seguro lo cambié yo con toques de prueba mientras desplazaba la pantalla de Apariencia. Restauré Dracula con OLED apagado.
+
