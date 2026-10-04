@@ -5,6 +5,6 @@
 -->
 <resources>
     <string name="app_name">UltimateTerminal</string>
-    <string name="home_title">UltimateTerminal</string>
-    <string name="home_subtitle">Linux terminal for Android. Coming soon.</string>
+    <string name="terminal_copy">Copy</string>
+    <string name="terminal_session_ended">Session ended (exit %1$d). Tap to restart</string>
 </resources>
