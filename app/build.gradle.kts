@@ -40,6 +40,8 @@ fun versionCodeOf(version: String): Int {
 android {
     namespace = "com.qtekfun.ultimateterminal"
     compileSdk = 37
+    // Pinned for reproducible native builds (proot and talloc are compiled from source).
+    ndkVersion = "28.2.13676358"
 
     defaultConfig {
         applicationId = "com.qtekfun.ultimateterminal"
@@ -49,6 +51,26 @@ android {
         targetSdk = 28
         versionCode = versionCodeOf(appVersion)
         versionName = appVersion
+
+        ndk {
+            // proot needs a 64-bit or ARM host; x86_64 is for emulators.
+            abiFilters += setOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.31.6"
+        }
+    }
+
+    packaging {
+        jniLibs {
+            // proot and its loader are executables shipped as lib*.so: they must be extracted to
+            // nativeLibraryDir to be run (SPEC §2, targetSdk 28).
+            useLegacyPackaging = true
+        }
     }
 
     // Reproducible builds (F-Droid): no Google-encrypted dependency blob in the APK.

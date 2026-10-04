@@ -17,13 +17,13 @@ third-party code are kept untouched.
 | AndroidX, Jetpack Compose and Material 3, © The Android Open Source Project | Apache-2.0 | UI toolkit |
 | Dagger / Hilt, © The Dagger Authors | Apache-2.0 | Dependency injection |
 | JUnit 5, © the JUnit team | EPL-2.0 | Tests only; not shipped in the APK |
+| [PRoot](https://github.com/proot-me/proot), © STMicroelectronics (Cédric Vincent and contributors), through the [Termux fork](https://github.com/termux/proot) (Android patches), pinned at tag `v5.1.107.96` as the git submodule `third_party/proot` | GPL-2.0-or-later | Built from source in this project's build and shipped as `libproot.so` and `libproot-loader.so`. Its full source is this repository's submodule and the upstream repositories; its license is `third_party/proot/COPYING` |
+| [talloc](https://talloc.samba.org/) 2.5.0, © Andrew Tridgell, Stefan Metzmacher and the Samba Team | LGPL-3.0-or-later | Vendored unmodified in `third_party/talloc` (license in `COPYING`) and statically linked into `libproot.so`. A hand-written `replace.h` replaces Samba's generated one; the library can be relinked from the vendored sources |
 
 ## Planned (listed here so the credit is not forgotten; moved to "Used now" when integrated)
 
 | Component | License | Task | Notes |
 |---|---|---|---|
 | `terminal-emulator` and `terminal-view` from [termux-app](https://github.com/termux/termux-app), © Termux developers, derived from [Android Terminal Emulator](https://github.com/jackpal/Android-Terminal-Emulator) © Jack Palevich | Apache-2.0 | T03 | Only these two libraries. The rest of `termux-app` is **GPL-3.0-only** and must not be copied. Per-file headers are checked when the code is imported |
-| [PRoot](https://github.com/proot-me/proot), © Cédric Vincent, STMicroelectronics and contributors | GPL-2.0-or-later | T02 | Built from source in this project's build; the source is available from this repository and upstream |
-| [talloc](https://talloc.samba.org/), © Samba Team | LGPL-3.0-or-later | T02 | PRoot dependency, built from source |
 | Debian, Ubuntu and Alpine Linux root filesystems | Per-package free licenses | T06 | Downloaded by the user's device from the official mirrors at install time; **not redistributed** in the APK |
 | Monospace font (to be chosen) | To be checked (SIL OFL-1.1 expected) | T12 | License text shipped with the font |
