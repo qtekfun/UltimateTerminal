@@ -6,6 +6,7 @@ package com.qtekfun.ultimateterminal.data.repository
 import com.qtekfun.ultimateterminal.data.local.UltimateTerminalDatabase
 import com.qtekfun.ultimateterminal.data.local.entity.SettingEntity
 import com.qtekfun.ultimateterminal.data.local.inMemoryDatabase
+import com.qtekfun.ultimateterminal.data.local.runDatabaseTest
 import com.qtekfun.ultimateterminal.domain.getOrNull
 import com.qtekfun.ultimateterminal.domain.model.AppSettings
 import com.qtekfun.ultimateterminal.domain.terminal.FontZoom
@@ -13,7 +14,6 @@ import com.qtekfun.ultimateterminal.domain.theme.BuiltInSchemes
 import com.qtekfun.ultimateterminal.domain.theme.SchemeCatalog
 import com.qtekfun.ultimateterminal.domain.theme.SchemeCodec
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
@@ -39,7 +39,7 @@ class ThemeSettingsTest {
         SchemeCodec.decode(SchemeCodec.encode(BuiltInSchemes.nord.copy(name = name))).getOrNull()!!
 
     @Test
-    fun aFreshInstallUsesTheDefaultSchemeAndFontSize() = runTest {
+    fun aFreshInstallUsesTheDefaultSchemeAndFontSize() = runDatabaseTest {
         val stored = settings.observe().first()
         assertEquals(BuiltInSchemes.DEFAULT_ID, stored.terminalSchemeId)
         assertEquals(FontZoom.DEFAULT_SP, stored.terminalFontSizeSp)
@@ -47,7 +47,7 @@ class ThemeSettingsTest {
     }
 
     @Test
-    fun theSchemeTheFontSizeAndTheImportedSchemesAreStored() = runTest {
+    fun theSchemeTheFontSizeAndTheImportedSchemesAreStored() = runDatabaseTest {
         val mine = imported("Mine")
         settings.update {
             it.copy(
@@ -65,7 +65,7 @@ class ThemeSettingsTest {
     }
 
     @Test
-    fun aFontSizeOutOfRangeIsClampedWhenSavedAndWhenRead() = runTest {
+    fun aFontSizeOutOfRangeIsClampedWhenSavedAndWhenRead() = runDatabaseTest {
         settings.update { it.copy(terminalFontSizeSp = 900f) }
         assertEquals(FontZoom.MAX_SP, settings.observe().first().terminalFontSizeSp)
 
@@ -74,7 +74,7 @@ class ThemeSettingsTest {
     }
 
     @Test
-    fun damagedValuesFallBackToTheDefaults() = runTest {
+    fun damagedValuesFallBackToTheDefaults() = runDatabaseTest {
         store("terminal_font_size_sp", "big")
         store("terminal_scheme", "  ")
         store("custom_schemes", "{broken")
@@ -86,7 +86,7 @@ class ThemeSettingsTest {
     }
 
     @Test
-    fun aFontSizeThatIsNotFiniteIsIgnored() = runTest {
+    fun aFontSizeThatIsNotFiniteIsIgnored() = runDatabaseTest {
         store("terminal_font_size_sp", "NaN")
         assertEquals(FontZoom.DEFAULT_SP, settings.observe().first().terminalFontSizeSp)
         store("terminal_font_size_sp", "Infinity")
@@ -94,7 +94,7 @@ class ThemeSettingsTest {
     }
 
     @Test
-    fun onlyTheAllowedNumberOfImportedSchemesIsRead() = runTest {
+    fun onlyTheAllowedNumberOfImportedSchemesIsRead() = runDatabaseTest {
         val many = (1..SchemeCatalog.MAX_CUSTOM_SCHEMES + 5).map { imported("Scheme $it") }
         store("custom_schemes", SchemeCodec.encodeList(many))
 

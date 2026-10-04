@@ -828,9 +828,9 @@ tars sintéticos hostiles):
   `LICENSE.txt` de estas librerías (el único `NOTICE` presente es el de Jakarta Injection). La Apache-2.0 exige
   conservar el aviso al redistribuir en binario.
 - **Decisión:** los textos de las cuatro librerías se copian **sin modificar** a
-  `app/src/main/res/raw/third_party_apache_commons.txt`, con un `keep.xml` para que el *resource shrinker* no los
+  `app/src/main/res/raw/third_party_notices_apache.txt`, con un `keep.xml` para que el *resource shrinker* no los
   elimine. Se comprobó con `aapt2` en el APK de release que el recurso existe y es idéntico byte a byte al fuente.
-- **Abierto (no se ha tocado):** lo mismo puede afectar a **OkHttp y Okio** (T06) y al resto de dependencias que
+- **Abierto en T07, cerrado en T23 (D-T23-2):** lo mismo puede afectar a **OkHttp y Okio** (T06) y al resto de dependencias que
   ya estaban en `master`; hay que comprobarlo y, si es así, empaquetar también sus avisos y mostrar una pantalla
   de licencias. Se deja para decidir; no se amplió el alcance de T07 sin preguntar.
 
@@ -1944,3 +1944,23 @@ Defectos vistos (sin corregir todavía):
 - **Por qué no era trivial:** las imágenes de Fedora vienen en tar.xz y el extractor de T07 solo lee gzip (D-T07-3), así que T24 incluye descompresión xz con las mismas reglas de seguridad.
 - **Impacto:** SPEC §2 y PLAN actualizados. Se acreditará `org.tukaani:xz` en `THIRD_PARTY_NOTICES.md`.
 
+## T23 — Limpieza pendiente
+
+### D-T23-1 · 2026-10-04 · Tests con base de datos real: `runDatabaseTest` con margen de 5 minutos
+- **Problema:** `MigrationTest` y `LayoutAndSettingsRepositoryTest` (y otros seis ficheros de tests de T05, T08b, T12 y T12c) fallaban a veces con `UncompletedCoroutinesError: After waiting for 1m` cuando la máquina estaba cargada (carga de 90 en 14 núcleos; pasaban solos en 47 s). Room abre SQLite en un hilo real y cargar su librería nativa y tocar el disco puede pasar de 1 minuto, que es lo que `runTest` espera por defecto.
+- **Decisión:** `runDatabaseTest` en `data/local/TestDatabase.kt`, un `runTest(timeout = 5.minutes)`, usado en los **ocho** ficheros y en el contrato `DistroRepositoryContract` que abren una base de datos real. No se cambia el dispatcher: la espera sigue siendo de pared, porque lo que se prueba es la E/S real.
+- **Alternativas descartadas:** un dispatcher de prueba que no espere (los tests dejarían de ejercitar Room de verdad); subir el timeout de todos los `runTest` (taparía un bloqueo real en tests que no usan base de datos y no tienen ese problema).
+- **Impacto:** un test realmente colgado sigue acabando a los 5 minutos con el mismo error. Ningún test depende del reloj.
+
+### D-T23-2 · 2026-10-04 · Avisos de licencia Apache: medidos, no supuestos
+- **Medido en el APK de release y en los jars de la clasepath de ejecución (245 dependencias):** solo **cinco** publican su propio `NOTICE`/`LICENSE` en `META-INF`: Commons Compress, IO, Codec y Lang, y Jakarta Inject. El resto (OkHttp, Okio, kotlinx, AndroidX, Hilt, Room, Compose…) no trae ningún `NOTICE` propio; solo AndroidX deja un `LICENSE.txt` con la Apache-2.0 estándar, que sí llega al APK.
+- **Estado en el APK:** de esas cinco, el empaquetado solo conserva por casualidad el `NOTICE.md` de Jakarta; las cuatro de Commons no llegan. T07 (D-T07-8) ya las empaquetó a mano en `res/raw`.
+- **Decisión:** el mismo fichero (renombrado a `res/raw/third_party_notices_apache`) lleva ahora también el `NOTICE` y la licencia de Jakarta Inject, copiados sin modificar de su jar. Con esto queda **cerrado** el punto abierto de D-T07-8 sobre OkHttp/Okio: no publican aviso, así que no hay nada que conservar de ellas más allá de su mención en `THIRD_PARTY_NOTICES.md`.
+- **API para la pantalla "Acerca de" (T16):** `LicenseTexts` en `domain/license` (inyectable con Hilt, ya hay `LicenseModule`). `entries` lista los avisos (`id`, título y licencia SPDX), `read(id)` devuelve el texto y `missing()` los que no estén. `Z`/T16 solo tiene que mostrar `entries` y, al tocar una, abrir `read(id)`. Tests de host: leen los ficheros reales del árbol de fuentes y fallan si un texto desaparece o un recurso se renombra.
+- **Sin validar en dispositivo:** que `AndroidLicenseSource` encuentre los recursos en el APK de release con el *shrinker* (se comprobó con `aapt2` que `raw/third_party_notices_apache` existe en el APK; la lectura en ejecución no).
+- **No es asesoría legal:** se cumple lo que las licencias piden (conservar el aviso al redistribuir en binario); conviene que alguien lo revise antes de publicar.
+
+### D-T23-3 · 2026-10-04 · GitGuardian: frase de prueba renombrada y `.gitguardian.yaml` documentado
+- **Hallazgo:** dos falsos positivos de "Generic Password" (el literal `"s3cret"` de `BackupExportTest` y el campo `passwordFor` de `BackupViewModel`) bloquearon varias PRs. No son credenciales.
+- **Decisión:** el literal pasa a ser una constante con un comentario (`TEST_PHRASE = "open sesame"`), sin cambiar el comportamiento del test, y se añade `.gitguardian.yaml` que excluye **solo** `data/backup/**` de los tests, con la razón escrita en el propio fichero. `passwordFor` se deja como está: es un nombre de campo, no un valor.
+- **Límite:** la exclusión no cubre código de producción ni otros tests; una credencial real en cualquier sitio seguiría marcándose. Si GitGuardian no lee ese fichero en este plan, los incidentes se descartan en su panel (incidentes 37863678 y 37863679).

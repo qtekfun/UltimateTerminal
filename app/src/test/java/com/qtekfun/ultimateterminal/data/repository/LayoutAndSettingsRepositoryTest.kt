@@ -7,6 +7,7 @@ import com.qtekfun.ultimateterminal.data.local.UltimateTerminalDatabase
 import com.qtekfun.ultimateterminal.data.local.entity.LayoutEntity
 import com.qtekfun.ultimateterminal.data.local.entity.SettingEntity
 import com.qtekfun.ultimateterminal.data.local.inMemoryDatabase
+import com.qtekfun.ultimateterminal.data.local.runDatabaseTest
 import com.qtekfun.ultimateterminal.domain.DomainError
 import com.qtekfun.ultimateterminal.domain.Outcome
 import com.qtekfun.ultimateterminal.domain.getOrNull
@@ -16,7 +17,6 @@ import com.qtekfun.ultimateterminal.domain.model.LayoutNode
 import com.qtekfun.ultimateterminal.domain.model.SplitOrientation
 import com.qtekfun.ultimateterminal.domain.model.ThemeMode
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
@@ -54,7 +54,7 @@ class LayoutAndSettingsRepositoryTest {
     )
 
     @Test
-    fun `a layout keeps its whole pane tree`() = runTest {
+    fun `a layout keeps its whole pane tree`() = runDatabaseTest {
         val saved = checkNotNull(layouts.add(Layout(name = " servers ", root = tree)).getOrNull())
 
         assertEquals("servers", saved.name)
@@ -64,7 +64,7 @@ class LayoutAndSettingsRepositoryTest {
     }
 
     @Test
-    fun `layouts check names`() = runTest {
+    fun `layouts check names`() = runDatabaseTest {
         layouts.add(Layout(name = "one", root = tree))
 
         assertEquals(
@@ -75,7 +75,7 @@ class LayoutAndSettingsRepositoryTest {
     }
 
     @Test
-    fun `a layout can be updated and removed`() = runTest {
+    fun `a layout can be updated and removed`() = runDatabaseTest {
         val one = checkNotNull(layouts.add(Layout(name = "one", root = tree)).getOrNull())
         layouts.add(Layout(name = "two", root = tree))
 
@@ -94,7 +94,7 @@ class LayoutAndSettingsRepositoryTest {
     }
 
     @Test
-    fun `a layout whose stored tree is damaged is left out`() = runTest {
+    fun `a layout whose stored tree is damaged is left out`() = runDatabaseTest {
         val good = checkNotNull(layouts.add(Layout(name = "good", root = tree)).getOrNull())
         val badRatio = db.layoutDao().insert(
             LayoutEntity(
@@ -110,12 +110,12 @@ class LayoutAndSettingsRepositoryTest {
     }
 
     @Test
-    fun `settings start with the defaults`() = runTest {
+    fun `settings start with the defaults`() = runDatabaseTest {
         assertEquals(AppSettings(), settings.observe().first())
     }
 
     @Test
-    fun `settings are stored and read back`() = runTest {
+    fun `settings are stored and read back`() = runDatabaseTest {
         settings.update {
             it.copy(
                 themeMode = ThemeMode.DARK,
@@ -135,7 +135,7 @@ class LayoutAndSettingsRepositoryTest {
     }
 
     @Test
-    fun `an update changes only what the transform changes`() = runTest {
+    fun `an update changes only what the transform changes`() = runDatabaseTest {
         settings.update { it.copy(oledBlack = true) }
         settings.update { it.copy(keepAwake = true) }
 
@@ -143,14 +143,14 @@ class LayoutAndSettingsRepositoryTest {
     }
 
     @Test
-    fun `an out of range scrollback is clamped when saved`() = runTest {
+    fun `an out of range scrollback is clamped when saved`() = runDatabaseTest {
         settings.update { it.copy(defaultScrollbackLines = 1) }
 
         assertEquals(100, settings.observe().first().defaultScrollbackLines)
     }
 
     @Test
-    fun `unreadable stored values fall back to their defaults`() = runTest {
+    fun `unreadable stored values fall back to their defaults`() = runDatabaseTest {
         db.settingDao().upsert(
             listOf(
                 SettingEntity("theme_mode", "PURPLE"),

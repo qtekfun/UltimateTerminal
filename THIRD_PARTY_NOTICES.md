@@ -20,7 +20,8 @@ third-party code are kept untouched.
 | MockK, Turbine and the bundled SQLite build for the JVM (`sqlite-bundled-jvm`; SQLite itself is in the public domain) | Apache-2.0 | Tests only; not shipped in the APK |
 | [OkHttp](https://square.github.io/okhttp/) 5.5.0 and [Okio](https://square.github.io/okio/), © Square, Inc. | Apache-2.0 | HTTP client used to find and download the root filesystems (T06). `MockWebServer` (same project) is used in tests only and is not shipped in the APK |
 | AndroidX Startup, © The Android Open Source Project | Apache-2.0 | Transitive dependency of OkHttp on Android |
-| [Apache Commons Compress](https://commons.apache.org/proper/commons-compress/) 1.28.0, with Commons IO 2.20.0, Commons Codec 1.19.0 and Commons Lang 3.18.0, © The Apache Software Foundation | Apache-2.0 | Reads the `.tar.gz` root filesystems when a distro is installed (T07). Only gzip and plain tar are read; the optional xz, zstd and brotli codecs are not shipped. Android's packaging drops the libraries' own `NOTICE` and `LICENSE` files, so their texts are copied unchanged into `app/src/main/res/raw/third_party_apache_commons.txt`, which ships in the APK (checked in the release build) |
+| [Apache Commons Compress](https://commons.apache.org/proper/commons-compress/) 1.28.0, with Commons IO 2.20.0, Commons Codec 1.19.0 and Commons Lang 3.18.0, © The Apache Software Foundation | Apache-2.0 | Reads the `.tar.gz` root filesystems when a distro is installed (T07). Only gzip and plain tar are read; the optional xz, zstd and brotli codecs are not shipped. Android's packaging drops the libraries' own `NOTICE` and `LICENSE` files, so their texts are copied unchanged into `app/src/main/res/raw/third_party_notices_apache.txt`, which ships in the APK (checked in the release build) |
+| [Jakarta Injection API](https://github.com/eclipse-ee4j/injection-api) 2.0.1 (`jakarta.inject-api`), © Eclipse Foundation and contributors | Apache-2.0 | Dagger/Hilt annotations (`@Inject`). Transitive dependency of Hilt. Its `NOTICE.md` and license are bundled with the app (see T23). |
 | `kotlinx-serialization-json` 1.11.0, © JetBrains s.r.o. and contributors | Apache-2.0 | Reads the OCI manifest that locates the Debian root filesystem (T06) |
 | [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) 2.304, © 2020 The JetBrains Mono Project Authors | SIL OFL-1.1 | Terminal font, bundled unmodified (Regular, Bold, Italic, Bold Italic; checked identical to the official release). License text in the APK, `assets/licenses/JetBrainsMono-OFL-1.1.txt` |
 | [Inter](https://github.com/rsms/inter) 4.1, © 2016 The Inter Project Authors | SIL OFL-1.1 | Typeface of the iOS-style screens (T22a): Regular, Medium, SemiBold and Bold, bundled unmodified from the official release (`extras/ttf`). License text in the APK, `assets/licenses/Inter-OFL-1.1.txt` |
@@ -75,3 +76,11 @@ is a registered trademark of Software in the Public Interest, Inc.; Ubuntu of Ca
 ### Note on the iOS-style design
 
 The iOS-style screens (RF-14) are **inspired by** iOS, not copied from it. They use no Apple font, icon or other asset: the typeface is Inter and the icons are Lucide, both free (see above). "iOS", "SF Pro" and "SF Symbols" are names or marks of Apple Inc.; this project is not affiliated with, endorsed by or sponsored by Apple.
+
+## Where the notices are in the app
+
+The notices that licenses ask to travel with the app are inside the APK: `res/raw/third_party_notices_apache`
+(Apache Commons and Jakarta Injection, unmodified) and `assets/licenses/` (fonts, icons and color schemes).
+The app reads them through `LicenseTexts` (`domain/license`) for its "About" screen. Android's packaging drops the
+`META-INF/NOTICE` and `LICENSE` files of libraries, which is why they are bundled by hand; D-T23-2 in `DECISIONS.md`
+records how it was measured that these are the only dependencies that publish a notice.
