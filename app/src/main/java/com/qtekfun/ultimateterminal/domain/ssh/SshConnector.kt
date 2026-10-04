@@ -65,7 +65,6 @@ class SshConnector(
     private suspend fun plan(host: SshHost, distro: Distro): SshResult<SshLaunchPlan> {
         val tmp = distro.directory.child(TMP).getOrNull()
         removeStaleKeys(tmp)
-        ensureResolver(distro)
         val alias = host.keyAlias
         val materialized = if (alias == null) {
             SshResult.Success(null)
@@ -116,19 +115,6 @@ class SshConnector(
         }
     }
 
-    /**
-     * Android has no `/etc/resolv.conf` to share, and a fresh root filesystem has none that works
-     * (Ubuntu's is a link to a file that does not exist), so `ssh` could not resolve a host name.
-     * Writes public resolvers only when the file is missing or empty; a file the user set up stays.
-     */
-    private suspend fun ensureResolver(distro: Distro) {
-        val path = distro.directory.child("etc").getOrNull()?.child(RESOLV_CONF)?.getOrNull()
-        val current = path?.let { files.read(it).getOrNull() }
-        if (path != null && (current == null || current.isEmpty())) {
-            files.write(path, DEFAULT_RESOLVERS.toByteArray(Charsets.US_ASCII), ownerOnly = false)
-        }
-    }
-
     private suspend fun release(file: KeyFile) {
         files.delete(file.path)
         live -= file.name
@@ -147,7 +133,5 @@ class SshConnector(
         const val TMP = "tmp"
         const val KEY_PREFIX = ".ut-ssh-"
         const val TOKEN_BYTES = 8
-        const val RESOLV_CONF = "resolv.conf"
-        const val DEFAULT_RESOLVERS = "nameserver 1.1.1.1\nnameserver 9.9.9.9\n"
     }
 }

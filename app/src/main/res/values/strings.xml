@@ -31,7 +31,6 @@
 
     <!-- Distro management (T07) -->
     <string name="distros_title">Distributions</string>
-    <string name="distros_open">Distros</string>
     <string name="distros_close">Close</string>
     <string name="distros_install">Install a distro</string>
     <string name="distros_empty">No distros yet. Install one to get a Linux shell.</string>
@@ -194,4 +193,22 @@
     <string name="pane_too_small">There is not enough room to split here</string>
     <string name="pane_close_title">Close this pane?</string>
     <string name="pane_close_message">A program is still running in it and will be stopped.</string>
+
+    <!-- Starting a tab in a distro (T08b) -->
+    <string name="tab_manage_distros">Manage distros…</string>
+    <string name="launch_action_distros">Distros</string>
+    <string name="launch_action_dismiss">Dismiss</string>
+    <string name="launch_notice_distro_unavailable">That distro is not available, so this tab opened Android\'s shell.</string>
+    <string name="launch_notice_distro_unavailable_named">\"%1$s\" is not ready, so this tab opened Android\'s shell.</string>
+    <string name="launch_notice_storage_permission">Shared storage was not mounted: the storage permission is missing.</string>
+    <string name="launch_notice_storage_unavailable">Shared storage was not mounted: it is not available right now.</string>
+    <string name="launch_notice_storage_mount_point">Shared storage was not mounted: its folders could not be created in the distro.</string>
+    <string name="launch_notice_dns">Network names may not resolve: the app could not write the distro\'s DNS settings.</string>
+    <string name="launch_problem_proot_missing">proot is missing from this build, so distros cannot start.</string>
+    <string name="launch_problem_distro_corrupt">\"%1$s\" is damaged: its files are missing. Remove it and install it again.</string>
+    <string name="launch_problem_invalid_user">The distro\'s user name \"%1$s\" is not valid.</string>
+    <string name="launch_problem_tmp">The app has no private folder for proot\'s temporary files.</string>
+    <string name="launch_problem_unexpected">The shell could not start.</string>
+    <string name="proot_compat_label">Compatibility mode</string>
+    <string name="proot_compat_explanation">Runs proot without its seccomp filter. It is slower, but try it if a distro does not start. It applies to the tabs you open afterwards.</string>
 </resources>

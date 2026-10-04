@@ -54,7 +54,7 @@ class SessionService : Service() {
         // startForegroundService that does not call startForeground in time.
         promote(manager.state.value.runningCount)
         when (intent?.action) {
-            ACTION_NEW_SESSION -> manager.newSession()
+            ACTION_NEW_SESSION -> manager.newDefaultSession()
             ACTION_EXIT -> manager.closeAll()
         }
         if (!manager.state.value.needsService) {

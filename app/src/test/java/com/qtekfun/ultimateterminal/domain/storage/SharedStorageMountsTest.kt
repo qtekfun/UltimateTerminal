@@ -30,9 +30,9 @@ class SharedStorageMountsTest {
 
         assertTrue(plan is StorageMountPlan.Active)
         listOf("shared", "downloads", "dcim", "documents").forEach {
-            assertTrue(fileSystem.exists(path("distros/7/rootfs/root/storage/$it")), it)
+            assertTrue(fileSystem.exists(path("distros/7/root/storage/$it")), it)
         }
-        assertFalse(fileSystem.exists(path("distros/7/rootfs/root/storage/music")))
+        assertFalse(fileSystem.exists(path("distros/7/root/storage/music")))
     }
 
     @Test
@@ -51,7 +51,7 @@ class SharedStorageMountsTest {
         val plan = SharedStorageMounts(fileSystem, access).prepare(distro, false, "/root")
 
         assertEquals(StorageMountPlan.Disabled, plan)
-        assertFalse(fileSystem.exists(path("distros/7/rootfs/root")))
+        assertFalse(fileSystem.exists(path("distros/7/root")))
     }
 
     @Test
@@ -60,7 +60,7 @@ class SharedStorageMountsTest {
             .prepare(distro, true, "/root")
 
         assertEquals(StorageMountPlan.Degraded(StorageDegradation.PERMISSION_DENIED), plan)
-        assertFalse(fileSystem.exists(path("distros/7/rootfs/root")))
+        assertFalse(fileSystem.exists(path("distros/7/root")))
     }
 
     @Test

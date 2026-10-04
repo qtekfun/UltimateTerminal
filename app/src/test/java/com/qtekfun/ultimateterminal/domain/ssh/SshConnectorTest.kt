@@ -216,26 +216,22 @@ class SshConnectorTest {
     }
 
     @Test
-    fun aMissingResolverFileIsWrittenWithPublicNameservers() = runTest {
+    fun theConnectorLeavesTheDistrosResolverAlone() = runTest {
         distro("a", "distros/a")
-        plan(host().id)
-        val text = String(files.files.getValue("distros/a/etc/resolv.conf"))
-        assertEquals("nameserver 1.1.1.1\nnameserver 9.9.9.9\n", text)
-        assertEquals(false, files.ownerOnly["distros/a/etc/resolv.conf"])
-    }
-
-    @Test
-    fun anEmptyResolverFileIsReplacedButOneTheUserSetUpIsKept() = runTest {
-        distro("a", "distros/a")
-        files.files["distros/a/etc/resolv.conf"] = ByteArray(0)
-        plan(host().id)
-        assertTrue(files.files.getValue("distros/a/etc/resolv.conf").isNotEmpty())
         files.files["distros/a/etc/resolv.conf"] = "nameserver 10.0.0.1\n".toByteArray()
         plan(host().id)
+        // The resolver is the device's, bound over this file at launch (DistroLaunchFactory).
         assertEquals(
             "nameserver 10.0.0.1\n",
             String(files.files.getValue("distros/a/etc/resolv.conf"))
         )
+    }
+
+    @Test
+    fun aDistroWithoutResolverFileGetsNoneFromTheConnector() = runTest {
+        distro("a", "distros/a")
+        plan(host().id)
+        assertFalse("distros/a/etc/resolv.conf" in files.files)
     }
 
     @Test
