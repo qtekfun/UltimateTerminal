@@ -8,7 +8,6 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -26,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.qtekfun.ultimateterminal.R
@@ -101,7 +101,7 @@ fun SessionPrompts(hasRunningSession: Boolean) {
  */
 private fun requestBatteryExemption(context: Context) {
     for (spec in BatteryExemption.intentsFor(context.packageName)) {
-        val intent = Intent(spec.action).apply { spec.dataUri?.let { data = Uri.parse(it) } }
+        val intent = Intent(spec.action).apply { spec.dataUri?.let { data = it.toUri() } }
         try {
             context.startActivity(intent)
             return
