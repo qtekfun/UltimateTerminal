@@ -3,7 +3,6 @@
 
 package com.qtekfun.ultimateterminal.ui
 
-import android.graphics.Typeface
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -41,6 +40,7 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -61,9 +61,14 @@ import com.qtekfun.ultimateterminal.domain.terminal.EdgeInsets
 import com.qtekfun.ultimateterminal.domain.terminal.extraKeysHeightPx
 import com.qtekfun.ultimateterminal.domain.terminal.reserveBottom
 import com.qtekfun.ultimateterminal.domain.terminal.terminalLayoutFor
+import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
 import com.qtekfun.ultimateterminal.terminal.TerminalInputView
 import com.qtekfun.ultimateterminal.terminal.TerminalPainter
+import com.qtekfun.ultimateterminal.terminal.TerminalTypefaces
 import com.qtekfun.ultimateterminal.terminal.TerminalViewModel
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
 
 /**
  * The terminal: a Compose canvas that draws the emulator, plus an invisible view that takes the
@@ -74,14 +79,20 @@ import com.qtekfun.ultimateterminal.terminal.TerminalViewModel
  * a device yet (see DECISIONS.md).
  */
 @Composable
-fun TerminalScreen(modifier: Modifier = Modifier, viewModel: TerminalViewModel = viewModel()) {
+fun TerminalScreen(
+    scheme: TerminalColorScheme,
+    initialFontSizeSp: Float,
+    onFontSizeChanged: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: TerminalViewModel = viewModel()
+) {
     val density = LocalDensity.current
+    // Before the layout effect below, so a shell that starts on the first layout has the colors.
+    SchemeAndFontEffects(viewModel, scheme, initialFontSizeSp, onFontSizeChanged)
     val fontSizeSp by viewModel.fontSize.sizeSp.collectAsStateWithLifecycle()
     val extraKeys by viewModel.extraKeys.collectAsStateWithLifecycle()
     val sticky by viewModel.stickyModifiers.collectAsStateWithLifecycle()
-    val painter = remember(density, fontSizeSp) {
-        TerminalPainter(Typeface.MONOSPACE, with(density) { fontSizeSp.sp.toPx() })
-    }
+    val painter = rememberTerminalPainter(fontSizeSp, scheme)
     val inputView = remember { arrayOfNulls<TerminalInputView>(1) }
 
     var windowSize by remember { mutableStateOf(IntSize.Zero) }
@@ -108,9 +119,13 @@ fun TerminalScreen(modifier: Modifier = Modifier, viewModel: TerminalViewModel =
         }
     }
 
-    // The black background fills the whole window, bars included; the content is padded by the
+    // The scheme's background fills the whole window, bars included; the content is padded by the
     // same insets the layout was computed with, so what is drawn is exactly what the pty is told.
-    Box(modifier.fillMaxSize().background(Color.Black).onSizeChanged { windowSize = it }) {
+    Box(
+        modifier.fillMaxSize().background(Color(scheme.background)).onSizeChanged {
+            windowSize = it
+        }
+    ) {
         val padded = Modifier.fillMaxSize().padding(insets.toPadding(density))
         val pane = @Composable { paneModifier: Modifier ->
             Column(paneModifier) {
@@ -131,6 +146,38 @@ fun TerminalScreen(modifier: Modifier = Modifier, viewModel: TerminalViewModel =
                 pane(Modifier.weight(1f).fillMaxHeight())
             }
         }
+    }
+}
+
+/** The painter for the current font size and scheme; the fonts are loaded once. */
+@Composable
+private fun rememberTerminalPainter(
+    fontSizeSp: Float,
+    scheme: TerminalColorScheme
+): TerminalPainter {
+    val density = LocalDensity.current
+    val context = LocalContext.current
+    val typefaces = remember { TerminalTypefaces.load(context) }
+    return remember(density, fontSizeSp, typefaces, scheme.selection) {
+        TerminalPainter(typefaces, with(density) { fontSizeSp.sp.toPx() }, scheme.selection)
+    }
+}
+
+/** Applies the stored colors and font size, and saves the font size when the user changes it. */
+@OptIn(FlowPreview::class)
+@Composable
+private fun SchemeAndFontEffects(
+    viewModel: TerminalViewModel,
+    scheme: TerminalColorScheme,
+    initialFontSizeSp: Float,
+    onFontSizeChanged: (Float) -> Unit
+) {
+    LaunchedEffect(scheme) { viewModel.applyScheme(scheme) }
+    LaunchedEffect(viewModel) {
+        viewModel.fontSize.restore(initialFontSizeSp)
+        // The first value is the one just restored (or the default): only user changes are saved.
+        viewModel.fontSize.sizeSp.drop(1).debounce(FONT_SIZE_SAVE_DELAY_MILLIS)
+            .collect(onFontSizeChanged)
     }
 }
 
@@ -209,6 +256,9 @@ internal fun TerminalCanvas(
         }
     }
 }
+
+/** How long the font size must stay put before it is saved: a pinch changes it many times. */
+private const val FONT_SIZE_SAVE_DELAY_MILLIS = 500L
 
 /** What the system bars, the display cutout and the keyboard cover, combined edge by edge. */
 @Composable

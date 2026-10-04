@@ -20,7 +20,13 @@ third-party code are kept untouched.
 | MockK, Turbine and the bundled SQLite build for the JVM (`sqlite-bundled-jvm`; SQLite itself is in the public domain) | Apache-2.0 | Tests only; not shipped in the APK |
 | [OkHttp](https://square.github.io/okhttp/) 5.5.0 and [Okio](https://square.github.io/okio/), © Square, Inc. | Apache-2.0 | HTTP client used to find and download the root filesystems (T06). `MockWebServer` (same project) is used in tests only and is not shipped in the APK |
 | AndroidX Startup, © The Android Open Source Project | Apache-2.0 | Transitive dependency of OkHttp on Android |
+| [Apache Commons Compress](https://commons.apache.org/proper/commons-compress/) 1.28.0, with Commons IO 2.20.0, Commons Codec 1.19.0 and Commons Lang 3.18.0, © The Apache Software Foundation | Apache-2.0 | Reads the `.tar.gz` root filesystems when a distro is installed (T07). Only gzip and plain tar are read; the optional xz, zstd and brotli codecs are not shipped. Android's packaging drops the libraries' own `NOTICE` and `LICENSE` files, so their texts are copied unchanged into `app/src/main/res/raw/third_party_apache_commons.txt`, which ships in the APK (checked in the release build) |
 | `kotlinx-serialization-json` 1.11.0, © JetBrains s.r.o. and contributors | Apache-2.0 | Reads the OCI manifest that locates the Debian root filesystem (T06) |
+| [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) 2.304, © 2020 The JetBrains Mono Project Authors | SIL OFL-1.1 | Terminal font, bundled unmodified (Regular, Bold, Italic, Bold Italic; checked identical to the official release). License text in the APK, `assets/licenses/JetBrainsMono-OFL-1.1.txt` |
+| Color scheme **Solarized**, © 2011 Ethan Schoonover ([altercation/solarized](https://github.com/altercation/solarized)) | MIT | Palette values, with the small readability changes listed in `BuiltInSchemes.kt` |
+| Color scheme **Dracula**, © 2023 Dracula Theme ([dracula/dracula-theme](https://github.com/dracula/dracula-theme)) | MIT | Palette values |
+| Color scheme **Gruvbox**, © Pavel Pertsev ([morhetz/gruvbox](https://github.com/morhetz/gruvbox)) | MIT/X11 | Palette values. Upstream states the license in its README and `package.json`; the repository has no `LICENSE` file |
+| Color scheme **Nord**, © 2016-present Sven Greb ([nordtheme/nord](https://github.com/nordtheme/nord)) | MIT | Palette values |
 | JUnit 5, © the JUnit team | EPL-2.0 | Tests only; not shipped in the APK |
 | JUnit 4, © the JUnit team | EPL-1.0 | Tests only; not shipped in the APK. Runs the emulator's upstream tests |
 | `terminal-emulator` from [termux-app](https://github.com/termux/termux-app), © Termux developers, derived from [Android Terminal Emulator](https://github.com/jackpal/Android-Terminal-Emulator) © Jack Palevich | Apache-2.0 (see the note below) | Vendored **unmodified** in `terminal-emulator/` at tag `v0.118.3` (commit `5b657c6adf4304e5198951ce815fe0205dcac29c`): the Java sources, the JNI `termux.c` and upstream's unit tests. Only this library is used: the rest of `termux-app` is **GPL-3.0-only** and is not copied, and `terminal-view` is not used (the view is our own, in Compose). License text: `terminal-emulator/LICENSE` |
@@ -28,6 +34,13 @@ third-party code are kept untouched.
 | [PRoot](https://github.com/proot-me/proot), © STMicroelectronics (Cédric Vincent and contributors), through the [Termux fork](https://github.com/termux/proot) (Android patches), pinned at tag `v5.1.107.96` as the git submodule `third_party/proot` | GPL-2.0-or-later | Built from source in this project's build and shipped as `libproot.so` and `libproot-loader.so`. Its full source is this repository's submodule and the upstream repositories; its license is `third_party/proot/COPYING` |
 | [talloc](https://talloc.samba.org/) 2.5.0, © Andrew Tridgell, Stefan Metzmacher and the Samba Team | LGPL-3.0-or-later | Vendored unmodified in `third_party/talloc` (license in `COPYING`) and statically linked into `libproot.so`. A hand-written `replace.h` replaces Samba's generated one; the library can be relinked from the vendored sources |
 | Debian, Ubuntu and Alpine Linux root filesystems (see the note below) | Per-package free licenses | Downloaded by the user's device from the official sources at install time (T06); **not redistributed** in the APK or in this repository. The app only reads each project's own public index to learn the current file name, size and SHA-256 |
+
+### Note on the color schemes
+
+The four MIT-licensed schemes are credited with their copyright lines and the MIT permission notice
+in `assets/licenses/ColorSchemes-MIT.txt`, which ships inside the APK. The "OLED" scheme (pure black
+background) and the way schemes are stored and imported are this project's own. A scheme the user
+imports is theirs; the app does not check where it comes from.
 
 ### Note on the license of `terminal-emulator`
 
@@ -43,7 +56,6 @@ public release.
 
 | Component | License | Task | Notes |
 |---|---|---|---|
-| Monospace font (to be chosen) | To be checked (SIL OFL-1.1 expected) | T12 | License text shipped with the font |
 
 ### Note on the root filesystem sources
 

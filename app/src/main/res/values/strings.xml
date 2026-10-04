@@ -29,6 +29,53 @@
     <string name="extra_key_armed">Active for the next key</string>
     <string name="extra_key_locked">Locked</string>
 
+    <!-- Distro management (T07) -->
+    <string name="distros_title">Distributions</string>
+    <string name="distros_open">Distros</string>
+    <string name="distros_close">Close</string>
+    <string name="distros_install">Install a distro</string>
+    <string name="distros_empty">No distros yet. Install one to get a Linux shell.</string>
+    <string name="distros_preparing">Preparing…</string>
+    <string name="distro_default">Default</string>
+    <string name="distro_set_default">Use as default</string>
+    <string name="distro_rename">Rename</string>
+    <string name="distro_duplicate">Duplicate</string>
+    <string name="distro_delete">Delete</string>
+    <string name="distro_state_installing">Installing…</string>
+    <string name="distro_state_failed">Broken: delete it and install again</string>
+    <string name="distro_summary">%1$s %2$s · %3$s</string>
+    <string name="family_debian" translatable="false">Debian</string>
+    <string name="family_ubuntu" translatable="false">Ubuntu</string>
+    <string name="family_alpine" translatable="false">Alpine Linux</string>
+    <string name="install_title">Install a distro</string>
+    <string name="install_name_label">Name</string>
+    <string name="install_user_label">Default user</string>
+    <string name="install_confirm">Install</string>
+    <string name="install_cancel">Cancel install</string>
+    <string name="install_phase_resolving">Looking for the official image…</string>
+    <string name="install_phase_downloading">Downloading…</string>
+    <string name="install_phase_verifying">Verifying the checksum…</string>
+    <string name="install_phase_extracting">Unpacking…</string>
+    <string name="install_phase_finalizing">Finishing…</string>
+    <string name="install_progress_for">Installing %1$s</string>
+    <string name="rename_title">Rename distro</string>
+    <string name="duplicate_title">Duplicate distro</string>
+    <string name="delete_title">Delete %1$s?</string>
+    <string name="delete_body">All its files are removed. This cannot be undone.</string>
+    <string name="dialog_ok">OK</string>
+    <string name="dialog_cancel">Cancel</string>
+    <string name="msg_installed">%1$s is ready</string>
+    <string name="msg_dismiss">Dismiss</string>
+    <string name="err_name_invalid">That name or user is not valid.</string>
+    <string name="err_name_taken">Another distro already uses that name.</string>
+    <string name="err_network">Could not reach the official server. Check your connection and try again.</string>
+    <string name="err_checksum">The download did not match its checksum and was discarded.</string>
+    <string name="err_space">Not enough free space: %1$s needed, %2$s available.</string>
+    <string name="err_abi">This device\'s processor is not supported.</string>
+    <string name="err_extract">The image could not be unpacked. Nothing was installed.</string>
+    <string name="err_unsafe">The image was refused because it is not safe to unpack.</string>
+    <string name="err_generic">Something went wrong. Nothing was installed.</string>
+    <string name="err_action">The operation could not be completed.</string>
     <string name="notification_channel_name">Terminal sessions</string>
     <string name="notification_channel_description">Keeps your terminal sessions running in the background</string>
     <plurals name="notification_sessions">

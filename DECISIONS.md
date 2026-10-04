@@ -16,6 +16,8 @@ funcionando:
   armeabi-v7a y x86_64.
 - Comportamiento de seccomp, `ptrace`, `/proc` y `--link2symlink` en Android moderno (API 26–37).
 - Ejecutar binarios desde `nativeLibraryDir` con `targetSdk` 28 en Android 15+/16.
+- T07, instalación de distros: descargar, descomprimir y mover un rootfs real en el almacenamiento privado,
+  el cálculo de espacio libre y la pantalla de gestión (ver "T07: lo que NO se ha validado").
 - Capa de datos (T05): el cableado de Hilt, `AndroidSQLiteDriver` y `java.nio` (enlaces simbólicos,
   permisos, `ATOMIC_MOVE`) en el almacenamiento privado de la app (ver D-T05-9).
 - T03, todo lo que necesita un PTY real o una pantalla: que `libtermux.so` cargue y el `fork/exec` de
@@ -717,6 +719,124 @@ los avisos (`SessionPromptsTest`) y el manifiesto del servicio (`ManifestService
   reintento por `HashMismatch` de Debian son de T07; aquí solo están las interfaces `RootfsCatalog` y
   `RootfsDownloader` y sus implementaciones.
 
+## T07 — Instalación y gestión de distros
+
+### D-T07-1 · 2026-10-04 · Una instalación es una transacción: preparar al lado y mover al final
+- **Decisión:** `DistroInstaller` registra la distro como `INSTALLING` **antes** de descargar (así un nombre
+  repetido falla sin gastar datos), descarga y descomprime en `distros-tmp/<token>/` y solo mueve el árbol
+  terminado a `distros/<token>` con un renombrado atómico; después marca la fila `READY`. Cada instalación
+  tiene su propio token (UUID), así que dos instalaciones, o una instalación y los restos de una caída, nunca
+  comparten directorio.
+- **Fallo o cancelación:** un `finally` bajo `NonCancellable` borra el directorio temporal, el destino y la
+  fila. Así, cancelar a mitad de la extracción no deja ni ficheros ni registros (hay un test que cancela con
+  el extractor detenido y comprueba ambas cosas).
+- **Si el proceso muere:** `DistroManager.recoverInterrupted()` borra toda fila que no sea `READY` con sus
+  ficheros y el área temporal. Se llama una vez al arrancar la pantalla, antes de permitir instalar.
+- **Alternativas descartadas:** extraer directamente en el destino y borrar si falla (un corte de energía
+  dejaría una distro a medias que parece válida); no registrar la fila hasta el final (permitiría descargar
+  100 MB para descubrir que el nombre ya existe).
+- **Impacto:** T08 mueve la instalación al servicio en primer plano; la lógica de limpieza no cambia.
+
+### D-T07-2 · 2026-10-04 · Ante un hash que no coincide, se vuelve a resolver el catálogo y se reintenta una vez
+- **Decisión:** cumple lo que pedía D-T06-3. Solo el error `HashMismatch` repite el intento completo (resolver,
+  descargar, verificar, extraer); cualquier otro fallo (red, 404, disco) se muestra sin repetir. Un segundo
+  `HashMismatch` se informa al usuario. Cada intento es una transacción entera, así que el primero ya no deja nada.
+- **Motivo:** la rama de Debian se reescribe a menudo y el hash del índice puede quedar obsoleto entre las dos
+  peticiones. No se repite ante fallos de red para no gastar datos del usuario en bucle.
+- **Riesgo:** un hash incorrecto *real* (un fichero manipulado) también se reintenta una vez; el segundo intento
+  vuelve a fallar y no se instala nada, así que el único coste es una descarga extra.
+
+### D-T07-3 · 2026-10-04 · Extractor propio sobre Apache Commons Compress, solo gzip y tar
+- **Decisión:** `TarGzExtractor` usa `commons-compress` 1.28.0 (Apache-2.0). Solo se leen **gzip y tar plano**,
+  que es lo que publican las tres fuentes de T06. xz, bzip2 y zstd se reconocen por su cabecera y se rechazan
+  con un error que nombra el formato (`ArchiveFormat`), en vez de un fallo genérico.
+- **Dependencias que entran en el APK** (comprobadas con `licensee`, todas Apache-2.0): `commons-compress`
+  1.28.0, `commons-io` 2.20.0, `commons-codec` 1.19.0 y `commons-lang3` 3.18.0. xz, zstd y brotli son
+  opcionales de Commons Compress y **no** se incluyen (reglas `-dontwarn` en R8).
+- **Alternativas descartadas:** `tar` del sistema vía `ProcessBuilder` (no está garantizado en Android y no se
+  puede probar en el host); escribir un lector de tar propio (reinventa un formato con muchas rarezas, PAX,
+  GNU long names…); añadir `xz` (otra dependencia para un formato que ninguna fuente usa hoy).
+- **Impacto:** si una fuente pasa a servir `.tar.xz` hay que añadir `org.tukaani:xz` (dominio público, se
+  puede usar) y quitar el rechazo.
+
+### D-T07-4 · 2026-10-04 · Reglas de seguridad de la extracción (lo más delicado de T07)
+Un rootfs descargado se trata como entrada hostil aunque su hash coincida, porque el hash solo prueba que es
+el fichero que publicó el proyecto, no que sea inofensivo. Reglas (código en `SafeTreeWriter`, probadas con
+tars sintéticos hostiles):
+- **Nada fuera del destino.** Un nombre con `..` se rechaza (`UnsafeEntry`). Las barras iniciales se quitan
+  como hace GNU tar.
+- **Nunca se escribe a través de un enlace simbólico.** Cada directorio padre se comprueba sin seguir enlaces:
+  si es un enlace, se rechaza todo el archivo. Esto cierra el ataque clásico de crear `link -> /ruta/fuera` y
+  luego escribir `link/fichero`.
+- **Los enlaces simbólicos en sí se guardan tal cual**, incluso los absolutos (`/bin/sh -> /bin/busybox`), porque
+  un rootfs normal está lleno de ellos y solo se resuelven dentro de proot, nunca en el sistema anfitrión.
+- **Enlaces duros:** solo hacia un fichero regular ya extraído dentro del destino; hacia fuera, hacia un enlace
+  simbólico o hacia la raíz se rechazan. Si el sistema de ficheros no admite enlaces duros, se copia el contenido.
+- **Un directorio no puede sustituir a un fichero ni al revés**, y un fichero no puede ocupar el sitio de un
+  directorio padre.
+- **Permisos:** se conservan los nueve bits rwx; **se descartan setuid, setgid y sticky**. Los directorios
+  siempre conservan rwx para el propietario (la app) para poder borrarlos; el modo real se aplica al final para
+  que un directorio de solo lectura no bloquee a sus hijos. No se restaura el propietario (todo es de la app).
+- **Dispositivos, sockets y FIFO se omiten** (no se pueden crear sin root) y se cuentan en `skippedSpecialFiles`.
+- **Límites contra bombas de descompresión:** 2 000 000 entradas, 16 GiB y 4096 caracteres por ruta (valores
+  muy por encima de cualquier rootfs real; configurables). Se rechaza un archivo **sin ninguna entrada** (un
+  fichero vacío o equivocado no es una distro).
+- **Un nombre con byte nulo no puede colar una ruta:** Commons Compress corta el nombre en el primer `\0`, como
+  `tar`, de modo que lo que se valida es lo que se escribe. Se comprobó con un tar construido a mano.
+- **Cancelación:** se comprueba entre entradas y cada MiB de datos, así que cancelar responde sin esperar a que
+  termine un fichero grande.
+
+### D-T07-5 · 2026-10-04 · Espacio libre: se comprueba antes de descargar
+- **Decisión:** se exige `max(64 MiB, 5 × tamaño del archivo)` (el archivo se conserva mientras se descomprime y
+  un rootfs ocupa unas 4 veces su tamaño comprimido); si el índice no da tamaño (Ubuntu) se asume 512 MiB.
+- **Motivo:** rechazar con un mensaje claro y el espacio necesario es mejor que llenar el disco y fallar al
+  final. Es una estimación **sin medir en un rootfs real**: queda pendiente de validar.
+
+### D-T07-6 · 2026-10-04 · Duplicar y eliminar son seguros ante interrupciones
+- **Duplicar:** la copia se construye junto a su destino y se renombra (`copyRecursively` de T05); su fila solo
+  pasa a `READY` después. Un fallo o una cancelación dejan sin copia ni fila. La copia no es la distro
+  predeterminada.
+- **Eliminar:** la fila se marca `FAILED` **antes** de borrar ficheros. Si el borrado se interrumpe, la distro
+  se ve como "dañada" (y se puede volver a eliminar) en vez de parecer intacta. No se puede eliminar una distro
+  que se está instalando.
+- **Predeterminada:** solo una distro `READY` puede serlo, para que una pestaña nueva siempre pueda abrirla.
+  Al eliminar la predeterminada, T05 ya pasa la marca a la más antigua que quede.
+
+### D-T07-7 · 2026-10-04 · Pantalla de gestión: mínima y provisional
+- **Decisión:** `DistroScreen` (lista, instalar, renombrar, duplicar, eliminar, predeterminada, progreso y
+  cancelar) sin lógica en los composables: el estado y las acciones están en `DistroViewModel`, con los
+  mensajes de error traducidos en `DistroMessages`. Se abre desde un botón provisional en `MainActivity`
+  que T09 (pestañas) sustituirá. Textos en `values/` y `values-es/`; botones de al menos 48 dp.
+- **La instalación vive en el `ViewModel`**: sobrevive a rotar la pantalla pero **no a cerrar la app**. T08 la
+  pasa al servicio en primer plano. Mientras tanto, si el proceso muere a mitad, `recoverInterrupted()` limpia
+  al arrancar.
+- **Permiso `INTERNET`:** añadido al manifiesto, solo para descargar el rootfs de la distro que el usuario elige
+  instalar. Debe explicarse en `PRIVACY.md` (T21).
+
+### D-T07-8 · 2026-10-04 · Créditos de Apache Commons: el APK no conserva sus avisos, se empaquetan a mano
+- **Hallazgo:** al comprobar el APK, Android Gradle Plugin **no incluye** los `META-INF/NOTICE.txt` ni
+  `LICENSE.txt` de estas librerías (el único `NOTICE` presente es el de Jakarta Injection). La Apache-2.0 exige
+  conservar el aviso al redistribuir en binario.
+- **Decisión:** los textos de las cuatro librerías se copian **sin modificar** a
+  `app/src/main/res/raw/third_party_apache_commons.txt`, con un `keep.xml` para que el *resource shrinker* no los
+  elimine. Se comprobó con `aapt2` en el APK de release que el recurso existe y es idéntico byte a byte al fuente.
+- **Abierto (no se ha tocado):** lo mismo puede afectar a **OkHttp y Okio** (T06) y al resto de dependencias que
+  ya estaban en `master`; hay que comprobarlo y, si es así, empaquetar también sus avisos y mostrar una pantalla
+  de licencias. Se deja para decidir; no se amplió el alcance de T07 sin preguntar.
+
+### T07: lo que NO se ha validado (sin dispositivo)
+- **Que la instalación funcione de principio a fin en un dispositivo:** descargar de los mirrors reales,
+  descomprimir un rootfs de verdad (decenas de miles de ficheros) y que `ATOMIC_MOVE` y los enlaces simbólicos
+  funcionen en el almacenamiento privado (ya señalado en D-T05-9).
+- **El tiempo y el espacio reales** de instalar Debian, Ubuntu y Alpine, y si el cálculo de espacio libre
+  (D-T07-5) es acertado.
+- **Que un rootfs extraído por esta vía arranque con proot** (T02 tampoco está validada): los permisos, los
+  enlaces absolutos y la ausencia de dispositivos pueden necesitar ajustes que solo se ven al ejecutarlo.
+- **La pantalla:** el aspecto y el uso real en móvil y tablet, la rotación durante una instalación, los
+  diálogos con el teclado, y TalkBack. Solo se han probado el `ViewModel` y la lógica, no los composables.
+- **Rendimiento de la extracción** con el almacenamiento real, y que cancelar responda a tiempo en un fichero
+  muy grande.
+
 ## T09 — Pestañas
 
 ### D-T09-1 · 2026-10-04 · Una pestaña es una sesión; el modelo vive en `Sessions`
@@ -896,3 +1016,53 @@ reales:
 5. El rendimiento al dibujar varios paneles a la vez (el pintor compartido dibuja uno tras otro).
 6. TalkBack: las descripciones de panel y de separador.
 7. El efecto de tener muchos shells con el *phantom process killer* de Android 12+.
+
+## T12 — Temas, modo OLED y fuentes
+
+### D-T12-1 · 2026-10-04 · Fuente: JetBrains Mono 2.304, incluida sin modificar
+- **Decisión:** el terminal usa JetBrains Mono (Regular, Bold, Italic, Bold Italic) como fuente incluida, en `res/font`.
+- **Motivo:** licencia SIL OFL-1.1 verificada en el repositorio oficial (`Copyright 2020 The JetBrains Mono Project Authors`), compatible con distribuir la fuente dentro de una app GPL-3.0-or-later siempre que no se venda suelta y se incluya el texto de la licencia. Sin *Reserved Font Name*.
+- **Verificado:** los cuatro `.ttf` son idénticos byte a byte (SHA-256) a los de la release oficial `v2.304`. El texto de la OFL y la lista de autores van en el APK (`assets/licenses/`).
+- **Alternativas:** Fira Code, Hack o una Nerd Font (las Nerd Fonts son parches de otras fuentes con licencias mezcladas: más trabajo de verificar). **Impacto:** unos 1,1 MB más en el APK. **Pendiente:** las Nerd Fonts / iconos de powerline, por si el usuario los quiere (no es MVP).
+
+### D-T12-2 · 2026-10-04 · Esquemas incluidos y por qué NO está Tango
+- **Decisión:** vienen Dracula (predeterminado), Solarized Dark, Solarized Light, Gruvbox Dark, Nord y un esquema OLED propio. Se acreditan en `THIRD_PARTY_NOTICES.md` y con el texto MIT completo en `assets/licenses/ColorSchemes-MIT.txt`.
+- **Verificado en los repositorios oficiales:** Solarized (© 2011 Ethan Schoonover, MIT), Dracula (© 2023 Dracula Theme, MIT), Nord (© 2016-presente Sven Greb, MIT) y Gruvbox (© Pavel Pertsev; MIT/X11 según su README y `package.json`, aunque el repositorio no trae un fichero `LICENSE`).
+- **Tango, retirado:** el primer borrador lo incluía como predeterminado diciendo «dominio público». **No pude verificar esa afirmación**: las guías de Tango se publican bajo CC BY-SA 2.5, que no es compatible con GPLv3, y no encontré una declaración clara para la paleta. Al no poder comprobarlo y querer evitar reclamaciones, se quitó. Si más adelante se verifica una fuente clara de licencia, se puede añadir.
+- **Cambios a las paletas:** retoques mínimos de legibilidad, documentados junto a cada esquema en `BuiltInSchemes.kt` y exigidos por el test de contraste: Solarized Light (verde, amarillo y cian 1–2 % más oscuros: los oficiales dan 2,9–3,0:1) y Gruvbox Dark (rojo normal más claro: el oficial `CC241D` da 2,7:1). Los esquemas MIT permiten modificar con atribución.
+- **Impacto:** el esquema predeterminado cambia a Dracula. Un usuario que importe un esquema responde de su origen.
+
+### D-T12-3 · 2026-10-04 · Modo OLED = variante del tema oscuro
+- **Decisión:** `resolveTheme` solo activa OLED cuando el tema resultante es oscuro (`oled = oledBlack && dark`). En OLED, un esquema oscuro pasa a fondo `#000000` puro (`forOled()`); uno claro no se toca.
+- **Motivo:** apagar los píxeles solo tiene sentido en oscuro; un fondo negro con un esquema claro dejaría texto ilegible.
+- **Impacto:** la interfaz Material y la vista del terminal usan la misma decisión.
+
+### D-T12-4 · 2026-10-04 · El esquema se aplica a todas las sesiones, también a las futuras
+- **Decisión:** `SessionManager.applyScheme` delega en `AndroidSessionFactory`, que recuerda el esquema, lo aplica a todos los hosts en marcha y a cada host nuevo antes de arrancar su emulador.
+- **Motivo:** con varias pestañas (T09) un esquema por host dejaría pestañas con colores antiguos. La librería de Termux lee sus colores iniciales de una paleta estática compartida; se escribe ahí y se reinician los colores del emulador activo (los que un programa fijó con OSC 4/10/11 se descartan: el esquema nuevo manda).
+- **Impacto:** la integración con los cambios de T08/T09 se rehízo sobre `master`; el diseño de H, que asumía un único host, no valía tal cual.
+
+### D-T12-5 · 2026-10-04 · No se dibuja nada hasta tener los ajustes
+- **Decisión:** `MainActivity` espera a que lleguen los ajustes guardados (`produceState`) antes de componer la pantalla.
+- **Motivo:** evita un primer fotograma con el esquema y tamaño de fuente por defecto que luego salte a los guardados.
+- **Alternativa:** una pantalla de carga; descartada por ser un instante. **Riesgo:** si el repositorio tardara, se vería la ventana vacía; no medido.
+
+### D-T12-6 · 2026-10-04 · Persistencia y tamaño de fuente
+- **Decisión:** tema, modo OLED, colores dinámicos, esquema elegido, esquemas importados y tamaño de fuente viven en el repositorio de ajustes de T05 (clave-valor). El tamaño del zoom de T11 se restaura una vez y solo se guardan los cambios del usuario, con un *debounce* de 500 ms (un pellizco genera muchos valores).
+- **Importación/exportación:** JSON versionado (`version: 1`) con `kotlinx.serialization`, probado con ida y vuelta. Un fichero de una versión desconocida se rechaza. Un test cazó que, con `encodeDefaults` apagado, `kotlinx.serialization` omitía el campo `version` al exportar (por tener valor por defecto): los ficheros no llevaban versión. Se activó `encodeDefaults`.
+
+### D-T12-7 · 2026-10-04 · Contraste mínimo comprobado en tests
+- **Decisión:** cada esquema incluido debe cumplir: texto sobre fondo ≥ 4,5:1 (WCAG AA), cursor ≥ 3:1, texto sobre selección ≥ 3:1, cada color ANSI sobre el fondo ≥ 3:1 y el «negro brillante» ≥ 1,5:1; y lo mismo en su variante OLED.
+- **Motivo:** una paleta con colores ilegibles es un fallo de accesibilidad; el test lo caza antes de publicar.
+- **Nota:** el umbral de 1,5:1 del negro brillante es deliberadamente bajo: en muchos esquemas es el color de texto «atenuado» y subirlo lo desvirtúa.
+
+### D-T12-8 · 2026-10-04 · Las barras del sistema siguen al esquema
+- **Decisión:** los iconos de las barras de estado y navegación se eligen según el fondo del **esquema** (`SystemBarStyle.auto`), no según el tema del sistema, porque el terminal se dibuja bajo las barras.
+
+### Pendiente de validar en dispositivo (T12)
+Nada de esto se ha visto en pantalla; solo hay tests de host.
+1. Que los colores se ven bien de verdad: contraste real con brillo bajo y al sol, y que OLED apaga los píxeles.
+2. Que el cambio de esquema en caliente repinta todas las pestañas sin reiniciarlas, y los colores que un programa fijó con OSC.
+3. El renderizado de JetBrains Mono: negrita/cursiva con las cuatro variantes, ancho de celda correcto, y que no cambia el tamaño de la rejilla (`stty size`) respecto a la fuente del sistema.
+4. Iconos de las barras del sistema con esquemas claros y oscuros.
+5. La pantalla de ajustes para elegir esquema/tema aún no existe (T16): hoy solo se cambian por el repositorio de ajustes.

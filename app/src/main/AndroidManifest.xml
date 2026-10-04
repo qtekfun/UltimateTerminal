@@ -5,6 +5,8 @@
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Only to download the official root filesystem of a distro the user chooses to install. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <!-- Keeps the shells alive in the background (SPEC RF-07). specialUse: see DECISIONS.md D-T08-2. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />

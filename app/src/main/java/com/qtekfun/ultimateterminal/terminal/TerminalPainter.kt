@@ -5,7 +5,6 @@ package com.qtekfun.ultimateterminal.terminal
 
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.Typeface
 import androidx.core.graphics.withScale
 import com.qtekfun.ultimateterminal.domain.terminal.CellAppearance
 import com.qtekfun.ultimateterminal.domain.terminal.CellStyles
@@ -24,9 +23,14 @@ import kotlin.math.ceil
  * Single-threaded (UI thread) and stateful during [draw], to avoid allocating on every frame.
  * Not validated on a device yet (see DECISIONS.md, T03).
  */
-class TerminalPainter(typeface: Typeface, textSizePx: Float) {
+class TerminalPainter(
+    private val typefaces: TerminalTypefaces,
+    textSizePx: Float,
+    /** ARGB background of selected cells; their text keeps its own color. */
+    private val selectionColor: Int
+) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        this.typeface = typeface
+        typeface = typefaces.regular
         textSize = textSizePx
     }
 
@@ -161,14 +165,16 @@ class TerminalPainter(typeface: Typeface, textSizePx: Float) {
         val palette = emulator.mColors.mCurrentColors
         val blockCursor =
             run.cursor && emulator.cursorStyle == TerminalEmulator.TERMINAL_CURSOR_STYLE_BLOCK
-        val reverse = emulator.isReverseVideo || blockCursor || run.selected
-        val appearance = CellStyles.resolve(run.style, palette, reverse)
+        val reverse = emulator.isReverseVideo || blockCursor
+        val resolved = CellStyles.resolve(run.style, palette, reverse)
+        val appearance =
+            if (run.selected) resolved.copy(background = selectionColor) else resolved
 
         val left = run.startColumn * cellWidth
         val right = left + run.columns * cellWidth
         val topPx = top.toFloat()
 
-        if (appearance.background != palette[TextStyle.COLOR_INDEX_BACKGROUND]) {
+        if (run.selected || appearance.background != palette[TextStyle.COLOR_INDEX_BACKGROUND]) {
             paint.color = appearance.background
             canvas.drawRect(left, topPx, right, topPx + cellHeight, paint)
         }
@@ -200,10 +206,9 @@ class TerminalPainter(typeface: Typeface, textSizePx: Float) {
         appearance: CellAppearance
     ) {
         paint.color = appearance.foreground
-        paint.isFakeBoldText = appearance.bold
+        paint.typeface = typefaces.of(appearance.bold, appearance.italic)
         paint.isUnderlineText = appearance.underline
         paint.isStrikeThruText = appearance.strikethrough
-        paint.textSkewX = if (appearance.italic) ITALIC_SKEW else 0f
 
         val baseline = top + ascent
         val expected = right - left
@@ -225,7 +230,6 @@ class TerminalPainter(typeface: Typeface, textSizePx: Float) {
         const val ASCII_LIMIT = 0x80
         const val UNDERLINE_DIVISOR = 4f
         const val BAR_DIVISOR = 4f
-        const val ITALIC_SKEW = -0.35f
         const val WIDTH_TOLERANCE = 0.01f
     }
 }
