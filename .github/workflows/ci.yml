@@ -26,6 +26,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # proot lives in a git submodule (third_party/proot).
+          submodules: true
 
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
@@ -37,6 +39,18 @@ jobs:
 
       - name: Check and build
         run: ./gradlew check assembleDebug
+
+      # proot and its loader are executables shipped as lib*.so (SPEC section 2): fail if the
+      # APK ever stops carrying them for any ABI.
+      - name: Check native executables are packaged
+        run: |
+          apk=app/build/outputs/apk/debug/app-debug.apk
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            for lib in libproot.so libproot-loader.so; do
+              unzip -l "$apk" "lib/$abi/$lib" | grep -q "lib/$abi/$lib" \
+                || { echo "missing lib/$abi/$lib in the APK"; exit 1; }
+            done
+          done
 
       - name: Upload reports
         if: failure()
