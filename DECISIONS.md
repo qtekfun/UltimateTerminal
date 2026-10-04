@@ -41,6 +41,9 @@ en el APK con el tipo ELF y los puntos de entrada esperados, `./gradlew check` y
 - T13, acceso a `/sdcard`: que el permiso de almacenamiento se conceda con `targetSdk` 28 en Android 11, 12, 13 y posteriores y
   que con él los procesos nativos (proot) puedan leer y escribir en `/storage/emulated/0`, incluidos Descargas y Documentos;
   que `cp /var/log/syslog ~/storage/downloads/` aparezca en la carpeta Descargas (ver D-T13-3 y "T13: lo que NO se ha validado").
+- T10, paneles divididos: ver D-T10-9. Los separadores arrastrables, el foco por toque, el menú del
+  panel, el tamaño de cada pty tras dividir, cerrar o hacer zoom, y los gestos de cada panel se han
+  probado solo con tests de host.
 
 ## Decisiones
 
@@ -922,6 +925,100 @@ atajos. No se ha visto la barra en ninguna pantalla. Pendiente en una tablet y u
 5. Accesibilidad: descripciones de TalkBack («Shell 2, pestaña 2 de 3, en ejecución»), tamaños
    táctiles de 48 dp y el rol de pestaña.
 6. El efecto de tener muchas pestañas con el *phantom process killer* de Android 12+ (SPEC §8).
+
+## T10 — Paneles divididos
+
+### D-T10-1 · 2026-10-04 · El árbol de paneles y el foco viven en `Sessions`
+**Decisión:** una pestaña con paneles sigue siendo una sesión (la que la abrió); sus paneles extra
+son otras sesiones de `items` que no salen en la barra. `Sessions` gana `panes: Map<SessionId,
+PaneTab>` (árbol, panel con el teclado y zoom) y `tabs` (lo que muestra la barra). `activeId` pasa
+a ser el panel que tiene el teclado. Las operaciones nuevas (`split`, `focused`, `ratioSet`,
+`swappedPanes`, `zoomToggled`, `closedPane`) son funciones de extensión; los reducers de T09
+(`closed`, `activated`, `switched`, `moved`, `closeAction`) pasan a contar pestañas, no sesiones.
+**Motivo:** una sola fuente de verdad inmutable y probada en host; el servicio, la notificación y el
+tamaño del pty siguen viendo todas las sesiones sin cambios. Las extensiones evitan superar el
+límite de `TooManyFunctions` de detekt (10 funciones en `Sessions`), que no se relaja.
+**Alternativas:** un `Workspace` aparte con `Map<tab, árbol>` (dos modelos que sincronizar cuando un
+shell termina o se cierra); mover `Sessions` a «pestaña = árbol» (reescribe T09 entero).
+**Impacto:** `nextId` pasa de privado a público (hace falta para crear el id del panel nuevo). Con
+panes sin dividir todo se comporta como en T09 (los 380 tests de T09 siguen pasando).
+
+### D-T10-2 · 2026-10-04 · Dos modelos: el de ejecución y el guardado
+**Decisión:** `PaneNode` (hojas = sesiones vivas) es el árbol de ejecución y `LayoutNode` (T05) sigue
+siendo el guardado. `toLayoutNode()` descarta las sesiones y conserva forma y proporciones;
+`paneNodeOf(layout) { sesión }` asigna sesiones nuevas en orden de lectura. No cambia el esquema de
+Room ni `LayoutCodec` (hay un test de ida y vuelta por JSON).
+**Motivo:** el esquema guardado no debe depender de ids de sesión que no sobreviven al proceso.
+Guardar y restaurar layouts con nombre, perfiles y comandos por panel es T12b.
+**Alternativas:** guardar el `PaneNode` (ids efímeros en disco).
+
+### D-T10-3 · 2026-10-04 · Orientación: nombra la línea que divide
+**Decisión:** `HORIZONTAL` es una línea horizontal (el primer panel arriba, el segundo abajo) y
+`VERTICAL` una línea vertical (izquierda y derecha), como en Terminator. «Dividir a la derecha» usa
+`VERTICAL`; «Dividir hacia abajo», `HORIZONTAL`. El panel nuevo va siempre en la segunda mitad.
+**Motivo:** `Layout.kt` (T05) no definía qué significaban; fijarlo ahora evita layouts guardados
+ambiguos. **Impacto:** documentado en `PaneNode`; si se prefiere la otra convención, se cambia en un
+solo sitio antes de que existan layouts guardados.
+
+### D-T10-4 · 2026-10-04 · Geometría pura: la UI dibuja lo que el dominio calcula
+**Decisión:** `paneScene` reparte el área en rectángulos en píxeles enteros (el divisor entre las dos
+mitades, el reparto exacto, sin huecos) y `paneLayouts` calcula la rejilla de cada pty con la misma
+`terminalLayoutFor` de T04. La UI solo coloca cajas en esos rectángulos. El arrastre se mide contra el
+«span» del divisor (`ratioForPointer`) con un tamaño mínimo y ajuste a 50 % (margen de 0,03).
+**Motivo:** lo que se ve y el tamaño que recibe el pty salen de la misma función, así que `stty size`
+debe coincidir con lo visible (a validar en tablet). Se prueba con tamaños de móvil y tablet.
+**Alternativas:** medir cada panel en Compose y avisar al pty desde el `onSizeChanged` (dos fuentes de
+verdad y más difícil de probar).
+
+### D-T10-5 · 2026-10-04 · Tamaño mínimo y aviso en vez de bloqueo
+**Decisión:** un panel no baja de 20 columnas × 4 filas (`canSplit`, `ratioForPointer`). Dividir donde
+no cabe no hace nada y avisa con un toast («No hay espacio suficiente para dividir aquí»); en un
+móvil en vertical se puede dividir hasta ese límite. No se usa `WindowSizeClass`: los paneles se
+pueden crear en cualquier ancho y la barra de pestañas ya cambia a 600 dp (D-T09-5).
+**Motivo:** SPEC RF-02 y la petición del usuario: «en móvil permite splits pero con tamaño mínimo y
+avisos». **Alternativas:** impedir los splits en pantallas estrechas.
+
+### D-T10-6 · 2026-10-04 · Tamaños de pty con debounce, también al arrastrar
+**Decisión:** el controlador envía el tamaño de cada panel con el mismo `settled(120 ms)` de T04
+(ahora genérico) y solo si cambió (`PtySizes`). Al arrastrar un divisor se mueve el dibujo en cada
+fotograma, pero cada shell recibe un único `SIGWINCH` cuando el arrastre se detiene. Una pestaña sin
+dividir sigue dimensionándose con el área completa (`onLayout`); un panel con zoom ocupa toda el
+área. **Motivo:** un `SIGWINCH` por fotograma hace que `vim`/`htop` se redibujen sin parar.
+**Impacto:** al dividir, el panel nuevo arranca con el tamaño completo y recibe el suyo ~120 ms
+después.
+
+### D-T10-7 · 2026-10-04 · Foco, zoom, intercambio y cierre
+**Decisión:** el panel con el teclado lleva un borde (solo si la pestaña está dividida). Tocar otro
+panel le da el teclado; los atajos de T11 mueven el foco por geometría (el vecino más cercano de ese
+lado, y entre ellos el que más se solapa). Zoom: solo se dibuja el panel enfocado, a toda el área,
+sin cerrar los demás. Intercambiar cambia los lugares de dos paneles, no las sesiones. Cerrar un panel
+con el shell vivo pide confirmación; el hermano ocupa el espacio y, si era el panel «propio» de la
+pestaña, el siguiente en orden de lectura pasa a ser la pestaña conservando su sitio y su nombre.
+Cerrar una pestaña cierra todos sus paneles (primero los demás, al final el propio) y la confirmación
+cuenta todos los paneles.
+**Atajos nuevos** (configurables, T11): Ctrl+Shift+O dividir abajo, Ctrl+Shift+E dividir a la derecha,
+Ctrl+Shift+Q cerrar panel (Ctrl+Shift+W sigue cerrando la pestaña), Ctrl+Shift+X zoom y Ctrl+Alt+flecha
+para el foco, para que Alt+flecha siga yendo por palabras en readline. Sin Ctrl/Alt no se aceptan.
+
+### D-T10-8 · 2026-10-04 · Lo que NO se hizo (alcance de T12b)
+Perfiles por panel, layouts guardados con nombre y comando inicial, atajos editables en la interfaz y
+emisión a varios paneles son T12b. «Reiniciar» un panel terminado cierra ese panel y abre una
+pestaña nueva (no lo reinicia en su sitio). El desplazamiento y la selección de texto solo existen
+en el panel con el teclado; los demás se dibujan en vivo y un toque les da el foco. Reordenar
+paneles arrastrándolos tampoco se hizo: se intercambian con el menú del panel o por geometría.
+
+### D-T10-9 · 2026-10-04 · Qué NO está validado (sin dispositivo)
+Todo se probó con tests de host (tests nuevos de árbol, geometría, `Sessions`, controladores y
+atajos): el árbol, el reparto de píxeles, el foco por geometría, los reducers y que cada pty reciba el
+tamaño de su panel. No se ha visto ninguna pantalla con paneles. Pendiente en una tablet y un móvil
+reales:
+1. Que `stty size` coincida con lo visible en cada panel tras dividir, cerrar, arrastrar y hacer zoom.
+2. El arrastre del divisor (zona táctil de 48 dp) y que no compita con el scroll del panel.
+3. Los gestos del panel enfocado (scroll, selección, pellizco) y el toque para dar el foco.
+4. El menú «⋮» y el diálogo de cierre, y que el teclado en pantalla no los tape.
+5. El rendimiento al dibujar varios paneles a la vez (el pintor compartido dibuja uno tras otro).
+6. TalkBack: las descripciones de panel y de separador.
+7. El efecto de tener muchos shells con el *phantom process killer* de Android 12+.
 
 ## T12 — Temas, modo OLED y fuentes
 

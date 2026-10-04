@@ -4,8 +4,8 @@
 package com.qtekfun.ultimateterminal.terminal
 
 import android.content.Context
+import com.qtekfun.ultimateterminal.domain.session.PaneEditor
 import com.qtekfun.ultimateterminal.domain.session.SessionController
-import com.qtekfun.ultimateterminal.domain.session.SessionEditor
 import com.qtekfun.ultimateterminal.domain.session.SessionId
 import com.qtekfun.ultimateterminal.domain.session.Sessions
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
@@ -31,13 +31,16 @@ class SessionManager @Inject constructor(@ApplicationContext context: Context) {
     val state: StateFlow<Sessions> get() = controller.state
 
     /** What the tab bar edits the sessions through. */
-    val editor: SessionEditor get() = controller
+    val editor: PaneEditor get() = controller
 
     /** The host of the active session, emitted again when the active session changes. */
     val activeHost: Flow<TerminalSessionHost?> =
         controller.state.map { factory.host(it.activeId) }.distinctUntilChanged()
 
     fun currentHost(): TerminalSessionHost? = factory.host(controller.state.value.activeId)
+
+    /** The host of any session, which a pane of a split tab draws. */
+    fun hostOf(id: SessionId): TerminalSessionHost? = factory.host(id)
 
     fun newSession(distroId: Long? = null): SessionId = controller.newSession(distroId)
 

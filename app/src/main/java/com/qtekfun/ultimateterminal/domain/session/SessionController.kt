@@ -3,6 +3,7 @@
 
 package com.qtekfun.ultimateterminal.domain.session
 
+import com.qtekfun.ultimateterminal.domain.model.SplitOrientation
 import com.qtekfun.ultimateterminal.domain.terminal.GridSize
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,6 +46,20 @@ interface SessionEditor {
 
     /** Applies a change to the sessions (rename, reorder, switch); the shells are not touched. */
     fun edit(change: Sessions.() -> Sessions)
+
+    /** Ends a whole tab: its panes first, then its own session. */
+    fun closeTab(id: SessionId) {
+        state.value.tabCloseOrder(id).forEach(::close)
+    }
+}
+
+/** What the pane logic needs from the session owner: it also starts and sizes the shells. */
+interface PaneEditor : SessionEditor {
+    /** Splits the pane that has the keyboard; the new shell gets it. Null if nothing is active. */
+    fun splitActive(orientation: SplitOrientation): SessionId?
+
+    /** Tells each pty the size of its pane, skipping those whose size did not change. */
+    fun applyPaneLayouts(layouts: Map<SessionId, TerminalLayout>)
 }
 
 /**
@@ -56,8 +71,9 @@ class SessionController(
     private val factory: SessionFactory,
     private val service: ServiceControl,
     initialLayout: TerminalLayout = DEFAULT_LAYOUT
-) : SessionEditor {
+) : PaneEditor {
     private val handles = mutableMapOf<SessionId, SessionHandle>()
+    private val sizes = PtySizes(handles)
     private val mutableState = MutableStateFlow(Sessions())
     private var serviceWanted = false
 
@@ -69,6 +85,15 @@ class SessionController(
 
     override fun newSession(distroId: Long?): SessionId {
         val (next, id) = mutableState.value.created(distroId)
+        return startPublished(next, id)
+    }
+
+    override fun splitActive(orientation: SplitOrientation): SessionId? {
+        val (next, id) = mutableState.value.split(orientation) ?: return null
+        return startPublished(next, id)
+    }
+
+    private fun startPublished(next: Sessions, id: SessionId): SessionId {
         // Published first: a shell that ends at once reports to a session that exists.
         publish(next)
         val handle = factory.start(id, layout) { status -> onExited(id, status) }
@@ -85,6 +110,7 @@ class SessionController(
 
     override fun close(id: SessionId) {
         publish(mutableState.value.closed(id))
+        sizes.forget(id)
         handles.remove(id)?.stop()
     }
 
@@ -92,6 +118,7 @@ class SessionController(
     fun closeAll() {
         val stopped = handles.values.toList()
         handles.clear()
+        sizes.clear()
         publish(mutableState.value.allClosed())
         stopped.forEach(SessionHandle::stop)
     }
@@ -103,17 +130,24 @@ class SessionController(
         val next = before.change()
         if (next == before) return
         publish(next)
-        // A shell that comes to the front may have been left at the size of an older layout.
-        if (next.activeId != before.activeId) next.activeId?.let { handles[it]?.resize(layout) }
+        // A shell that comes to the front may have been left at the size of an older layout. The
+        // panes of a split tab are sized one by one (applyPaneLayouts), not to the whole area.
+        if (next.activeId != before.activeId) next.activeId?.let { sizes.whole(next, it, layout) }
     }
 
     /** The visible area changed: remember it for new sessions and resize the one on screen. */
     fun onLayout(newLayout: TerminalLayout) {
         layout = newLayout
-        mutableState.value.activeId?.let { handles[it]?.resize(newLayout) }
+        mutableState.value.let { state ->
+            state.activeId?.let { sizes.whole(state, it, newLayout) }
+        }
     }
 
-    private fun onExited(id: SessionId, status: Int) {
+    override fun applyPaneLayouts(layouts: Map<SessionId, TerminalLayout>) {
+        layouts.forEach { (id, size) -> sizes.tell(id, size) }
+    }
+
+    private val onExited: (SessionId, Int) -> Unit = { id, status ->
         publish(mutableState.value.exited(id, status))
     }
 
@@ -133,4 +167,30 @@ class SessionController(
         val DEFAULT_LAYOUT =
             TerminalLayout(GridSize(columns = 80, rows = 24), cellWidthPx = 10, cellHeightPx = 20)
     }
+}
+
+/** Remembers the size each pty was last told, so a size that did not change is not sent again. */
+private class PtySizes(private val handles: Map<SessionId, SessionHandle>) {
+    private val applied = mutableMapOf<SessionId, TerminalLayout>()
+
+    fun tell(id: SessionId, size: TerminalLayout) {
+        if (applied[id] != size) {
+            applied[id] = size
+            handles[id]?.resize(size)
+        }
+    }
+
+    /** Sizes [id] to the whole area, unless its tab is split: then its pane has its own size. */
+    fun whole(state: Sessions, id: SessionId, size: TerminalLayout) {
+        if (state.paneIdsOf(state.tabOf(id)).size == 1) {
+            applied[id] = size
+            handles[id]?.resize(size)
+        }
+    }
+
+    fun forget(id: SessionId) {
+        applied.remove(id)
+    }
+
+    fun clear() = applied.clear()
 }

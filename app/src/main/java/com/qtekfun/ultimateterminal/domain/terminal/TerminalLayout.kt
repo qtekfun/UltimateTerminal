@@ -59,19 +59,20 @@ fun terminalLayoutFor(
  * Keeps the pty from being resized on every frame of a keyboard animation or a window drag, each
  * resize being a `SIGWINCH` that makes full-screen programs redraw. The first layout passes at
  * once (the shell starts at the right size); afterwards only the last one is delivered, once no
- * newer arrives for [debounceMillis]. Repeated equal layouts are dropped.
+ * newer arrives for [debounceMillis]. Repeated equal values are dropped. It serves the layout of the
+ * whole area (T04) and the sizes of the panes of a split tab (T10).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-fun Flow<TerminalLayout>.settled(debounceMillis: Long): Flow<TerminalLayout> {
+fun <T> Flow<T>.settled(debounceMillis: Long): Flow<T> {
     require(debounceMillis >= 0) { "debounce must not be negative" }
     val source = distinctUntilChanged()
     return flow {
         var first = true
         emitAll(
-            source.transformLatest { layout ->
+            source.transformLatest { value ->
                 if (!first) delay(debounceMillis)
                 first = false
-                emit(layout)
+                emit(value)
             }
         )
     }

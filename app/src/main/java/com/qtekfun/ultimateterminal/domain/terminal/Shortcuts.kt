@@ -5,7 +5,7 @@ package com.qtekfun.ultimateterminal.domain.terminal
 
 import android.view.KeyEvent
 
-/** What an application shortcut asks for. Tabs arrive with T09; until then nothing handles them. */
+/** What an application shortcut asks for: the clipboard, the font size, the tabs and the panes. */
 sealed interface AppShortcut {
     val id: String
 
@@ -34,6 +34,38 @@ sealed interface AppShortcut {
         override val id = "select_tab_$number"
     }
 
+    data object SplitHorizontal : AppShortcut {
+        override val id = "split_horizontal"
+    }
+
+    data object SplitVertical : AppShortcut {
+        override val id = "split_vertical"
+    }
+
+    data object ClosePane : AppShortcut {
+        override val id = "close_pane"
+    }
+
+    data object ToggleZoom : AppShortcut {
+        override val id = "toggle_pane_zoom"
+    }
+
+    data object FocusLeft : AppShortcut {
+        override val id = "focus_pane_left"
+    }
+
+    data object FocusRight : AppShortcut {
+        override val id = "focus_pane_right"
+    }
+
+    data object FocusUp : AppShortcut {
+        override val id = "focus_pane_up"
+    }
+
+    data object FocusDown : AppShortcut {
+        override val id = "focus_pane_down"
+    }
+
     data object Copy : AppShortcut {
         override val id = "copy"
     }
@@ -58,7 +90,9 @@ sealed interface AppShortcut {
         const val MAX_DIRECT_TAB = 9
 
         private val fixed = listOf(
-            NewTab, CloseTab, NextTab, PreviousTab, Copy, Paste, ZoomIn, ZoomOut, ZoomReset
+            NewTab, CloseTab, NextTab, PreviousTab, Copy, Paste, ZoomIn, ZoomOut, ZoomReset,
+            SplitHorizontal, SplitVertical, ClosePane, ToggleZoom,
+            FocusLeft, FocusRight, FocusUp, FocusDown
         )
         private val byId: Map<String, AppShortcut> =
             (fixed + (1..MAX_DIRECT_TAB).map { SelectTab(it) }).associateBy { it.id }
@@ -126,6 +160,10 @@ object KeyNames {
         put("numpad_subtract", KeyEvent.KEYCODE_NUMPAD_SUBTRACT)
         put("page_up", KeyEvent.KEYCODE_PAGE_UP)
         put("page_down", KeyEvent.KEYCODE_PAGE_DOWN)
+        put("left", KeyEvent.KEYCODE_DPAD_LEFT)
+        put("right", KeyEvent.KEYCODE_DPAD_RIGHT)
+        put("up", KeyEvent.KEYCODE_DPAD_UP)
+        put("down", KeyEvent.KEYCODE_DPAD_DOWN)
     }
     private val codes = names.entries.associate { it.value to it.key }
 
@@ -188,7 +226,23 @@ class ShortcutMap private constructor(private val bindings: Map<KeyChord, AppSho
                 KeyChord(KeyEvent.KEYCODE_MINUS, ctrl = true, shift = shift) to
                     AppShortcut.ZoomOut,
                 KeyChord(KeyEvent.KEYCODE_NUMPAD_SUBTRACT, ctrl = true) to AppShortcut.ZoomOut,
-                KeyChord(KeyEvent.KEYCODE_0, ctrl = true, shift = shift) to AppShortcut.ZoomReset
+                KeyChord(KeyEvent.KEYCODE_0, ctrl = true, shift = shift) to AppShortcut.ZoomReset,
+                // Panes, as Terminator has them where the keys are free here. Ctrl+Shift+W already
+                // closes the tab, so the pane takes Q. The focus keys use Ctrl+Alt so that Alt+arrow
+                // keeps moving by words in readline.
+                KeyChord(KeyEvent.KEYCODE_O, ctrl = true, shift = shift) to
+                    AppShortcut.SplitHorizontal,
+                KeyChord(KeyEvent.KEYCODE_E, ctrl = true, shift = shift) to
+                    AppShortcut.SplitVertical,
+                KeyChord(KeyEvent.KEYCODE_Q, ctrl = true, shift = shift) to AppShortcut.ClosePane,
+                KeyChord(KeyEvent.KEYCODE_X, ctrl = true, shift = shift) to AppShortcut.ToggleZoom,
+                KeyChord(KeyEvent.KEYCODE_DPAD_LEFT, ctrl = true, alt = true) to
+                    AppShortcut.FocusLeft,
+                KeyChord(KeyEvent.KEYCODE_DPAD_RIGHT, ctrl = true, alt = true) to
+                    AppShortcut.FocusRight,
+                KeyChord(KeyEvent.KEYCODE_DPAD_UP, ctrl = true, alt = true) to AppShortcut.FocusUp,
+                KeyChord(KeyEvent.KEYCODE_DPAD_DOWN, ctrl = true, alt = true) to
+                    AppShortcut.FocusDown
             )
             for (number in 1..AppShortcut.MAX_DIRECT_TAB) {
                 map[KeyChord(KeyEvent.KEYCODE_0 + number, alt = true)] =

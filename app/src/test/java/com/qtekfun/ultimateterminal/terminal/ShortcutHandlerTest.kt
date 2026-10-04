@@ -3,6 +3,8 @@
 
 package com.qtekfun.ultimateterminal.terminal
 
+import com.qtekfun.ultimateterminal.domain.session.FocusDirection
+import com.qtekfun.ultimateterminal.domain.session.PaneCommands
 import com.qtekfun.ultimateterminal.domain.session.TabCommands
 import com.qtekfun.ultimateterminal.domain.session.TabSwitch
 import com.qtekfun.ultimateterminal.domain.terminal.AppShortcut
@@ -25,16 +27,69 @@ private class RecordingTabs : TabCommands {
     }
 }
 
+private class RecordingPanes : PaneCommands {
+    val calls = mutableListOf<String>()
+
+    override fun splitHorizontal() {
+        calls += "split-h"
+    }
+
+    override fun splitVertical() {
+        calls += "split-v"
+    }
+
+    override fun closePane() {
+        calls += "close"
+    }
+
+    override fun toggleZoom() {
+        calls += "zoom"
+    }
+
+    override fun focus(direction: FocusDirection) {
+        calls += "focus $direction"
+    }
+}
+
 class ShortcutHandlerTest {
     private val tabs = RecordingTabs()
+    private val panes = RecordingPanes()
     private val clipboard = mutableListOf<String>()
     private val fontSize = FontSizeController()
     private val handler = ShortcutHandler(
         copy = { clipboard += "copy" },
         paste = { clipboard += "paste" },
         fontSize = fontSize,
-        tabs = tabs
+        tabs = tabs,
+        panes = panes
     )
+
+    @Test
+    fun thePaneShortcutsDriveThePanes() {
+        handler.handle(AppShortcut.SplitHorizontal)
+        handler.handle(AppShortcut.SplitVertical)
+        handler.handle(AppShortcut.ClosePane)
+        handler.handle(AppShortcut.ToggleZoom)
+        handler.handle(AppShortcut.FocusLeft)
+        handler.handle(AppShortcut.FocusRight)
+        handler.handle(AppShortcut.FocusUp)
+        handler.handle(AppShortcut.FocusDown)
+
+        assertEquals(
+            listOf(
+                "split-h",
+                "split-v",
+                "close",
+                "zoom",
+                "focus Left",
+                "focus Right",
+                "focus Up",
+                "focus Down"
+            ),
+            panes.calls
+        )
+        assertEquals(emptyList<String>(), tabs.calls)
+    }
 
     @Test
     fun theTabShortcutsDriveTheTabs() {
