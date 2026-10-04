@@ -7,4 +7,25 @@
     <string name="app_name">UltimateTerminal</string>
     <string name="terminal_copy">Copiar</string>
     <string name="terminal_session_ended">Sesión terminada (código %1$d). Toca para reiniciar</string>
+    <string name="extra_key_esc">Escape</string>
+    <string name="extra_key_tab">Tabulador</string>
+    <string name="extra_key_ctrl">Control</string>
+    <string name="extra_key_alt">Alt</string>
+    <string name="extra_key_up">Flecha arriba</string>
+    <string name="extra_key_down">Flecha abajo</string>
+    <string name="extra_key_left">Flecha izquierda</string>
+    <string name="extra_key_right">Flecha derecha</string>
+    <string name="extra_key_home">Inicio</string>
+    <string name="extra_key_end">Fin</string>
+    <string name="extra_key_pgup">Retroceder página</string>
+    <string name="extra_key_pgdn">Avanzar página</string>
+    <string name="extra_key_ins">Insertar</string>
+    <string name="extra_key_del">Suprimir</string>
+    <string name="extra_key_slash">Barra</string>
+    <string name="extra_key_dash">Guion</string>
+    <string name="extra_key_pipe">Barra vertical</string>
+    <string name="extra_key_tilde">Tilde</string>
+    <string name="extra_key_backslash">Barra invertida</string>
+    <string name="extra_key_armed">Activa para la próxima tecla</string>
+    <string name="extra_key_locked">Bloqueada</string>
 </resources>
