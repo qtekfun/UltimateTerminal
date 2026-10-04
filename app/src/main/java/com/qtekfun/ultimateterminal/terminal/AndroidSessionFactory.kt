@@ -8,6 +8,7 @@ import com.qtekfun.ultimateterminal.domain.session.SessionFactory
 import com.qtekfun.ultimateterminal.domain.session.SessionHandle
 import com.qtekfun.ultimateterminal.domain.session.SessionId
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
+import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
 
 /**
  * Starts a [TerminalSessionHost] per session and keeps them by id so the screen can find the one it
@@ -16,8 +17,15 @@ import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
  */
 class AndroidSessionFactory(private val context: Context) : SessionFactory {
     private val hosts = mutableMapOf<SessionId, TerminalSessionHost>()
+    private var scheme: TerminalColorScheme? = null
 
     fun host(id: SessionId?): TerminalSessionHost? = id?.let(hosts::get)
+
+    /** Makes [newScheme] the colors of every running shell, and of any shell started later. */
+    fun applyScheme(newScheme: TerminalColorScheme) {
+        scheme = newScheme
+        hosts.values.forEach { it.applyScheme(newScheme) }
+    }
 
     // The pty or the fork can fail in ways the library reports as plain runtime exceptions; a shell
     // that cannot start is reported as a failed session instead of crashing the service.
@@ -28,6 +36,7 @@ class AndroidSessionFactory(private val context: Context) : SessionFactory {
         onExit: (Int) -> Unit
     ): SessionHandle? {
         val host = TerminalSessionHost(context, onExit)
+        scheme?.let(host::applyScheme)
         return try {
             host.resize(layout.grid, layout.cellWidthPx, layout.cellHeightPx)
             hosts[id] = host

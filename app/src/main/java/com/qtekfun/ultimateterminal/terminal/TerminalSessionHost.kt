@@ -8,6 +8,8 @@ import android.content.ClipboardManager
 import android.content.Context
 import com.qtekfun.ultimateterminal.domain.terminal.GridSize
 import com.qtekfun.ultimateterminal.domain.terminal.ShellEnvironment
+import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
+import com.termux.terminal.TerminalColors
 import com.termux.terminal.TerminalEmulator
 import com.termux.terminal.TerminalSession
 import com.termux.terminal.TerminalSessionClient
@@ -43,6 +45,7 @@ class TerminalSessionHost(
     val exitStatus: StateFlow<Int?> = exitState.asStateFlow()
 
     private var session: TerminalSession? = null
+    private var scheme: TerminalColorScheme? = null
 
     override val emulator: TerminalEmulator? get() = session?.emulator
 
@@ -51,6 +54,8 @@ class TerminalSessionHost(
         val current = session
         if (current == null) {
             exitState.value = null
+            // A new emulator reads its starting colors from the library's shared default scheme.
+            scheme?.writeInto(TerminalColors.COLOR_SCHEME.mDefaultColors)
             val home = context.filesDir.absolutePath
             val created = TerminalSession(
                 SHELL,
@@ -67,6 +72,17 @@ class TerminalSessionHost(
         ) {
             current.updateSize(grid.columns, grid.rows, cellWidthPx, cellHeightPx)
         }
+        frameState.value++
+    }
+
+    /**
+     * Makes [newScheme] the colors of the running shell and of any shell started later. Colors a
+     * program set itself (OSC 4, 10, 11) are dropped, as the new scheme replaces them.
+     */
+    fun applyScheme(newScheme: TerminalColorScheme) {
+        scheme = newScheme
+        newScheme.writeInto(TerminalColors.COLOR_SCHEME.mDefaultColors)
+        session?.emulator?.mColors?.reset()
         frameState.value++
     }
 

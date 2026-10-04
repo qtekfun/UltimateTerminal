@@ -60,4 +60,21 @@ class FontZoomTest {
         val zoom = FontZoom()
         assertEquals(14.5f, zoom.pinch(1.04f))
     }
+
+    @Test
+    fun aStoredSizeCanBeSetAndIsClamped() {
+        val zoom = FontZoom()
+        assertEquals(20f, zoom.set(20f))
+        assertEquals(FontZoom.MAX_SP, zoom.set(500f))
+        assertEquals(FontZoom.MIN_SP, zoom.set(1f))
+    }
+
+    @Test
+    fun aSizeThatIsNotANumberIsIgnored() {
+        val zoom = FontZoom()
+        zoom.set(18f)
+        assertEquals(18f, zoom.set(Float.NaN))
+        assertEquals(18f, zoom.set(Float.POSITIVE_INFINITY))
+        assertEquals(19f, zoom.zoomIn())
+    }
 }

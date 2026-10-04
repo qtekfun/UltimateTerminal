@@ -15,6 +15,7 @@ import com.qtekfun.ultimateterminal.domain.terminal.StickyState
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
 import com.qtekfun.ultimateterminal.domain.terminal.clampTopRow
 import com.qtekfun.ultimateterminal.domain.terminal.settled
+import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -125,6 +126,12 @@ class TerminalViewModel @Inject constructor(
             if (manager.state.value.items.isEmpty()) manager.newSession()
         }
         topRowState.value = clampTopRow(topRowState.value, transcriptRows)
+    }
+
+    /** The colors changed (a new scheme, or OLED mode): every screen is drawn again with them. */
+    fun applyScheme(scheme: TerminalColorScheme) {
+        manager.applyScheme(scheme)
+        frameState.value++
     }
 
     /** Starts a new shell, at the current size, after the previous one ended. */

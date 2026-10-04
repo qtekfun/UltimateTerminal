@@ -919,3 +919,53 @@ atajos. No se ha visto la barra en ninguna pantalla. Pendiente en una tablet y u
 5. Accesibilidad: descripciones de TalkBack («Shell 2, pestaña 2 de 3, en ejecución»), tamaños
    táctiles de 48 dp y el rol de pestaña.
 6. El efecto de tener muchas pestañas con el *phantom process killer* de Android 12+ (SPEC §8).
+
+## T12 — Temas, modo OLED y fuentes
+
+### D-T12-1 · 2026-10-04 · Fuente: JetBrains Mono 2.304, incluida sin modificar
+- **Decisión:** el terminal usa JetBrains Mono (Regular, Bold, Italic, Bold Italic) como fuente incluida, en `res/font`.
+- **Motivo:** licencia SIL OFL-1.1 verificada en el repositorio oficial (`Copyright 2020 The JetBrains Mono Project Authors`), compatible con distribuir la fuente dentro de una app GPL-3.0-or-later siempre que no se venda suelta y se incluya el texto de la licencia. Sin *Reserved Font Name*.
+- **Verificado:** los cuatro `.ttf` son idénticos byte a byte (SHA-256) a los de la release oficial `v2.304`. El texto de la OFL y la lista de autores van en el APK (`assets/licenses/`).
+- **Alternativas:** Fira Code, Hack o una Nerd Font (las Nerd Fonts son parches de otras fuentes con licencias mezcladas: más trabajo de verificar). **Impacto:** unos 1,1 MB más en el APK. **Pendiente:** las Nerd Fonts / iconos de powerline, por si el usuario los quiere (no es MVP).
+
+### D-T12-2 · 2026-10-04 · Esquemas incluidos y por qué NO está Tango
+- **Decisión:** vienen Dracula (predeterminado), Solarized Dark, Solarized Light, Gruvbox Dark, Nord y un esquema OLED propio. Se acreditan en `THIRD_PARTY_NOTICES.md` y con el texto MIT completo en `assets/licenses/ColorSchemes-MIT.txt`.
+- **Verificado en los repositorios oficiales:** Solarized (© 2011 Ethan Schoonover, MIT), Dracula (© 2023 Dracula Theme, MIT), Nord (© 2016-presente Sven Greb, MIT) y Gruvbox (© Pavel Pertsev; MIT/X11 según su README y `package.json`, aunque el repositorio no trae un fichero `LICENSE`).
+- **Tango, retirado:** el primer borrador lo incluía como predeterminado diciendo «dominio público». **No pude verificar esa afirmación**: las guías de Tango se publican bajo CC BY-SA 2.5, que no es compatible con GPLv3, y no encontré una declaración clara para la paleta. Al no poder comprobarlo y querer evitar reclamaciones, se quitó. Si más adelante se verifica una fuente clara de licencia, se puede añadir.
+- **Cambios a las paletas:** retoques mínimos de legibilidad, documentados junto a cada esquema en `BuiltInSchemes.kt` y exigidos por el test de contraste: Solarized Light (verde, amarillo y cian 1–2 % más oscuros: los oficiales dan 2,9–3,0:1) y Gruvbox Dark (rojo normal más claro: el oficial `CC241D` da 2,7:1). Los esquemas MIT permiten modificar con atribución.
+- **Impacto:** el esquema predeterminado cambia a Dracula. Un usuario que importe un esquema responde de su origen.
+
+### D-T12-3 · 2026-10-04 · Modo OLED = variante del tema oscuro
+- **Decisión:** `resolveTheme` solo activa OLED cuando el tema resultante es oscuro (`oled = oledBlack && dark`). En OLED, un esquema oscuro pasa a fondo `#000000` puro (`forOled()`); uno claro no se toca.
+- **Motivo:** apagar los píxeles solo tiene sentido en oscuro; un fondo negro con un esquema claro dejaría texto ilegible.
+- **Impacto:** la interfaz Material y la vista del terminal usan la misma decisión.
+
+### D-T12-4 · 2026-10-04 · El esquema se aplica a todas las sesiones, también a las futuras
+- **Decisión:** `SessionManager.applyScheme` delega en `AndroidSessionFactory`, que recuerda el esquema, lo aplica a todos los hosts en marcha y a cada host nuevo antes de arrancar su emulador.
+- **Motivo:** con varias pestañas (T09) un esquema por host dejaría pestañas con colores antiguos. La librería de Termux lee sus colores iniciales de una paleta estática compartida; se escribe ahí y se reinician los colores del emulador activo (los que un programa fijó con OSC 4/10/11 se descartan: el esquema nuevo manda).
+- **Impacto:** la integración con los cambios de T08/T09 se rehízo sobre `master`; el diseño de H, que asumía un único host, no valía tal cual.
+
+### D-T12-5 · 2026-10-04 · No se dibuja nada hasta tener los ajustes
+- **Decisión:** `MainActivity` espera a que lleguen los ajustes guardados (`produceState`) antes de componer la pantalla.
+- **Motivo:** evita un primer fotograma con el esquema y tamaño de fuente por defecto que luego salte a los guardados.
+- **Alternativa:** una pantalla de carga; descartada por ser un instante. **Riesgo:** si el repositorio tardara, se vería la ventana vacía; no medido.
+
+### D-T12-6 · 2026-10-04 · Persistencia y tamaño de fuente
+- **Decisión:** tema, modo OLED, colores dinámicos, esquema elegido, esquemas importados y tamaño de fuente viven en el repositorio de ajustes de T05 (clave-valor). El tamaño del zoom de T11 se restaura una vez y solo se guardan los cambios del usuario, con un *debounce* de 500 ms (un pellizco genera muchos valores).
+- **Importación/exportación:** JSON versionado (`version: 1`) con `kotlinx.serialization`, probado con ida y vuelta. Un fichero de una versión desconocida se rechaza. Un test cazó que, con `encodeDefaults` apagado, `kotlinx.serialization` omitía el campo `version` al exportar (por tener valor por defecto): los ficheros no llevaban versión. Se activó `encodeDefaults`.
+
+### D-T12-7 · 2026-10-04 · Contraste mínimo comprobado en tests
+- **Decisión:** cada esquema incluido debe cumplir: texto sobre fondo ≥ 4,5:1 (WCAG AA), cursor ≥ 3:1, texto sobre selección ≥ 3:1, cada color ANSI sobre el fondo ≥ 3:1 y el «negro brillante» ≥ 1,5:1; y lo mismo en su variante OLED.
+- **Motivo:** una paleta con colores ilegibles es un fallo de accesibilidad; el test lo caza antes de publicar.
+- **Nota:** el umbral de 1,5:1 del negro brillante es deliberadamente bajo: en muchos esquemas es el color de texto «atenuado» y subirlo lo desvirtúa.
+
+### D-T12-8 · 2026-10-04 · Las barras del sistema siguen al esquema
+- **Decisión:** los iconos de las barras de estado y navegación se eligen según el fondo del **esquema** (`SystemBarStyle.auto`), no según el tema del sistema, porque el terminal se dibuja bajo las barras.
+
+### Pendiente de validar en dispositivo (T12)
+Nada de esto se ha visto en pantalla; solo hay tests de host.
+1. Que los colores se ven bien de verdad: contraste real con brillo bajo y al sol, y que OLED apaga los píxeles.
+2. Que el cambio de esquema en caliente repinta todas las pestañas sin reiniciarlas, y los colores que un programa fijó con OSC.
+3. El renderizado de JetBrains Mono: negrita/cursiva con las cuatro variantes, ancho de celda correcto, y que no cambia el tamaño de la rejilla (`stty size`) respecto a la fuente del sistema.
+4. Iconos de las barras del sistema con esquemas claros y oscuros.
+5. La pantalla de ajustes para elegir esquema/tema aún no existe (T16): hoy solo se cambian por el repositorio de ajustes.

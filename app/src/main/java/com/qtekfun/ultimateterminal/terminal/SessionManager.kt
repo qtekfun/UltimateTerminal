@@ -9,6 +9,7 @@ import com.qtekfun.ultimateterminal.domain.session.SessionEditor
 import com.qtekfun.ultimateterminal.domain.session.SessionId
 import com.qtekfun.ultimateterminal.domain.session.Sessions
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
+import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -45,6 +46,9 @@ class SessionManager @Inject constructor(@ApplicationContext context: Context) {
     fun closeAll() = controller.closeAll()
 
     fun onLayout(layout: TerminalLayout) = controller.onLayout(layout)
+
+    /** Colors of every running shell, and of those started later. */
+    fun applyScheme(scheme: TerminalColorScheme) = factory.applyScheme(scheme)
 
     /** Replaces the active session with a fresh shell (the "restart" of a session that ended). */
     fun restartActive() {
