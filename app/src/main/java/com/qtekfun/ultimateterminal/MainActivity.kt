@@ -28,9 +28,13 @@ import com.qtekfun.ultimateterminal.domain.theme.SchemeCatalog
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
 import com.qtekfun.ultimateterminal.domain.theme.resolveTheme
 import com.qtekfun.ultimateterminal.terminal.SessionManager
+import com.qtekfun.ultimateterminal.terminal.TerminalFontLoader
+import com.qtekfun.ultimateterminal.ui.AppearanceScreen
 import com.qtekfun.ultimateterminal.ui.DistroScreen
+import com.qtekfun.ultimateterminal.ui.ScreenLinks
 import com.qtekfun.ultimateterminal.ui.SessionPrompts
 import com.qtekfun.ultimateterminal.ui.SshScreen
+import com.qtekfun.ultimateterminal.ui.TerminalLook
 import com.qtekfun.ultimateterminal.ui.TerminalScreen
 import com.qtekfun.ultimateterminal.ui.theme.UltimateTerminalTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -42,6 +46,8 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var sessionManager: SessionManager
 
     @Inject lateinit var settingsRepository: SettingsRepository
+
+    @Inject lateinit var fontLoader: TerminalFontLoader
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,17 +76,21 @@ class MainActivity : ComponentActivity() {
             enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
         }
         UltimateTerminalTheme(decision, settings.dynamicColor) {
-            Screens(scheme, settings.terminalFontSizeSp)
+            Screens(scheme, settings)
         }
     }
 
     @Composable
-    private fun Screens(scheme: TerminalColorScheme, fontSizeSp: Float) {
+    private fun Screens(scheme: TerminalColorScheme, settings: AppSettings) {
         val scope = rememberCoroutineScope()
         val sessions by sessionManager.state.collectAsStateWithLifecycle()
         var hadSessions by remember { mutableStateOf(false) }
         var showDistros by rememberSaveable { mutableStateOf(false) }
         var showSsh by rememberSaveable { mutableStateOf(false) }
+        var showAppearance by rememberSaveable { mutableStateOf(false) }
+        val typefaces = remember(settings.appearance.fontId, settings.customFonts) {
+            fontLoader.load(settings.appearance.fontId, settings.customFonts)
+        }
         // "Exit" in the notification closes every session: close the screen with them.
         LaunchedEffect(sessions.items.isEmpty()) {
             if (sessions.items.isNotEmpty()) {
@@ -91,18 +101,22 @@ class MainActivity : ComponentActivity() {
         }
         Box {
             TerminalScreen(
-                scheme = scheme,
-                initialFontSizeSp = fontSizeSp,
+                look = TerminalLook(scheme, settings.appearance, typefaces),
+                initialFontSizeSp = settings.terminalFontSizeSp,
                 onFontSizeChanged = { size ->
                     scope.launch {
                         settingsRepository.update { it.copy(terminalFontSizeSp = size) }
                     }
                 },
-                onOpenDistros = { showDistros = true },
-                onOpenSsh = { showSsh = true }
+                screens = ScreenLinks(
+                    openDistros = { showDistros = true },
+                    openSsh = { showSsh = true },
+                    openAppearance = { showAppearance = true }
+                )
             )
             if (showDistros) DistroScreen(onClose = { showDistros = false })
             if (showSsh) SshScreen(onClose = { showSsh = false })
+            if (showAppearance) AppearanceScreen(onClose = { showAppearance = false })
         }
         SessionPrompts(hasRunningSession = sessions.needsService)
     }

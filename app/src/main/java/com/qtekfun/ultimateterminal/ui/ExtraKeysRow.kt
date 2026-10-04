@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,6 +37,9 @@ import com.qtekfun.ultimateterminal.domain.terminal.StickyState
 /** The touch target size: 48 dp is the accessibility minimum. */
 internal val ExtraKeyRowHeight = 48.dp
 
+private val KeyInset = 2.dp
+private const val ARMED_ALPHA = 0.4f
+
 /** The extra-keys row (Esc, Tab, Ctrl, arrows...) above the keyboard. Not validated on a device. */
 @Composable
 fun ExtraKeysRow(
@@ -43,7 +48,8 @@ fun ExtraKeysRow(
     onKey: (ExtraKey) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainer)) {
+    val chrome = currentChrome()
+    Column(modifier.fillMaxWidth().background(chrome.surface)) {
         config.resolved().forEach { row ->
             Row(Modifier.fillMaxWidth().height(ExtraKeyRowHeight)) {
                 row.forEach { key ->
@@ -70,21 +76,24 @@ private fun ExtraKeyButton(
         LatchState.ARMED -> stringResource(R.string.extra_key_armed)
         LatchState.LOCKED -> stringResource(R.string.extra_key_locked)
     }
-    val colors = MaterialTheme.colorScheme
+    val chrome = currentChrome()
     val (background, foreground) = when (latch) {
-        LatchState.OFF -> Color.Transparent to colors.onSurface
-        LatchState.ARMED -> colors.primaryContainer to colors.onPrimaryContainer
-        LatchState.LOCKED -> colors.primary to colors.onPrimary
+        LatchState.OFF -> Color.Transparent to chrome.onSurface
+        LatchState.ARMED -> chrome.accent.copy(alpha = ARMED_ALPHA) to chrome.onSurface
+        LatchState.LOCKED -> chrome.accent to chrome.onAccent
     }
+    // The whole cell is the touch target; the colored shape is inset a little so the keys read as
+    // keys, and takes the corner radius of the appearance.
     Box(
         modifier
             .fillMaxHeight()
-            .background(background)
             .semantics {
                 contentDescription = name
                 if (state != null) stateDescription = state
             }
-            .clickable(role = Role.Button) { onKey(key) },
+            .clickable(role = Role.Button) { onKey(key) }
+            .padding(KeyInset)
+            .background(background, RoundedCornerShape(chrome.corner)),
         contentAlignment = Alignment.Center
     ) {
         Text(

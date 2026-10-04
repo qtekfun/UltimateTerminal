@@ -3,6 +3,8 @@
 
 package com.qtekfun.ultimateterminal.domain.model
 
+import com.qtekfun.ultimateterminal.domain.appearance.CustomFont
+import com.qtekfun.ultimateterminal.domain.appearance.TerminalAppearance
 import com.qtekfun.ultimateterminal.domain.terminal.FontZoom
 import com.qtekfun.ultimateterminal.domain.theme.BuiltInSchemes
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
@@ -30,5 +32,9 @@ data class AppSettings(
     /** The terminal font size in sp, as the pinch zoom and the shortcuts left it. */
     val terminalFontSizeSp: Float = FontZoom.DEFAULT_SP,
     /** The color schemes the user imported. */
-    val customSchemes: List<TerminalColorScheme> = emptyList()
+    val customSchemes: List<TerminalColorScheme> = emptyList(),
+    /** Font, spacing, margin, cursor and the style of the bars (T12c). */
+    val appearance: TerminalAppearance = TerminalAppearance(),
+    /** The fonts the user imported; their files are in the app's private font folder. */
+    val customFonts: List<CustomFont> = emptyList()
 )

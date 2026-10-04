@@ -1453,6 +1453,139 @@ Sin validar en dispositivo (el solape sí se vio; la corrección es de diseño).
 - **Sin validar en dispositivo:** que el margen quede bien en móvil y tablet, que el tamaño de rejilla
   siga coincidiendo con lo visible (`stty size`) y que dividir desde el menú «+» funcione.
 
+## T12c — Apariencia personalizable
+
+Sale de la primera prueba real en un Pixel 8: el usuario dijo que la vista del terminal era fea y
+preguntó si podía haber fuentes y diseño propios (y, entendido así, que **no** se parezca a Termux).
+Antes de T12c los esquemas y JetBrains Mono existían, pero **no había ninguna pantalla** para elegirlos.
+
+### D-T12c-1 · 2026-10-04 · Una pantalla "Apariencia" con vista previa en vivo, enlazada desde el menú "+"
+
+- **Decisión:** `AppearanceScreen` (tema claro/oscuro/sistema, negro OLED, colores dinámicos, esquema,
+  fuente, tamaño, interlineado, espaciado entre letras, margen, esquinas, forma y parpadeo del cursor, estilo
+  de las barras) con una vista previa que dibuja un terminal de muestra con esos valores. Se abre desde
+  el menú del "+" de la barra de pestañas ("Apariencia…"). T16 la enlazará desde los ajustes generales.
+- **Motivo:** cambiar algo sin ver el resultado obliga a ir y volver al terminal. La vista previa usa
+  `Text` de Compose con la misma fuente (`FontFamily(Typeface)`), el mismo esquema y los mismos espaciados.
+- **Alternativas:** ajustes planos sin vista previa (más rápido, peor para decidir); previsualizar con el
+  emulador real (más fiel, pero arrastra una sesión entera a una pantalla de ajustes).
+- **Impacto:** la vista previa es una aproximación: el interlineado y el espaciado de Compose no son
+  idénticos a los del `TerminalPainter`. Lo definitivo es lo que se ve en el terminal.
+
+### D-T12c-2 · 2026-10-04 · Fuentes propias: se validan antes de aceptarlas y no se redistribuyen
+
+- **Decisión:** importar con `ACTION_OPEN_DOCUMENT`, leer como mucho **8 MB**, y aceptar solo si: la
+  cabecera es TrueType (`0x00010000` o `true`) u OpenType (`OTTO`); `Typeface.Builder` la carga; tiene los
+  glifos básicos (`a-z`, dígitos, signos de uso común) y es **monoespaciada** (15 glifos de anchos muy
+  distintos, `iIl1.:|WMm@#0OQ`, miden lo mismo con un 1 % de tolerancia). Si falla cualquier paso se
+  **borra el archivo** y no queda nada. Se guarda en `files/fonts/<id>.ttf|otf` con un id propio
+  (`font-<nombre>-<sufijo aleatorio>`), nunca con el nombre del archivo original.
+- **Motivo:** una fuente proporcional rompe la cuadrícula (cada celda mide lo mismo); una fuente de iconos
+  o sin letras hace ilegible el terminal. El nombre de fichero es un dato no fiable: se descarta.
+- **Alternativas:** aceptar colecciones `.ttc` (`ttcf`, descartado: una colección trae varias caras y habría
+  que elegir una); no validar y avisar al usar (peor: el usuario ve un terminal roto sin saber por qué).
+- **Impacto:** las fuentes importadas quedan en el dispositivo y **no se suben ni se redistribuyen**: la
+  pantalla avisa de que su licencia es responsabilidad del usuario. El negrita y la cursiva de una fuente
+  importada los sintetiza Android (`Typeface.create(family, BOLD)`) si la familia no los trae.
+- **Sin validar:** que `Typeface.Builder(file)` cargue fuentes reales de distintos formatos en Android 8–17,
+  y la medición de anchos con el motor de texto real (los tests usan una sonda falsa).
+
+### D-T12c-3 · 2026-10-04 · El espaciado entre letras ensancha la celda; el interlineado la alarga y centra el texto
+
+- **Decisión:** `Paint.letterSpacing` se aplica antes de medir `cellWidth` ("X"), así que toda la cuadrícula
+  usa la celda ensanchada y `terminalLayoutFor` calcula las columnas con ella. El interlineado multiplica
+  la altura de celda y el texto se centra en ella (el espacio extra se reparte arriba y abajo).
+- **Rangos:** interlineado 0,8 a 1,6; espaciado −0,05 a 0,3 em; margen 0 a 24 dp; esquinas 0 a 16 dp. Todo
+  valor guardado o importado se **recorta** a su rango (`sanitized()`), y uno no finito vuelve al defecto.
+- **Impacto:** un interlineado menor que 1 puede recortar los trazos de las letras altas: es el precio de
+  permitirlo (rango mínimo 0,8).
+- **Sin validar:** el aspecto real con cada fuente, y que el glifo ancho (emoji, CJK) siga alineado con
+  espaciado distinto de 0 (la corrección existente de T03 los comprime a su celda).
+
+### D-T12c-4 · 2026-10-04 · La forma del cursor la elige el usuario y manda sobre la que pida el programa
+
+- **Decisión:** el cursor (bloque, subrayado, barra) y su parpadeo salen de la apariencia; el
+  `TerminalPainter` ya no mira `emulator.cursorStyle`.
+- **Motivo:** predecible. Con el estilo del programa, un `vim` o un `fish` que cambie la forma por modo
+  deja al usuario sin control.
+- **Alternativa:** respetar la forma que pide el programa (DECSCUSR) y usar la elegida solo por defecto.
+  Es más fiel a lo que hace un terminal de escritorio. **Revisable**: se puede añadir un ajuste
+  "respetar al programa".
+- **Sin validar:** el parpadeo (un temporizador de 530 ms que invalida el canvas) y su coste de batería.
+
+### D-T12c-5 · 2026-10-04 · Las barras toman los colores del esquema, y siempre se leen
+
+- **Decisión:** `ChromeColorsFor.scheme` deriva de la paleta del esquema los colores de la barra de pestañas,
+  la pestaña activa, las teclas extra, el borde de panel y el acento, mezclando fondo y texto
+  (7 % / 18 % / 30 %). Si esa mezcla deja el texto de la barra por debajo de **4,5:1** (Solarized lo hace
+  por diseño), `ColorMath.readableOn` lo empuja hacia blanco o negro lo mínimo necesario. `ChromeStyle`
+  permite volver a los colores del tema del sistema.
+- **Motivo:** con colores dinámicos activos el Pixel mostraba las barras en el azul del fondo de pantalla,
+  ajeno al esquema. Con esto la ventana entera parece una pieza.
+- **Hallazgo:** el test de legibilidad de todos los esquemas integrados cazó Solarized Dark antes de
+  llegar a la pantalla.
+- **Por defecto:** `SCHEME`. Quien quiera lo anterior elige "Los del tema del sistema".
+
+### D-T12c-6 · 2026-10-04 · Sin barras "compactas": rompen los 48 dp táctiles
+
+- **Decisión:** no hay opción de barra compacta. En su lugar se personaliza el **color** y el
+  **radio de las esquinas**.
+- **Motivo:** la SPEC (§6, accesibilidad) exige objetivos táctiles de al menos 48 dp, y la barra de pestañas
+  y la fila de teclas ya miden eso. Una barra de 36 dp sería una regresión de accesibilidad.
+- **Alternativa:** permitirlo avisando. Descartado: mejor no ofrecer lo que no debe usarse.
+- **Detalle:** el color de cada tecla se dibuja con un hueco de 2 dp, pero **toda la celda** es el objetivo
+  táctil.
+
+### D-T12c-7 · 2026-10-04 · El botón `⋮` flotante ya estaba resuelto en T08c
+
+- El círculo oscuro sobre el prompt era el menú de paneles de T10. T08c ya lo muestra solo cuando hay
+  paneles divididos (el split de un panel único vive en el menú "+"). T12c solo le da los colores de
+  la paleta de las barras.
+
+### D-T12c-8 · 2026-10-04 · Editor de esquemas sin librería de color: hexadecimal y tres deslizadores
+
+- **Decisión:** editor a pantalla completa con el nombre y los **20 colores** (16 ANSI, texto, fondo,
+  cursor, selección). Cada color se cambia con un cuadro de texto hexadecimal (`#rrggbb`, también `#rgb`) y
+  tres deslizadores (rojo, verde, azul) sincronizados. Duplicar, crear, editar, eliminar, importar y
+  exportar (JSON versionado de T12). Un esquema no puede llamarse como otro, integrado o propio.
+- **Aviso de contraste:** lista hasta cinco colores difíciles de leer sobre el fondo (texto 4,5:1; cursor y
+  ANSI 3:1; se exceptúan negro y negro brillante, que se funden con el fondo a propósito). **Nunca bloquea.**
+- **Motivo de no usar un selector de color:** una dependencia más para un control que esto hace igual de bien.
+- **Alternativa:** rueda de color HSV propia. Más cómoda; más código para validar sin dispositivo.
+
+### D-T12c-9 · 2026-10-04 · Para la copia de seguridad (T15): claves y archivos de fuente
+
+- **Claves del repositorio de ajustes que T15 debe serializar** (forman parte del formato de backup: no
+  renombrar): `appearance_font_id`, `appearance_line_spacing`, `appearance_letter_spacing`,
+  `appearance_margin_dp`, `appearance_cursor_shape`, `appearance_cursor_blink`, `appearance_chrome_style`,
+  `appearance_corner_dp`, `custom_fonts` (JSON: `id`, `name`, `fileName`) y las ya existentes
+  `terminal_scheme`, `terminal_font_size_sp`, `custom_schemes`, `theme_mode`, `oled_black`, `dynamic_color`.
+- **Los archivos de fuente NO están en esas claves:** viven en `files/fonts/`. **T15 debe incluir esa
+  carpeta** en la copia de configuración; si solo lleva el JSON, una fuente restaurada vuelve a la incluida
+  (`FontCatalog.idOrBundled`), sin romper nada.
+- **Restauración segura:** `FontCatalog.decodeList` descarta entradas cuyo `fileName` sea una ruta (`/`, `\`,
+  `..`, `.`) o venga vacío, y `AndroidFontStore` solo toca nombres que sean un nombre de archivo simple
+  dentro de `files/fonts`. Un backup manipulado no puede escribir fuera de esa carpeta.
+
+### D-T12c-10 · 2026-10-04 · Los deslizadores guardan al soltar
+
+- Cada `Slider` mantiene su valor mientras se arrastra y escribe en los ajustes al levantar el dedo, así
+  que se hace una escritura por gesto y no cientos. A cambio, la vista previa se actualiza al soltar.
+- El tamaño de fuente de esta pantalla y el zoom por pellizco comparten el mismo valor guardado
+  (`terminal_font_size_sp`): un valor nuevo del almacén se reaplica al terminal vivo.
+
+### T12c: lo que NO se ha validado (sin dispositivo)
+
+Solo hay tests de host. Falta comprobar en un móvil y en la tablet:
+
+- La pantalla "Apariencia" completa (diseño, desplazamiento, teclado, rotación, TalkBack y objetivos de 48 dp).
+- El selector de documentos para importar una fuente y para importar o exportar un esquema.
+- Que `Typeface.Builder` cargue de verdad .ttf y .otf reales, y que la comprobación de monoespaciado
+  acepte las fuentes buenas y rechace las proporcionales con el motor de texto real.
+- El aspecto del terminal con interlineado y espaciado distintos de 1 y 0, y con fuentes ajenas.
+- La forma del cursor y su parpadeo, el margen, y los colores de las barras con cada esquema (también
+  con colores dinámicos activos y con el modo OLED).
+- Que cambiar la fuente o el espaciado con sesiones abiertas repinte y reajuste el pty sin cortar nada.
 ## T15 — Copias de seguridad y restauración
 
 ### D-T15-1 · 2026-10-04 · Formato: un tar plano, cifrado opcional por encima
