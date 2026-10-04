@@ -20,12 +20,17 @@ import kotlinx.coroutines.flow.asStateFlow
  * into state the UI can observe. Must be created and used on the main thread: the library delivers
  * its callbacks there.
  *
- * Prototype (T03): it runs Android's own `/system/bin/sh`; the proot distributions arrive in T02.
- * It needs a real pty and a device to be exercised, so it is not covered by unit tests.
+ * It runs Android's own `/system/bin/sh` for now; the proot distributions arrive with T07. The
+ * foreground service (T08) owns these objects through the session manager, so a shell outlives the
+ * activity. It needs a real pty and a device to be exercised, so it is not covered by unit tests.
  */
 // The callback interface is imposed by the emulator library and has many methods.
 @Suppress("TooManyFunctions")
-class TerminalSessionHost(private val context: Context) : TerminalSessionClient {
+class TerminalSessionHost(
+    private val context: Context,
+    private val onFinished: (Int) -> Unit = {}
+) : TerminalSessionClient,
+    TerminalOutput {
     private val frameState = MutableStateFlow(0)
     private val titleState = MutableStateFlow<String?>(null)
     private val exitState = MutableStateFlow<Int?>(null)
@@ -39,7 +44,7 @@ class TerminalSessionHost(private val context: Context) : TerminalSessionClient 
 
     private var session: TerminalSession? = null
 
-    val emulator: TerminalEmulator? get() = session?.emulator
+    override val emulator: TerminalEmulator? get() = session?.emulator
 
     /** Starts the shell at [grid] size, or resizes the running one (this also resizes the pty). */
     fun resize(grid: GridSize, cellWidthPx: Int, cellHeightPx: Int) {
@@ -57,8 +62,8 @@ class TerminalSessionHost(private val context: Context) : TerminalSessionClient 
             )
             session = created
             created.updateSize(grid.columns, grid.rows, cellWidthPx, cellHeightPx)
-        } else if (grid.columns != current.emulator.mColumns ||
-            grid.rows != current.emulator.mRows
+        } else if (exitState.value == null &&
+            (grid.columns != current.emulator.mColumns || grid.rows != current.emulator.mRows)
         ) {
             current.updateSize(grid.columns, grid.rows, cellWidthPx, cellHeightPx)
         }
@@ -71,11 +76,11 @@ class TerminalSessionHost(private val context: Context) : TerminalSessionClient 
         session = null
     }
 
-    fun write(text: String) {
+    override fun write(text: String) {
         session?.write(text)
     }
 
-    fun writeCodePoint(escapePrefix: Boolean, codePoint: Int) {
+    override fun writeCodePoint(escapePrefix: Boolean, codePoint: Int) {
         session?.writeCodePoint(escapePrefix, codePoint)
     }
 
@@ -94,6 +99,7 @@ class TerminalSessionHost(private val context: Context) : TerminalSessionClient 
     override fun onSessionFinished(finishedSession: TerminalSession) {
         exitState.value = finishedSession.exitStatus
         frameState.value++
+        onFinished(finishedSession.exitStatus)
     }
 
     override fun onCopyTextToClipboard(session: TerminalSession, text: String) {

@@ -28,4 +28,20 @@
     <string name="extra_key_backslash">Backslash</string>
     <string name="extra_key_armed">Active for the next key</string>
     <string name="extra_key_locked">Locked</string>
+
+    <string name="notification_channel_name">Terminal sessions</string>
+    <string name="notification_channel_description">Keeps your terminal sessions running in the background</string>
+    <plurals name="notification_sessions">
+        <item quantity="one">%d session running</item>
+        <item quantity="other">%d sessions running</item>
+    </plurals>
+    <string name="notification_new_session">New session</string>
+    <string name="notification_exit">Exit</string>
+    <string name="prompt_notifications_title">Keep sessions alive</string>
+    <string name="prompt_notifications_message">Android shows a notification while terminal sessions run in the background. Without it the system may stop them when you leave the app. Allow it to keep them alive.</string>
+    <string name="prompt_battery_title">Battery optimisation</string>
+    <string name="prompt_battery_message">Battery saving can pause long tasks such as an SSH connection when the screen is off. You can exempt this app in the system settings; nothing changes unless you choose it there.</string>
+    <string name="prompt_allow">Allow</string>
+    <string name="prompt_open_settings">Open settings</string>
+    <string name="prompt_not_now">Not now</string>
 </resources>
