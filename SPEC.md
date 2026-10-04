@@ -114,6 +114,21 @@ Terminal para Android pensada para **mantenedores de servidores** y sucesora esp
 - Las pestañas se nombran con su distro (p. ej. "Alpine"), no con "Shell N", salvo que el usuario las renombre.
 - **Criterio:** instalada una distro, cerrar la app y volver a abrirla deja un prompt de esa distro en la primera pestaña. (Comprobado en un Pixel 8; el nombre de la pestaña, pendiente.)
 
+### RF-14 Diseño estilo iOS
+El usuario probó la app en un Pixel 8 y la encontró fea ("hay que rediseñarla al estilo iOS"). La interfaz propia (todo menos el área del terminal) pasa a un diseño **inspirado en iOS**, sobre un sistema de componentes común (`ui/ios`):
+- **Títulos grandes que colapsan** al desplazar, con una barra de navegación pequeña que los recoge.
+- **Barras translúcidas con desenfoque** del contenido que pasa por debajo (desde Android 12; antes, una barra casi sólida con el mismo aspecto).
+- **Listas agrupadas** con esquinas redondeadas sobre fondo gris, separadores finos con sangría, chevrones, valores y filas con interruptor o acción destructiva.
+- **Interruptores, controles segmentados, campo de búsqueda y botones** (rellenos, tintados y planos) al estilo iOS.
+- **Hojas modales con asa** (alturas media y completa, arrastrables) en lugar de diálogos Material; alertas y hojas de acciones; menús contextuales.
+- **Tipografía y espaciado de iOS** (escala de Large Title 34 a Caption 12, rejilla de 8 pt), **animaciones de muelle** y **respuesta háptica**; sin botones flotantes (FAB).
+- **Claro, oscuro y OLED coherentes con los esquemas de color de T12**: el tinte sale del azul del esquema elegido y se ajusta para ser legible.
+- **Accesibilidad:** TalkBack con roles y estados, zonas táctiles de al menos 48 dp, escala de fuente del sistema y contraste de texto de al menos 4,5:1 en todos los temas y esquemas.
+
+**Qué NO se hace:** no se usan **SF Pro, SF Symbols ni ningún recurso de Apple** (su licencia no lo permite). La tipografía es **Inter** (SIL OFL-1.1) y los iconos son **Lucide** (ISC); ambos se acreditan en `THIRD_PARTY_NOTICES.md`. Es un diseño inspirado, no una copia con marca, y no se afirma ninguna afiliación con Apple. El área del terminal (texto monoespaciado, colores del esquema) no cambia de aspecto.
+
+**Criterios:** el catálogo de componentes (solo en builds de depuración) enseña cada uno en claro, oscuro y OLED; las pantallas rediseñadas (T22b y T22c) solo usan componentes de `ui/ios`; ningún texto va fijo en un componente.
+
 ## 4. Fuera de alcance (MVP)
 - Cualquier entorno gráfico (X11, Wayland, VNC).
 - Bootstrap y gestor de paquetes propios tipo `pkg`; plugins o addons de Termux.

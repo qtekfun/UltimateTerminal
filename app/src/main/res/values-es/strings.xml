@@ -351,4 +351,13 @@
     <string name="backup_error_space">No hay espacio libre suficiente: hacen falta %1$s y hay %2$s.</string>
     <string name="backup_error_extraction">No se pudo desempaquetar con seguridad la distro de la copia: %1$s</string>
     <string name="backup_error_io">No se pudo leer o escribir el archivo: %1$s</string>
+
+    <!-- Componentes de estilo iOS (T22a) -->
+    <string name="ios_state_on">Activado</string>
+    <string name="ios_state_off">Desactivado</string>
+    <string name="ios_search_clear">Borrar texto</string>
+    <string name="ios_sheet_handle">Asa de la hoja</string>
+    <string name="ios_sheet_expand">Expandir hoja</string>
+    <string name="ios_sheet_collapse">Reducir hoja</string>
+    <string name="ios_sheet_dismiss">Cerrar hoja</string>
 </resources>

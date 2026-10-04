@@ -354,4 +354,13 @@
     <string name="backup_error_space">Not enough free space: %1$s needed, %2$s available.</string>
     <string name="backup_error_extraction">The distro in the backup could not be unpacked safely: %1$s</string>
     <string name="backup_error_io">Could not read or write the file: %1$s</string>
+
+    <!-- iOS-style components (T22a) -->
+    <string name="ios_state_on">On</string>
+    <string name="ios_state_off">Off</string>
+    <string name="ios_search_clear">Clear text</string>
+    <string name="ios_sheet_handle">Sheet handle</string>
+    <string name="ios_sheet_expand">Expand sheet</string>
+    <string name="ios_sheet_collapse">Make sheet smaller</string>
+    <string name="ios_sheet_dismiss">Close sheet</string>
 </resources>

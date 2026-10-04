@@ -1667,3 +1667,61 @@ El usuario probó la app en un Pixel 8 y pidió tres cosas. Se anotan aquí qué
 - **Hallazgo:** no existía ninguna forma de llegar a unos ajustes (T12, T13, T14 y T15 dejaron cada uno su tarjeta en la pantalla de distros). T16 era una tarea del final del plan.
 - **Decisión:** RF-11 exige un icono ⚙ permanente y secciones definidas; T16 se amplía con ellas y sube de prioridad.
 - **Motivo:** sin ajustes visibles, T12c (apariencia) y todas las opciones de T11–T15 no se pueden usar.
+
+## T22a — Sistema de diseño estilo iOS: componentes base
+
+### D-T22a-1 · 2026-10-04 · Componentes propios sobre `foundation`, sin Material 3 ni librería de widgets
+- **Decisión:** los componentes (`ui/ios`) se escriben sobre `compose.foundation` y `compose.ui`, sin usar los componentes de Material 3. El tema Material de las pantallas actuales no se toca hasta T22b y T22c.
+- **Motivo:** Material pone su propio ripple, formas, estados y tipografía; para parecer iOS habría que desactivarlos casi todos. La accesibilidad (roles, estados, 48 dp, escala de fuente) se hace a mano y queda cubierta en cada componente.
+- **Alternativas:** *compose-cupertino* (Apache-2.0, 1 659 estrellas): su último cambio es de octubre de 2025 y está construido sobre Compose Multiplatform 1.6.1, muy anterior a nuestro BOM; añadiría dependencias de Multiplatform a un proyecto solo Android. *Material 3 tematizado*: ver arriba.
+- **Impacto:** sin dependencias nuevas ni cambios en `verification-metadata.xml`.
+
+### D-T22a-2 · 2026-10-04 · Tipografía: Inter (SIL OFL-1.1), cuatro pesos sin modificar
+- **Decisión:** Inter 4.1 (Regular, Medium, SemiBold, Bold), copiada sin cambios del `extras/ttf` de la release oficial (`Inter-4.1.zip`, SHA-256 `9883fdd4a49d4fb66bd8177ba6625ef9a64aa45899767dde3d36aa425756b11e`). Licencia y créditos en `THIRD_PARTY_NOTICES.md` y `assets/licenses/Inter-OFL-1.1.txt`.
+- **Motivo:** SF Pro no se puede usar. Inter es la alternativa libre más cercana en forma y tiene los pesos que pide la escala de iOS (Large Title 34 a Caption 12).
+- **Alternativas:** la fuente variable de Inter (menos ficheros, pero API de variaciones más delicada y más peso por uso); la fuente del sistema (Roboto, que no se parece a iOS).
+- **Impacto:** el APK crece unos 1,6 MB. La fuente del terminal sigue siendo JetBrains Mono (T12).
+
+### D-T22a-2b · 2026-10-04 · Iconos: Lucide (ISC), 16 vectores con las rutas sin cambiar
+- **Decisión:** 16 iconos de Lucide 1.52.0 (chevrones, check, plus, x, search, ellipsis, settings, trash, folder, download, terminal, info, copy, key) convertidos a `res/drawable/ic_ios_*.xml`; una enumeración `IosGlyph` los nombra.
+- **Motivo:** SF Symbols no se puede usar. Lucide es ISC (compatible con GPL-3.0) y su trazo redondeado de 2 px se parece al de iOS. Algunos iconos heredan de Feather (MIT): se acreditan los dos.
+- **Cómo se convirtió:** cada elemento SVG (`path`, `line`, `circle`, `rect`, `polyline`, `ellipse`) pasó a una ruta de vector con el mismo trazo; el color se pone al dibujar (`ColorFilter.tint`).
+- **Nota:** `trash-2` no existe en 1.52.0; se usa `trash`.
+
+### D-T22a-3 · 2026-10-04 · Barras translúcidas: desenfoque real del fondo con `GraphicsLayer`, sin librería
+- **Decisión:** el contenido que se desplaza se graba una vez en una capa (`GraphicsLayer`); la barra dibuja una copia desenfocada de la parte que tiene detrás (`RenderEffect`, desde Android 12) con un tinte encima. Antes de Android 12 la barra es casi sólida (97 %). La política es lógica pura (`BarStyle.forSdk`, con tests).
+- **Motivo:** `Modifier.blur` solo desenfoca el propio contenido, no lo de detrás; el efecto de iOS necesita desenfocar lo que hay debajo.
+- **Alternativa:** *Haze* (Apache-2.0, activo): hace lo mismo con más pulido. Queda como plan B si el nuestro da problemas, a cambio de una dependencia nueva.
+- **Riesgo (sin validar):** coste de volver a desenfocar en cada fotograma de un scroll, sobre todo en gama baja. Hay que medirlo en el dispositivo.
+
+### D-T22a-4 · 2026-10-04 · Paleta: colores de iOS con el texto subido a 4,5:1, y el tinte sale del esquema de T12
+- **Decisión:** `iosPalette(decisión, esquema)` da fondos, celdas, etiquetas, separador, tinte y rojo destructivo en claro, oscuro y OLED. El tinte parte del azul ANSI (índice 4) del esquema; el tinte, el rojo y la etiqueta secundaria se acercan a negro o blanco solo lo justo para llegar a 4,5:1 sobre la celda y sobre la página (`ColorAdjust.ensureContrast`).
+- **Motivo:** el azul del sistema de iOS (≈4,0:1) y su etiqueta secundaria (≈3,3:1) no llegan a AA en claro. RF-14 exige 4,5:1.
+- **OLED:** fondo y página en negro puro; las celdas en `#111113` (no `#000000`) para que se distingan, y separador `#2A2A2D`.
+- **Prueba:** un test recorre los 3 temas × (sin esquema + todos los incluidos) y exige 7:1 para la etiqueta y 4,5:1 para el resto.
+
+### D-T22a-5 · 2026-10-04 · Hoja inferior: un `Dialog` arrastrable por el asa, con detents por proyección de velocidad
+- **Decisión:** la hoja es un `Dialog` a pantalla completa con fondo propio; se arrastra por el asa (48 dp de alto) y, al soltar, `SheetDetents.snap` proyecta la velocidad 0,15 s y elige el detent más cercano (medio 0,5, grande 0,94) o la cierra si queda por debajo de la mitad del más bajo. Toque en el fondo, botón atrás y una acción de accesibilidad también la cierran.
+- **Motivo:** un `Dialog` da gratis el modo modal y el botón atrás.
+- **Límite conocido:** el contenido de la hoja se desplaza por su cuenta; no arrastra la hoja (como mucho, el asa). Es más simple y no pelea con el scroll.
+
+### D-T22a-6 · 2026-10-04 · Alertas y hojas de acciones: `Dialog` con ventana propia
+- **Decisión:** `IosAlert` (270 dp, dos acciones lado a lado) e `IosActionSheet` (pegada abajo, cancelar en tarjeta aparte) son `Dialog`. Cada acción cierra el diálogo tras ejecutarse; todas miden al menos 48 dp.
+
+### D-T22a-7 · 2026-10-04 · Lo que el catálogo enseña y dónde vive
+- **Decisión:** `IosCatalog` y su actividad están en el *source set* `debug` (con sus cadenas en inglés y español), así que no entran en el APK de producción. Se abre con `adb shell am start -n com.qtekfun.ultimateterminal/.ui.ios.IosCatalogActivity`. Un segmentado cambia entre claro, oscuro y OLED, y una fila recorre los esquemas.
+
+### D-T22a-8 · 2026-10-04 · Lo que Lint y detekt obligaron a cambiar (sin relajar nada)
+- `Modifier.offset` con valores de estado debe usar la sobrecarga con lambda (el interruptor y el segmentado).
+- Un recurso de cadenas sin usar (se usa como título de la sección de tema del catálogo).
+- Constructores con más de 7 parámetros (`IosColors`, `IosTypography`): ahora reciben la paleta o un mapa de roles de texto.
+- Ficheros que no coinciden con su única declaración (`IosGlyph`, `IosAccessory`, `IosButtonStyle`, `BackdropState`): renombrados o separados.
+
+### D-T22a-9 · 2026-10-04 · Qué NO está validado (sin dispositivo)
+- Cómo se ve cada componente en el dispositivo y en la tablet, y que el catálogo abre.
+- **El desenfoque de las barras**: que se vea bien y que el scroll siga fluido (D-T22a-3).
+- La respuesta háptica (los tipos `SegmentTick`, `ToggleOn`/`ToggleOff`, `Confirm` dependen de la versión de Android y de si el usuario la desactivó).
+- TalkBack con roles y estados (interruptor, segmentos, hoja con acciones personalizadas).
+- La hoja inferior: tacto del arrastre, velocidad de proyección y que el `Dialog` sin atenuación de ventana se vea bien con el teclado.
+- El campo de búsqueda con el teclado (foco, IME, botón de borrar).
+- Rendimiento y consumo de memoria de las capas de desenfoque.
