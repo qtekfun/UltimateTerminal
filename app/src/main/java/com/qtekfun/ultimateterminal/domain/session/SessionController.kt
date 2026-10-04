@@ -33,6 +33,20 @@ fun interface ServiceControl {
     fun setRunning(wanted: Boolean)
 }
 
+/** What the tab logic needs from the session owner, so it can be tested without a device. */
+interface SessionEditor {
+    val state: StateFlow<Sessions>
+
+    /** Starts a shell, which becomes the active session, and records the distro it belongs to. */
+    fun newSession(distroId: Long? = null): SessionId
+
+    /** Ends and forgets one session. */
+    fun close(id: SessionId)
+
+    /** Applies a change to the sessions (rename, reorder, switch); the shells are not touched. */
+    fun edit(change: Sessions.() -> Sessions)
+}
+
 /**
  * Owns the session lifecycle: which sessions exist, which one is active, and whether the foreground
  * service has to run. It holds no Android types. Call it from one thread (the main thread): the
@@ -42,7 +56,7 @@ class SessionController(
     private val factory: SessionFactory,
     private val service: ServiceControl,
     initialLayout: TerminalLayout = DEFAULT_LAYOUT
-) {
+) : SessionEditor {
     private val handles = mutableMapOf<SessionId, SessionHandle>()
     private val mutableState = MutableStateFlow(Sessions())
     private var serviceWanted = false
@@ -51,11 +65,10 @@ class SessionController(
     var layout: TerminalLayout = initialLayout
         private set
 
-    val state: StateFlow<Sessions> = mutableState.asStateFlow()
+    override val state: StateFlow<Sessions> = mutableState.asStateFlow()
 
-    /** Starts a shell and makes it the active session. */
-    fun newSession(): SessionId {
-        val (next, id) = mutableState.value.created()
+    override fun newSession(distroId: Long?): SessionId {
+        val (next, id) = mutableState.value.created(distroId)
         // Published first: a shell that ends at once reports to a session that exists.
         publish(next)
         val handle = factory.start(id, layout) { status -> onExited(id, status) }
@@ -70,8 +83,7 @@ class SessionController(
         return id
     }
 
-    /** Ends and forgets one session. */
-    fun close(id: SessionId) {
+    override fun close(id: SessionId) {
         publish(mutableState.value.closed(id))
         handles.remove(id)?.stop()
     }
@@ -84,12 +96,15 @@ class SessionController(
         stopped.forEach(SessionHandle::stop)
     }
 
-    fun activate(id: SessionId) {
-        val next = mutableState.value.activated(id)
-        if (next != mutableState.value) {
-            publish(next)
-            handles[id]?.resize(layout)
-        }
+    fun activate(id: SessionId) = edit { activated(id) }
+
+    override fun edit(change: Sessions.() -> Sessions) {
+        val before = mutableState.value
+        val next = before.change()
+        if (next == before) return
+        publish(next)
+        // A shell that comes to the front may have been left at the size of an older layout.
+        if (next.activeId != before.activeId) next.activeId?.let { handles[it]?.resize(layout) }
     }
 
     /** The visible area changed: remember it for new sessions and resize the one on screen. */

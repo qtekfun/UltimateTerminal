@@ -5,6 +5,7 @@ package com.qtekfun.ultimateterminal.terminal
 
 import android.content.Context
 import com.qtekfun.ultimateterminal.domain.session.SessionController
+import com.qtekfun.ultimateterminal.domain.session.SessionEditor
 import com.qtekfun.ultimateterminal.domain.session.SessionId
 import com.qtekfun.ultimateterminal.domain.session.Sessions
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
@@ -28,25 +29,27 @@ class SessionManager @Inject constructor(@ApplicationContext context: Context) {
 
     val state: StateFlow<Sessions> get() = controller.state
 
+    /** What the tab bar edits the sessions through. */
+    val editor: SessionEditor get() = controller
+
     /** The host of the active session, emitted again when the active session changes. */
     val activeHost: Flow<TerminalSessionHost?> =
         controller.state.map { factory.host(it.activeId) }.distinctUntilChanged()
 
     fun currentHost(): TerminalSessionHost? = factory.host(controller.state.value.activeId)
 
-    fun newSession(): SessionId = controller.newSession()
+    fun newSession(distroId: Long? = null): SessionId = controller.newSession(distroId)
 
     fun close(id: SessionId) = controller.close(id)
 
     fun closeAll() = controller.closeAll()
 
-    fun activate(id: SessionId) = controller.activate(id)
-
     fun onLayout(layout: TerminalLayout) = controller.onLayout(layout)
 
     /** Replaces the active session with a fresh shell (the "restart" of a session that ended). */
     fun restartActive() {
-        controller.state.value.activeId?.let(controller::close)
-        controller.newSession()
+        val ended = controller.state.value.active ?: return
+        controller.close(ended.id)
+        controller.newSession(ended.distroId)
     }
 }

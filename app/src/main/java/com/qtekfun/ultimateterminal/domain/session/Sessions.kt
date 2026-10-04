@@ -14,7 +14,17 @@ sealed interface SessionState {
     data class Exited(val status: Int) : SessionState
 }
 
-data class SessionInfo(val id: SessionId, val state: SessionState)
+/**
+ * One terminal session, which the user sees as a tab. [title] is what the user typed, or null to
+ * show the default name; [distroId] is the distro the tab was opened in, null for the Android
+ * shell. Opening a shell inside a distro arrives with T07.
+ */
+data class SessionInfo(
+    val id: SessionId,
+    val state: SessionState,
+    val title: String? = null,
+    val distroId: Long? = null
+)
 
 /**
  * An immutable snapshot of the terminal sessions the app owns. Every change returns a new snapshot,
@@ -34,10 +44,10 @@ data class Sessions(
     val needsService: Boolean get() = runningCount > 0
 
     /** A new running session, which becomes the active one. */
-    fun created(): Pair<Sessions, SessionId> {
+    fun created(distroId: Long? = null): Pair<Sessions, SessionId> {
         val id = SessionId(nextId)
         val next = copy(
-            items = items + SessionInfo(id, SessionState.Running),
+            items = items + SessionInfo(id, SessionState.Running, distroId = distroId),
             activeId = id,
             nextId = nextId + 1
         )
@@ -71,6 +81,76 @@ data class Sessions(
     /** Makes [id] the active session; an unknown id changes nothing. */
     fun activated(id: SessionId): Sessions =
         if (items.any { it.id == id }) copy(activeId = id) else this
+
+    /** Changes the active tab as [target] says; a target that does not exist changes nothing. */
+    fun switched(target: TabSwitch): Sessions = when (target) {
+        is TabSwitch.ById -> activated(target.id)
+        is TabSwitch.Number -> items.getOrNull(target.number - 1)?.let { activated(it.id) } ?: this
+        TabSwitch.Next -> stepped(1)
+        TabSwitch.Previous -> stepped(-1)
+    }
+
+    /** The neighbouring tab, wrapping around at the ends; with no active tab, the first or last. */
+    private fun stepped(step: Int): Sessions {
+        if (items.size < 2) return this
+        val current = items.indexOfFirst { it.id == activeId }
+        val target = when {
+            current >= 0 -> Math.floorMod(current + step, items.size)
+            step > 0 -> 0
+            else -> items.lastIndex
+        }
+        return copy(activeId = items[target].id)
+    }
+
+    /**
+     * Gives [id] the name the user typed. A blank name goes back to the default one (see
+     * [TabTitle]). An unknown id changes nothing.
+     */
+    fun renamed(id: SessionId, title: String?): Sessions {
+        val normalized = TabTitle.normalize(title)
+        val renamed = items.map { if (it.id == id) it.copy(title = normalized) else it }
+        return if (renamed == items) this else copy(items = renamed)
+    }
+
+    /** Moves [id] to position [toIndex] (0-based, kept inside the list). */
+    fun moved(id: SessionId, toIndex: Int): Sessions {
+        val from = items.indexOfFirst { it.id == id }
+        val to = toIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0))
+        if (from < 0 || from == to) return this
+        val reordered = items.toMutableList()
+        reordered.add(to, reordered.removeAt(from))
+        return copy(items = reordered)
+    }
+
+    /** What closing [id] has to do: a shell that still runs is not killed without asking. */
+    fun closeAction(id: SessionId): CloseAction {
+        val session = items.firstOrNull { it.id == id } ?: return CloseAction.Ignore
+        return if (session.state == SessionState.Running) CloseAction.Confirm else CloseAction.Close
+    }
+}
+
+/** The outcome of asking to close a tab. */
+enum class CloseAction {
+    /** There is no such tab. */
+    Ignore,
+
+    /** Its shell already ended, so nothing is lost. */
+    Close,
+
+    /** Its shell still runs: ask the user first. */
+    Confirm
+}
+
+/** Where a change of active tab goes. */
+sealed interface TabSwitch {
+    data object Next : TabSwitch
+
+    data object Previous : TabSwitch
+
+    /** The tab in position [number], counting from 1. */
+    data class Number(val number: Int) : TabSwitch
+
+    data class ById(val id: SessionId) : TabSwitch
 }
 
 /** Whether the partial wake lock must be held: only if the user asked for it and a shell runs. */
