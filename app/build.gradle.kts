@@ -1,6 +1,12 @@
 // SPDX-FileCopyrightText: 2026 UltimateTerminal contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import io.gitlab.arturbosch.detekt.Detekt
+import kotlinx.kover.gradle.plugin.dsl.CoverageUnit
+import kotlinx.kover.gradle.plugin.dsl.KoverReportFilter
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
+import org.gradle.api.artifacts.result.ResolvedComponentResult
+import org.gradle.api.artifacts.result.ResolvedDependencyResult
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -8,6 +14,10 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.detekt)
+    alias(libs.plugins.ktlint)
+    alias(libs.plugins.kover)
+    alias(libs.plugins.licensee)
 }
 
 /**
@@ -92,6 +102,161 @@ kotlin {
         jvmTarget.set(JvmTarget.JVM_17)
         allWarningsAsErrors.set(true)
     }
+}
+
+detekt {
+    buildUponDefaultConfig = true
+    allRules = false
+    config.setFrom(rootProject.file("config/detekt/detekt.yml"))
+    source.setFrom("src/main/java", "src/test/java", "src/androidTest/java")
+}
+
+tasks.withType<Detekt>().configureEach {
+    // Match the project bytecode level; detekt defaults to the JDK running Gradle.
+    jvmTarget = "17"
+}
+
+ktlint {
+    version.set(libs.versions.ktlint)
+}
+
+// Coverage policy (CLAUDE.md): >= 85% over domain/data, 100% on rootfs verification and the
+// backup format. Generated code and pure Compose UI are excluded. The critical packages are
+// created by T06 and T15; until they exist the "critical" rule has nothing to measure and is
+// not enforced.
+val coveredPackages = listOf(
+    "com.qtekfun.ultimateterminal.domain",
+    "com.qtekfun.ultimateterminal.data"
+)
+val criticalPackages = listOf(
+    "com.qtekfun.ultimateterminal.data.rootfs.verify",
+    "com.qtekfun.ultimateterminal.data.backup"
+)
+
+/**
+ * Generated code and pure Compose UI, excluded from coverage (CLAUDE.md). Applied to each report
+ * variant: variant filters replace the global ones instead of adding to them.
+ */
+fun KoverReportFilter.generatedAndUiCode() {
+    packages("com.qtekfun.ultimateterminal.ui", "dagger.hilt.internal", "hilt_aggregated_deps")
+    classes(
+        "*.R",
+        "*.R$*",
+        "*.BuildConfig",
+        "*Hilt_*",
+        "*_HiltModules*",
+        "*_Factory",
+        "*_Factory$*",
+        "*_MembersInjector",
+        // Room
+        "*_Impl",
+        "*_Impl$*",
+        // Kotlin compatibility bridges for interface default methods
+        "*\$DefaultImpls",
+        "*ComposableSingletons*"
+    )
+    annotatedBy(
+        "androidx.compose.ui.tooling.preview.Preview",
+        "dagger.Module",
+        "dagger.hilt.android.HiltAndroidApp",
+        "*Generated*"
+    )
+}
+
+kover {
+    currentProject {
+        createVariant("critical") {
+            add("debug")
+        }
+    }
+
+    reports {
+        total {
+            filters {
+                excludes { generatedAndUiCode() }
+                includes { packages(coveredPackages) }
+            }
+            verify {
+                rule("domain and data") {
+                    minBound(85)
+                }
+            }
+        }
+
+        variant("critical") {
+            filters {
+                excludes { generatedAndUiCode() }
+                includes { packages(criticalPackages) }
+            }
+            verify {
+                rule("rootfs verification and backup format") {
+                    minBound(100, CoverageUnit.LINE)
+                    minBound(100, CoverageUnit.BRANCH)
+                }
+            }
+        }
+    }
+}
+
+tasks.named("koverVerify") {
+    dependsOn("koverVerifyCritical")
+}
+
+tasks.named("check") {
+    dependsOn("koverVerify")
+}
+
+// Only GPL-3.0-compatible free licenses may ship in the APK. Anything else,
+// including dependencies without a declared license, fails the build.
+// Add other GPL-3.0-compatible SPDX ids (MIT, BSD-2-Clause, ISC...) only when a dependency
+// needs them, and credit it in THIRD_PARTY_NOTICES.md.
+licensee {
+    allow("Apache-2.0")
+}
+
+// Google Play Services, Firebase and Crashlytics are banned outright (F-Droid
+// rules in CLAUDE.md), regardless of what license they declare.
+val checkForbiddenDependencies = tasks.register("checkForbiddenDependencies") {
+    group = "verification"
+    description =
+        "Fails if a runtime classpath contains Google Play Services, Firebase or Crashlytics."
+    val forbiddenGroupPrefixes = listOf(
+        "com.google.android.gms",
+        "com.google.firebase",
+        "com.crashlytics",
+        "io.fabric"
+    )
+    val runtimeModules = listOf("debugRuntimeClasspath", "releaseRuntimeClasspath").map { name ->
+        configurations.named(name).flatMap { it.incoming.resolutionResult.rootComponent }
+    }
+    doLast {
+        val modules = mutableSetOf<String>()
+        val seen = mutableSetOf<ResolvedComponentResult>()
+        val pending = ArrayDeque(runtimeModules.map { it.get() })
+        while (pending.isNotEmpty()) {
+            val component = pending.removeFirst()
+            if (seen.add(component)) {
+                (component.id as? ModuleComponentIdentifier)?.let {
+                    modules.add(it.moduleIdentifier.toString())
+                }
+                component.dependencies
+                    .filterIsInstance<ResolvedDependencyResult>()
+                    .forEach { pending.add(it.selected) }
+            }
+        }
+        val offenders = modules
+            .filter { module -> forbiddenGroupPrefixes.any { module.startsWith(it) } }
+            .sorted()
+        if (offenders.isNotEmpty()) {
+            throw GradleException(
+                "Forbidden non-free dependencies found: ${offenders.joinToString()}"
+            )
+        }
+    }
+}
+
+tasks.named("check") {
+    dependsOn(checkForbiddenDependencies)
 }
 
 dependencies {

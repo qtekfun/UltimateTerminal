@@ -5,7 +5,7 @@ Reglas: una tarea cada vez, en su rama `feat/<tarea>`, con `./gradlew check` en 
 ## Fase 0 — Cimientos y prototipos de riesgo
 - [x] **T00 Proyecto base**: módulo Android, Gradle KTS, `libs.versions.toml`, Hilt, Compose, tema Material 3, `strings.xml` en/es, cabeceras SPDX, `LICENSE` (GPLv3), `targetSdk` 28.
   - *Verificación:* `./gradlew assembleDebug` compila y la app arranca con pantalla vacía.
-- [ ] **T01 CI y calidad**: detekt, ktlint, Lint (warnings como errores), Kover con umbrales, verificación de dependencias, chequeo de licencias/Play Services, workflow de GitHub Actions, Dependabot.
+- [x] **T01 CI y calidad**: detekt, ktlint, Lint (warnings como errores), Kover con umbrales, verificación de dependencias, chequeo de licencias/Play Services, workflow de GitHub Actions, Dependabot.
   - *Verificación:* un PR de prueba pasa CI; una dependencia de Play Services añadida a propósito la hace fallar.
 - [ ] **T02 Prototipo proot (mayor riesgo)**: compilar proot y talloc desde fuente con NDK en el build, empaquetados como `.so`; arrancar un rootfs Alpine y ejecutar un comando.
   - *Verificación:* en un dispositivo real (API 26–28 y una versión reciente), `proot` ejecuta `/bin/sh` y `uname -a`; documentar `seccomp`, `link2symlink` y límites en `SPEC.md` (sección 9).

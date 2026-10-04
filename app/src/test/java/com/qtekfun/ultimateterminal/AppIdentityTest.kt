@@ -9,6 +9,9 @@ import org.junit.jupiter.api.Test
 class AppIdentityTest {
     @Test
     fun applicationIdIsTheDocumentedOne() {
-        assertEquals("com.qtekfun.ultimateterminal", BuildConfig.APPLICATION_ID.removeSuffix(".debug"))
+        assertEquals(
+            "com.qtekfun.ultimateterminal",
+            BuildConfig.APPLICATION_ID.removeSuffix(".debug")
+        )
     }
 }
