@@ -69,6 +69,7 @@ import com.qtekfun.ultimateterminal.ui.ios.IosMenuItem
 import com.qtekfun.ultimateterminal.ui.ios.IosSize
 import com.qtekfun.ultimateterminal.ui.ios.IosText
 import com.qtekfun.ultimateterminal.ui.ios.IosTheme
+import com.qtekfun.ultimateterminal.ui.settings.SettingsButton
 
 /** Height of the bar when it runs along the top; also the minimum touch size (SPEC §6). */
 internal val TabBarHeight = 48.dp
@@ -128,6 +129,7 @@ fun TabBar(
                 )
             }
         },
+        // At the end of the bar, both of them: the new tab and, always in sight, the settings.
         newTab = {
             NewTabButton(
                 choices,
@@ -135,6 +137,7 @@ fun TabBar(
                 onNewTabIn = { tabs.newTabIn(it) },
                 links = links
             )
+            SettingsButton(links.openSettings)
         }
     )
 
@@ -224,6 +227,7 @@ class TabBarLinks(
     val openDistros: () -> Unit,
     val openSsh: () -> Unit,
     val openAppearance: () -> Unit,
+    val openSettings: () -> Unit,
     val splitRight: () -> Unit,
     val splitDown: () -> Unit
 )

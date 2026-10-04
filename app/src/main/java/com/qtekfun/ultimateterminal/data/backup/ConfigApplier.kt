@@ -4,7 +4,13 @@
 package com.qtekfun.ultimateterminal.data.backup
 
 import com.qtekfun.ultimateterminal.domain.Outcome
+import com.qtekfun.ultimateterminal.domain.appearance.ChromeStyle
+import com.qtekfun.ultimateterminal.domain.appearance.CursorShape
+import com.qtekfun.ultimateterminal.domain.appearance.CustomFont
 import com.qtekfun.ultimateterminal.domain.appearance.ExtraKeyStyle
+import com.qtekfun.ultimateterminal.domain.appearance.FontCatalog
+import com.qtekfun.ultimateterminal.domain.appearance.TerminalAppearance
+import com.qtekfun.ultimateterminal.domain.model.AppSettings
 import com.qtekfun.ultimateterminal.domain.model.Layout
 import com.qtekfun.ultimateterminal.domain.model.Profile
 import com.qtekfun.ultimateterminal.domain.model.SshHost
@@ -14,10 +20,12 @@ import com.qtekfun.ultimateterminal.domain.repository.LayoutRepository
 import com.qtekfun.ultimateterminal.domain.repository.ProfileRepository
 import com.qtekfun.ultimateterminal.domain.repository.SettingsRepository
 import com.qtekfun.ultimateterminal.domain.repository.SshHostRepository
+import com.qtekfun.ultimateterminal.domain.settings.DnsServers
 import com.qtekfun.ultimateterminal.domain.ssh.SshKeyInfo
 import com.qtekfun.ultimateterminal.domain.ssh.SshKeyStore
 import com.qtekfun.ultimateterminal.domain.ssh.SshKeyType
 import com.qtekfun.ultimateterminal.domain.ssh.SshResult
+import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.FontZoom
 import com.qtekfun.ultimateterminal.domain.theme.BuiltInSchemes
 import com.qtekfun.ultimateterminal.domain.theme.SchemeCodec
@@ -168,12 +176,31 @@ internal class ConfigApplier(repositories: BackupRepositories) {
                     FontZoom.MAX_SP
                 ),
                 customSchemes = custom,
-                appearance = it.appearance.copy(
-                    extraKeyStyle = ExtraKeyStyle.parse(dto.extraKeyStyle)
-                )
-            )
+                prootCompatibilityMode = dto.prootCompatibilityMode ?: it.prootCompatibilityMode
+            ).withLaterSettings(dto)
         }
     }
+}
+
+/**
+ * The settings that came after the first format (T16). A backup that predates them has none, and
+ * then the device keeps what it has; one that has them is read as untrusted: the servers must be
+ * addresses, the keys must be in the catalog and the numbers must be in range.
+ */
+private fun AppSettings.withLaterSettings(dto: SettingsDto): AppSettings {
+    val servers = dto.dnsFallbackServers
+    val keys = dto.extraKeys
+    val look = dto.appearance
+    return copy(
+        dnsFallbackServers = if (servers == null) {
+            dnsFallbackServers
+        } else {
+            DnsServers.parse(DnsServers.format(servers)).servers
+        },
+        extraKeys = if (keys == null) extraKeys else ExtraKeysConfig.parse(keys).first,
+        appearance = (if (look == null) appearance else look.toAppearance(customFonts))
+            .copy(extraKeyStyle = ExtraKeyStyle.parse(dto.extraKeyStyle))
+    )
 }
 
 private fun ProfileDto.toProfile(distroIds: Map<String, Long>) = Profile(
@@ -199,4 +226,21 @@ private fun KeyDto.toInfo(): SshKeyInfo? {
     } else {
         SshKeyInfo(alias, name, keyType, publicKey, fingerprint, created)
     }
+}
+
+/** The appearance of the backup; a font this device does not have, or a name it does not know, falls back. */
+private fun AppearanceDto.toAppearance(fonts: List<CustomFont>): TerminalAppearance {
+    val defaults = TerminalAppearance()
+    return TerminalAppearance(
+        fontId = FontCatalog.idOrBundled(fontId, fonts),
+        lineSpacing = lineSpacing,
+        letterSpacing = letterSpacing,
+        marginDp = marginDp,
+        cursorShape =
+            CursorShape.entries.firstOrNull { it.name == cursorShape } ?: defaults.cursorShape,
+        cursorBlink = cursorBlink,
+        chromeStyle =
+            ChromeStyle.entries.firstOrNull { it.name == chromeStyle } ?: defaults.chromeStyle,
+        cornerRadiusDp = cornerRadiusDp
+    ).sanitized()
 }

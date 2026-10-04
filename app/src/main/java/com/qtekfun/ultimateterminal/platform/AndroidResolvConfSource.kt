@@ -8,11 +8,13 @@ import android.net.ConnectivityManager
 import com.qtekfun.ultimateterminal.data.proot.ResolvConfSource
 import com.qtekfun.ultimateterminal.di.IoDispatcher
 import com.qtekfun.ultimateterminal.domain.launch.ResolvConf
+import com.qtekfun.ultimateterminal.domain.repository.SettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.IOException
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 /**
@@ -22,12 +24,14 @@ import kotlinx.coroutines.withContext
  */
 class AndroidResolvConfSource @Inject constructor(
     @param:ApplicationContext private val context: Context,
-    @param:IoDispatcher private val io: CoroutineDispatcher
+    @param:IoDispatcher private val io: CoroutineDispatcher,
+    private val settings: SettingsRepository
 ) : ResolvConfSource {
     override suspend fun hostFile(): String? = withContext(io) {
         val file = File(context.filesDir, FILE_NAME)
         try {
-            file.writeText(ResolvConf.render(systemServers()))
+            val fallback = settings.observe().first().dnsFallbackServers
+            file.writeText(ResolvConf.render(systemServers(), fallback))
             file.absolutePath
         } catch (_: IOException) {
             null

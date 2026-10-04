@@ -55,6 +55,9 @@ class TerminalSessionHost(
     /** Why nothing started, null if a shell did or is about to. */
     val problem: StateFlow<LaunchProblem?> = problemState.asStateFlow()
 
+    /** How many lines of history the shell keeps; set before [launch], it applies to that shell. */
+    var transcriptRows: Int = TRANSCRIPT_ROWS
+
     private var session: TerminalSession? = null
     private var scheme: TerminalColorScheme? = null
     private var start: ShellStart? = null
@@ -104,7 +107,7 @@ class TerminalSessionHost(
             shellStart.workingDirectory,
             shellStart.arguments.toTypedArray(),
             shellStart.environment,
-            TRANSCRIPT_ROWS,
+            transcriptRows,
             this
         )
         session = created

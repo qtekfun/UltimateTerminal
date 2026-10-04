@@ -4,7 +4,9 @@
 package com.qtekfun.ultimateterminal.data.backup
 
 import com.qtekfun.ultimateterminal.domain.Outcome
+import com.qtekfun.ultimateterminal.domain.appearance.CursorShape
 import com.qtekfun.ultimateterminal.domain.appearance.ExtraKeyStyle
+import com.qtekfun.ultimateterminal.domain.appearance.TerminalAppearance
 import com.qtekfun.ultimateterminal.domain.backup.BackupKind
 import com.qtekfun.ultimateterminal.domain.backup.ExportRequest
 import com.qtekfun.ultimateterminal.domain.model.LayoutNode
@@ -14,6 +16,7 @@ import com.qtekfun.ultimateterminal.domain.model.SshHost
 import com.qtekfun.ultimateterminal.domain.model.ThemeMode
 import com.qtekfun.ultimateterminal.domain.ssh.SshKeyInfo
 import com.qtekfun.ultimateterminal.domain.ssh.SshKeyType
+import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.FontZoom
 import com.qtekfun.ultimateterminal.domain.theme.BuiltInSchemes
 import com.qtekfun.ultimateterminal.domain.theme.SchemeCodec
@@ -77,7 +80,18 @@ class ConfigRestoreTest {
                 terminalSchemeId = "custom-mine",
                 terminalFontSizeSp = 18f,
                 customSchemes = listOf(custom),
-                appearance = it.appearance.copy(extraKeyStyle = ExtraKeyStyle.CLASSIC)
+                prootCompatibilityMode = true,
+                dnsFallbackServers = listOf("9.9.9.9", "149.112.112.112"),
+                extraKeys = ExtraKeysConfig(
+                    listOf(listOf("esc", "ctrl"), listOf("up")),
+                    onlyWithKeyboard = false
+                ),
+                appearance = TerminalAppearance(
+                    marginDp = 12,
+                    cursorShape = CursorShape.BAR,
+                    cursorBlink = true,
+                    extraKeyStyle = ExtraKeyStyle.CLASSIC
+                )
             )
         }
     }
@@ -156,6 +170,13 @@ class ConfigRestoreTest {
         assertEquals(18f, settings.terminalFontSizeSp)
         assertEquals(listOf(custom), settings.customSchemes)
         assertEquals(ExtraKeyStyle.CLASSIC, settings.appearance.extraKeyStyle)
+        assertTrue(settings.prootCompatibilityMode)
+        assertEquals(listOf("9.9.9.9", "149.112.112.112"), settings.dnsFallbackServers)
+        assertEquals(listOf(listOf("esc", "ctrl"), listOf("up")), settings.extraKeys.rows)
+        assertFalse(settings.extraKeys.onlyWithKeyboard)
+        assertEquals(12, settings.appearance.marginDp)
+        assertEquals(CursorShape.BAR, settings.appearance.cursorShape)
+        assertTrue(settings.appearance.cursorBlink)
         val distro = new.distros.observeAll().first().single()
         assertTrue(distro.isDefault)
         val profiles = new.profiles.observeAll().first().associateBy { it.name }

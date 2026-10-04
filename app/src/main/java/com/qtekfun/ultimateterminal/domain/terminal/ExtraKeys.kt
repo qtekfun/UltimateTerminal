@@ -136,10 +136,3 @@ data class ExtraKeysConfig(
         }
     }
 }
-
-/** Where the extra-keys configuration is kept. The implementation (settings, Room) is not here. */
-interface ExtraKeysStore {
-    suspend fun load(): ExtraKeysConfig
-
-    suspend fun save(config: ExtraKeysConfig)
-}

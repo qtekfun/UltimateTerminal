@@ -2107,3 +2107,59 @@ El usuario probó la app en un Pixel 8 y dijo que las teclas especiales (Esc, Ta
 
 ### D-T22d-7 · 2026-10-04 · Qué NO está validado (sin dispositivo)
 - Cómo se ve cada estilo de verdad (sobre todo `FLAT` frente al teclado del sistema), el espesor de los separadores en pantallas de distinta densidad, el óvalo de pulsación, el subrayado de una tecla bloqueada, la vista previa en la pantalla de Apariencia y TalkBack. El orquestador lo prueba en el Pixel 8.
+
+## T16 / T22c — Ajustes por secciones y pantallas en estilo iOS
+
+Hecha en un clon aparte, sin dispositivos. Lo que solo puede decir el dispositivo está en la lista del final.
+
+### D-T16-1 · 2026-10-04 · La pantalla de Ajustes es una pila de páginas, con la navegación como dato puro
+- **Decisión:** `SettingsNavigation` (`domain/settings`) guarda la pila de `SettingsPage` con la raíz siempre abajo; "atrás" saca una página y desde la raíz cierra la pantalla. Se guarda con un `Saver` (nombres de página), así que sobrevive a girar el móvil. Cada página conoce a su padre (`parent`) para rotular el botón de volver.
+- **Motivo:** la lógica de moverse entre páginas se prueba en host (no hay que ver la pantalla), y la UI solo la dibuja.
+- **Alternativa descartada:** Navigation Compose: una dependencia nueva para 11 páginas sin argumentos.
+- **Apariencia y Distribuciones** no son páginas de Ajustes: abren sus pantallas propias encima (T12c y T22c), y al cerrarlas se vuelve a Ajustes.
+
+### D-T16-2 · 2026-10-04 · Dónde está el acceso: un ⚙ permanente junto al "+" y la primera entrada de su menú
+- **Decisión:** `TabBar` pone un botón ⚙ de 48 dp, con `contentDescription`, en la ranura del final de la barra, siempre a la vista (en la barra superior y en la lateral). El menú del "+" lleva "Ajustes" como primera entrada que no es una pestaña ni una división; "Apariencia…" y "Gestionar distros…" siguen ahí y además se abren desde dentro de Ajustes.
+- **Motivo:** el usuario no veía cómo entrar a Ajustes; el acceso solo estaba tras una pulsación larga del "+". RF-11 lo exige permanente.
+- **Alcance:** esto toca `ScreenLinks`, `TabBarLinks`, `TabBar` y `NewTabMenu` (cada uno, unas líneas). Primero se hizo de forma aditiva para no pisar a T22b; al mergearse T22b, el icono se colocó directamente en su barra.
+
+### D-T16-3 · 2026-10-04 · Los ajustes nuevos viven en la misma tabla clave-valor y las teclas extra pasan a guardarse
+- **Hallazgo:** `ExtraKeysStore` era una interfaz sin implementación, así que la configuración de la fila de teclas no se guardaba nunca (`TerminalViewModel` arrancaba siempre con la de por defecto) y no había forma de cambiarla.
+- **Decisión:** `AppSettings` gana `extraKeys` y `dnsFallbackServers`; se guardan en la tabla `setting` (`extra_keys` en su texto `visible=`/`onlyWithKeyboard=`/filas, y `dns_fallback` con las direcciones separadas por comas). Un valor ilegible da el de por defecto. `TerminalViewModel` lee las teclas del repositorio de ajustes (cambian en vivo); `ExtraKeysStore` se elimina.
+- **Límites de edición** (`ExtraKeysEditing`): hasta 3 filas de 8 teclas, cada tecla del catálogo una sola vez. Quitar la última tecla de una fila quita la fila.
+
+### D-T16-4 · 2026-10-04 · El historial (scrollback) era un ajuste que no hacía nada; ahora se aplica
+- **Hallazgo:** `AppSettings.defaultScrollbackLines` existía, pero `TerminalSessionHost` usaba una constante de 10 000.
+- **Decisión:** el host tiene `transcriptRows` y `AndroidSessionFactory` lo fija antes de lanzar el shell leyendo el ajuste (`SessionManager` lo inyecta). Se aplica a las pestañas que se abran después. Opciones: 1 000, 2 000, 5 000, 10 000, 20 000 y 50 000, que es el máximo que admite el emulador; un valor guardado fuera de rango se acerca al más cercano al mostrarse y se recorta (100–50 000) al usarse.
+- **Sin validar:** el efecto en una sesión real y el consumo de memoria en 50 000 líneas.
+
+### D-T16-5 · 2026-10-04 · DNS de respaldo editables, con validación estricta
+- **Decisión:** `ResolvConf.render(servidores, respaldo)` usa el respaldo del usuario cuando el dispositivo no da ninguno, y los de siempre (1.1.1.1 y 9.9.9.9) si el suyo no tiene nada utilizable. Lo escrito en la hoja se lee con `DnsServers`: direcciones IP separadas por comas, espacios o `;`, máximo tres; una zona escrita a mano (`fe80::1%wlan0`) se rechaza, no se descarta en silencio. Vacío significa los de siempre.
+- **Aviso en la pantalla:** los de siempre son resolutores públicos de terceros (Cloudflare y Quad9), como ya recogía D-T08b-6.
+
+### D-T16-6 · 2026-10-04 · La copia de seguridad lleva ahora toda la configuración que le faltaba
+- **Hallazgo:** T15 no incluía la apariencia de T12c, el modo de compatibilidad de proot, el DNS ni las teclas extra, que RF-06 exige.
+- **Decisión:** `SettingsDto` gana cuatro campos **opcionales** (`prootCompatibilityMode`, `dnsFallbackServers`, `extraKeys`, `appearance`). La versión del formato no cambia: el lector ya ignora campos desconocidos y estos tienen valor por defecto. Una copia anterior que no los trae **deja lo que el dispositivo ya tiene**, no lo reinicia. Lo restaurado se valida: DNS por `DnsServers`, teclas por `ExtraKeysConfig.parse` (sin teclas útiles, las de por defecto) y números y nombres de la apariencia por `sanitized()`.
+- **Fuentes importadas:** sus ficheros no viajan (son binarios de terceros, de los que la licencia es responsabilidad del usuario); si la fuente de la copia no existe en este dispositivo, se usa la incluida.
+
+### D-T16-7 · 2026-10-04 · Atajos: una lista de consulta, no editable todavía
+- **Decisión:** la página muestra los atajos por defecto en orden fijo, con las teclas con nombre legible (`Ctrl+Shift+T`) y los números de pestaña en una sola línea (`Alt+1–9`), y avisa de que no se pueden cambiar.
+- **Motivo:** cambiarlos exige capturar combinaciones de un teclado físico y gestionar choques entre atajos; no se puede validar sin dispositivo y es el alcance de T12b. Mostrar una lista es veraz; fingir una edición no lo sería.
+
+### D-T16-8 · 2026-10-04 · "Acerca de" lee `THIRD_PARTY_NOTICES.md` copiado al APK por Gradle
+- **Decisión:** una tarea `copyNotices` copia el fichero de la raíz a los assets de cada variante en cada compilación (`addGeneratedSourceDirectory`), y `Notices` lo convierte en secciones (cabeceras `##`, tablas en una línea, sin marcas Markdown). Un test lee el fichero real, así que un cambio de su formato que rompa la pantalla se ve en el CI.
+- **Motivo:** una sola fuente que mantener; una copia en el repositorio se desincronizaría y el APK llevaría créditos viejos.
+
+### D-T16-9 · 2026-10-04 · Distros y copias en estilo iOS, y el error de encadenar diálogos
+- **Decisión (T22c):** la pantalla de Distros es una lista con título grande; tocar una fila abre una hoja de acciones (predeterminada, renombrar, duplicar, eliminar), instalar y renombrar son hojas con campos y eliminar es una alerta. Las tarjetas de almacenamiento, copias y modo de compatibilidad salen de ahí y pasan a Ajustes. Los diálogos de exportar y de contraseña de las copias son hojas.
+- **Error evitado:** `IosActionSheet` ejecuta la acción y **después** llama a `onDismiss`. Si la acción abre otro diálogo (renombrar), ese cierre lo deshacía. El cierre de la hoja solo cierra si lo vigente sigue siendo la hoja, leyendo el estado en el momento, no el capturado.
+- **Componentes nuevos en `ui/ios`:** `IosTextField` (fila de formulario), `IosSheetHeader` (Cancelar, título y confirmar, con el botón inerte mientras no es válido) e `IosProgress`.
+- **Sin migrar:** los diálogos de SSH (T14) y de apariencia (T12c) siguen en Material.
+
+### D-T16-10 · 2026-10-04 · Lo que NO está validado (sin dispositivo)
+- El aspecto y el tacto de todas las pantallas nuevas: listas agrupadas, hojas, alertas, el ⚙ en la barra superior y en la lateral.
+- Las hojas con teclado: `imePadding` dentro de un `Dialog`, que el campo se vea con el teclado abierto y el comportamiento de los campos de contraseña.
+- Los flujos del sistema: permiso de notificaciones, exención de batería, pantalla de la app, selector de archivos de las copias y apertura del enlace al código fuente.
+- Que "atrás" del sistema se apile bien cuando Apariencia o Distribuciones se abren encima de Ajustes.
+- TalkBack: orden de lectura, rol y estado de los interruptores, y las filas de teclas.
+- El efecto real del historial, las teclas extra y el DNS en una sesión.

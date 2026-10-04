@@ -5,6 +5,8 @@ package com.qtekfun.ultimateterminal.domain.model
 
 import com.qtekfun.ultimateterminal.domain.appearance.CustomFont
 import com.qtekfun.ultimateterminal.domain.appearance.TerminalAppearance
+import com.qtekfun.ultimateterminal.domain.launch.ResolvConf
+import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.FontZoom
 import com.qtekfun.ultimateterminal.domain.theme.BuiltInSchemes
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
@@ -36,5 +38,9 @@ data class AppSettings(
     /** Font, spacing, margin, cursor and the style of the bars (T12c). */
     val appearance: TerminalAppearance = TerminalAppearance(),
     /** The fonts the user imported; their files are in the app's private font folder. */
-    val customFonts: List<CustomFont> = emptyList()
+    val customFonts: List<CustomFont> = emptyList(),
+    /** The keys of the extra-keys row and whether it follows the keyboard (SPEC RF-08). */
+    val extraKeys: ExtraKeysConfig = ExtraKeysConfig.default(),
+    /** DNS servers used only when the device reports none (SPEC RF-11, Network). */
+    val dnsFallbackServers: List<String> = ResolvConf.FALLBACK_SERVERS
 )
