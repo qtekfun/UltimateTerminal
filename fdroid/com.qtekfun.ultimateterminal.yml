@@ -1,0 +1,36 @@
+Categories:
+  - System
+  - Development
+License: GPL-3.0-or-later
+AuthorName: qtekfun
+SourceCode: https://github.com/qtekfun/UltimateTerminal
+IssueTracker: https://github.com/qtekfun/UltimateTerminal/issues
+Changelog: https://github.com/qtekfun/UltimateTerminal/blob/HEAD/CHANGELOG.md
+
+AutoName: UltimateTerminal
+
+RepoType: git
+Repo: https://github.com/qtekfun/UltimateTerminal.git
+Binaries: 
+  https://github.com/qtekfun/UltimateTerminal/releases/download/v%v/UltimateTerminal-%v.apk
+
+Builds:
+  - versionName: 0.1.0
+    versionCode: 10099
+    commit: v0.1.0
+    subdir: app
+    submodules: true
+    sudo:
+      - apt-get update
+      - apt-get install -y openjdk-21-jdk-headless
+      - update-java-alternatives -a
+    gradle:
+      - yes
+    ndk: 28.2.13676358
+
+AllowedAPKSigningKeys: REPLACE_WITH_THE_SHA256_OF_THE_RELEASE_CERTIFICATE
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^v[0-9]+\.[0-9]+\.[0-9]+$
+CurrentVersion: 0.1.0
+CurrentVersionCode: 10099

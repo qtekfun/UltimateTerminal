@@ -542,3 +542,31 @@ en cada versión de Android, la notificación y sus acciones, la reconexión de 
 actividad, el wake lock real, el comportamiento tras «Salir» y los diálogos de permisos. En el host
 están probados el ciclo de vida de las sesiones (`SessionsTest`, `SessionControllerTest`), el orden de
 los avisos (`SessionPromptsTest`) y el manifiesto del servicio (`ManifestServiceTest`).
+
+## T19 — Versionado y releases
+
+### D-T19-1 · 2026-10-04 · Release solo con clave: el workflow se niega a publicar sin firma
+- **Decisión:** `release.yml` falla si `UT_KEYSTORE_BASE64` no está definido; también falla si el
+  `CHANGELOG.md` no tiene notas de esa versión. Sin variables `UT_*`, `assembleRelease` sigue
+  produciendo un APK sin firmar (lo que F-Droid compara).
+- **Motivo:** el workflow de UltimateDeck publicaría un APK sin firmar si faltara el secreto; un
+  usuario no podría actualizar después sobre él.
+- **Impacto:** el primer tag necesita la clave creada y los 4 secretos (ver `RELEASING.md`). No se creó
+  ninguna clave, secreto, tag ni release en esta tarea.
+
+### D-T19-2 · 2026-10-04 · Reproducibilidad: rutas fuera del código nativo
+- **Decisión:** `-ffile-prefix-map=<raíz del proyecto>=.` en las compilaciones C de `:app` (proot y
+  talloc) y de `:terminal-emulator`. No hay marcas de tiempo ni `git describe` en los scripts de
+  build (`PROOT_VERSION` es una constante). NDK y CMake siguen fijados.
+- **Comprobado:** en un clon fuera del repo, ninguna lib de proot ni del emulador contiene la ruta
+  del checkout.
+- **NO comprobado:** que dos máquinas distintas produzcan un APK idéntico bit a bit (`diffoscope`).
+  Queda como paso previo al primer envío a F-Droid (`RELEASING.md`).
+
+### D-T19-3 · 2026-10-04 · `fdroid/com.qtekfun.ultimateterminal.yml` con valores de ejemplo
+- **Decisión:** versión `0.1.0`, `submodules: true`, NDK `28.2.13676358` y `AllowedAPKSigningKeys` con un
+  marcador `REPLACE_WITH_THE_SHA256_OF_THE_RELEASE_CERTIFICATE`. Solo se ofrecen versiones finales
+  (`UpdateCheckMode: Tags ^v…$`, sin `-rc`).
+- **Pendiente:** huella real del certificado, tag real y revisión de antifeatures. Los campos
+  `ndk:` y `submodules:` siguen la sintaxis de fdroiddata pero no se han validado con `fdroid lint`.
+- **Fuera de alcance aquí:** metadatos fastlane y capturas (T20).

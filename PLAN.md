@@ -40,7 +40,7 @@ Reglas: una tarea cada vez, en su rama `feat/<tarea>`, con `./gradlew check` en 
 ## Fase 4 — Cierre del MVP
 - [ ] **T17 Accesibilidad y rendimiento**: TalkBack en la UI, tamaños táctiles, fuente grande; medir arranque hasta prompt y salida masiva.
 - [ ] **T18 Tests de UI e integración clave**: instalar distro, ejecutar comando, redimensionar, exportar y restaurar.
-- [ ] **T19 Versionado y releases**: SemVer en `gradle.properties` con código derivado, firma propia por variables de entorno, builds reproducibles y workflow de release por tag (`RELEASING.md`).
+- [x] **T19 Versionado y releases**: SemVer en `gradle.properties` con código derivado, firma propia por variables de entorno, builds reproducibles y workflow de release por tag (`RELEASING.md`).
 - [ ] **T20 Metadatos F-Droid**: `fastlane/metadata/android/{en-US,es-ES}/`, iconos, capturas, descripciones; revisar reproducibilidad y ausencia de dependencias no libres.
 - [ ] **T21 Documentación**: `README.md`, `CONTRIBUTING.md`, política de privacidad, `CHANGELOG.md`. Explicar cada permiso y decisión (almacenamiento, servicio en primer plano, optimización de batería, `targetSdk` 28, phantom process killer).
 
