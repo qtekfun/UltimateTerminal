@@ -24,7 +24,8 @@ Reglas: una tarea cada vez, en su rama `feat/<tarea>`, con `./gradlew check` en 
 ## Fase 2 — Sesiones y terminal
 - [~] **T08 Servicio en primer plano y sesiones**: el servicio posee PTY y procesos; la UI se reconecta; notificación persistente, wakelock opcional, aviso de batería y tipo de servicio para Android 14+. *(ciclo de vida de sesiones, servicio, notificación, wake lock y avisos implementados; lógica y manifiesto probados en host, sin validar en dispositivo; ver D-T08-1 a D-T08-6 en `DECISIONS.md`)*
 - [~] **T09 Multitab**: crear, cerrar, renombrar y reordenar pestañas; confirmación al cerrar con procesos vivos. *(implementada y probada solo en host; la barra no se ha visto en ningún dispositivo; ver `DECISIONS.md`, T09)*
-- [ ] **T10 Paneles divididos** (pantallas anchas): dividir en horizontal/vertical con separadores arrastrables, y layout por `WindowSizeClass` (barra lateral o superior).
+- [~] **T10 Paneles divididos** (pantallas anchas): dividir en horizontal/vertical con separadores arrastrables, y layout por `WindowSizeClass` (barra lateral o superior).
+  - *Nota:* implementada y probada solo con tests de host; sin validar en dispositivo (ver `DECISIONS.md`, D-T10-9). Perfiles, layouts guardados y emisión a varios paneles son T12b.
 - [~] **T11 Entrada** *(lógica y UI implementadas y probadas en host; sin validar en dispositivo y sin ratón; ver `DECISIONS.md`, T11)*: fila de teclas extra configurable con Ctrl/Alt pegajosos; teclado físico, atajos, ratón, copiar/pegar y zoom con pellizco.
 - [ ] **T12 Temas, modo OLED y fuentes**: esquemas de color, claro/oscuro/sistema y modo OLED (negro puro), fuente incluida y tamaño.
 - [ ] **T12b Perfiles, layouts y atajos (estilo Terminator)**: perfiles, layouts de paneles guardados con nombre, atajos configurables y emisión a varios paneles.

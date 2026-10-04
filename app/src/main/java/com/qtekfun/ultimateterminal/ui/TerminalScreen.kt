@@ -114,10 +114,7 @@ fun TerminalScreen(modifier: Modifier = Modifier, viewModel: TerminalViewModel =
         val padded = Modifier.fillMaxSize().padding(insets.toPadding(density))
         val pane = @Composable { paneModifier: Modifier ->
             Column(paneModifier) {
-                Box(Modifier.weight(1f).fillMaxWidth()) {
-                    TerminalCanvas(viewModel, painter, onTap = { inputView[0]?.showKeyboard() })
-                    TerminalOverlays(viewModel, inputView)
-                }
+                TerminalPanes(viewModel, painter, inputView, Modifier.weight(1f).fillMaxWidth())
                 if (extraKeys.visible) {
                     ExtraKeysRow(extraKeys, sticky, viewModel.keyboard::onExtraKey)
                 }
@@ -138,7 +135,7 @@ fun TerminalScreen(modifier: Modifier = Modifier, viewModel: TerminalViewModel =
 }
 
 @Composable
-private fun TerminalOverlays(viewModel: TerminalViewModel, inputView: Array<TerminalInputView?>) {
+internal fun TerminalOverlays(viewModel: TerminalViewModel, inputView: Array<TerminalInputView?>) {
     val selection by viewModel.selection.selection.collectAsStateWithLifecycle()
     val exitStatus by viewModel.exitStatus.collectAsStateWithLifecycle()
     Box(Modifier.fillMaxSize()) {
@@ -167,7 +164,7 @@ private fun TerminalOverlays(viewModel: TerminalViewModel, inputView: Array<Term
 
 /** Draws the screen and turns touches into scrolling, selection and a request for the keyboard. */
 @Composable
-private fun TerminalCanvas(
+internal fun TerminalCanvas(
     viewModel: TerminalViewModel,
     painter: TerminalPainter,
     onTap: () -> Unit

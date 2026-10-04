@@ -27,14 +27,30 @@ data class SessionInfo(
 )
 
 /**
+ * The panes of a tab that has been split: [tree] (its leaves are the sessions), the pane that has
+ * the keyboard ([focus]) and whether that pane is shown alone ([zoomed]). A tab that was never split
+ * has no entry in [Sessions.panes]: it is one session.
+ */
+data class PaneTab(val tree: PaneNode, val focus: SessionId, val zoomed: Boolean = false)
+
+/**
  * An immutable snapshot of the terminal sessions the app owns. Every change returns a new snapshot,
  * so the lifecycle rules live here and can be tested without a device.
+ *
+ * A tab is a session that is not a pane of another one: [tabs]. A split tab keeps its extra
+ * sessions in [items] too, so the service and the notification still see every shell, but only the
+ * tab's own session (the one that opened it) appears in the tab bar. [activeId] is the session that
+ * has the keyboard, which in a split tab is its focused pane.
  */
 data class Sessions(
     val items: List<SessionInfo> = emptyList(),
     val activeId: SessionId? = null,
-    private val nextId: Int = 1
+    val nextId: Int = 1,
+    val panes: Map<SessionId, PaneTab> = emptyMap()
 ) {
+    /** What the tab bar lists, in order: every session that is not a pane of another one. */
+    val tabs: List<SessionInfo> get() = items.filter { tabOf(it.id) == it.id }
+
     val active: SessionInfo? get() = items.firstOrNull { it.id == activeId }
 
     /** Sessions whose shell has not ended. */
@@ -62,44 +78,46 @@ data class Sessions(
         return copy(items = items.map { if (it.id == id) ended else it })
     }
 
-    /** Removes [id]. If it was the active one, a running session is preferred as the new one. */
-    fun closed(id: SessionId): Sessions {
-        if (items.none { it.id == id }) return this
-        val remaining = items.filterNot { it.id == id }
-        val newActive = if (activeId != id) {
-            activeId
-        } else {
-            val preferred = remaining.lastOrNull { it.state == SessionState.Running }
-            (preferred ?: remaining.lastOrNull())?.id
-        }
-        return copy(items = remaining, activeId = newActive)
+    /**
+     * Removes [id]. A pane of a split tab leaves its sibling the space (see [closedPane]); a tab's
+     * last session takes the tab with it, and if it was the active one, a tab with a running shell
+     * is preferred as the new one.
+     */
+    fun closed(id: SessionId): Sessions = when {
+        items.none { it.id == id } -> this
+        panes.values.any { id in it.tree } -> closedPane(id)
+        else -> closedPlain(id)
     }
 
     /** Removes every session. Ids are not reused. */
     fun allClosed(): Sessions = copy(items = emptyList(), activeId = null)
 
-    /** Makes [id] the active session; an unknown id changes nothing. */
+    /**
+     * Goes to the tab of [id], to the pane that had the keyboard there; an unknown id changes
+     * nothing. To move the keyboard to a pane of the same tab use [focused].
+     */
     fun activated(id: SessionId): Sessions =
-        if (items.any { it.id == id }) copy(activeId = id) else this
+        if (items.any { it.id == id }) copy(activeId = focusOf(tabOf(id))) else this
 
     /** Changes the active tab as [target] says; a target that does not exist changes nothing. */
     fun switched(target: TabSwitch): Sessions = when (target) {
         is TabSwitch.ById -> activated(target.id)
-        is TabSwitch.Number -> items.getOrNull(target.number - 1)?.let { activated(it.id) } ?: this
+        is TabSwitch.Number -> tabs.getOrNull(target.number - 1)?.let { activated(it.id) } ?: this
         TabSwitch.Next -> stepped(1)
         TabSwitch.Previous -> stepped(-1)
     }
 
     /** The neighbouring tab, wrapping around at the ends; with no active tab, the first or last. */
     private fun stepped(step: Int): Sessions {
-        if (items.size < 2) return this
-        val current = items.indexOfFirst { it.id == activeId }
+        val list = tabs
+        if (list.size < 2) return this
+        val current = list.indexOfFirst { it.id == activeId?.let(::tabOf) }
         val target = when {
-            current >= 0 -> Math.floorMod(current + step, items.size)
+            current >= 0 -> Math.floorMod(current + step, list.size)
             step > 0 -> 0
-            else -> items.lastIndex
+            else -> list.lastIndex
         }
-        return copy(activeId = items[target].id)
+        return activated(list[target].id)
     }
 
     /**
@@ -112,20 +130,26 @@ data class Sessions(
         return if (renamed == items) this else copy(items = renamed)
     }
 
-    /** Moves [id] to position [toIndex] (0-based, kept inside the list). */
+    /** Moves the tab [id] to position [toIndex] (0-based, among the tabs, kept inside the list). */
     fun moved(id: SessionId, toIndex: Int): Sessions {
-        val from = items.indexOfFirst { it.id == id }
-        val to = toIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0))
+        val list = tabs
+        val from = list.indexOfFirst { it.id == id }
+        val to = toIndex.coerceIn(0, (list.size - 1).coerceAtLeast(0))
         if (from < 0 || from == to) return this
-        val reordered = items.toMutableList()
+        val reordered = list.toMutableList()
         reordered.add(to, reordered.removeAt(from))
-        return copy(items = reordered)
+        return copy(items = reordered + items.filter { tabOf(it.id) != it.id })
     }
 
-    /** What closing [id] has to do: a shell that still runs is not killed without asking. */
+    /**
+     * What closing [id] has to do: a shell that still runs is not killed without asking. For a
+     * tab, every one of its panes counts.
+     */
     fun closeAction(id: SessionId): CloseAction {
-        val session = items.firstOrNull { it.id == id } ?: return CloseAction.Ignore
-        return if (session.state == SessionState.Running) CloseAction.Confirm else CloseAction.Close
+        if (items.none { it.id == id }) return CloseAction.Ignore
+        val group = if (tabOf(id) == id) paneIdsOf(id) else listOf(id)
+        val running = items.any { it.id in group && it.state == SessionState.Running }
+        return if (running) CloseAction.Confirm else CloseAction.Close
     }
 }
 

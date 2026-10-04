@@ -6,6 +6,8 @@ package com.qtekfun.ultimateterminal.terminal
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.qtekfun.ultimateterminal.domain.repository.DistroRepository
+import com.qtekfun.ultimateterminal.domain.session.PaneController
+import com.qtekfun.ultimateterminal.domain.session.SessionId
 import com.qtekfun.ultimateterminal.domain.session.SessionState
 import com.qtekfun.ultimateterminal.domain.session.TabsController
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
@@ -66,7 +68,15 @@ class TerminalViewModel @Inject constructor(
 
     /** The tab bar: one tab per session, so switching never interrupts the other shells. */
     val tabs = TabsController(manager.editor, distros.observeAll(), viewModelScope)
-    private val shortcuts = ShortcutHandler(selection::copy, ::pasteFromClipboard, fontSize, tabs)
+
+    /** The shell of any pane, which a pane that does not have the keyboard still draws. */
+    val hostOf: (SessionId) -> TerminalSessionHost? = manager::hostOf
+
+    /** The panes of the active tab: split, close, focus and size (T10). */
+    val panes = PaneController(manager.editor, viewModelScope)
+
+    private val shortcuts =
+        ShortcutHandler(selection::copy, ::pasteFromClipboard, fontSize, tabs, panes)
     val keyboard = TerminalKeyboard(
         ActiveSessionOutput(manager),
         router,

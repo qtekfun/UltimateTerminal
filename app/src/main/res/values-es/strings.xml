@@ -63,4 +63,20 @@
     <string name="tab_close_title">¿Cerrar esta pestaña?</string>
     <string name="tab_close_message">Todavía hay un programa en ejecución y se detendrá.</string>
     <string name="tab_close_confirm">Cerrar</string>
+
+    <string name="pane_menu">Opciones del panel</string>
+    <string name="pane_description">Panel %1$d de %2$d</string>
+    <string name="pane_split_right">Dividir a la derecha</string>
+    <string name="pane_split_down">Dividir hacia abajo</string>
+    <string name="pane_zoom">Ampliar este panel</string>
+    <string name="pane_unzoom">Mostrar todos los paneles</string>
+    <string name="pane_close">Cerrar panel</string>
+    <string name="pane_swap_left">Intercambiar con el panel de la izquierda</string>
+    <string name="pane_swap_right">Intercambiar con el panel de la derecha</string>
+    <string name="pane_swap_up">Intercambiar con el panel de arriba</string>
+    <string name="pane_swap_down">Intercambiar con el panel de abajo</string>
+    <string name="pane_divider">Separador de paneles. Arrastra para cambiar el tamaño</string>
+    <string name="pane_too_small">No hay espacio suficiente para dividir aquí</string>
+    <string name="pane_close_title">¿Cerrar este panel?</string>
+    <string name="pane_close_message">Todavía se está ejecutando un programa en él y se detendrá.</string>
 </resources>

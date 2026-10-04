@@ -20,17 +20,19 @@ data class TabItem(
     val active: Boolean
 )
 
-fun tabItems(sessions: Sessions, distros: List<Distro>): List<TabItem> =
-    sessions.items.mapIndexed { index, session ->
+fun tabItems(sessions: Sessions, distros: List<Distro>): List<TabItem> {
+    val activeTab = sessions.activeId?.let(sessions::tabOf)
+    return sessions.tabs.mapIndexed { index, session ->
         TabItem(
             id = session.id,
             title = session.title,
             position = index + 1,
-            running = session.state == SessionState.Running,
+            running = sessions.isTabRunning(session.id),
             distroName = distros.firstOrNull { it.id == session.distroId }?.name,
-            active = session.id == sessions.activeId
+            active = session.id == activeTab
         )
     }
+}
 
 /** A place a new tab can open in. [id] null is the Android shell, the only one before T07. */
 data class DistroOption(val id: Long?, val name: String?)

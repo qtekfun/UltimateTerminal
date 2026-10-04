@@ -63,4 +63,20 @@
     <string name="tab_close_title">Close this tab?</string>
     <string name="tab_close_message">A program is still running in it and will be stopped.</string>
     <string name="tab_close_confirm">Close</string>
+
+    <string name="pane_menu">Pane options</string>
+    <string name="pane_description">Pane %1$d of %2$d</string>
+    <string name="pane_split_right">Split right</string>
+    <string name="pane_split_down">Split down</string>
+    <string name="pane_zoom">Zoom this pane</string>
+    <string name="pane_unzoom">Show all panes</string>
+    <string name="pane_close">Close pane</string>
+    <string name="pane_swap_left">Swap with the pane on the left</string>
+    <string name="pane_swap_right">Swap with the pane on the right</string>
+    <string name="pane_swap_up">Swap with the pane above</string>
+    <string name="pane_swap_down">Swap with the pane below</string>
+    <string name="pane_divider">Pane divider. Drag to resize</string>
+    <string name="pane_too_small">There is not enough room to split here</string>
+    <string name="pane_close_title">Close this pane?</string>
+    <string name="pane_close_message">A program is still running in it and will be stopped.</string>
 </resources>
