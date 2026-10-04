@@ -5,6 +5,9 @@
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Only to download the official root filesystem of a distro the user chooses to install. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:name=".UltimateTerminalApp"
         android:allowBackup="false"

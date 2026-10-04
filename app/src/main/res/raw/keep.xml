@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPDX-FileCopyrightText: 2026 UltimateTerminal contributors
+  SPDX-License-Identifier: GPL-3.0-or-later
+
+  Nothing in the code reads the third-party license texts yet, but the Apache License requires
+  them to travel with the app, so the resource shrinker must not remove them.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@raw/third_party_apache_commons" />

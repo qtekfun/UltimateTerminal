@@ -16,6 +16,8 @@ funcionando:
   armeabi-v7a y x86_64.
 - Comportamiento de seccomp, `ptrace`, `/proc` y `--link2symlink` en Android moderno (API 26–37).
 - Ejecutar binarios desde `nativeLibraryDir` con `targetSdk` 28 en Android 15+/16.
+- T07, instalación de distros: descargar, descomprimir y mover un rootfs real en el almacenamiento privado,
+  el cálculo de espacio libre y la pantalla de gestión (ver "T07: lo que NO se ha validado").
 - Capa de datos (T05): el cableado de Hilt, `AndroidSQLiteDriver` y `java.nio` (enlaces simbólicos,
   permisos, `ATOMIC_MOVE`) en el almacenamiento privado de la app (ver D-T05-9).
 - T03, todo lo que necesita un PTY real o una pantalla: que `libtermux.so` cargue y el `fork/exec` de
@@ -593,3 +595,122 @@ Falta por hacer:
 - La extracción, la elección de arquitectura con `Build.SUPPORTED_ABIS` (`Architecture.fromAbis`) y el
   reintento por `HashMismatch` de Debian son de T07; aquí solo están las interfaces `RootfsCatalog` y
   `RootfsDownloader` y sus implementaciones.
+
+## T07 — Instalación y gestión de distros
+
+### D-T07-1 · 2026-10-04 · Una instalación es una transacción: preparar al lado y mover al final
+- **Decisión:** `DistroInstaller` registra la distro como `INSTALLING` **antes** de descargar (así un nombre
+  repetido falla sin gastar datos), descarga y descomprime en `distros-tmp/<token>/` y solo mueve el árbol
+  terminado a `distros/<token>` con un renombrado atómico; después marca la fila `READY`. Cada instalación
+  tiene su propio token (UUID), así que dos instalaciones, o una instalación y los restos de una caída, nunca
+  comparten directorio.
+- **Fallo o cancelación:** un `finally` bajo `NonCancellable` borra el directorio temporal, el destino y la
+  fila. Así, cancelar a mitad de la extracción no deja ni ficheros ni registros (hay un test que cancela con
+  el extractor detenido y comprueba ambas cosas).
+- **Si el proceso muere:** `DistroManager.recoverInterrupted()` borra toda fila que no sea `READY` con sus
+  ficheros y el área temporal. Se llama una vez al arrancar la pantalla, antes de permitir instalar.
+- **Alternativas descartadas:** extraer directamente en el destino y borrar si falla (un corte de energía
+  dejaría una distro a medias que parece válida); no registrar la fila hasta el final (permitiría descargar
+  100 MB para descubrir que el nombre ya existe).
+- **Impacto:** T08 mueve la instalación al servicio en primer plano; la lógica de limpieza no cambia.
+
+### D-T07-2 · 2026-10-04 · Ante un hash que no coincide, se vuelve a resolver el catálogo y se reintenta una vez
+- **Decisión:** cumple lo que pedía D-T06-3. Solo el error `HashMismatch` repite el intento completo (resolver,
+  descargar, verificar, extraer); cualquier otro fallo (red, 404, disco) se muestra sin repetir. Un segundo
+  `HashMismatch` se informa al usuario. Cada intento es una transacción entera, así que el primero ya no deja nada.
+- **Motivo:** la rama de Debian se reescribe a menudo y el hash del índice puede quedar obsoleto entre las dos
+  peticiones. No se repite ante fallos de red para no gastar datos del usuario en bucle.
+- **Riesgo:** un hash incorrecto *real* (un fichero manipulado) también se reintenta una vez; el segundo intento
+  vuelve a fallar y no se instala nada, así que el único coste es una descarga extra.
+
+### D-T07-3 · 2026-10-04 · Extractor propio sobre Apache Commons Compress, solo gzip y tar
+- **Decisión:** `TarGzExtractor` usa `commons-compress` 1.28.0 (Apache-2.0). Solo se leen **gzip y tar plano**,
+  que es lo que publican las tres fuentes de T06. xz, bzip2 y zstd se reconocen por su cabecera y se rechazan
+  con un error que nombra el formato (`ArchiveFormat`), en vez de un fallo genérico.
+- **Dependencias que entran en el APK** (comprobadas con `licensee`, todas Apache-2.0): `commons-compress`
+  1.28.0, `commons-io` 2.20.0, `commons-codec` 1.19.0 y `commons-lang3` 3.18.0. xz, zstd y brotli son
+  opcionales de Commons Compress y **no** se incluyen (reglas `-dontwarn` en R8).
+- **Alternativas descartadas:** `tar` del sistema vía `ProcessBuilder` (no está garantizado en Android y no se
+  puede probar en el host); escribir un lector de tar propio (reinventa un formato con muchas rarezas, PAX,
+  GNU long names…); añadir `xz` (otra dependencia para un formato que ninguna fuente usa hoy).
+- **Impacto:** si una fuente pasa a servir `.tar.xz` hay que añadir `org.tukaani:xz` (dominio público, se
+  puede usar) y quitar el rechazo.
+
+### D-T07-4 · 2026-10-04 · Reglas de seguridad de la extracción (lo más delicado de T07)
+Un rootfs descargado se trata como entrada hostil aunque su hash coincida, porque el hash solo prueba que es
+el fichero que publicó el proyecto, no que sea inofensivo. Reglas (código en `SafeTreeWriter`, probadas con
+tars sintéticos hostiles):
+- **Nada fuera del destino.** Un nombre con `..` se rechaza (`UnsafeEntry`). Las barras iniciales se quitan
+  como hace GNU tar.
+- **Nunca se escribe a través de un enlace simbólico.** Cada directorio padre se comprueba sin seguir enlaces:
+  si es un enlace, se rechaza todo el archivo. Esto cierra el ataque clásico de crear `link -> /ruta/fuera` y
+  luego escribir `link/fichero`.
+- **Los enlaces simbólicos en sí se guardan tal cual**, incluso los absolutos (`/bin/sh -> /bin/busybox`), porque
+  un rootfs normal está lleno de ellos y solo se resuelven dentro de proot, nunca en el sistema anfitrión.
+- **Enlaces duros:** solo hacia un fichero regular ya extraído dentro del destino; hacia fuera, hacia un enlace
+  simbólico o hacia la raíz se rechazan. Si el sistema de ficheros no admite enlaces duros, se copia el contenido.
+- **Un directorio no puede sustituir a un fichero ni al revés**, y un fichero no puede ocupar el sitio de un
+  directorio padre.
+- **Permisos:** se conservan los nueve bits rwx; **se descartan setuid, setgid y sticky**. Los directorios
+  siempre conservan rwx para el propietario (la app) para poder borrarlos; el modo real se aplica al final para
+  que un directorio de solo lectura no bloquee a sus hijos. No se restaura el propietario (todo es de la app).
+- **Dispositivos, sockets y FIFO se omiten** (no se pueden crear sin root) y se cuentan en `skippedSpecialFiles`.
+- **Límites contra bombas de descompresión:** 2 000 000 entradas, 16 GiB y 4096 caracteres por ruta (valores
+  muy por encima de cualquier rootfs real; configurables). Se rechaza un archivo **sin ninguna entrada** (un
+  fichero vacío o equivocado no es una distro).
+- **Un nombre con byte nulo no puede colar una ruta:** Commons Compress corta el nombre en el primer `\0`, como
+  `tar`, de modo que lo que se valida es lo que se escribe. Se comprobó con un tar construido a mano.
+- **Cancelación:** se comprueba entre entradas y cada MiB de datos, así que cancelar responde sin esperar a que
+  termine un fichero grande.
+
+### D-T07-5 · 2026-10-04 · Espacio libre: se comprueba antes de descargar
+- **Decisión:** se exige `max(64 MiB, 5 × tamaño del archivo)` (el archivo se conserva mientras se descomprime y
+  un rootfs ocupa unas 4 veces su tamaño comprimido); si el índice no da tamaño (Ubuntu) se asume 512 MiB.
+- **Motivo:** rechazar con un mensaje claro y el espacio necesario es mejor que llenar el disco y fallar al
+  final. Es una estimación **sin medir en un rootfs real**: queda pendiente de validar.
+
+### D-T07-6 · 2026-10-04 · Duplicar y eliminar son seguros ante interrupciones
+- **Duplicar:** la copia se construye junto a su destino y se renombra (`copyRecursively` de T05); su fila solo
+  pasa a `READY` después. Un fallo o una cancelación dejan sin copia ni fila. La copia no es la distro
+  predeterminada.
+- **Eliminar:** la fila se marca `FAILED` **antes** de borrar ficheros. Si el borrado se interrumpe, la distro
+  se ve como "dañada" (y se puede volver a eliminar) en vez de parecer intacta. No se puede eliminar una distro
+  que se está instalando.
+- **Predeterminada:** solo una distro `READY` puede serlo, para que una pestaña nueva siempre pueda abrirla.
+  Al eliminar la predeterminada, T05 ya pasa la marca a la más antigua que quede.
+
+### D-T07-7 · 2026-10-04 · Pantalla de gestión: mínima y provisional
+- **Decisión:** `DistroScreen` (lista, instalar, renombrar, duplicar, eliminar, predeterminada, progreso y
+  cancelar) sin lógica en los composables: el estado y las acciones están en `DistroViewModel`, con los
+  mensajes de error traducidos en `DistroMessages`. Se abre desde un botón provisional en `MainActivity`
+  que T09 (pestañas) sustituirá. Textos en `values/` y `values-es/`; botones de al menos 48 dp.
+- **La instalación vive en el `ViewModel`**: sobrevive a rotar la pantalla pero **no a cerrar la app**. T08 la
+  pasa al servicio en primer plano. Mientras tanto, si el proceso muere a mitad, `recoverInterrupted()` limpia
+  al arrancar.
+- **Permiso `INTERNET`:** añadido al manifiesto, solo para descargar el rootfs de la distro que el usuario elige
+  instalar. Debe explicarse en `PRIVACY.md` (T21).
+
+### D-T07-8 · 2026-10-04 · Créditos de Apache Commons: el APK no conserva sus avisos, se empaquetan a mano
+- **Hallazgo:** al comprobar el APK, Android Gradle Plugin **no incluye** los `META-INF/NOTICE.txt` ni
+  `LICENSE.txt` de estas librerías (el único `NOTICE` presente es el de Jakarta Injection). La Apache-2.0 exige
+  conservar el aviso al redistribuir en binario.
+- **Decisión:** los textos de las cuatro librerías se copian **sin modificar** a
+  `app/src/main/res/raw/third_party_apache_commons.txt`, con un `keep.xml` para que el *resource shrinker* no los
+  elimine. Se comprobó con `aapt2` en el APK de release que el recurso existe y es idéntico byte a byte al fuente.
+- **Abierto (no se ha tocado):** lo mismo puede afectar a **OkHttp y Okio** (T06) y al resto de dependencias que
+  ya estaban en `master`; hay que comprobarlo y, si es así, empaquetar también sus avisos y mostrar una pantalla
+  de licencias. Se deja para decidir; no se amplió el alcance de T07 sin preguntar.
+
+### T07: lo que NO se ha validado (sin dispositivo)
+- **Que la instalación funcione de principio a fin en un dispositivo:** descargar de los mirrors reales,
+  descomprimir un rootfs de verdad (decenas de miles de ficheros) y que `ATOMIC_MOVE` y los enlaces simbólicos
+  funcionen en el almacenamiento privado (ya señalado en D-T05-9).
+- **El tiempo y el espacio reales** de instalar Debian, Ubuntu y Alpine, y si el cálculo de espacio libre
+  (D-T07-5) es acertado.
+- **Que un rootfs extraído por esta vía arranque con proot** (T02 tampoco está validada): los permisos, los
+  enlaces absolutos y la ausencia de dispositivos pueden necesitar ajustes que solo se ven al ejecutarlo.
+- **La pantalla:** el aspecto y el uso real en móvil y tablet, la rotación durante una instalación, los
+  diálogos con el teclado, y TalkBack. Solo se han probado el `ViewModel` y la lógica, no los composables.
+- **Rendimiento de la extracción** con el almacenamiento real, y que cancelar responda a tiempo en un fichero
+  muy grande.
+
