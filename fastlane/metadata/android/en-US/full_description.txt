@@ -1,0 +1,22 @@
+UltimateTerminal is a terminal for Android for people who look after servers from a phone or a tablet. It is inspired by Termux: a newer interface that is meant to fill the whole screen on tablets, and full Linux distributions that run through proot, like WSL on Windows. Terminal only: there is no graphical environment.
+
+<b>Early pre-release.</b> Much of the app has only been tested on a computer. It has been checked on one phone (Android 17) and not yet on tablets. The list below says what is in the code; the README says what has been verified on a device.
+
+<b>What it does</b>
+• Installs Debian, Ubuntu or Alpine Linux from their official mirrors, checking the download with SHA-256, and opens it in a tab with a root shell. apt or apk, ssh, nmap and python work inside. Alpine is the one tried on a device; Debian and Ubuntu are tested only on a computer
+• Several tabs and split panes
+• A row of extra keys (Esc, Tab, Ctrl, Alt, arrows) that shows while the keyboard is up, hardware-keyboard shortcuts and pinch zoom
+• A terminal that resizes with the window, the keyboard, split screen and rotation
+• Saved SSH hosts, and SSH keys you can generate, import and export; the keys are encrypted with the Android Keystore
+• Optional access to the device storage from the distro, under ~/storage, for example to copy logs to Downloads. The permission is asked only when you turn it on
+• Backups of one distribution, of the settings, or of everything, optionally encrypted with a password, to restore on another device
+• Appearance: colour schemes, a pure-black OLED mode, a bundled monospace font or your own font file
+
+<b>Not there yet</b>
+Saved layouts and profiles, an app-wide settings screen, the iOS-style redesign, and accessibility and performance work.
+
+<b>Why it is not on Google Play</b>
+To run programs from its own storage the app targets Android 9 (API 28), which Google Play no longer accepts. That is what lets distributions run without root.
+
+<b>Free and private</b>
+No ads, no tracking, no analytics, no accounts and no Google services. The only network traffic is what you start: downloading a distribution from its official mirror, and whatever you run in the terminal. Licensed under the GPL-3.0-or-later. It reuses the terminal emulator of Termux and runs distributions with PRoot; credits and licenses are in the repository. It is an independent project, not affiliated with Termux, Debian, Ubuntu or Alpine Linux.
