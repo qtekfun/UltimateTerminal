@@ -19,3 +19,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "UltimateTerminal"
 include(":app")
+include(":terminal-emulator")
