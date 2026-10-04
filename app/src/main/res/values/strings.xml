@@ -446,4 +446,7 @@
     <string name="settings_credits_error">The credits could not be read.</string>
     <string name="install_distro_header">Distribution</string>
     <string name="install_details_header">Details</string>
+    <string name="shortcut_toggle_broadcast">Send to all panes</string>
+    <string name="shortcut_save_layout">Save the layout</string>
+    <string name="shortcut_open_layouts">Open a layout</string>
 </resources>

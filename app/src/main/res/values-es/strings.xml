@@ -443,4 +443,7 @@
     <string name="settings_credits_error">No se han podido leer los créditos.</string>
     <string name="install_distro_header">Distribución</string>
     <string name="install_details_header">Detalles</string>
+    <string name="shortcut_toggle_broadcast">Enviar a todos los paneles</string>
+    <string name="shortcut_save_layout">Guardar la disposición</string>
+    <string name="shortcut_open_layouts">Abrir una disposición</string>
 </resources>

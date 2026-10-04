@@ -73,6 +73,23 @@ class ShortcutDisplayTest {
     }
 
     @Test
+    fun everyShortcutWithADefaultKeyIsListed() {
+        // A shortcut added to AppShortcut and bound by default, but not put in the list, would work
+        // and never show in Settings (it happened with the three that T12b added).
+        val listed = defaults.map { it.shortcut.id }.toSet()
+        val bound = ShortcutMap.defaults().all.values
+            .map { if (it is AppShortcut.SelectTab) AppShortcut.SelectTab(1) else it }
+            .toSet()
+
+        for (shortcut in bound) {
+            assertTrue(
+                shortcut.id in listed,
+                "\${shortcut.id} is missing from the list in Settings"
+            )
+        }
+    }
+
+    @Test
     fun aMapWithoutBindingsHasNoRowsAndAnUnboundShortcutIsLeftOut() {
         assertTrue(ShortcutDisplay.rows(ShortcutMap.parse("").map).isEmpty())
         val withoutPaste = ShortcutMap.defaults()
