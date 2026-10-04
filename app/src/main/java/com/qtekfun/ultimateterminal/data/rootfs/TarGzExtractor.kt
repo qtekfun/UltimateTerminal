@@ -3,6 +3,7 @@
 
 package com.qtekfun.ultimateterminal.data.rootfs
 
+import com.qtekfun.ultimateterminal.domain.backup.StreamRootfsExtractor
 import com.qtekfun.ultimateterminal.domain.distro.ExtractionError
 import com.qtekfun.ultimateterminal.domain.distro.ExtractionResult
 import com.qtekfun.ultimateterminal.domain.distro.ExtractionStats
@@ -11,6 +12,7 @@ import com.qtekfun.ultimateterminal.domain.model.FsPath
 import com.qtekfun.ultimateterminal.domain.repository.FileSystemRepository
 import java.io.BufferedInputStream
 import java.io.EOFException
+import java.io.FilterInputStream
 import java.io.IOException
 import java.io.InputStream
 import java.nio.file.Files
@@ -54,38 +56,60 @@ class TarGzExtractor(
     private val fileSystem: FileSystemRepository,
     private val io: CoroutineDispatcher = Dispatchers.IO,
     private val limits: ExtractionLimits = ExtractionLimits()
-) : RootfsExtractor {
-
+) : RootfsExtractor,
+    StreamRootfsExtractor {
     override suspend fun extract(
         archive: FsPath,
         destination: FsPath,
         onProgress: (Float?) -> Unit
-    ): ExtractionResult = withContext(io) {
+    ): ExtractionResult {
         val archivePath = Paths.get(fileSystem.absolutePathOf(archive))
         val root = Paths.get(fileSystem.absolutePathOf(destination))
-        try {
-            ExtractionResult.Success(unpack(this, archivePath, root, onProgress))
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: ExtractionFailure) {
-            ExtractionResult.Failure(e.error)
-        } catch (e: EOFException) {
-            ExtractionResult.Failure(ExtractionError.Corrupt(e.message ?: "unexpected end"))
-        } catch (e: ZipException) {
-            ExtractionResult.Failure(ExtractionError.Corrupt(e.message ?: "bad gzip data"))
-        } catch (e: IOException) {
-            ExtractionResult.Failure(e.toExtractionError())
+        return guarded { scope ->
+            Files.newInputStream(archivePath).use { input ->
+                unpack(scope, input, Files.size(archivePath), root, onProgress)
+            }
         }
     }
 
+    override suspend fun extract(
+        input: InputStream,
+        totalBytes: Long,
+        destination: FsPath,
+        onProgress: (Float?) -> Unit
+    ): ExtractionResult {
+        val root = Paths.get(fileSystem.absolutePathOf(destination))
+        // The caller owns the stream (it is a part of a bigger file), so it is not closed here.
+        val shared = NonClosingInputStream(input)
+        return guarded { scope -> unpack(scope, shared, totalBytes, root, onProgress) }
+    }
+
+    private suspend fun guarded(work: (CoroutineScope) -> ExtractionStats): ExtractionResult =
+        withContext(io) {
+            try {
+                ExtractionResult.Success(work(this))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: ExtractionFailure) {
+                ExtractionResult.Failure(e.error)
+            } catch (e: EOFException) {
+                ExtractionResult.Failure(ExtractionError.Corrupt(e.message ?: "unexpected end"))
+            } catch (e: ZipException) {
+                ExtractionResult.Failure(ExtractionError.Corrupt(e.message ?: "bad gzip data"))
+            } catch (e: IOException) {
+                ExtractionResult.Failure(e.toExtractionError())
+            }
+        }
+
     private fun unpack(
         scope: CoroutineScope,
-        archivePath: Path,
+        input: InputStream,
+        totalBytes: Long,
         root: Path,
         onProgress: (Float?) -> Unit
     ): ExtractionStats {
-        val total = Files.size(archivePath)
-        CountingInputStream(Files.newInputStream(archivePath)).use { counting ->
+        val total = maxOf(totalBytes, 1L)
+        CountingInputStream(input).use { counting ->
             val tarStream = when (val opened = ArchiveFormat.open(BufferedInputStream(counting))) {
                 is ArchiveFormat.Result.Unsupported -> throw ExtractionFailure(opened.error)
                 is ArchiveFormat.Result.Opened -> opened.stream
@@ -98,6 +122,11 @@ class TarGzExtractor(
             }
         }
     }
+}
+
+/** Lets a part of a bigger stream be read without the reader closing the whole thing. */
+private class NonClosingInputStream(input: InputStream) : FilterInputStream(input) {
+    override fun close() = Unit
 }
 
 internal fun IOException.toExtractionError(): ExtractionError {
