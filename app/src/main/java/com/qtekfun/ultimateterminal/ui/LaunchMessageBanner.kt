@@ -3,15 +3,12 @@
 
 package com.qtekfun.ultimateterminal.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,6 +16,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.qtekfun.ultimateterminal.R
@@ -26,13 +25,21 @@ import com.qtekfun.ultimateterminal.domain.launch.LaunchMessage
 import com.qtekfun.ultimateterminal.domain.launch.LaunchNotice
 import com.qtekfun.ultimateterminal.domain.launch.LaunchProblem
 import com.qtekfun.ultimateterminal.domain.storage.StorageDegradation
+import com.qtekfun.ultimateterminal.ui.ios.IosBarButton
+import com.qtekfun.ultimateterminal.ui.ios.IosGlyph
+import com.qtekfun.ultimateterminal.ui.ios.IosIcon
+import com.qtekfun.ultimateterminal.ui.ios.IosRadius
+import com.qtekfun.ultimateterminal.ui.ios.IosSpacing
+import com.qtekfun.ultimateterminal.ui.ios.IosText
+import com.qtekfun.ultimateterminal.ui.ios.IosTheme
 
-private val MIN_TOUCH = 48.dp
+private val BannerShadow = 8.dp
 
 /**
- * Tells the user why the active tab did not open what they asked for, or what it opened without. A
- * problem stays until the tab goes; a notice can be dismissed. Both offer the distro screen, which is
- * where every one of them is fixed. Not validated on a device (see DECISIONS.md, T08b).
+ * Tells the user why the active tab did not open what they asked for, or what it opened without: a
+ * rounded card over the first rows, as an iOS banner. A problem stays until the tab goes; a notice
+ * can be dismissed. Both offer the distro screen, which is where every one of them is fixed. Not
+ * validated on a device (see DECISIONS.md, T08b and T22b).
  */
 @Composable
 fun LaunchMessageBanner(
@@ -44,33 +51,32 @@ fun LaunchMessageBanner(
     var dismissed by remember(message) { mutableStateOf(false) }
     val isProblem = message is LaunchMessage.Problem
     if (dismissed && !isProblem) return
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = if (isProblem) {
-            MaterialTheme.colorScheme.errorContainer
-        } else {
-            MaterialTheme.colorScheme.secondaryContainer
-        }
+    val colors = IosTheme.colors
+    val shape = RoundedCornerShape(IosRadius.card)
+    Row(
+        modifier
+            .fillMaxWidth()
+            .padding(IosSpacing.sm)
+            .shadow(BannerShadow, shape)
+            .clip(shape)
+            .background(colors.cell)
+            .padding(start = IosSpacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(IosSpacing.sm)
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = launchMessageText(message),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f).padding(vertical = 8.dp)
-            )
-            TextButton(onClick = onOpenDistros, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                Text(stringResource(R.string.launch_action_distros))
-            }
-            if (!isProblem) {
-                TextButton(
-                    onClick = { dismissed = true },
-                    modifier = Modifier.heightIn(min = MIN_TOUCH)
-                ) { Text(stringResource(R.string.launch_action_dismiss)) }
-            }
+        IosIcon(
+            IosGlyph.INFO,
+            null,
+            tint = if (isProblem) colors.destructive else colors.tint
+        )
+        IosText(
+            text = launchMessageText(message),
+            modifier = Modifier.weight(1f).padding(vertical = IosSpacing.sm),
+            style = IosTheme.typography.footnote
+        )
+        IosBarButton(stringResource(R.string.launch_action_distros), onOpenDistros)
+        if (!isProblem) {
+            IosBarButton(stringResource(R.string.launch_action_dismiss), { dismissed = true })
         }
     }
 }

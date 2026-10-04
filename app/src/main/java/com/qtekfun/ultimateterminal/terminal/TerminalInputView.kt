@@ -4,6 +4,7 @@
 package com.qtekfun.ultimateterminal.terminal
 
 import android.content.Context
+import android.os.Build
 import android.text.InputType
 import android.view.KeyCharacterMap
 import android.view.KeyEvent
@@ -33,6 +34,14 @@ class TerminalInputView(context: Context) : View(context) {
     init {
         isFocusable = true
         isFocusableInTouchMode = true
+        // The system adds affordances to a focused editor, anchored at its origin (the top-left
+        // corner of the terminal): the autofill suggestions and, from Android 14, the stylus
+        // handwriting icon. A terminal wants neither: a dark round "⋮" showed over the first
+        // characters on a Pixel 8, and nothing in this app draws it. Not confirmed on a device.
+        importantForAutofill = IMPORTANT_FOR_AUTOFILL_NO
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            setAutoHandwritingEnabled(false)
+        }
     }
 
     /** Gives this view the keyboard focus and opens the soft keyboard. */
@@ -47,7 +56,9 @@ class TerminalInputView(context: Context) : View(context) {
         outAttrs.inputType = InputType.TYPE_CLASS_TEXT or
             InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD or
             InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-        outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_FULLSCREEN or EditorInfo.IME_FLAG_NO_EXTRACT_UI
+        outAttrs.imeOptions =
+            EditorInfo.IME_FLAG_NO_FULLSCREEN or EditorInfo.IME_FLAG_NO_EXTRACT_UI or
+            EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
         composing.finish()
         return TerminalInputConnection()
     }
