@@ -83,10 +83,16 @@ class NioFileSystemRepository(
         }
     }
 
+    /**
+     * `File.usableSpace` goes through `statvfs`. `Files.getFileStore` is not an option: on Android
+     * it reads `/proc/mounts`, which SELinux denies to apps, and throws `SecurityException`
+     * (found on a Pixel 8, where it crashed the install of every distro). A missing directory
+     * reports 0.
+     */
     override suspend fun freeSpaceBytes(): Long = withContext(ioDispatcher) {
         try {
-            Files.getFileStore(root).usableSpace
-        } catch (_: IOException) {
+            root.toFile().usableSpace
+        } catch (_: SecurityException) {
             0L
         }
     }

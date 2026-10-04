@@ -48,6 +48,22 @@ class NioFileSystemRepositoryTest : FileSystemRepositoryContract() {
     }
 
     @Test
+    fun `the repository never asks for a FileStore, which Android denies to apps`() {
+        // Files.getFileStore reads /proc/mounts: fine on the JVM, SecurityException on a device
+        // (it crashed every distro install on a Pixel 8), so host tests cannot see it.
+        val source = java.io.File(
+            "src/main/java/com/qtekfun/ultimateterminal/data/storage/NioFileSystemRepository.kt"
+        ).readText()
+
+        assertFalse(
+            source.lines().any {
+                it.contains("Files.getFileStore(") &&
+                    !it.trim().startsWith("*")
+            }
+        )
+    }
+
+    @Test
     fun `freeSpaceBytes is zero when the storage is missing`() = runTest {
         val missing = NioFileSystemRepository(tempDir.resolve("gone"), Dispatchers.Unconfined)
 
