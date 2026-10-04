@@ -66,6 +66,21 @@ sealed interface AppShortcut {
         override val id = "focus_pane_down"
     }
 
+    /** Turns on or off the typing in every pane at once (SPEC RF-12). */
+    data object ToggleBroadcast : AppShortcut {
+        override val id = "toggle_broadcast"
+    }
+
+    /** Saves the panes of the tab as a named layout. */
+    data object SaveLayout : AppShortcut {
+        override val id = "save_layout"
+    }
+
+    /** Opens the list of saved layouts. */
+    data object OpenLayouts : AppShortcut {
+        override val id = "open_layouts"
+    }
+
     data object Copy : AppShortcut {
         override val id = "copy"
     }
@@ -92,7 +107,8 @@ sealed interface AppShortcut {
         private val fixed = listOf(
             NewTab, CloseTab, NextTab, PreviousTab, Copy, Paste, ZoomIn, ZoomOut, ZoomReset,
             SplitHorizontal, SplitVertical, ClosePane, ToggleZoom,
-            FocusLeft, FocusRight, FocusUp, FocusDown
+            FocusLeft, FocusRight, FocusUp, FocusDown,
+            ToggleBroadcast, SaveLayout, OpenLayouts
         )
         private val byId: Map<String, AppShortcut> =
             (fixed + (1..MAX_DIRECT_TAB).map { SelectTab(it) }).associateBy { it.id }
@@ -242,7 +258,15 @@ class ShortcutMap private constructor(private val bindings: Map<KeyChord, AppSho
                     AppShortcut.FocusRight,
                 KeyChord(KeyEvent.KEYCODE_DPAD_UP, ctrl = true, alt = true) to AppShortcut.FocusUp,
                 KeyChord(KeyEvent.KEYCODE_DPAD_DOWN, ctrl = true, alt = true) to
-                    AppShortcut.FocusDown
+                    AppShortcut.FocusDown,
+                // Layouts and broadcast. Terminator uses Alt+letter for these; Alt+letter is readline's
+                // Meta (Alt+b and Alt+f move by words), so they take Ctrl+Shift instead.
+                KeyChord(KeyEvent.KEYCODE_B, ctrl = true, shift = shift) to
+                    AppShortcut.ToggleBroadcast,
+                KeyChord(KeyEvent.KEYCODE_S, ctrl = true, shift = shift) to
+                    AppShortcut.SaveLayout,
+                KeyChord(KeyEvent.KEYCODE_L, ctrl = true, shift = shift) to
+                    AppShortcut.OpenLayouts
             )
             for (number in 1..AppShortcut.MAX_DIRECT_TAB) {
                 map[KeyChord(KeyEvent.KEYCODE_0 + number, alt = true)] =
