@@ -79,7 +79,12 @@ private const val ENDED_TAB_ALPHA = 0.6f
  * validated on a device yet (see DECISIONS.md, T09).
  */
 @Composable
-fun TabBar(tabs: TabsController, placement: TabBarPlacement, modifier: Modifier = Modifier) {
+fun TabBar(
+    tabs: TabsController,
+    placement: TabBarPlacement,
+    onOpenDistros: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     val items by tabs.tabs.collectAsStateWithLifecycle()
     val choices by tabs.distroChoices.collectAsStateWithLifecycle()
     val closing by tabs.closeConfirmation.collectAsStateWithLifecycle()
@@ -103,7 +108,14 @@ fun TabBar(tabs: TabsController, placement: TabBarPlacement, modifier: Modifier 
                 TabChip(item, items.size, vertical, drag, actions)
             }
         },
-        newTab = { NewTabButton(choices, onNewTab = tabs::newTab, onNewTabIn = tabs::newTabIn) }
+        newTab = {
+            NewTabButton(
+                choices,
+                onNewTab = tabs::newTab,
+                onNewTabIn = { tabs.newTabIn(it) },
+                onOpenDistros = onOpenDistros
+            )
+        }
     )
 
     renaming?.let { item ->
@@ -298,7 +310,8 @@ private fun TabMenu(name: String, actions: TabChipActions) {
 private fun NewTabButton(
     choices: List<DistroOption>,
     onNewTab: () -> Unit,
-    onNewTabIn: (Long?) -> Unit
+    onNewTabIn: (Long?) -> Unit,
+    onOpenDistros: () -> Unit
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val label = stringResource(R.string.tab_new)
@@ -326,6 +339,13 @@ private fun NewTabButton(
                     }
                 )
             }
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.tab_manage_distros)) },
+                onClick = {
+                    menuOpen = false
+                    onOpenDistros()
+                }
+            )
         }
     }
 }

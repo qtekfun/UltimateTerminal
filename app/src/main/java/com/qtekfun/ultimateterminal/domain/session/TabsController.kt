@@ -53,9 +53,12 @@ class TabsController(
 
     override fun newTab() = newTabIn(defaultDistroId(installed.value))
 
-    /** Opens a tab in [distroId], or in the Android shell when it is null. */
-    fun newTabIn(distroId: Long?) {
-        editor.newSession(distroId)
+    /**
+     * Opens a tab in [distroId], or in the Android shell when it is null. [initialCommand] runs
+     * instead of the login shell: the extension point the SSH host list (T14) opens its tabs with.
+     */
+    fun newTabIn(distroId: Long?, initialCommand: List<String>? = null) {
+        editor.newSession(distroId, initialCommand)
     }
 
     /** Closes [id], or asks first when its shell still runs. */

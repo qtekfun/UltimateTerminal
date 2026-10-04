@@ -38,8 +38,11 @@ fun interface ServiceControl {
 interface SessionEditor {
     val state: StateFlow<Sessions>
 
-    /** Starts a shell, which becomes the active session, and records the distro it belongs to. */
-    fun newSession(distroId: Long? = null): SessionId
+    /**
+     * Starts a shell, which becomes the active session, and records the distro it belongs to.
+     * [initialCommand] replaces the login shell with a program (see [SessionInfo.initialCommand]).
+     */
+    fun newSession(distroId: Long? = null, initialCommand: List<String>? = null): SessionId
 
     /** Ends and forgets one session. */
     fun close(id: SessionId)
@@ -83,8 +86,8 @@ class SessionController(
 
     override val state: StateFlow<Sessions> = mutableState.asStateFlow()
 
-    override fun newSession(distroId: Long?): SessionId {
-        val (next, id) = mutableState.value.created(distroId)
+    override fun newSession(distroId: Long?, initialCommand: List<String>?): SessionId {
+        val (next, id) = mutableState.value.created(distroId, initialCommand)
         return startPublished(next, id)
     }
 

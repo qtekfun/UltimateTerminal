@@ -26,6 +26,10 @@ funcionando:
   coincida con lo visible tras redimensionar (ver D-T03-4 a D-T03-6 y T04).
 - T03, release con R8: que los métodos nativos de `JNI` sobrevivan a la minificación (las reglas por
   defecto de Android conservan los nombres de los `native`, pero no se ha comprobado en un APK real).
+- T08b, arranque de una pestaña en una distro: que `libproot.so` se ejecute desde `nativeLibraryDir` con
+  `targetSdk` 28, que `uname -a` y `apk update` funcionen dentro de Alpine, que haya red (DNS), que `su -l <usuario>`
+  funcione, que los montajes de T13 se vean y que el modo de compatibilidad (sin seccomp) arregle lo que falle
+  (ver D-T08b-8 con el criterio de aceptación de la primera prueba en la tablet).
 - T08, servicio en primer plano: que Android lo arranque con el tipo `specialUse` en 12–16, que la
   notificación aparezca y sus acciones (nueva sesión, salir) funcionen, que el shell sobreviva a
   cerrar la actividad y a apagar la pantalla, y que la UI se reconecte a la sesión viva. También el
@@ -1112,3 +1116,57 @@ Nada de esto se ha visto en pantalla; solo hay tests de host.
 3. Que proot monte (`-b`) esas rutas con `--link2symlink` y `--kill-on-exit` sin error, y que `ls ~/storage` muestre los puntos de montaje.
 4. La pantalla: el interruptor, el cambio del permiso en los ajustes del sistema mientras la app está en segundo plano y el botón «Abrir ajustes de la app».
 5. Que desactivar el interruptor no deje montajes colgados en una sesión ya abierta (cambia al abrir la siguiente).
+
+## T08b — Conectar proot a las sesiones
+
+Contexto: tras T07 (instalar distros), T09 (pestañas) y T13 (montajes) nadie lanzaba proot: la fábrica de sesiones
+arrancaba siempre `/system/bin/sh`. T08b une las piezas. **Nada de esto se ha ejecutado en un dispositivo**: todas las
+decisiones sobre el comportamiento real de proot son hipótesis hasta la primera prueba en la tablet (D-T08b-8).
+
+### D-T08b-1 · 2026-10-04 · Un planificador puro decide; la fábrica solo ejecuta
+- **Decisión:** `ProotSessionPlanner` (`data/proot`) recibe un `ShellRequest(distroId, initialCommand)` y devuelve un `LaunchPlan`: `AndroidShell`, `FallbackToAndroid(aviso)`, `InDistro(proot, aviso?)` o `Failed(problema)`. No toca procesos. `AndroidSessionFactory` lo ejecuta.
+- **Motivo:** todas las reglas (qué distro, qué usuario, qué montajes, qué errores) quedan probadas en la JVM. Lo único que necesita un dispositivo es el `fork/exec`.
+- **Alternativas:** decidir dentro de `TerminalSessionHost` (imposible de probar sin PTY); un `runBlocking` en el hilo principal (bloquearía la UI al consultar Room y el disco).
+- **Impacto:** `data/proot` pasa a cubrir también la política de arranque (Kover ≥85 % en `data`). El planificador se inyecta por constructor; los puertos del dispositivo (`ProotRuntime`, `ResolvConfSource`) tienen su implementación Android en `platform/`, sin lógica propia.
+
+### D-T08b-2 · 2026-10-04 · El arranque es asíncrono: el host espera al plan y al tamaño
+- **Decisión:** `SessionFactory.start` no cambia de firma y devuelve el manejador al instante. El host recuerda el tamaño que pide la pantalla; la fábrica lanza una corrutina (hilo principal, que es donde la librería del emulador entrega sus callbacks) que obtiene el plan y llama a `host.launch(...)`. El PTY se crea cuando se conocen **las dos cosas**: qué ejecutar y qué tamaño tiene.
+- **Motivo:** el plan necesita Room y el disco (suspend). Evita tocar la interfaz `SessionFactory` y sus tres fakes de test. La petición (distro y comando) se lee del estado que el controlador ya publica antes de llamar a la fábrica, y hay un test que lo fija.
+- **Alternativas:** añadir el `ShellRequest` a `SessionFactory.start` (rompe los fakes y no resuelve la parte suspend).
+- **Impacto:** `TerminalSessionHost.stop()` olvida lo que había que ejecutar; «reiniciar» abre una sesión nueva (ya era así). Un `Handle.stop()` cancela la corrutina, así que una pestaña cerrada mientras arrancaba no deja nada.
+
+### D-T08b-3 · 2026-10-04 · Qué se hace cuando no se puede abrir la distro
+- **Decisión:** sin distro pedida → shell de Android sin aviso (es la elección explícita «Android shell»). Distro pedida que no está lista o ya no existe → **shell de Android con un aviso descartable** y acceso a la pantalla de distros. Distro lista pero sin sus archivos, proot ausente, usuario no válido o sin carpeta temporal → **error explicado** (`LaunchProblem`) y la sesión termina como fallida; nunca una excepción.
+- **Un comando inicial nunca cae al shell de Android:** si la distro no sirve, falla con un mensaje, porque ejecutar otra cosa en su lugar (un `ssh` que se convierte en un shell local) sería engañoso.
+- **Motivo:** la SPEC pide «sin distro lista, fallback al shell de Android» y «errores sellados, nunca un crash». Se separa «no hay distro todavía» (normal en un primer arranque) de «algo está roto».
+- **Impacto:** el aviso se dibuja encima de las primeras filas (no cambia el tamaño del PTY) y los textos están en inglés y español.
+
+### D-T08b-4 · 2026-10-04 · Pestaña por defecto: la distro predeterminada si está lista
+- **Decisión:** al arrancar la app y desde la notificación, `SessionManager.newDefaultSession()` consulta la distro predeterminada y abre en ella solo si está `READY`; si no, shell de Android. El botón «+» ya hacía lo mismo.
+- **Motivo:** antes el arranque pasaba siempre `null` (shell de Android) aunque hubiera una distro predeterminada.
+- **Alternativas:** abrir siempre el shell de Android (ignora la distro predeterminada).
+
+### D-T08b-5 · 2026-10-04 · Usuario de la distro y comando inicial: listas de argumentos, no líneas de shell
+- **Decisión:** `root` ejecuta el shell o el comando directamente (`-0`). Otro usuario pasa por `su -l <usuario>`; con comando inicial, `su -l <usuario> -c '<comando citado>'`. El nombre de usuario se valida con `[a-z_][a-z0-9_-]{0,31}` (un nombre que empiece por `-` se leería como opción de `su`). El comando es una **lista de argumentos** (no una línea): solo se cita (comillas simples POSIX) en el caso de `su -c`, que exige una cadena. Se rechazan comandos vacíos o con NUL.
+- **Motivo:** el comando inicial lo usará T14 con datos del usuario (host, usuario SSH, ruta de clave); una línea de shell sería un riesgo de inyección. Hay tests con entradas hostiles.
+- **Hipótesis sin validar:** que `su -l` funcione con proot y `-0` en Debian, Ubuntu y Alpine (busybox `su`), y que el usuario exista en la distro; si no existe, el shell termina con error de `su`.
+- **Límite:** `/bin/sh -l` es el shell de login por defecto en las tres distros (dash en Debian/Ubuntu, ash en Alpine); no se elige `bash` aunque exista.
+
+### D-T08b-6 · 2026-10-04 · `/etc/resolv.conf` desde los DNS del dispositivo, con permiso `ACCESS_NETWORK_STATE`
+- **Decisión:** la app escribe `filesDir/resolv.conf` con los DNS de la red activa (`ConnectivityManager`) y lo monta con `-b` sobre `/etc/resolv.conf` de la distro. Solo se admiten literales IPv4/IPv6 (sin zona ni nombres ni saltos de línea) y como máximo tres (límite de glibc). Si el dispositivo no informa de ninguno, se usan `1.1.1.1` y `9.9.9.9`. Si no se puede escribir el fichero, la sesión arranca igual con un aviso.
+- **Motivo:** Android no tiene `/etc/resolv.conf` y el de un rootfs apunta a un resolvedor inexistente. No se depende de rutas de Termux. Montar un fichero evita modificar el rootfs.
+- **Privacidad (para `PRIVACY.md`, T21):** los DNS de reserva son resolvedores públicos de terceros (Cloudflare y Quad9); solo se usan cuando el dispositivo no da ninguno. `ACCESS_NETWORK_STATE` es un permiso normal (no se pide al usuario) y solo sirve para leer esos servidores.
+- **Alternativas:** escribir `8.8.8.8` siempre (envía todo a un tercero aunque la red tenga DNS propio, y rompe DNS internos); copiar el `/etc/resolv.conf` del sistema (no existe desde Android 8).
+- **Sin validar:** que `getLinkProperties(activeNetwork)` devuelva servidores en todas las redes (VPN, datos móviles) y que el bind de un fichero sobre `/etc/resolv.conf` funcione con proot.
+
+### D-T08b-7 · 2026-10-04 · Modo de compatibilidad (proot sin seccomp) como ajuste visible
+- **Decisión:** `AppSettings.prootCompatibilityMode` (clave `proot_compatibility_mode`, desactivado) pone `PROOT_NO_SECCOMP=1`. Hay un interruptor en la pantalla de distros y se aplica a las pestañas que se abran después.
+- **Motivo:** en algunos núcleos el filtro seccomp hace que proot falle o se cuelgue; es lo primero que hay que probar si una distro no arranca, y sin ajuste habría que recompilar la app para probarlo en la tablet. Entra en la copia de ajustes de T15 con el resto.
+- **Coste:** sin seccomp, proot intercepta todas las llamadas al sistema con `ptrace`: es notablemente más lento.
+
+### D-T08b-8 · 2026-10-04 · Hipótesis sin validar y criterio de aceptación de la primera prueba real
+- **Ejecutar desde `nativeLibraryDir`:** el manifiesto ya declara `android:extractNativeLibs="true"` y Gradle `useLegacyPackaging = true`, así que los binarios son ficheros reales. Con `targetSdk` 28 la app puede ejecutarlos; no se ha comprobado en Android 10–16 (SELinux de `untrusted_app_27/28`).
+- **`PROOT_TMP_DIR`:** `cacheDir/proot-tmp`; proot no tiene `/tmp` en Android.
+- **Binds:** `/dev`, `/proc`, `/sys`, `/etc/resolv.conf` y los de T13. Android 8+ no deja leer `/proc/stat` ni `/proc/loadavg` a las apps: `top`, `uptime` o `free` pueden fallar. Termux lo resuelve con ficheros falsos; no se hace aquí todavía.
+- **El *phantom process killer* de Android 12+** puede matar procesos hijo de proot aunque el servicio esté en primer plano (D-T08-5).
+- **Criterio de aceptación (primera prueba en la tablet, solo cuando el usuario la autorice):** (1) instalar Alpine desde la pantalla de distros; (2) abrir una pestaña nueva y comprobar que el prompt es el de Alpine, no el de Android; (3) `uname -a` y `cat /etc/os-release` muestran Alpine; (4) `apk update` descarga índices (red y DNS); (5) con el almacenamiento compartido activado, `ls ~/storage/downloads`; (6) cerrar y reabrir la app con la sesión viva; (7) si (2) o (3) fallan, repetir con el modo de compatibilidad activado y anotar el resultado aquí. Hasta entonces, ninguna de estas afirmaciones es cierta.

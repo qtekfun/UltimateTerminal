@@ -19,6 +19,11 @@ data class AppSettings(
     val keepAwake: Boolean = false,
     /** Mount the device's shared storage in `~/storage` of every distro (SPEC RF-05). Off by default. */
     val sharedStorage: Boolean = false,
+    /**
+     * Run proot without its seccomp filter: slower, but a way out on a kernel where the filter makes
+     * it misbehave. Off by default; it is the first thing to try if a distro does not start.
+     */
+    val prootCompatibilityMode: Boolean = false,
     val defaultScrollbackLines: Int = Profile.DEFAULT_SCROLLBACK,
     /** The id of the terminal color scheme in use: a built-in one or an imported one. */
     val terminalSchemeId: String = BuiltInSchemes.DEFAULT_ID,

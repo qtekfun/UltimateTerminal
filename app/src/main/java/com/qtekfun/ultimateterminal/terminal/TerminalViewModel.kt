@@ -5,6 +5,7 @@ package com.qtekfun.ultimateterminal.terminal
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.qtekfun.ultimateterminal.domain.launch.LaunchMessage
 import com.qtekfun.ultimateterminal.domain.repository.DistroRepository
 import com.qtekfun.ultimateterminal.domain.session.PaneController
 import com.qtekfun.ultimateterminal.domain.session.SessionId
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -63,6 +65,18 @@ class TerminalViewModel @Inject constructor(
     /** The exit status of the active shell once it has ended, null while it runs. */
     val exitStatus: StateFlow<Int?> = manager.state
         .map { (it.active?.state as? SessionState.Exited)?.status }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** What the active tab could not start, or started with a caveat; null when all went well. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val launchMessage: StateFlow<LaunchMessage?> = manager.activeHost
+        .flatMapLatest { host ->
+            host?.let {
+                combine(it.problem, it.notice) { problem, notice ->
+                    problem?.let(LaunchMessage::Problem) ?: notice?.let(LaunchMessage::Notice)
+                }
+            } ?: flowOf(null)
+        }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val fontSize = FontSizeController()
     val selection = SelectionController(manager::currentHost)
@@ -133,7 +147,7 @@ class TerminalViewModel @Inject constructor(
         // are no sessions and the screen is closing, so nothing may start a new one.
         if (!started) {
             started = true
-            if (manager.state.value.items.isEmpty()) manager.newSession()
+            if (manager.state.value.items.isEmpty()) manager.newDefaultSession()
         }
         topRowState.value = clampTopRow(topRowState.value, transcriptRows)
     }

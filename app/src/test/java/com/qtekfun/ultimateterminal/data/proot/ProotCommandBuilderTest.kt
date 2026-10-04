@@ -85,4 +85,50 @@ class ProotCommandBuilderTest {
         val env = builder.build(ProotSession(rootfs, disableSeccomp = true)).environment
         assertEquals("1", env["PROOT_NO_SECCOMP"])
     }
+
+    @Test
+    fun `a named user runs through su with the home of that user`() {
+        val command = builder.build(ProotSession(rootfs, user = "dev")).command
+
+        assertTrue("HOME=/home/dev" in command)
+        assertEquals(listOf("su", "-l", "dev"), command.takeLast(3))
+        assertTrue("-0" in command)
+    }
+
+    @Test
+    fun `root as a named user is the same as no user`() {
+        assertEquals(
+            builder.build(ProotSession(rootfs)).command,
+            builder.build(ProotSession(rootfs, user = "root")).command
+        )
+    }
+
+    @Test
+    fun `a command runs as an argument list for root`() {
+        val command = builder.build(
+            ProotSession(rootfs, command = listOf("ssh", "-p", "22", "host"))
+        ).command
+
+        assertEquals(listOf("ssh", "-p", "22", "host"), command.takeLast(4))
+        assertFalse("/bin/sh" in command)
+    }
+
+    @Test
+    fun `a command for another user is one quoted string after su -c`() {
+        val command = builder.build(
+            ProotSession(rootfs, user = "dev", command = listOf("echo", "a b", "it's"))
+        ).command
+
+        assertEquals(
+            listOf("su", "-l", "dev", "-c", "'echo' 'a b' 'it'\\''s'"),
+            command.takeLast(5)
+        )
+    }
+
+    @Test
+    fun `seccomp can be turned off through the environment`() {
+        val env = builder.build(ProotSession(rootfs, disableSeccomp = true)).environment
+
+        assertEquals("1", env["PROOT_NO_SECCOMP"])
+    }
 }

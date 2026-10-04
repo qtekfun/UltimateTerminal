@@ -4,6 +4,10 @@
 package com.qtekfun.ultimateterminal.terminal
 
 import android.content.Context
+import com.qtekfun.ultimateterminal.data.proot.ProotSessionPlanner
+import com.qtekfun.ultimateterminal.domain.launch.ShellRequest
+import com.qtekfun.ultimateterminal.domain.model.DistroState
+import com.qtekfun.ultimateterminal.domain.repository.DistroRepository
 import com.qtekfun.ultimateterminal.domain.session.PaneEditor
 import com.qtekfun.ultimateterminal.domain.session.SessionController
 import com.qtekfun.ultimateterminal.domain.session.SessionId
@@ -13,10 +17,14 @@ import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 /**
  * The one place that owns the terminal sessions. It lives as long as the process, not as long as an
@@ -24,8 +32,14 @@ import kotlinx.coroutines.flow.map
  * keeps the process alive. Use it from the main thread only.
  */
 @Singleton
-class SessionManager @Inject constructor(@ApplicationContext context: Context) {
-    private val factory = AndroidSessionFactory(context)
+class SessionManager @Inject constructor(
+    @ApplicationContext context: Context,
+    planner: ProotSessionPlanner,
+    private val distros: DistroRepository
+) {
+    // The emulator library delivers its callbacks on the main thread, so everything starts there.
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val factory = AndroidSessionFactory(context, planner, ::requestOf, scope)
     private val controller = SessionController(factory, ServiceLauncher(context))
 
     val state: StateFlow<Sessions> get() = controller.state
@@ -42,7 +56,25 @@ class SessionManager @Inject constructor(@ApplicationContext context: Context) {
     /** The host of any session, which a pane of a split tab draws. */
     fun hostOf(id: SessionId): TerminalSessionHost? = factory.host(id)
 
-    fun newSession(distroId: Long? = null): SessionId = controller.newSession(distroId)
+    /** What session [id] was asked to run, read from the state published before its shell starts. */
+    private fun requestOf(id: SessionId): ShellRequest =
+        controller.state.value.items.firstOrNull { it.id == id }
+            ?.let { ShellRequest(it.distroId, it.initialCommand) }
+            ?: ShellRequest(distroId = null)
+
+    /**
+     * Opens a tab in the default distro if it is ready, else in Android's shell: what the app does
+     * when it starts and when the notification asks for a new session.
+     */
+    fun newDefaultSession() {
+        scope.launch {
+            val ready = distros.getDefault()?.takeIf { it.state == DistroState.READY }
+            controller.newSession(ready?.id)
+        }
+    }
+
+    fun newSession(distroId: Long? = null, initialCommand: List<String>? = null): SessionId =
+        controller.newSession(distroId, initialCommand)
 
     fun close(id: SessionId) = controller.close(id)
 
@@ -57,6 +89,6 @@ class SessionManager @Inject constructor(@ApplicationContext context: Context) {
     fun restartActive() {
         val ended = controller.state.value.active ?: return
         controller.close(ended.id)
-        controller.newSession(ended.distroId)
+        controller.newSession(ended.distroId, ended.initialCommand)
     }
 }

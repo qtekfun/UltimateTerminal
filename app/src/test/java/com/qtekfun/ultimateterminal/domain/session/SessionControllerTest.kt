@@ -3,10 +3,12 @@
 
 package com.qtekfun.ultimateterminal.domain.session
 
+import com.qtekfun.ultimateterminal.domain.model.SplitOrientation
 import com.qtekfun.ultimateterminal.domain.terminal.GridSize
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -235,5 +237,50 @@ class SessionControllerTest {
 
         assertEquals(1, handle.stopped)
         assertTrue(racing.state.value.items.isEmpty())
+    }
+
+    @Test
+    fun aSessionRemembersTheDistroAndProgramItWasAskedToRun() {
+        val id = controller.newSession(distroId = 4L, initialCommand = listOf("ssh", "host"))
+
+        val info = controller.state.value.items.single { it.id == id }
+        assertEquals(4L, info.distroId)
+        assertEquals(listOf("ssh", "host"), info.initialCommand)
+    }
+
+    @Test
+    fun aPlainSessionHasNoProgram() {
+        val id = controller.newSession()
+
+        assertNull(controller.state.value.items.single { it.id == id }.initialCommand)
+    }
+
+    @Test
+    fun theRequestIsPublishedBeforeTheShellStartsSoTheFactoryCanReadIt() {
+        var seen: SessionInfo? = null
+        lateinit var probing: SessionController
+        probing = SessionController(
+            { id, _, _ ->
+                seen = probing.state.value.items.firstOrNull { it.id == id }
+                FakeHandle()
+            },
+            service
+        )
+
+        probing.newSession(distroId = 9L, initialCommand = listOf("htop"))
+
+        assertEquals(9L, seen?.distroId)
+        assertEquals(listOf("htop"), seen?.initialCommand)
+    }
+
+    @Test
+    fun aSplitOpensInTheSameDistroButDoesNotRepeatTheProgram() {
+        controller.newSession(distroId = 4L, initialCommand = listOf("ssh", "host"))
+
+        val split = checkNotNull(controller.splitActive(SplitOrientation.HORIZONTAL))
+
+        val info = controller.state.value.items.single { it.id == split }
+        assertEquals(4L, info.distroId)
+        assertNull(info.initialCommand)
     }
 }

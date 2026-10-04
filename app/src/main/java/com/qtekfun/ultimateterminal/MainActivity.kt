@@ -11,9 +11,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -24,9 +21,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.qtekfun.ultimateterminal.domain.model.AppSettings
 import com.qtekfun.ultimateterminal.domain.repository.SettingsRepository
@@ -101,14 +95,9 @@ class MainActivity : ComponentActivity() {
                     scope.launch {
                         settingsRepository.update { it.copy(terminalFontSizeSp = size) }
                     }
-                }
+                },
+                onOpenDistros = { showDistros = true }
             )
-            // Temporary entry point to the distro screen (T07): it belongs in the tab bar's
-            // "new tab" menu, which T09 owns; see DECISIONS.md, D-T07-7.
-            TextButton(
-                onClick = { showDistros = true },
-                modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding()
-            ) { Text(stringResource(R.string.distros_open)) }
             if (showDistros) DistroScreen(onClose = { showDistros = false })
         }
         SessionPrompts(hasRunningSession = sessions.needsService)

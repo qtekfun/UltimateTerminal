@@ -58,6 +58,7 @@ import com.qtekfun.ultimateterminal.domain.session.reserveForTabBar
 import com.qtekfun.ultimateterminal.domain.session.tabBarPlacement
 import com.qtekfun.ultimateterminal.domain.terminal.CellPosition
 import com.qtekfun.ultimateterminal.domain.terminal.EdgeInsets
+import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.extraKeysHeightPx
 import com.qtekfun.ultimateterminal.domain.terminal.reserveBottom
 import com.qtekfun.ultimateterminal.domain.terminal.terminalLayoutFor
@@ -83,6 +84,7 @@ fun TerminalScreen(
     scheme: TerminalColorScheme,
     initialFontSizeSp: Float,
     onFontSizeChanged: (Float) -> Unit,
+    onOpenDistros: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: TerminalViewModel = viewModel()
 ) {
@@ -91,7 +93,6 @@ fun TerminalScreen(
     SchemeAndFontEffects(viewModel, scheme, initialFontSizeSp, onFontSizeChanged)
     val fontSizeSp by viewModel.fontSize.sizeSp.collectAsStateWithLifecycle()
     val extraKeys by viewModel.extraKeys.collectAsStateWithLifecycle()
-    val sticky by viewModel.stickyModifiers.collectAsStateWithLifecycle()
     val painter = rememberTerminalPainter(fontSizeSp, scheme)
     val inputView = remember { arrayOfNulls<TerminalInputView>(1) }
 
@@ -128,24 +129,53 @@ fun TerminalScreen(
     ) {
         val padded = Modifier.fillMaxSize().padding(insets.toPadding(density))
         val pane = @Composable { paneModifier: Modifier ->
-            Column(paneModifier) {
-                TerminalPanes(viewModel, painter, inputView, Modifier.weight(1f).fillMaxWidth())
-                if (extraKeys.visible) {
-                    ExtraKeysRow(extraKeys, sticky, viewModel.keyboard::onExtraKey)
-                }
-            }
+            TerminalPane(viewModel, painter, inputView, extraKeys, onOpenDistros, paneModifier)
         }
         if (placement == TabBarPlacement.Top) {
             Column(padded) {
-                TabBar(viewModel.tabs, placement, Modifier.fillMaxWidth().height(TabBarHeight))
+                TabBar(
+                    viewModel.tabs,
+                    placement,
+                    onOpenDistros,
+                    Modifier.fillMaxWidth().height(TabBarHeight)
+                )
                 pane(Modifier.weight(1f).fillMaxWidth())
             }
         } else {
             Row(padded) {
-                TabBar(viewModel.tabs, placement, Modifier.fillMaxHeight().width(TabBarSideWidth))
+                TabBar(
+                    viewModel.tabs,
+                    placement,
+                    onOpenDistros,
+                    Modifier.fillMaxHeight().width(TabBarSideWidth)
+                )
                 pane(Modifier.weight(1f).fillMaxHeight())
             }
         }
+    }
+}
+
+/** The terminal, the extra-keys row under it and, over the first rows, what the tab could not start. */
+@Composable
+private fun TerminalPane(
+    viewModel: TerminalViewModel,
+    painter: TerminalPainter,
+    inputView: Array<TerminalInputView?>,
+    extraKeys: ExtraKeysConfig,
+    onOpenDistros: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val sticky by viewModel.stickyModifiers.collectAsStateWithLifecycle()
+    val launchMessage by viewModel.launchMessage.collectAsStateWithLifecycle()
+    Box(modifier) {
+        Column(Modifier.fillMaxSize()) {
+            TerminalPanes(viewModel, painter, inputView, Modifier.weight(1f).fillMaxWidth())
+            if (extraKeys.visible) {
+                ExtraKeysRow(extraKeys, sticky, viewModel.keyboard::onExtraKey)
+            }
+        }
+        // Over the first rows, so the pty's size does not change when it appears.
+        LaunchMessageBanner(launchMessage, onOpenDistros, Modifier.align(Alignment.TopCenter))
     }
 }
 

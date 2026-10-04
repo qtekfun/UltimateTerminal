@@ -23,7 +23,9 @@ data class SessionInfo(
     val id: SessionId,
     val state: SessionState,
     val title: String? = null,
-    val distroId: Long? = null
+    val distroId: Long? = null,
+    /** A program and arguments the tab runs instead of the login shell (SSH hosts); never a shell line. */
+    val initialCommand: List<String>? = null
 )
 
 /**
@@ -60,10 +62,18 @@ data class Sessions(
     val needsService: Boolean get() = runningCount > 0
 
     /** A new running session, which becomes the active one. */
-    fun created(distroId: Long? = null): Pair<Sessions, SessionId> {
+    fun created(
+        distroId: Long? = null,
+        initialCommand: List<String>? = null
+    ): Pair<Sessions, SessionId> {
         val id = SessionId(nextId)
         val next = copy(
-            items = items + SessionInfo(id, SessionState.Running, distroId = distroId),
+            items = items + SessionInfo(
+                id,
+                SessionState.Running,
+                distroId = distroId,
+                initialCommand = initialCommand
+            ),
             activeId = id,
             nextId = nextId + 1
         )
