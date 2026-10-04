@@ -1939,3 +1939,8 @@ Defectos vistos (sin corregir todavía):
 - **El diálogo "Mantener las sesiones activas" y la pantalla de Apariencia siguen con el aspecto de Material;** las rehacen T22c y T16.
 - **No comprobado todavía:** el rendimiento al desplazar con la barra translúcida, el repaso de TalkBack, la rotación y todo lo de la tablet.
 
+### D-REQ-4 · 2026-10-04 · Fedora pasa del backlog a tarea (T24)
+- **Decisión:** el usuario dijo que su distro fetiche es Fedora y preguntó por qué no estaba. En la entrevista inicial se dejaron Arch y Fedora en el backlog (SPEC §2); ahora Fedora entra en el plan como T24. Arch sigue en el backlog.
+- **Por qué no era trivial:** las imágenes de Fedora vienen en tar.xz y el extractor de T07 solo lee gzip (D-T07-3), así que T24 incluye descompresión xz con las mismas reglas de seguridad.
+- **Impacto:** SPEC §2 y PLAN actualizados. Se acreditará `org.tukaani:xz` en `THIRD_PARTY_NOTICES.md`.
+
