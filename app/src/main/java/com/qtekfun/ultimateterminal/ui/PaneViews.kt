@@ -66,6 +66,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 private val DividerThickness = 4.dp
 private val DividerTouchTarget = 48.dp
 private val PaneMenuButtonSize = 48.dp
+private const val MENU_ALPHA = 0.85f
 private val FocusBorder = 2.dp
 private val NoFrames = MutableStateFlow(0)
 
@@ -175,7 +176,7 @@ private fun PanePlacement(
         .size(size.width, size.height)
         .clipToBounds()
     if (description != null) box = box.semantics { contentDescription = description }
-    if (outlined) box = box.border(FocusBorder, MaterialTheme.colorScheme.primary)
+    if (outlined) box = box.border(FocusBorder, currentChrome().accent)
     Box(box, content = content)
 }
 
@@ -230,7 +231,7 @@ private fun DividerHandle(divider: Divider, onDrag: (pointerPx: Float) -> Unit) 
             Modifier
                 .align(Alignment.Center)
                 .size(with(density) { bar.width.toDp() }, with(density) { bar.height.toDp() })
-                .background(MaterialTheme.colorScheme.outline)
+                .background(currentChrome().outline)
         )
     }
 }
@@ -246,17 +247,18 @@ private fun PaneMenu(
     val isSplit by viewModel.panes.isSplit.collectAsStateWithLifecycle()
     val isZoomed by viewModel.panes.isZoomed.collectAsStateWithLifecycle()
     var open by remember { mutableStateOf(false) }
+    val chrome = currentChrome()
     val description = stringResource(R.string.pane_menu)
     Box(modifier) {
         Box(
             Modifier
                 .size(PaneMenuButtonSize)
-                .background(Color.Black.copy(alpha = 0.35f), RoundedCornerShape(24.dp))
+                .background(chrome.surface.copy(alpha = MENU_ALPHA), RoundedCornerShape(24.dp))
                 .semantics { contentDescription = description }
                 .pointerInput(Unit) { detectTapGestures { open = true } },
             contentAlignment = Alignment.Center
         ) {
-            Text("⋮", color = Color.White, style = MaterialTheme.typography.titleLarge)
+            Text("⋮", color = chrome.onSurface, style = MaterialTheme.typography.titleLarge)
         }
         val close = { open = false }
         DropdownMenu(expanded = open, onDismissRequest = close) {

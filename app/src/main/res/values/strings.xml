@@ -210,4 +210,104 @@
     <string name="launch_problem_unexpected">The shell could not start.</string>
     <string name="proot_compat_label">Compatibility mode</string>
     <string name="proot_compat_explanation">Runs proot without its seccomp filter. It is slower, but try it if a distro does not start. It applies to the tabs you open afterwards.</string>
+
+    <!-- Appearance (T12c) -->
+    <string name="appearance_open">Appearance…</string>
+    <string name="appearance_title">Appearance</string>
+    <string name="appearance_close">Close</string>
+    <string name="appearance_ok">OK</string>
+    <string name="appearance_cancel">Cancel</string>
+    <string name="appearance_save">Save</string>
+    <string name="appearance_remove">Remove</string>
+    <string name="appearance_reset">Reset the design</string>
+    <string name="appearance_preview_description">Preview of the terminal with the chosen colors, font and spacing</string>
+    <string name="appearance_section_theme">Theme</string>
+    <string name="appearance_theme_system">System</string>
+    <string name="appearance_theme_light">Light</string>
+    <string name="appearance_theme_dark">Dark</string>
+    <string name="appearance_oled">OLED black</string>
+    <string name="appearance_oled_hint">Pure black background on dark themes, so the pixels of an OLED screen switch off.</string>
+    <string name="appearance_dynamic">Dynamic colors</string>
+    <string name="appearance_dynamic_hint">Take the colors of menus and dialogs from the wallpaper (Android 12 and later).</string>
+    <string name="appearance_section_schemes">Color scheme</string>
+    <string name="appearance_scheme_menu">Options for the scheme %1$s</string>
+    <string name="appearance_scheme_edit">Edit</string>
+    <string name="appearance_scheme_duplicate">Duplicate</string>
+    <string name="appearance_scheme_export">Export…</string>
+    <string name="appearance_scheme_delete">Delete</string>
+    <string name="appearance_scheme_new">New scheme</string>
+    <string name="appearance_scheme_import">Import…</string>
+    <string name="appearance_scheme_new_name">My scheme</string>
+    <string name="appearance_scheme_copy_of">Copy of</string>
+    <string name="appearance_scheme_delete_title">Delete this scheme?</string>
+    <string name="appearance_scheme_delete_message">%1$s will be removed. If it is the one in use, the default scheme takes over.</string>
+    <string name="appearance_section_font">Font</string>
+    <string name="appearance_font_hint">The font must be monospaced. A font you import stays on this device and is never shared or uploaded; its license is your responsibility.</string>
+    <string name="appearance_font_bundled">JetBrains Mono (included)</string>
+    <string name="appearance_font_import">Import a font…</string>
+    <string name="appearance_font_delete">Remove the font %1$s</string>
+    <string name="appearance_font_size">Font size</string>
+    <string name="appearance_line_spacing">Line spacing</string>
+    <string name="appearance_letter_spacing">Letter spacing</string>
+    <string name="appearance_section_design">Design</string>
+    <string name="appearance_margin">Margin around the text</string>
+    <string name="appearance_corner">Corner radius of tabs and keys</string>
+    <string name="appearance_cursor">Cursor</string>
+    <string name="appearance_cursor_block">Block</string>
+    <string name="appearance_cursor_underline">Underline</string>
+    <string name="appearance_cursor_bar">Bar</string>
+    <string name="appearance_cursor_blink">Blinking cursor</string>
+    <string name="appearance_chrome">Colors of the tabs and the keys</string>
+    <string name="appearance_chrome_scheme">From the color scheme</string>
+    <string name="appearance_chrome_system">From the system theme</string>
+    <string name="appearance_editor_new">New scheme</string>
+    <string name="appearance_editor_edit">Edit scheme</string>
+    <string name="appearance_editor_name">Name</string>
+    <string name="appearance_editor_name_invalid">Name length: 1 to %1$d.</string>
+    <string name="appearance_slot_foreground">Text</string>
+    <string name="appearance_slot_background">Background</string>
+    <string name="appearance_slot_cursor">Cursor</string>
+    <string name="appearance_slot_selection">Selection</string>
+    <string name="appearance_color_row">%1$s, %2$s. Tap to change.</string>
+    <string name="appearance_contrast_title">Hard to read on this background</string>
+    <string name="appearance_contrast_item">%1$s: contrast %2$s to 1 (at least %3$s to 1 recommended)</string>
+    <string name="appearance_picker_title">Color: %1$s</string>
+    <string name="appearance_picker_hex">Hex color</string>
+    <string name="appearance_picker_hex_invalid">Use the form #rrggbb.</string>
+    <string name="appearance_picker_red">Red</string>
+    <string name="appearance_picker_green">Green</string>
+    <string name="appearance_picker_blue">Blue</string>
+    <string name="appearance_msg_font_imported">%1$s imported.</string>
+    <string name="appearance_msg_font_not_a_font">That file is not a TrueType or OpenType font.</string>
+    <string name="appearance_msg_font_too_large">That font is too large (8 MB at most).</string>
+    <string name="appearance_msg_font_unreadable">Android could not load that font.</string>
+    <string name="appearance_msg_font_not_monospaced">That font is not monospaced, so the terminal grid would not line up.</string>
+    <string name="appearance_msg_font_missing_glyphs">That font lacks letters a terminal needs.</string>
+    <string name="appearance_msg_font_io">The font could not be saved.</string>
+    <string name="appearance_msg_font_name_taken">A font called %1$s is already imported.</string>
+    <string name="appearance_msg_font_limit">You have imported the most fonts allowed.</string>
+    <string name="appearance_msg_scheme_imported">%1$s imported.</string>
+    <string name="appearance_msg_scheme_exported">Scheme exported.</string>
+    <string name="appearance_msg_scheme_invalid">That file is not a valid color scheme.</string>
+    <string name="appearance_msg_scheme_name_taken">A scheme called %1$s already exists.</string>
+    <string name="appearance_msg_scheme_limit">You have the most schemes allowed.</string>
+    <string name="appearance_msg_file_failed">The file could not be read or written.</string>
+    <string-array name="appearance_ansi_names">
+        <item>Black</item>
+        <item>Red</item>
+        <item>Green</item>
+        <item>Yellow</item>
+        <item>Blue</item>
+        <item>Magenta</item>
+        <item>Cyan</item>
+        <item>White</item>
+        <item>Bright black</item>
+        <item>Bright red</item>
+        <item>Bright green</item>
+        <item>Bright yellow</item>
+        <item>Bright blue</item>
+        <item>Bright magenta</item>
+        <item>Bright cyan</item>
+        <item>Bright white</item>
+    </string-array>
 </resources>

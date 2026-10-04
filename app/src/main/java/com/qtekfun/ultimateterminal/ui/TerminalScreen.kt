@@ -27,8 +27,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -45,6 +47,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -53,6 +56,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qtekfun.ultimateterminal.R
+import com.qtekfun.ultimateterminal.domain.appearance.TerminalAppearance
 import com.qtekfun.ultimateterminal.domain.session.TabBarPlacement
 import com.qtekfun.ultimateterminal.domain.session.TabsController
 import com.qtekfun.ultimateterminal.domain.session.reserveForTabBar
@@ -65,16 +69,15 @@ import com.qtekfun.ultimateterminal.domain.terminal.reserveBottom
 import com.qtekfun.ultimateterminal.domain.terminal.terminalLayoutFor
 import com.qtekfun.ultimateterminal.domain.terminal.withTextMargin
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
+import com.qtekfun.ultimateterminal.terminal.PainterStyle
 import com.qtekfun.ultimateterminal.terminal.TerminalInputView
 import com.qtekfun.ultimateterminal.terminal.TerminalPainter
 import com.qtekfun.ultimateterminal.terminal.TerminalTypefaces
 import com.qtekfun.ultimateterminal.terminal.TerminalViewModel
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
-
-/** Air around the text, so it does not touch the edge of the screen (T08c). */
-private val TextMargin = 6.dp
 
 /**
  * The terminal: a Compose canvas that draws the emulator, plus an invisible view that takes the
@@ -86,78 +89,81 @@ private val TextMargin = 6.dp
  */
 @Composable
 fun TerminalScreen(
-    scheme: TerminalColorScheme,
+    look: TerminalLook,
     initialFontSizeSp: Float,
     onFontSizeChanged: (Float) -> Unit,
-    onOpenDistros: () -> Unit,
-    onOpenSsh: () -> Unit,
+    screens: ScreenLinks,
     modifier: Modifier = Modifier,
     viewModel: TerminalViewModel = viewModel()
 ) {
+    val (scheme, appearance, typefaces) = look
     val density = LocalDensity.current
     // Before the layout effect below, so a shell that starts on the first layout has the colors.
     SchemeAndFontEffects(viewModel, scheme, initialFontSizeSp, onFontSizeChanged)
     val fontSizeSp by viewModel.fontSize.sizeSp.collectAsStateWithLifecycle()
-    val extraKeys by viewModel.extraKeys.collectAsStateWithLifecycle()
-    val painter = rememberTerminalPainter(fontSizeSp, scheme)
+    val painter = rememberTerminalPainter(fontSizeSp, scheme, appearance, typefaces)
     val inputView = remember { arrayOfNulls<TerminalInputView>(1) }
 
     var windowSize by remember { mutableStateOf(IntSize.Zero) }
     val insets = coveredEdges()
-    // The extra-keys row sits above the keyboard, so its height is not terminal area.
-    val extraKeysPx = extraKeysHeightPx(extraKeys, with(density) { ExtraKeyRowHeight.roundToPx() })
-    // The tab bar is a row on top of narrow windows and a column beside the terminal on wide ones;
-    // either way the grid must not count the space it takes.
-    val placement = tabBarPlacement(with(density) { windowSize.width.toDp().value.toInt() })
-    val tabBarPx = with(density) {
-        (if (placement == TabBarPlacement.Top) TabBarHeight else TabBarSideWidth).roundToPx()
-    }
-    val textMarginPx = with(density) { TextMargin.roundToPx() }
-    LaunchedEffect(windowSize, insets, extraKeysPx, placement, tabBarPx, painter, textMarginPx) {
-        if (windowSize != IntSize.Zero) {
-            viewModel.onLayoutChanged(
-                terminalLayoutFor(
-                    windowSize.width,
-                    windowSize.height,
-                    insets.reserveBottom(extraKeysPx).reserveForTabBar(placement, tabBarPx)
-                        .withTextMargin(textMarginPx),
-                    painter.cellWidth,
-                    painter.cellHeight
-                )
-            )
-        }
-    }
+    val placement = tabBarPlacementOf(windowSize, density)
+    LayoutEffect(viewModel, painter, windowSize, insets, appearance.marginDp)
 
     // The scheme's background fills the whole window, bars included; the content is padded by the
     // same insets the layout was computed with, so what is drawn is exactly what the pty is told.
-    Box(
-        modifier.fillMaxSize().background(Color(scheme.background)).onSizeChanged {
-            windowSize = it
-        }
-    ) {
-        val padded = Modifier.fillMaxSize().padding(insets.toPadding(density))
-        val links = TabBarLinks(
-            openDistros = onOpenDistros,
-            openSsh = onOpenSsh,
-            splitRight = viewModel.panes::splitVertical,
-            splitDown = viewModel.panes::splitHorizontal
-        )
-        val pane = @Composable { paneModifier: Modifier ->
-            TerminalPane(viewModel, painter, inputView, extraKeys, onOpenDistros, paneModifier)
-        }
-        if (placement == TabBarPlacement.Top) {
-            Column(padded) {
-                TabBarSlot(viewModel.tabs, placement, links)
-                pane(Modifier.weight(1f).fillMaxWidth())
+    val chrome = rememberChromePalette(scheme, appearance)
+    CompositionLocalProvider(LocalChromePalette provides chrome) {
+        Box(
+            modifier.fillMaxSize().background(Color(scheme.background)).onSizeChanged {
+                windowSize = it
             }
-        } else {
-            Row(padded) {
-                TabBarSlot(viewModel.tabs, placement, links)
-                pane(Modifier.weight(1f).fillMaxHeight())
+        ) {
+            val padded = Modifier.fillMaxSize().padding(insets.toPadding(density))
+            val links = TabBarLinks(
+                openDistros = screens.openDistros,
+                openSsh = screens.openSsh,
+                openAppearance = screens.openAppearance,
+                splitRight = viewModel.panes::splitVertical,
+                splitDown = viewModel.panes::splitHorizontal
+            )
+            val pane = @Composable { paneModifier: Modifier ->
+                TerminalPane(
+                    viewModel,
+                    painter,
+                    inputView,
+                    appearance.marginDp.dp,
+                    screens.openDistros,
+                    paneModifier
+                )
+            }
+            if (placement == TabBarPlacement.Top) {
+                Column(padded) {
+                    TabBarSlot(viewModel.tabs, placement, links)
+                    pane(Modifier.weight(1f).fillMaxWidth())
+                }
+            } else {
+                Row(padded) {
+                    TabBarSlot(viewModel.tabs, placement, links)
+                    pane(Modifier.weight(1f).fillMaxHeight())
+                }
             }
         }
     }
 }
+
+/** What the terminal looks like: its colors, its design and the fonts it draws with. */
+data class TerminalLook(
+    val scheme: TerminalColorScheme,
+    val appearance: TerminalAppearance,
+    val typefaces: TerminalTypefaces
+)
+
+/** The other screens the terminal opens from its menus. */
+class ScreenLinks(
+    val openDistros: () -> Unit,
+    val openSsh: () -> Unit,
+    val openAppearance: () -> Unit
+)
 
 /** The tab bar at the size its placement reserves, which the grid of the terminal leaves out. */
 @Composable
@@ -176,10 +182,11 @@ private fun TerminalPane(
     viewModel: TerminalViewModel,
     painter: TerminalPainter,
     inputView: Array<TerminalInputView?>,
-    extraKeys: ExtraKeysConfig,
+    margin: Dp,
     onOpenDistros: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val extraKeys by viewModel.extraKeys.collectAsStateWithLifecycle()
     val sticky by viewModel.stickyModifiers.collectAsStateWithLifecycle()
     val launchMessage by viewModel.launchMessage.collectAsStateWithLifecycle()
     Box(modifier) {
@@ -190,7 +197,7 @@ private fun TerminalPane(
                 viewModel,
                 painter,
                 inputView,
-                Modifier.weight(1f).fillMaxWidth().padding(TextMargin)
+                Modifier.weight(1f).fillMaxWidth().padding(margin)
             )
             if (extraKeys.visible) {
                 ExtraKeysRow(extraKeys, sticky, viewModel.keyboard::onExtraKey)
@@ -201,17 +208,18 @@ private fun TerminalPane(
     }
 }
 
-/** The painter for the current font size and scheme; the fonts are loaded once. */
+/** The painter for the current font size, scheme, font and spacing. */
 @Composable
 private fun rememberTerminalPainter(
     fontSizeSp: Float,
-    scheme: TerminalColorScheme
+    scheme: TerminalColorScheme,
+    appearance: TerminalAppearance,
+    typefaces: TerminalTypefaces
 ): TerminalPainter {
     val density = LocalDensity.current
-    val context = LocalContext.current
-    val typefaces = remember { TerminalTypefaces.load(context) }
-    return remember(density, fontSizeSp, typefaces, scheme.selection) {
-        TerminalPainter(typefaces, with(density) { fontSizeSp.sp.toPx() }, scheme.selection)
+    val style = remember(appearance) { PainterStyle.of(appearance) }
+    return remember(density, fontSizeSp, typefaces, scheme.selection, style) {
+        TerminalPainter(typefaces, with(density) { fontSizeSp.sp.toPx() }, scheme.selection, style)
     }
 }
 
@@ -225,6 +233,13 @@ private fun SchemeAndFontEffects(
     onFontSizeChanged: (Float) -> Unit
 ) {
     LaunchedEffect(scheme) { viewModel.applyScheme(scheme) }
+    // A size chosen in the appearance screen arrives as a new stored value; the pinch and the
+    // shortcuts save theirs, which then matches the current size and changes nothing.
+    LaunchedEffect(initialFontSizeSp) {
+        if (viewModel.fontSize.sizeSp.value != initialFontSizeSp) {
+            viewModel.fontSize.restore(initialFontSizeSp)
+        }
+    }
     LaunchedEffect(viewModel) {
         viewModel.fontSize.restore(initialFontSizeSp)
         // The first value is the one just restored (or the default): only user changes are saved.
@@ -272,6 +287,16 @@ internal fun TerminalCanvas(
     val topRow by viewModel.topRow.collectAsStateWithLifecycle()
     val selection by viewModel.selection.selection.collectAsStateWithLifecycle()
     val onPinch = remember(viewModel) { viewModel.fontSize::pinch }
+    // A blinking cursor redraws the canvas on a timer, and shows solid while output arrives.
+    var blinkTick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(painter) {
+        painter.cursorBlinkOn = true
+        while (painter.cursorBlinks) {
+            delay(CURSOR_BLINK_MILLIS)
+            painter.cursorBlinkOn = !painter.cursorBlinkOn
+            blinkTick++
+        }
+    }
 
     fun cellAt(offset: Offset) = CellPosition(
         column = (offset.x / painter.cellWidth).toInt().coerceAtLeast(0),
@@ -303,37 +328,14 @@ internal fun TerminalCanvas(
     ) {
         // Reading the frame here makes only the drawing, not the composition, depend on it.
         val emulator = viewModel.emulator
-        if (frame >= 0 && emulator != null) {
+        if (frame >= 0 && blinkTick >= 0 && emulator != null) {
             drawIntoCanvas { painter.draw(it.nativeCanvas, emulator, topRow, selection) }
         }
     }
 }
 
+/** Half a period of the blinking cursor. */
+private const val CURSOR_BLINK_MILLIS = 530L
+
 /** How long the font size must stay put before it is saved: a pinch changes it many times. */
 private const val FONT_SIZE_SAVE_DELAY_MILLIS = 500L
-
-/** What the system bars, the display cutout and the keyboard cover, combined edge by edge. */
-@Composable
-private fun coveredEdges(): EdgeInsets {
-    val density = LocalDensity.current
-    val direction = LocalLayoutDirection.current
-    return WindowInsets.systemBars.toEdgeInsets(density, direction) union
-        WindowInsets.displayCutout.toEdgeInsets(density, direction) union
-        WindowInsets.ime.toEdgeInsets(density, direction)
-}
-
-private fun WindowInsets.toEdgeInsets(density: Density, direction: LayoutDirection) = EdgeInsets(
-    left = getLeft(density, direction),
-    top = getTop(density),
-    right = getRight(density, direction),
-    bottom = getBottom(density)
-)
-
-private fun EdgeInsets.toPadding(density: Density) = with(density) {
-    PaddingValues(
-        start = left.toDp(),
-        top = top.toDp(),
-        end = right.toDp(),
-        bottom = bottom.toDp()
-    )
-}

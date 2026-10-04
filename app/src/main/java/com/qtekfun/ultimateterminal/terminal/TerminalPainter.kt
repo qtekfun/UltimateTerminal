@@ -6,6 +6,7 @@ package com.qtekfun.ultimateterminal.terminal
 import android.graphics.Canvas
 import android.graphics.Paint
 import androidx.core.graphics.withScale
+import com.qtekfun.ultimateterminal.domain.appearance.CursorShape
 import com.qtekfun.ultimateterminal.domain.terminal.CellAppearance
 import com.qtekfun.ultimateterminal.domain.terminal.CellStyles
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalSelection
@@ -27,19 +28,32 @@ class TerminalPainter(
     private val typefaces: TerminalTypefaces,
     textSizePx: Float,
     /** ARGB background of selected cells; their text keeps its own color. */
-    private val selectionColor: Int
+    private val selectionColor: Int,
+    private val look: PainterStyle = PainterStyle()
 ) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface = typefaces.regular
         textSize = textSizePx
+        letterSpacing = look.letterSpacing
     }
 
-    /** Width of one cell, taken from the font's advance for "X". */
+    /** Width of one cell: the font's advance for "X", with the letter spacing of the appearance. */
     val cellWidth: Float = paint.measureText("X")
     private val ascent: Float = -paint.fontMetrics.ascent
-    val cellHeight: Int = ceil(
-        paint.fontMetrics.descent - paint.fontMetrics.ascent + paint.fontMetrics.leading
-    ).toInt()
+    private val naturalHeight: Float =
+        ceil(paint.fontMetrics.descent - paint.fontMetrics.ascent + paint.fontMetrics.leading)
+
+    /** The line height: the font's own times the line spacing of the appearance. */
+    val cellHeight: Int = ceil(naturalHeight * look.lineSpacing).toInt()
+
+    /** Where the baseline sits in a cell: the extra line space is split above and below the text. */
+    private val baselineOffset: Float = ascent + (cellHeight - naturalHeight) / 2f
+
+    /** Toggled by the blink timer; only read when the appearance asks for a blinking cursor. */
+    var cursorBlinkOn: Boolean = true
+
+    /** Whether the appearance asks for a blinking cursor. */
+    val cursorBlinks: Boolean get() = look.cursorBlink
 
     /** A run of cells drawn together: same style, same cursor and selection state. */
     private class Run {
@@ -92,7 +106,8 @@ class TerminalPainter(
         canvas.drawColor(palette[screenColor])
 
         val screen = emulator.screen
-        val cursorVisible = emulator.shouldCursorBeVisible()
+        val cursorVisible = emulator.shouldCursorBeVisible() &&
+            (!look.cursorBlink || cursorBlinkOn)
         for (screenRow in 0 until emulator.mRows) {
             val row = topRow + screenRow
             val line = screen.allocateFullLineIfNecessary(screen.externalToInternalRow(row))
@@ -163,8 +178,7 @@ class TerminalPainter(
     private fun flush(text: CharArray, top: Int) {
         if (run.chars == 0) return
         val palette = emulator.mColors.mCurrentColors
-        val blockCursor =
-            run.cursor && emulator.cursorStyle == TerminalEmulator.TERMINAL_CURSOR_STYLE_BLOCK
+        val blockCursor = run.cursor && look.cursorShape == CursorShape.BLOCK
         val reverse = emulator.isReverseVideo || blockCursor
         val resolved = CellStyles.resolve(run.style, palette, reverse)
         val appearance =
@@ -187,14 +201,14 @@ class TerminalPainter(
     private fun drawCursor(left: Float, right: Float, top: Float) {
         val bottom = top + cellHeight
         paint.color = emulator.mColors.mCurrentColors[TextStyle.COLOR_INDEX_CURSOR]
-        when (emulator.cursorStyle) {
-            TerminalEmulator.TERMINAL_CURSOR_STYLE_UNDERLINE ->
+        when (look.cursorShape) {
+            CursorShape.UNDERLINE ->
                 canvas.drawRect(left, bottom - cellHeight / UNDERLINE_DIVISOR, right, bottom, paint)
 
-            TerminalEmulator.TERMINAL_CURSOR_STYLE_BAR ->
+            CursorShape.BAR ->
                 canvas.drawRect(left, top, left + cellWidth / BAR_DIVISOR, bottom, paint)
 
-            else -> canvas.drawRect(left, top, right, bottom, paint)
+            CursorShape.BLOCK -> canvas.drawRect(left, top, right, bottom, paint)
         }
     }
 
@@ -210,7 +224,7 @@ class TerminalPainter(
         paint.isUnderlineText = appearance.underline
         paint.isStrikeThruText = appearance.strikethrough
 
-        val baseline = top + ascent
+        val baseline = top + baselineOffset
         val expected = right - left
         val measured = paint.measureText(text, run.startIndex, run.chars)
         // A glyph that does not measure as the cells it occupies (an emoji, a font fallback) is

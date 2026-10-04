@@ -43,6 +43,8 @@ Reglas: una tarea cada vez, en su rama `feat/<tarea>`, con `./gradlew check` en 
 - [~] **T11 Entrada** *(lógica y UI implementadas y probadas en host; sin validar en dispositivo y sin ratón; ver `DECISIONS.md`, T11)*: fila de teclas extra configurable con Ctrl/Alt pegajosos; teclado físico, atajos, ratón, copiar/pegar y zoom con pellizco.
 - [~] **T12 Temas, modo OLED y fuentes**: esquemas de color, claro/oscuro/sistema y modo OLED (negro puro), fuente incluida y tamaño.
   - *Nota:* lógica y aplicación probadas en host; sin validar en dispositivo y sin pantalla de ajustes (T16). Ver `DECISIONS.md`, T12.
+- [~] **T12c Apariencia personalizable** *(implementada y probada en host; sin validar en dispositivo)*: pantalla "Apariencia" con vista previa en vivo (tema, OLED, esquema, fuente, espaciados, margen, cursor, estilo de las barras), **fuentes propias** importadas (.ttf/.otf monoespaciadas, validadas) y **editor de esquemas** de color con aviso de contraste. Sale de la prueba real en un Pixel 8 ("la vista del terminal es fea, ¿podemos poner fuentes custom y diseño custom?"). T16 la enlazará desde los ajustes generales; T15 debe incluir sus claves y `files/fonts/` en la copia de configuración.
+  - *Verificación:* tests de host del dominio (`domain/appearance`), de los ajustes y del importador de fuentes; la apariencia real (colores, fuente, espaciados, cursor, barras) y el selector de documentos hay que verlos en un dispositivo (ver `DECISIONS.md`, T12c).
 - [ ] **T12b Perfiles, layouts y atajos (estilo Terminator)**: perfiles, layouts de paneles guardados con nombre, atajos configurables y emisión a varios paneles.
   - *Verificación:* un layout guardado se restaura con la misma estructura, perfiles y comandos.
 

@@ -20,6 +20,10 @@ object ColorMath {
     private const val GREEN_WEIGHT = 0.7152
     private const val BLUE_WEIGHT = 0.0722
     private const val FLARE = 0.05
+    private const val OPAQUE = -0x1000000 // 0xff000000
+    private const val BLACK = OPAQUE
+    private const val WHITE = -0x1 // 0xffffffff
+    private const val READABLE_STEP = 0.1f
 
     /**
      * Luminance at which white and black text have the same contrast: above it a background counts
@@ -40,6 +44,32 @@ object ColorMath {
         val a = luminance(first)
         val b = luminance(second)
         return (maxOf(a, b) + FLARE) / (minOf(a, b) + FLARE)
+    }
+
+    /** [base] moved [amount] (0 to 1) of the way towards [over], channel by channel; opaque. */
+    fun blend(base: Int, over: Int, amount: Float): Int {
+        val t = amount.coerceIn(0f, 1f)
+        fun channel(shift: Int): Int {
+            val a = base shr shift and CHANNEL_MASK
+            val b = over shr shift and CHANNEL_MASK
+            return (a + (b - a) * t).toInt().coerceIn(0, CHANNEL_MASK)
+        }
+        return OPAQUE or (channel(RED_SHIFT) shl RED_SHIFT) or
+            (channel(GREEN_SHIFT) shl GREEN_SHIFT) or channel(0)
+    }
+
+    /**
+     * [color], or the nearest color towards black or white that reaches [minimum] contrast against
+     * every one of [backgrounds]. A color that already does is returned as it is; when even the
+     * extreme does not (it cannot happen for a minimum of 4.5 or less), that extreme is returned.
+     */
+    fun readableOn(color: Int, backgrounds: List<Int>, minimum: Double): Int {
+        fun ok(candidate: Int) = backgrounds.all { contrast(candidate, it) >= minimum }
+        val towards = if (backgrounds.all { luminance(it) < DARK_LIGHT_BOUNDARY }) WHITE else BLACK
+        val closer = generateSequence(READABLE_STEP) { it + READABLE_STEP }
+            .takeWhile { it < 1f }
+            .map { blend(color, towards, it) }
+        return if (ok(color)) color else closer.firstOrNull(::ok) ?: towards
     }
 
     private fun linear(channel: Int): Double {
