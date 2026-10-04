@@ -62,7 +62,7 @@ class TabsController(
     fun requestClose(id: SessionId) {
         when (editor.state.value.closeAction(id)) {
             CloseAction.Ignore -> Unit
-            CloseAction.Close -> editor.close(id)
+            CloseAction.Close -> editor.closeTab(id)
             CloseAction.Confirm -> pendingClose.value = id
         }
     }
@@ -75,7 +75,7 @@ class TabsController(
     fun confirmClose() {
         val id = pendingClose.value ?: return
         pendingClose.value = null
-        editor.close(id)
+        editor.closeTab(id)
     }
 
     fun dismissClose() {
