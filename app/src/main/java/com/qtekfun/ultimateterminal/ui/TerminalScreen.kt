@@ -10,17 +10,23 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -30,7 +36,11 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -38,7 +48,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qtekfun.ultimateterminal.R
 import com.qtekfun.ultimateterminal.domain.terminal.CellPosition
-import com.qtekfun.ultimateterminal.domain.terminal.gridSizeFor
+import com.qtekfun.ultimateterminal.domain.terminal.EdgeInsets
+import com.qtekfun.ultimateterminal.domain.terminal.terminalLayoutFor
 import com.qtekfun.ultimateterminal.terminal.TerminalInputView
 import com.qtekfun.ultimateterminal.terminal.TerminalPainter
 import com.qtekfun.ultimateterminal.terminal.TerminalViewModel
@@ -47,11 +58,11 @@ private const val TEXT_SIZE_SP = 14
 
 /**
  * The terminal: a Compose canvas that draws the emulator, plus an invisible view that takes the
- * keyboard. The grid size follows the area available (system bars and keyboard excluded), and the
- * pty is resized to match.
+ * keyboard. The window is drawn edge to edge; the terminal takes all of it except what the system
+ * bars, the display cutout and the keyboard cover, and the pty is resized to that area (T04).
  *
- * Prototype (T03). Drawing, gestures and keyboard input have not been validated on a device yet
- * (see DECISIONS.md).
+ * Prototype (T03, T04). Drawing, gestures, keyboard input and resizing have not been validated on
+ * a device yet (see DECISIONS.md).
  */
 @Composable
 fun TerminalScreen(modifier: Modifier = Modifier, viewModel: TerminalViewModel = viewModel()) {
@@ -59,13 +70,39 @@ fun TerminalScreen(modifier: Modifier = Modifier, viewModel: TerminalViewModel =
     val painter = remember(density) {
         TerminalPainter(Typeface.MONOSPACE, with(density) { TEXT_SIZE_SP.sp.toPx() })
     }
-    val selection by viewModel.selection.collectAsStateWithLifecycle()
-    val exitStatus by viewModel.exitStatus.collectAsStateWithLifecycle()
     val inputView = remember { arrayOfNulls<TerminalInputView>(1) }
 
-    Box(modifier.fillMaxSize().background(Color.Black).safeDrawingPadding()) {
-        TerminalCanvas(viewModel, painter, onTap = { inputView[0]?.showKeyboard() })
+    var windowSize by remember { mutableStateOf(IntSize.Zero) }
+    val insets = coveredEdges()
+    LaunchedEffect(windowSize, insets, painter) {
+        if (windowSize != IntSize.Zero) {
+            viewModel.onLayoutChanged(
+                terminalLayoutFor(
+                    windowSize.width,
+                    windowSize.height,
+                    insets,
+                    painter.cellWidth,
+                    painter.cellHeight
+                )
+            )
+        }
+    }
 
+    // The black background fills the whole window, bars included; the content is padded by the
+    // same insets the layout was computed with, so what is drawn is exactly what the pty is told.
+    Box(modifier.fillMaxSize().background(Color.Black).onSizeChanged { windowSize = it }) {
+        Box(Modifier.fillMaxSize().padding(insets.toPadding(density))) {
+            TerminalCanvas(viewModel, painter, onTap = { inputView[0]?.showKeyboard() })
+            TerminalOverlays(viewModel, inputView)
+        }
+    }
+}
+
+@Composable
+private fun TerminalOverlays(viewModel: TerminalViewModel, inputView: Array<TerminalInputView?>) {
+    val selection by viewModel.selection.collectAsStateWithLifecycle()
+    val exitStatus by viewModel.exitStatus.collectAsStateWithLifecycle()
+    Box(Modifier.fillMaxSize()) {
         AndroidView(
             factory = { context -> TerminalInputView(context).also { inputView[0] = it } },
             update = { it.sink = viewModel.keyboard },
@@ -108,11 +145,6 @@ private fun TerminalCanvas(
     Canvas(
         Modifier
             .fillMaxSize()
-            .onSizeChanged { size ->
-                val grid =
-                    gridSizeFor(size.width, size.height, painter.cellWidth, painter.cellHeight)
-                viewModel.onGridChanged(grid, painter.cellWidth.toInt(), painter.cellHeight)
-            }
             .pointerInput(painter) {
                 detectTapGestures(onTap = {
                     viewModel.clearSelection()
@@ -137,4 +169,30 @@ private fun TerminalCanvas(
             drawIntoCanvas { painter.draw(it.nativeCanvas, emulator, topRow, selection) }
         }
     }
+}
+
+/** What the system bars, the display cutout and the keyboard cover, combined edge by edge. */
+@Composable
+private fun coveredEdges(): EdgeInsets {
+    val density = LocalDensity.current
+    val direction = LocalLayoutDirection.current
+    return WindowInsets.systemBars.toEdgeInsets(density, direction) union
+        WindowInsets.displayCutout.toEdgeInsets(density, direction) union
+        WindowInsets.ime.toEdgeInsets(density, direction)
+}
+
+private fun WindowInsets.toEdgeInsets(density: Density, direction: LayoutDirection) = EdgeInsets(
+    left = getLeft(density, direction),
+    top = getTop(density),
+    right = getRight(density, direction),
+    bottom = getBottom(density)
+)
+
+private fun EdgeInsets.toPadding(density: Density) = with(density) {
+    PaddingValues(
+        start = left.toDp(),
+        top = top.toDp(),
+        end = right.toDp(),
+        bottom = bottom.toDp()
+    )
 }

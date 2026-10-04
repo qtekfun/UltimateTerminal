@@ -11,7 +11,7 @@ Reglas: una tarea cada vez, en su rama `feat/<tarea>`, con `./gradlew check` en 
   - *Verificación:* en un dispositivo real (API 26–28 y una versión reciente), `proot` ejecuta `/bin/sh` y `uname -a`; documentar `seccomp`, `link2symlink` y límites en `SPEC.md` (sección 9).
 - [x] **T03 Prototipo PTY + vista de terminal** *(emulador y vista compilan y están probados en host con 145 tests upstream + los propios; PTY real, dibujo, teclado y gestos sin validar en dispositivo, ver `DECISIONS.md`)*: integrar `terminal-emulator` de Termux y dibujarlo en Compose (Canvas); validar `vim`, `tmux` y `htop`.
   - *Verificación:* demo manual; decisión de rendimiento, selección e IME documentada.
-- [ ] **T04 Prototipo de redimensionado adaptativo**: terminal a pantalla completa en tablet con multiventana, rotación y teclado; el PTY recibe el tamaño correcto.
+- [~] **T04 Prototipo de redimensionado adaptativo** *(implementada y probada en host; pendiente de validar en tablet real: sin ese dispositivo no se ha comprobado que `stty size` coincida con lo visible ni el comportamiento con multiventana, rotación y teclado; ver `DECISIONS.md`, T04)*: terminal a pantalla completa en tablet con multiventana, rotación y teclado; el PTY recibe el tamaño correcto.
   - *Verificación:* en una tablet, `stty size` coincide con lo visible tras cada cambio; sin bandas ni huecos.
 
 ## Fase 1 — Distros y datos

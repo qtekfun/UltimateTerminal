@@ -11,6 +11,7 @@ activityCompose = "1.13.0"
 coreKtx = "1.19.1"
 lifecycle = "2.11.0"
 junit = "6.1.3"
+coroutines = "1.11.0"
 junit4 = "4.13.2"
 detekt = "1.23.8"
 ktlintGradle = "14.2.0"
@@ -32,6 +33,8 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
 junit4 = { group = "junit", name = "junit", version.ref = "junit4" }
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 junit-bom ={ group = "org.junit", name = "junit-bom", version.ref = "junit" }
 junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter" }
 junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher" }
