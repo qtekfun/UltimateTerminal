@@ -39,7 +39,30 @@ internal data class SettingsDto(
     val terminalSchemeId: String,
     val terminalFontSizeSp: Float,
     /** The imported color schemes, in the format of a scheme list export. */
-    val customSchemes: String
+    val customSchemes: String,
+    // The fields below came later (T16). They are null in a backup that predates them, and then the
+    // device keeps what it has instead of going back to a default.
+    val prootCompatibilityMode: Boolean? = null,
+    val dnsFallbackServers: List<String>? = null,
+    /** The extra-keys row, in its stored text form. */
+    val extraKeys: String? = null,
+    val appearance: AppearanceDto? = null
+)
+
+/**
+ * The look of the terminal (T12c). The imported fonts' files are not carried, so a font that this
+ * device does not have is replaced by the bundled one when the backup is restored.
+ */
+@Serializable
+internal data class AppearanceDto(
+    val fontId: String,
+    val lineSpacing: Float,
+    val letterSpacing: Float,
+    val marginDp: Int,
+    val cursorShape: String,
+    val cursorBlink: Boolean,
+    val chromeStyle: String,
+    val cornerRadiusDp: Int
 )
 
 /** A distro of the source device, only to find the same one by name on this device. */

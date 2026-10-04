@@ -41,7 +41,8 @@ class AndroidSessionFactory(
     private val context: Context,
     private val planner: ProotSessionPlanner,
     private val distroOf: (SessionId) -> Long?,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    private val scrollbackLines: suspend () -> Int
 ) : LaunchingSessionFactory {
     /**
      * The hosts of the running sessions. Observable: the sessions state names a tab before its host
@@ -90,6 +91,7 @@ class AndroidSessionFactory(
         onExit: (Int) -> Unit
     ) {
         try {
+            host.transcriptRows = scrollbackLines()
             val home = context.filesDir.absolutePath
             val tmp = context.cacheDir.absolutePath
             val inherited = System.getenv()
