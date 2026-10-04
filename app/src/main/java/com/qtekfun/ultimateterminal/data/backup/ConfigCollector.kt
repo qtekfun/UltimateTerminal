@@ -102,7 +102,20 @@ private fun AppSettings.toDto() = SettingsDto(
     terminalSchemeId = terminalSchemeId,
     terminalFontSizeSp = terminalFontSizeSp,
     customSchemes = SchemeCodec.encodeList(customSchemes),
-    extraKeyStyle = appearance.extraKeyStyle.name
+    extraKeyStyle = appearance.extraKeyStyle.name,
+    prootCompatibilityMode = prootCompatibilityMode,
+    dnsFallbackServers = dnsFallbackServers,
+    extraKeys = extraKeys.serialize(),
+    appearance = AppearanceDto(
+        fontId = appearance.fontId,
+        lineSpacing = appearance.lineSpacing,
+        letterSpacing = appearance.letterSpacing,
+        marginDp = appearance.marginDp,
+        cursorShape = appearance.cursorShape.name,
+        cursorBlink = appearance.cursorBlink,
+        chromeStyle = appearance.chromeStyle.name,
+        cornerRadiusDp = appearance.cornerRadiusDp
+    )
 )
 
 private fun SshKeyInfo.toDto(privateKey: String) =

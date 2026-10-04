@@ -3,31 +3,13 @@
 
 package com.qtekfun.ultimateterminal.ui
 
-import androidx.annotation.StringRes
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -42,36 +24,64 @@ import com.qtekfun.ultimateterminal.distro.InstallUiState
 import com.qtekfun.ultimateterminal.domain.distro.DistroNames
 import com.qtekfun.ultimateterminal.domain.model.Distro
 import com.qtekfun.ultimateterminal.domain.model.DistroState
+import com.qtekfun.ultimateterminal.ui.ios.IosAccessory
+import com.qtekfun.ultimateterminal.ui.ios.IosAction
+import com.qtekfun.ultimateterminal.ui.ios.IosActionRole
+import com.qtekfun.ultimateterminal.ui.ios.IosActionSheet
+import com.qtekfun.ultimateterminal.ui.ios.IosAlert
+import com.qtekfun.ultimateterminal.ui.ios.IosBarButton
+import com.qtekfun.ultimateterminal.ui.ios.IosBarIconButton
+import com.qtekfun.ultimateterminal.ui.ios.IosGlyph
+import com.qtekfun.ultimateterminal.ui.ios.IosLargeTitleScreen
+import com.qtekfun.ultimateterminal.ui.ios.IosListRow
+import com.qtekfun.ultimateterminal.ui.ios.IosProgress
+import com.qtekfun.ultimateterminal.ui.ios.IosSection
 
-private val MIN_TOUCH = 48.dp
-
-/** The distro management screen: list, install, rename, duplicate, delete, default (SPEC RF-04). */
+/** The distribution management screen: list, install, rename, duplicate, delete, default (SPEC RF-04). */
 @Composable
 fun DistroScreen(onClose: () -> Unit, viewModel: DistroViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var dialog by remember { mutableStateOf<DistroDialog?>(null) }
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(modifier = Modifier.safeDrawingPadding().padding(16.dp)) {
-            Header(state, onClose, onInstall = { dialog = DistroDialog.Install })
-            StorageAccessCard()
-            BackupCard()
-            ProotOptionsCard()
-            state.installing?.let { InstallProgressCard(it, viewModel::cancelInstall) }
-            state.message?.let { MessageBar(it, viewModel::dismissMessage) }
-            DistroList(
-                state = state,
-                onSetDefault = viewModel::setDefault,
-                onRename = { dialog = DistroDialog.Rename(it) },
-                onDuplicate = { dialog = DistroDialog.Duplicate(it) },
-                onDelete = { dialog = DistroDialog.Delete(it) }
-            )
+    val canInstall = state.ready && state.installing == null
+    val installLabel = stringResource(R.string.distros_install)
+    BackHandler(onBack = onClose)
+    IosLargeTitleScreen(
+        title = stringResource(R.string.distros_title),
+        leading = { IosBarButton(stringResource(R.string.distros_close), onClose) },
+        trailing = {
+            IosBarIconButton(IosGlyph.PLUS, installLabel, {
+                if (canInstall) {
+                    dialog =
+                        DistroDialog.Install
+                }
+            })
+        }
+    ) {
+        state.installing?.let { install ->
+            item { InstallProgress(install, viewModel::cancelInstall) }
+        }
+        state.message?.let { message -> item { MessageRow(message, viewModel::dismissMessage) } }
+        item {
+            DistroList(state, canInstall, onInstall = { dialog = DistroDialog.Install }) {
+                dialog = DistroDialog.Actions(it)
+            }
         }
     }
-    DistroDialogHost(dialog, state.distros, viewModel) { dialog = null }
+    DistroDialogHost(
+        dialog = dialog,
+        distros = state.distros,
+        viewModel = viewModel,
+        show = { dialog = it },
+        // The action sheet closes itself after an action ran, and the action may have opened the
+        // next dialog: only close what is still the sheet, reading the state as it is now.
+        closeActions = { if (dialog is DistroDialog.Actions) dialog = null }
+    )
 }
 
 private sealed interface DistroDialog {
     data object Install : DistroDialog
+
+    data class Actions(val distro: Distro) : DistroDialog
 
     data class Rename(val distro: Distro) : DistroDialog
 
@@ -85,13 +95,15 @@ private fun DistroDialogHost(
     dialog: DistroDialog?,
     distros: List<Distro>,
     viewModel: DistroViewModel,
-    dismiss: () -> Unit
+    show: (DistroDialog?) -> Unit,
+    closeActions: () -> Unit
 ) {
     val names = distros.map { it.name }
+    val dismiss = { show(null) }
     when (dialog) {
         null -> Unit
 
-        DistroDialog.Install -> InstallDialog(
+        DistroDialog.Install -> InstallSheet(
             existingNames = names,
             onInstall = { family, name, user ->
                 viewModel.install(family, name, user)
@@ -100,7 +112,9 @@ private fun DistroDialogHost(
             onDismiss = dismiss
         )
 
-        is DistroDialog.Rename -> NameDialog(
+        is DistroDialog.Actions -> ActionsSheet(dialog.distro, viewModel, closeActions, show)
+
+        is DistroDialog.Rename -> NameSheet(
             title = stringResource(R.string.rename_title),
             initial = dialog.distro.name,
             onConfirm = {
@@ -110,7 +124,7 @@ private fun DistroDialogHost(
             onDismiss = dismiss
         )
 
-        is DistroDialog.Duplicate -> NameDialog(
+        is DistroDialog.Duplicate -> NameSheet(
             title = stringResource(R.string.duplicate_title),
             initial = DistroNames.suggestCopy(dialog.distro.name, names),
             onConfirm = {
@@ -120,7 +134,7 @@ private fun DistroDialogHost(
             onDismiss = dismiss
         )
 
-        is DistroDialog.Delete -> DeleteDialog(
+        is DistroDialog.Delete -> DeleteAlert(
             name = dialog.distro.name,
             onConfirm = {
                 viewModel.delete(dialog.distro.id)
@@ -131,156 +145,153 @@ private fun DistroDialogHost(
     }
 }
 
+/** What can be done with one distribution: the sheet that slides up when its row is tapped. */
 @Composable
-private fun Header(state: DistroUiState, onClose: () -> Unit, onInstall: () -> Unit) {
-    // Title and close share a row; the install button gets its own, so nothing overlaps whatever
-    // the width or the font scale (on a 360 dp phone the title alone fills most of a row).
-    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                stringResource(R.string.distros_title),
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.weight(1f)
+private fun ActionsSheet(
+    distro: Distro,
+    viewModel: DistroViewModel,
+    dismiss: () -> Unit,
+    open: (DistroDialog?) -> Unit
+) {
+    val ready = distro.state == DistroState.READY
+    val busy = distro.state == DistroState.INSTALLING
+    val actions = buildList {
+        if (ready && !distro.isDefault) {
+            add(
+                IosAction(stringResource(R.string.distro_set_default)) {
+                    viewModel.setDefault(distro.id)
+                }
             )
-            TextButton(onClick = onClose, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                Text(stringResource(R.string.distros_close))
-            }
         }
-        Button(
-            onClick = onInstall,
-            enabled = state.ready && state.installing == null,
-            modifier = Modifier.fillMaxWidth().heightIn(min = MIN_TOUCH)
-        ) { Text(stringResource(R.string.distros_install)) }
+        if (!busy) {
+            add(
+                IosAction(stringResource(R.string.distro_rename)) {
+                    open(DistroDialog.Rename(distro))
+                }
+            )
+        }
+        if (ready) {
+            add(
+                IosAction(stringResource(R.string.distro_duplicate)) {
+                    open(DistroDialog.Duplicate(distro))
+                }
+            )
+        }
+        if (!busy) {
+            add(
+                IosAction(stringResource(R.string.distro_delete), IosActionRole.DESTRUCTIVE) {
+                    open(DistroDialog.Delete(distro))
+                }
+            )
+        }
     }
+    IosActionSheet(
+        actions = actions,
+        cancelLabel = stringResource(R.string.dialog_cancel),
+        onDismiss = dismiss,
+        title = distro.name
+    )
 }
 
 @Composable
-private fun InstallProgressCard(install: InstallUiState, onCancel: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(stringResource(R.string.install_progress_for, install.name))
-            Text(stringResource(install.progress.phase.labelRes()))
-            val fraction = install.progress.fraction
-            if (fraction == null) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            } else {
-                LinearProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxWidth())
-            }
-            TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                Text(stringResource(R.string.install_cancel))
-            }
-        }
-    }
+private fun DeleteAlert(name: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    IosAlert(
+        title = stringResource(R.string.delete_title, name),
+        message = stringResource(R.string.delete_body),
+        actions = listOf(
+            IosAction(stringResource(R.string.dialog_cancel), IosActionRole.CANCEL),
+            IosAction(stringResource(R.string.distro_delete), IosActionRole.DESTRUCTIVE, onConfirm)
+        ),
+        onDismiss = onDismiss
+    )
 }
 
 @Composable
-private fun MessageBar(message: DistroMessage, onDismiss: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        Row(
-            modifier = Modifier.padding(start = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(messageText(message), modifier = Modifier.weight(1f))
-            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                Text(stringResource(R.string.msg_dismiss))
-            }
-        }
+private fun InstallProgress(install: InstallUiState, onCancel: () -> Unit) {
+    IosSection {
+        IosListRow(
+            title = stringResource(R.string.install_progress_for, install.name),
+            subtitle = stringResource(install.progress.phase.labelRes())
+        )
+        IosProgress(install.progress.fraction, Modifier.padding(horizontal = PROGRESS_INSET))
+        IosListRow(
+            title = stringResource(R.string.install_cancel),
+            destructive = true,
+            showSeparator = false,
+            onClick = onCancel
+        )
+    }
+}
+
+private val PROGRESS_INSET = 16.dp
+
+@Composable
+private fun MessageRow(message: DistroMessage, onDismiss: () -> Unit) {
+    IosSection {
+        IosListRow(
+            title = messageText(message),
+            glyph = IosGlyph.INFO,
+            accessory = IosAccessory.Value(stringResource(R.string.msg_dismiss)),
+            showSeparator = false,
+            onClick = onDismiss
+        )
     }
 }
 
 @Composable
 private fun DistroList(
     state: DistroUiState,
-    onSetDefault: (Long) -> Unit,
-    onRename: (Distro) -> Unit,
-    onDuplicate: (Distro) -> Unit,
-    onDelete: (Distro) -> Unit
+    canInstall: Boolean,
+    onInstall: () -> Unit,
+    onOpen: (Distro) -> Unit
 ) {
     when {
-        !state.ready -> Text(stringResource(R.string.distros_preparing))
-
-        state.distros.isEmpty() -> Text(
-            stringResource(R.string.distros_empty),
-            modifier = Modifier.padding(vertical = 16.dp)
-        )
-
-        else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(state.distros, key = { it.id }) { distro ->
-                DistroCard(distro, onSetDefault, onRename, onDuplicate, onDelete)
-            }
+        !state.ready -> IosSection {
+            IosListRow(title = stringResource(R.string.distros_preparing), showSeparator = false)
         }
-    }
-}
 
-@Composable
-private fun DistroCard(
-    distro: Distro,
-    onSetDefault: (Long) -> Unit,
-    onRename: (Distro) -> Unit,
-    onDuplicate: (Distro) -> Unit,
-    onDelete: (Distro) -> Unit
-) {
-    val context = LocalContext.current
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(distro.name, style = MaterialTheme.typography.titleMedium)
-            Text(
-                stringResource(
-                    R.string.distro_summary,
-                    stringResource(distro.type.nameRes()),
-                    distro.release,
-                    formatSize(context, distro.sizeBytes)
-                )
+        state.distros.isEmpty() -> IosSection(footer = stringResource(R.string.distros_empty)) {
+            IosListRow(
+                title = stringResource(R.string.distros_install),
+                glyph = IosGlyph.PLUS,
+                accessory = IosAccessory.Chevron,
+                enabled = canInstall,
+                showSeparator = false,
+                onClick = onInstall
             )
-            when (distro.state) {
-                DistroState.INSTALLING -> Text(stringResource(R.string.distro_state_installing))
+        }
 
-                DistroState.FAILED -> Text(stringResource(R.string.distro_state_failed))
-
-                DistroState.READY -> if (distro.isDefault) {
-                    Text(stringResource(R.string.distro_default))
-                }
+        else -> IosSection {
+            state.distros.forEachIndexed { index, distro ->
+                DistroRow(distro, last = index == state.distros.lastIndex) { onOpen(distro) }
             }
-            DistroActions(distro, onSetDefault, onRename, onDuplicate, onDelete)
         }
     }
 }
 
 @Composable
-private fun DistroActions(
-    distro: Distro,
-    onSetDefault: (Long) -> Unit,
-    onRename: (Distro) -> Unit,
-    onDuplicate: (Distro) -> Unit,
-    onDelete: (Distro) -> Unit
-) {
-    val ready = distro.state == DistroState.READY
-    val busy = distro.state == DistroState.INSTALLING
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (ready && !distro.isDefault) {
-            ActionButton(R.string.distro_set_default) { onSetDefault(distro.id) }
-        }
-        ActionButton(R.string.distro_rename, enabled = !busy) { onRename(distro) }
-        if (ready) ActionButton(R.string.distro_duplicate) { onDuplicate(distro) }
-        ActionButton(R.string.distro_delete, enabled = !busy) { onDelete(distro) }
+private fun DistroRow(distro: Distro, last: Boolean, onClick: () -> Unit) {
+    val context = LocalContext.current
+    val summary = stringResource(
+        R.string.distro_summary,
+        stringResource(distro.type.nameRes()),
+        distro.release,
+        formatSize(context, distro.sizeBytes)
+    )
+    val status = when (distro.state) {
+        DistroState.INSTALLING -> stringResource(R.string.distro_state_installing)
+        DistroState.FAILED -> stringResource(R.string.distro_state_failed)
+        DistroState.READY -> null
     }
-}
-
-@Composable
-private fun ActionButton(@StringRes label: Int, enabled: Boolean = true, onClick: () -> Unit) {
-    TextButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = Modifier.heightIn(min = MIN_TOUCH)
-    ) {
-        Text(stringResource(label))
-    }
+    IosListRow(
+        title = distro.name,
+        subtitle = listOfNotNull(summary, status).joinToString(" · "),
+        accessory = if (distro.isDefault && distro.state == DistroState.READY) {
+            IosAccessory.Value(stringResource(R.string.distro_default), chevron = true)
+        } else {
+            IosAccessory.Chevron
+        },
+        showSeparator = !last,
+        onClick = onClick
+    )
 }

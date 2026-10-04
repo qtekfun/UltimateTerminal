@@ -43,6 +43,15 @@ internal fun NewTabMenu(
                 links.splitDown
             )
         )
+        // The settings first among the entries that are not a tab or a split: they are what the
+        // user looks for, and Appearance and Distributions are inside them too.
+        add(
+            NewTabEntry(
+                stringResource(R.string.settings_open),
+                IosGlyph.SETTINGS,
+                links.openSettings
+            )
+        )
         add(NewTabEntry(stringResource(R.string.ssh_open), IosGlyph.KEY, links.openSsh))
         add(
             NewTabEntry(
@@ -54,7 +63,7 @@ internal fun NewTabMenu(
         add(
             NewTabEntry(
                 stringResource(R.string.appearance_open),
-                IosGlyph.SETTINGS,
+                IosGlyph.TERMINAL,
                 links.openAppearance
             )
         )

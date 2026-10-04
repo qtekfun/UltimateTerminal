@@ -99,7 +99,7 @@ fun SessionPrompts(hasRunningSession: Boolean) {
  * Opens the system dialog that asks to exempt the app from battery optimisation and, where the
  * device does not have it, the general list. Nothing changes unless the user accepts there.
  */
-private fun requestBatteryExemption(context: Context) {
+internal fun requestBatteryExemption(context: Context) {
     for (spec in BatteryExemption.intentsFor(context.packageName)) {
         val intent = Intent(spec.action).apply { spec.dataUri?.let { data = it.toUri() } }
         try {
@@ -132,11 +132,11 @@ private fun PromptDialog(
     )
 }
 
-private fun notificationsGranted(context: Context): Boolean =
+internal fun notificationsGranted(context: Context): Boolean =
     Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
         PackageManager.PERMISSION_GRANTED
 
-private fun ignoringBatteryOptimizations(context: Context): Boolean =
+internal fun ignoringBatteryOptimizations(context: Context): Boolean =
     context.getSystemService(PowerManager::class.java)
         ?.isIgnoringBatteryOptimizations(context.packageName) == true
