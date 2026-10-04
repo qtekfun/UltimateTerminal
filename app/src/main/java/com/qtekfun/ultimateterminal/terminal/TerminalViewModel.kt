@@ -16,6 +16,7 @@ import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalSelection
 import com.qtekfun.ultimateterminal.domain.terminal.clampTopRow
 import com.qtekfun.ultimateterminal.domain.terminal.settled
+import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -84,6 +85,9 @@ class TerminalViewModel(application: Application) : AndroidViewModel(application
         host.resize(newLayout.grid, newLayout.cellWidthPx, newLayout.cellHeightPx)
         topRowState.value = clampTopRow(topRowState.value, transcriptRows)
     }
+
+    /** The colors changed (a new scheme, or OLED mode): the screen is drawn again with them. */
+    fun applyScheme(scheme: TerminalColorScheme) = host.applyScheme(scheme)
 
     /** Starts a new shell, at the current size, after the previous one ended. */
     fun restart() {

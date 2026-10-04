@@ -19,6 +19,12 @@ class FontZoom(private val defaultSp: Float = DEFAULT_SP) {
         return sizeSp
     }
 
+    /** Sets the size directly (a stored size coming back); non-finite values are ignored. */
+    fun set(sizeSp: Float): Float {
+        if (sizeSp.isFinite()) exact = sizeSp.coerceIn(MIN_SP, MAX_SP)
+        return this.sizeSp
+    }
+
     fun zoomIn(): Float = stepBy(STEP_SP)
 
     fun zoomOut(): Float = stepBy(-STEP_SP)
