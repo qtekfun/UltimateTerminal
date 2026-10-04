@@ -1,0 +1,1 @@
+First pre-release (0.1.0-rc.1). A terminal with a real PTY, tabs and split panes, Linux distributions (Debian, Ubuntu, Alpine) through proot, an extra-keys row, SSH hosts and keys, shared-storage access, encrypted backups and appearance options. Early software: tried on one phone only; the README says what is verified.

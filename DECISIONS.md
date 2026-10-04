@@ -1725,3 +1725,121 @@ El usuario probó la app en un Pixel 8 y pidió tres cosas. Se anotan aquí qué
 - La hoja inferior: tacto del arrastre, velocidad de proyección y que el `Dialog` sin atenuación de ventana se vea bien con el teclado.
 - El campo de búsqueda con el teclado (foco, IME, botón de borrar).
 - Rendimiento y consumo de memoria de las capas de desenfoque.
+
+## T20-T21 — Metadatos F-Droid y documentación
+
+Trabajo de texto: no se compiló, no se tocó código ni ninguna pantalla y no se usó ningún dispositivo. Lo
+que se afirma sobre qué está verificado en un dispositivo sale de lo que el orquestador anotó en
+`DECISIONS.md` (sección T08c y siguientes) y en `PLAN.md`; no se ha comprobado de nuevo.
+
+### D-T20-1 · 2026-10-04 · Los textos de fastlane se reescriben; el changelog es el de `10001`
+
+- **Qué había:** un borrador de un agente anterior, de cuando solo existía T03 ("hoy la app muestra un
+  terminal con el shell de Android; las distros y las pestañas son futuro"). Ya no es verdad.
+- **Decisión:** se reescribieron `title`, `short_description`, `full_description` y el changelog, en
+  `en-US` y `es-ES`, con lo que existe en `master` y diciendo expresamente qué está probado solo en un
+  ordenador. Límites comprobados con un script: título 16/30, resumen 64 y 65/80, descripción 2442 y
+  2570/4000, changelog 320 y 358/500.
+- **Changelog `10001`:** `0.1.0-rc.1` da `(0*10000 + 1*100 + 0)*100 + 1 = 10001`, que es el fichero. **No** se
+  crea `10099` (el `0.1.0` final) porque esa versión aún no existe: lo pide `RELEASING.md` al cortar la release.
+- **Por qué decirlo en la ficha:** una ficha de F-Droid que prometiera tablets, paneles o copias de seguridad
+  "funcionando" sería falsa hoy: solo se ha probado en un móvil. Se dice "versión preliminar temprana".
+
+### D-T20-2 · 2026-10-04 · Icono
+
+- Se reutiliza `images/icon.png` (512×512, RGB) que dejó el agente anterior: el prompt `>_` verde sobre el
+  fondo oscuro del icono del launcher. Se miró a mano y coincide con `ic_launcher_foreground.xml`/el color
+  de fondo; no se regeneró. Es la misma imagen en las dos localizaciones.
+- **Pendiente:** si se rediseña el icono del launcher (T22b/c), regenerar este.
+
+### D-T20-3 · 2026-10-04 · Capturas: pendientes, no inventadas
+
+- No hay `phoneScreenshots/` ni `sevenInchScreenshots/`: una captura tiene que ser real y de la build actual, y
+  no se puede hacer sin un dispositivo. `fastlane/README.md` lista las que convienen.
+- **Pendiente (orquestador, en un dispositivo):** hacerlas, sobre todo una en tablet, que es el caso por el que
+  existe el proyecto.
+
+### D-T20-4 · 2026-10-04 · Receta `fdroid/com.qtekfun.ultimateterminal.yml`: lo que cuadra y lo que no
+
+- **Coherente con el repo:** `submodules: true` (proot sale del submódulo), `ndk: 28.2.13676358` (igual que
+  `ndkVersion` de `app` y de `terminal-emulator`), `subdir: app`, JDK 21, `UpdateCheckMode: Tags` con solo
+  versiones finales, `Binaries` para el build reproducible, `License: GPL-3.0-or-later`.
+- **Riesgos que no se pueden comprobar sin ejecutar `fdroid build`:**
+  1. **CMake 3.31.6** está fijado en `app/build.gradle.kts` (`externalNativeBuild.cmake.version`) y la receta no
+     lo instala. Si el servidor de F-Droid no lo tiene, Gradle intenta bajarlo con `sdkmanager` y puede fallar. Hay
+     que probarlo y, si hace falta, añadir un `prebuild`/`sudo` que lo instale.
+  2. `AllowedAPKSigningKeys` es un marcador: se rellena con la huella del certificado de release (ver `RELEASING.md`).
+  3. `versionName`/`versionCode`/`commit` (`0.1.0`, `10099`, `v0.1.0`) son los de la primera versión final, no los del
+     árbol (`0.1.0-rc.1`, `10001`); las `-rc.N` no se ofrecen en F-Droid a propósito.
+  4. `targetSdk 28`: no se ha comprobado cómo lo trata la política de inclusión de F-Droid (no lo prohíbe, pero puede
+     avisar). Verificarlo al presentar la receta.
+- **No se cambió la receta:** cada cambio sería una suposición sobre el servidor de F-Droid que no puedo comprobar.
+
+### D-T20-5 · 2026-10-04 · Anti-características: ninguna segura, una a consultar
+
+- **No aplican:** `Ads`, `Tracking`, `NonFreeAdd`, `NonFreeAssets` (la fuente y los iconos son libres: OFL/ISC),
+  `NonFreeDep` (sin servicios de Google ni blobs; lo vigila `checkForbiddenDependencies` y `licensee`),
+  `UpstreamNonFree`, `KnownVuln`, `NoSourceSince`.
+- **A consultar con F-Droid, sin afirmar:** `NonFreeNet`. Para instalar **Debian** la app descarga el manifiesto y
+  el `rootfs.tar.gz` de `raw.githubusercontent.com/debuerreotype/docker-debian-artifacts` (D-T06-3). GitHub es un
+  servicio alojado propietario, aunque lo que se baja es software libre; no sé si F-Droid lo cuenta como
+  "depende de un servicio de red no libre" para una descarga opcional que el usuario inicia. Ubuntu
+  (`cdimage.ubuntu.com`) y Alpine (`dl-cdn.alpinelinux.org`) salen de los mirrors de los propios proyectos.
+- **Descargar y ejecutar software de terceros** (las distros) no tiene anti-característica propia que yo conozca;
+  se menciona en la descripción y en `PRIVACY.md`. Confirmarlo al presentar la receta.
+
+### D-T20-6 · 2026-10-04 · Licencia declarada y un punto que sigue abierto
+
+- **Declarada:** GPL-3.0-or-later. Compatible con lo que lleva: Apache-2.0 (Termux emulator, AndroidX, Kotlin…),
+  OFL-1.1 (JetBrains Mono, Inter), ISC (Lucide), MIT (esquemas), GPL-2.0-or-later (PRoot), LGPL-3.0-or-later
+  (talloc); todo está en `THIRD_PARTY_NOTICES.md`.
+- **Abierto, no resuelto aquí (D-T03-2):** los ficheros de `terminal-emulator` de Termux no llevan cabecera de
+  licencia y Apache-2.0 solo consta en el `LICENSE.md` raíz de upstream. Hay que **confirmarlo con los
+  mantenedores de Termux antes de presentar la app a F-Droid**. No es asesoría legal.
+
+### D-T21-1 · 2026-10-04 · El README distingue "verificado en un dispositivo" de "solo en un ordenador"
+
+- **Decisión:** una tabla con dos columnas (dispositivo / solo host). Verificado en un Pixel 8: arranque, shell con
+  PTY, entrada y redimensionado con el teclado (`stty size`), servicio en primer plano, instalar Alpine desde la app,
+  abrirla con proot en una pestaña, `apk add` con red, `ssh` y `python3` en esa pestaña, `nmap` instalado, y que al
+  arrancar se abre la distro predeterminada. Todo lo demás, solo host.
+- **Motivo:** el proyecto se ha hecho casi sin dispositivo y un README optimista es peor que uno que dice qué falta.
+  Lo que se arregló y aún no se ha vuelto a mirar (la fila que se oculta con el teclado, el texto que llega al shell
+  mientras se escribe, el diálogo de batería directo, el `/proc` falso) se lista aparte como "en el código, no mirado".
+- **Dato desfasado que no se tocó:** la sección "Pendiente de validar en hardware", al principio de este fichero, empieza
+  diciendo que "el usuario ha prohibido probar en el Pixel 8". Es cierto de cuando se escribió, pero el usuario lo
+  autorizó después para el orquestador. No se edita aquí para no chocar con los demás agentes que añaden a este
+  fichero; conviene actualizarla cuando se cierre la validación en dispositivo.
+
+### D-T21-2 · 2026-10-04 · `PRIVACY.md`: cada permiso con su motivo, en inglés y español
+
+- **Contenido:** sin telemetría ni cuentas; qué se guarda y dónde (almacenamiento privado, `allowBackup=false`, claves
+  cifradas con el Keystore); los **tres dominios** a los que se conecta para bajar distros (`dl-cdn.alpinelinux.org`,
+  `cdimage.ubuntu.com`, `raw.githubusercontent.com`) y que solo se usa HTTPS; el DNS de respaldo público
+  (`1.1.1.1`/`9.9.9.9`) como **último recurso** y su efecto en la privacidad; una tabla con los nueve permisos
+  del manifiesto (`INTERNET`, `ACCESS_NETWORK_STATE`, `FOREGROUND_SERVICE(_SPECIAL_USE)`, `POST_NOTIFICATIONS`,
+  `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, `WAKE_LOCK`, `READ/WRITE_EXTERNAL_STORAGE`) y los que **no** pide; la
+  contraseña de las copias de seguridad (no se guarda, no se recupera); y por qué `targetSdk 28` y no Google Play.
+- **Matiz que se quiso evitar:** "no escribe contenido en registros" se redactó como "por diseño", porque es una regla
+  del código (`CLAUDE.md`) y no algo que este trabajo haya auditado.
+- **El permiso de almacenamiento** se describe tal cual está: declarado siempre, pedido solo al activar `~/storage`,
+  y con la salvedad de que en Android 13 o posterior puede concederse solo para multimedia (D-T13-3, sin verificar).
+- **Hay que revisarlo cuando cambie:** el manifiesto (cualquier permiso nuevo), T16 (los DNS pasarán a ser un ajuste),
+  y si se añade cualquier otro dominio al que se conecte la app.
+
+### D-T21-3 · 2026-10-04 · `CONTRIBUTING.md` recoge lo aprendido en esta etapa
+
+- Rama principal `master`; Conventional Commits; PR con **todos** los checks, incluido GitGuardian (que puede
+  marcar falsos positivos: se lee y se explica, no se ignora); **no fusionar `master` dentro de la rama** (GitGuardian
+  releyó código de T15 en PRs ajenas) sino rebasar; `lintDebug` en local antes de abrir la PR (Lint con avisos como
+  errores); tests deterministas (el reloj en los fixtures de tar dejó la cobertura crítica fallando 2 de cada 6
+  ejecuciones); cobertura 85 % y 100 % crítica; `targetSdk` 28 intocable; créditos en `THIRD_PARTY_NOTICES.md`.
+- **No afirma** nada que no se haya hecho: no promete reporte privado de vulnerabilidades de GitHub (no sé si está
+  activado), solo "contacta en privado con el mantenedor".
+
+### Pendiente de este trabajo
+
+- Capturas reales (D-T20-3). Huella `AllowedAPKSigningKeys`, comprobar CMake en el servidor de F-Droid y consultar
+  `NonFreeNet`, el `targetSdk` 28 y el punto de licencia de Termux (D-T20-4 a D-T20-6) al presentar la receta.
+- No se ejecutó `fdroid lint` ni `fdroid readmeta`: no están en esta máquina. Hay que pasarlos antes de enviar la receta.
+

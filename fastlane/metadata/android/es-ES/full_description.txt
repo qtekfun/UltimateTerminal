@@ -1,0 +1,22 @@
+UltimateTerminal es una terminal para Android pensada para quien mantiene servidores desde un móvil o una tablet. Se inspira en Termux: una interfaz más moderna que busca ocupar toda la pantalla en tablets, y distribuciones Linux completas que se ejecutan con proot, como WSL en Windows. Solo terminal: no hay entorno gráfico.
+
+<b>Versión preliminar temprana.</b> Buena parte de la app solo se ha probado en un ordenador. Se ha comprobado en un móvil (Android 17) y todavía no en tablets. La lista de abajo dice lo que hay en el código; el README dice lo que se ha verificado en un dispositivo.
+
+<b>Qué hace</b>
+• Instala Debian, Ubuntu o Alpine Linux desde sus mirrors oficiales, comprobando la descarga con SHA-256, y la abre en una pestaña con un shell de root. Dentro funcionan apt o apk, ssh, nmap y python. Alpine es la que se ha probado en un dispositivo; Debian y Ubuntu, solo en un ordenador
+• Varias pestañas y paneles divididos
+• Una fila de teclas extra (Esc, Tab, Ctrl, Alt, flechas) que se muestra mientras el teclado está abierto, atajos de teclado físico y zoom con pellizco
+• Un terminal que se redimensiona con la ventana, el teclado, la pantalla dividida y la rotación
+• Hosts SSH guardados y claves SSH que puedes generar, importar y exportar; las claves se cifran con el Keystore de Android
+• Acceso opcional al almacenamiento del dispositivo desde la distro, en ~/storage, por ejemplo para copiar logs a Descargas. El permiso solo se pide al activarlo
+• Copias de seguridad de una distro, de los ajustes o de todo, con cifrado opcional con contraseña, para restaurar en otro dispositivo
+• Apariencia: esquemas de color, un modo OLED de negro puro, una fuente monoespaciada incluida o tu propio archivo de fuente
+
+<b>Todavía no</b>
+Layouts y perfiles guardados, una pantalla de ajustes general, el rediseño al estilo iOS, y el trabajo de accesibilidad y rendimiento.
+
+<b>Por qué no está en Google Play</b>
+Para ejecutar programas desde su propio almacenamiento la app apunta a Android 9 (API 28), que Google Play ya no acepta. Eso es lo que permite ejecutar distribuciones sin root.
+
+<b>Libre y privada</b>
+Sin anuncios, rastreo, analíticas, cuentas ni servicios de Google. El único tráfico de red es el que tú inicias: descargar una distribución de su mirror oficial y lo que ejecutes en la terminal. Licencia GPL-3.0-or-later. Reutiliza el emulador de terminal de Termux y ejecuta las distribuciones con PRoot; los créditos y licencias están en el repositorio. Es un proyecto independiente, sin relación con Termux, Debian, Ubuntu ni Alpine Linux.

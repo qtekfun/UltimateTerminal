@@ -70,8 +70,8 @@ Reglas: una tarea cada vez, en su rama `feat/<tarea>`, con `./gradlew check` en 
 - [ ] **T17 Accesibilidad y rendimiento**: TalkBack en la UI, tamaños táctiles, fuente grande; medir arranque hasta prompt y salida masiva.
 - [ ] **T18 Tests de UI e integración clave**: instalar distro, ejecutar comando, redimensionar, exportar y restaurar.
 - [x] **T19 Versionado y releases**: SemVer en `gradle.properties` con código derivado, firma propia por variables de entorno, builds reproducibles y workflow de release por tag (`RELEASING.md`).
-- [ ] **T20 Metadatos F-Droid**: `fastlane/metadata/android/{en-US,es-ES}/`, iconos, capturas, descripciones; revisar reproducibilidad y ausencia de dependencias no libres.
-- [ ] **T21 Documentación**: `README.md`, `CONTRIBUTING.md`, política de privacidad, `CHANGELOG.md`. Explicar cada permiso y decisión (almacenamiento, servicio en primer plano, optimización de batería, `targetSdk` 28, phantom process killer).
+- [~] **T20 Metadatos F-Droid**: `fastlane/metadata/android/{en-US,es-ES}/` con título, resúmenes, descripciones, changelog `10001` e icono, revisión de la receta `fdroid/…yml`. *(Texto y límites comprobados; **faltan las capturas reales** —se hacen en un dispositivo, mejor una en tablet—, la huella de `AllowedAPKSigningKeys`, comprobar CMake 3.31.6 en el servidor de F-Droid y pasar `fdroid lint`; ver `DECISIONS.md`, D-T20-1 a 6.)*
+- [~] **T21 Documentación**: `README.md` (estado honesto, tabla dispositivo/host), `CONTRIBUTING.md`, `PRIVACY.md` (en/es, cada permiso y cada dominio), `CHANGELOG.md`. *(Escritos con lo que existe en `master` el 2026-10-04; hay que **revisarlos al cerrar T16, T22b/c y T12b** y al cambiar el manifiesto; lo que dicen estar verificado en dispositivo sale de las pruebas en un Pixel 8, ver `DECISIONS.md`, D-T21-1 a 3.)*
 
 ## Después del MVP (backlog, no implementar aún)
 - Proveedor SAF: la distro visible en la app Archivos.

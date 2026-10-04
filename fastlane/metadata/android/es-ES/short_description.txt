@@ -1,0 +1,1 @@
+Distros Linux en Android con proot. Libre, privado y sin rastreo.

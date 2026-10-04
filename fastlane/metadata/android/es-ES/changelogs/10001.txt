@@ -1,0 +1,1 @@
+Primera versión preliminar (0.1.0-rc.1). Una terminal con PTY real, pestañas y paneles divididos, distribuciones Linux (Debian, Ubuntu, Alpine) con proot, fila de teclas extra, hosts y claves SSH, acceso al almacenamiento, copias de seguridad cifradas y opciones de apariencia. Software temprano: probado solo en un móvil; el README dice qué está verificado.
