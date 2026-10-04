@@ -535,6 +535,25 @@ Falta por hacer:
 - **Impacto:** el servicio mantiene vivo el proceso, pero no garantiza que sobrevivan todos sus hijos.
   **Sin medir:** no se sabe cuántos procesos fantasma cuenta cada shell con proot (T07).
 
+### D-T08-7 · 2026-10-04 · La selección sale del `ViewModel` a `SelectionController`
+
+- **Decisión:** `SelectionController` (en `terminal/`, como `FontSizeController`) guarda la selección y
+  copia el texto del host activo. `TerminalViewModel` la expone como `selection` y la pantalla llama a
+  `viewModel.selection.start/extend/clear/copy`.
+- **Motivo:** detekt (`TooManyFunctions`, 11/11) falló en `TerminalViewModel` al sumar el ciclo de vida
+  de sesiones. No se relajó la regla (CLAUDE.md): se movió la lógica a un colaborador, el patrón que ya
+  usaban el zoom y los atajos.
+- **Impacto:** cambio de API interna sin efecto visible. Sin validar en dispositivo, como el resto.
+
+### D-T08-8 · 2026-10-04 · `POST_NOTIFICATIONS` con guarda de `SDK_INT`, y un test corregido
+
+- **Decisión:** el permiso se pide solo si `SDK_INT >= 33`, con una comprobación explícita en lugar de
+  silenciar `InlinedApi`. El diálogo ya solo se mostraba en API 33+, pero Lint no lo sabía.
+- **Test corregido:** `activatingASessionResizesItToTheCurrentLayout` suponía que la sesión no activa
+  recibía el cambio de tamaño, pero tras `newSession()` la activa es la última, así que el
+  comportamiento del controlador era el correcto y el test, erróneo. Ahora comprueba que la sesión
+  inactiva solo se redimensiona al activarla y que la activa lo hace en `onLayout`.
+
 ### D-T08-6 · 2026-10-04 · Qué NO está validado en T08
 
 Todo lo que necesita un dispositivo, por la prohibición del usuario: arranque del servicio y su tipo

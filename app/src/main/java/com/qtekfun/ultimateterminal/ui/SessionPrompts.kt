@@ -71,7 +71,12 @@ fun SessionPrompts(hasRunningSession: Boolean) {
             title = R.string.prompt_notifications_title,
             message = R.string.prompt_notifications_message,
             confirm = R.string.prompt_allow,
-            onConfirm = { notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
+            onConfirm = {
+                // Only offered on API 33+ (see nextPrompt); the check also tells Lint so.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            },
             onDismiss = { notificationsDeclined = true }
         )
 

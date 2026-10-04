@@ -9,13 +9,11 @@ import androidx.lifecycle.viewModelScope
 import com.qtekfun.ultimateterminal.UltimateTerminalApp
 import com.qtekfun.ultimateterminal.domain.session.SessionState
 import com.qtekfun.ultimateterminal.domain.terminal.AppShortcut
-import com.qtekfun.ultimateterminal.domain.terminal.CellPosition
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.InputRouter
 import com.qtekfun.ultimateterminal.domain.terminal.ScrollAccumulator
 import com.qtekfun.ultimateterminal.domain.terminal.StickyState
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
-import com.qtekfun.ultimateterminal.domain.terminal.TerminalSelection
 import com.qtekfun.ultimateterminal.domain.terminal.clampTopRow
 import com.qtekfun.ultimateterminal.domain.terminal.settled
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -48,7 +46,6 @@ class TerminalViewModel(application: Application) : AndroidViewModel(application
     private var started = false
     private val scroll = ScrollAccumulator()
     private val topRowState = MutableStateFlow(0)
-    private val selectionState = MutableStateFlow<TerminalSelection?>(null)
     private val stickyState = MutableStateFlow(StickyState())
     private val router = InputRouter(onStickyChanged = { stickyState.value = it })
     private val shortcutEvents = MutableSharedFlow<AppShortcut>(extraBufferCapacity = 8)
@@ -64,8 +61,9 @@ class TerminalViewModel(application: Application) : AndroidViewModel(application
         .map { (it.active?.state as? SessionState.Exited)?.status }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val fontSize = FontSizeController()
+    val selection = SelectionController(manager::currentHost)
     private val shortcuts =
-        ShortcutHandler(::copySelection, ::pasteFromClipboard, fontSize, shortcutEvents)
+        ShortcutHandler(selection::copy, ::pasteFromClipboard, fontSize, shortcutEvents)
     val keyboard = TerminalKeyboard(
         ActiveSessionOutput(manager),
         router,
@@ -81,7 +79,6 @@ class TerminalViewModel(application: Application) : AndroidViewModel(application
 
     /** 0 shows the live screen; negative values scroll back through the history. */
     val topRow: StateFlow<Int> = topRowState.asStateFlow()
-    val selection: StateFlow<TerminalSelection?> = selectionState.asStateFlow()
 
     val emulator get() = manager.currentHost()?.emulator
 
@@ -126,7 +123,7 @@ class TerminalViewModel(application: Application) : AndroidViewModel(application
     /** Starts a new shell, at the current size, after the previous one ended. */
     fun restart() {
         topRowState.value = 0
-        selectionState.value = null
+        selection.clear()
         manager.restartActive()
     }
 
@@ -137,31 +134,6 @@ class TerminalViewModel(application: Application) : AndroidViewModel(application
     fun scrollBy(deltaPx: Float, lineHeightPx: Float) {
         val lines = scroll.consume(deltaPx, lineHeightPx)
         if (lines != 0) topRowState.value = clampTopRow(topRowState.value - lines, transcriptRows)
-    }
-
-    fun startSelection(position: CellPosition) {
-        selectionState.value = TerminalSelection(position, position)
-    }
-
-    fun extendSelection(position: CellPosition) {
-        selectionState.value = selectionState.value?.withFocus(position)
-    }
-
-    fun clearSelection() {
-        selectionState.value = null
-    }
-
-    fun copySelection() {
-        val selected = selectionState.value ?: return
-        val screen = emulator?.screen ?: return
-        val text = screen.getSelectedText(
-            selected.start.column,
-            selected.start.row,
-            selected.end.column,
-            selected.end.row
-        )
-        if (text.isNotEmpty()) manager.currentHost()?.copyToClipboard(text)
-        selectionState.value = null
     }
 
     private fun scrollToLiveScreen() {

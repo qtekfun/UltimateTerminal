@@ -112,7 +112,7 @@ fun TerminalScreen(modifier: Modifier = Modifier, viewModel: TerminalViewModel =
 
 @Composable
 private fun TerminalOverlays(viewModel: TerminalViewModel, inputView: Array<TerminalInputView?>) {
-    val selection by viewModel.selection.collectAsStateWithLifecycle()
+    val selection by viewModel.selection.selection.collectAsStateWithLifecycle()
     val exitStatus by viewModel.exitStatus.collectAsStateWithLifecycle()
     Box(Modifier.fillMaxSize()) {
         AndroidView(
@@ -124,7 +124,7 @@ private fun TerminalOverlays(viewModel: TerminalViewModel, inputView: Array<Term
 
         if (selection != null) {
             TextButton(
-                onClick = viewModel::copySelection,
+                onClick = viewModel.selection::copy,
                 modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
             ) {
                 Text(stringResource(R.string.terminal_copy))
@@ -147,7 +147,7 @@ private fun TerminalCanvas(
 ) {
     val frame by viewModel.frame.collectAsStateWithLifecycle()
     val topRow by viewModel.topRow.collectAsStateWithLifecycle()
-    val selection by viewModel.selection.collectAsStateWithLifecycle()
+    val selection by viewModel.selection.selection.collectAsStateWithLifecycle()
     val onPinch = remember(viewModel) { viewModel.fontSize::pinch }
 
     fun cellAt(offset: Offset) = CellPosition(
@@ -160,7 +160,7 @@ private fun TerminalCanvas(
             .fillMaxSize()
             .pointerInput(painter) {
                 detectTapGestures(onTap = {
-                    viewModel.clearSelection()
+                    viewModel.selection.clear()
                     onTap()
                 })
             }
@@ -171,8 +171,8 @@ private fun TerminalCanvas(
             }
             .pointerInput(painter) {
                 detectDragGesturesAfterLongPress(
-                    onDragStart = { viewModel.startSelection(cellAt(it)) },
-                    onDrag = { change, _ -> viewModel.extendSelection(cellAt(change.position)) }
+                    onDragStart = { viewModel.selection.start(cellAt(it)) },
+                    onDrag = { change, _ -> viewModel.selection.extend(cellAt(change.position)) }
                 )
             }
             // Last, so it sees the events first and can take a two-finger pinch for itself.

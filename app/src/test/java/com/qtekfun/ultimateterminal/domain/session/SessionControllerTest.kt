@@ -196,13 +196,15 @@ class SessionControllerTest {
     fun activatingASessionResizesItToTheCurrentLayout() {
         val first = controller.newSession()
         val second = controller.newSession()
+        // `second` is the active one, so only it follows the layout change.
         controller.onLayout(big)
+        assertEquals(emptyList<TerminalLayout>(), factory.handles.getValue(first).resizes)
 
         controller.activate(first)
 
         assertEquals(first, controller.state.value.activeId)
         assertEquals(listOf(big), factory.handles.getValue(first).resizes)
-        assertEquals(emptyList<TerminalLayout>(), factory.handles.getValue(second).resizes)
+        assertEquals(listOf(big), factory.handles.getValue(second).resizes)
     }
 
     @Test
