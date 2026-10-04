@@ -13,7 +13,7 @@ third-party code are kept untouched.
 
 | Component | License | Notes |
 |---|---|---|
-| Kotlin and kotlinx libraries, © JetBrains s.r.o. and contributors | Apache-2.0 | Language runtime and standard library |
+| Kotlin and kotlinx libraries, © JetBrains s.r.o. and contributors | Apache-2.0 | Language runtime and standard library; includes `kotlinx-coroutines-test` (tests only, not shipped in the APK) |
 | AndroidX, Jetpack Compose and Material 3, © The Android Open Source Project | Apache-2.0 | UI toolkit |
 | Dagger / Hilt, © The Dagger Authors | Apache-2.0 | Dependency injection |
 | AndroidX Room 3 and AndroidX SQLite, © The Android Open Source Project | Apache-2.0 | Local metadata database. The app uses the system SQLite |

@@ -204,6 +204,67 @@ en el APK con el tipo ELF y los puntos de entrada esperados, `./gradlew check` y
 - **Logs:** el cliente de la librería descarta sus mensajes de log: pueden contener texto de la
   terminal y SPEC §6 prohíbe registrarlo.
 
+## T04
+
+### D-T04-1 · 2026-10-04 · Una sola función decide el tamaño del terminal
+- **Decisión:** `terminalLayoutFor(ventana, EdgeInsets, métricas de celda)` (en `domain/terminal`) es la
+  única fuente del tamaño. El área dibujada es la ventana menos los insets, y la UI aplica como padding
+  esos mismos números; así lo que se dibuja y lo que se le dice al pty no pueden desviarse. Los insets
+  son los de las barras del sistema, el recorte de pantalla y el teclado, combinados borde a borde con
+  el máximo (`EdgeInsets.union`): el teclado sustituye a la barra de navegación, no se suma.
+- **Cambio respecto a T03:** la UI ya no usa `safeDrawingPadding()` ni mide el `Canvas`; mide la ventana
+  completa (el fondo negro cubre también bajo las barras: sin bandas) y calcula el layout con la función.
+- **Alternativas:** dejar que Compose reparta los insets y medir el `Canvas` (más simple, pero la
+  semántica de los insets queda fuera del dominio y sin tests).
+
+### D-T04-2 · 2026-10-04 · Redimensionado con debounce y sin reiniciar la sesión
+- **Decisión:** los layouts pasan por `Flow.settled(120 ms)`: el primero se entrega al instante (el shell
+  arranca ya con su tamaño) y después solo llega el último, cuando no entra otro en 120 ms; los iguales
+  se descartan. Así una animación del teclado o arrastrar el borde de una ventana no envía un `SIGWINCH`
+  por fotograma. `TerminalSessionHost.resize` ya ignoraba tamaños iguales y llama a
+  `TerminalSession.updateSize`, que redimensiona el emulador y el pty (`TIOCSWINSZ`) sin tocar el
+  proceso: el contenido y el shell se conservan.
+- **Motivo del valor:** 120 ms salta los ~8 fotogramas de la animación del teclado sin notarse como
+  retraso. Es una estimación sin medir.
+- **Dependencias:** `kotlinx-coroutines-core` 1.11.0, declarada explícitamente porque el código la usa
+  directamente (antes llegaba transitiva con `lifecycle`, en 1.9.0), y `kotlinx-coroutines-test` 1.11.0
+  (solo tests). Ambas Apache-2.0. Lint (`NewerVersionAvailable`) falla con 1.9.0 y no aceptaba 1.11.0
+  solo para tests mientras producción resolvía 1.9.0. Se anota en `THIRD_PARTY_NOTICES.md`.
+
+### D-T04-3 · 2026-10-04 · Actividad: sin recreación y redimensionable
+- **Decisión:** `configChanges` añade `navigation|fontScale|layoutDirection|locale` a lo que ya estaba
+  (orientación, tamaños, teclado, `uiMode`, densidad), y `resizeableActivity="true"` es explícito (para
+  `targetSdk` 28 ya es el valor por defecto, pero así no depende de un valor implícito en plegables y
+  multiventana). `ManifestWindowConfigTest` falla si alguien lo quita. El `ViewModel` (y con él el
+  shell) ya sobrevive a una recreación, pero recrear reconstruiría la vista y el campo de entrada.
+- **Descartado:** `androidx.window` / `WindowSizeClass` en este prototipo: el cálculo no depende de
+  clases de tamaño. Se evaluará (licencia Apache-2.0) en T10, cuando el layout de pestañas y paneles
+  dependa del ancho.
+
+### D-T04-4 · 2026-10-04 · Riesgo: `adjustResize` con edge-to-edge
+- **Riesgo:** se mantiene `windowSoftInputMode="adjustResize"` y la app pinta edge-to-edge. Desde API 30
+  el teclado llega como insets y la ventana no se redimensiona; en API 26-29 el comportamiento depende de
+  cómo propague `enableEdgeToEdge` los insets. Si en algún nivel de API el sistema redimensionara la
+  ventana **y** además se restara el teclado como inset, el terminal perdería el alto del teclado dos
+  veces.
+- **Pendiente:** comprobarlo en API 26-29 y 30+ (ver abajo). Si ocurre, la salida es no restar el
+  teclado en las APIs en que `adjustResize` ya lo hace.
+
+### T04: lo que NO se ha validado (sin dispositivo; hace falta una tablet y un móvil reales)
+Cubierto en host (26 tests): cálculo de la rejilla para móvil, tablet vertical y apaisada, pantalla
+dividida, ventana flotante, recorte lateral y teclado; el debounce con tiempo virtual; que el emulador
+real adopta el nuevo tamaño y conserva el contenido y el historial; y los atributos del manifest.
+Sin validar:
+1. `stty size` y `echo $LINES $COLUMNS` coinciden con lo visible tras rotar, entrar/salir de
+   multiventana y de pantalla dividida, abrir/cerrar el teclado y plegar/desplegar.
+2. Que el pty recibe realmente `TIOCSWINSZ` y los programas (`vim`, `tmux`, `htop`) se redibujan.
+3. Que no hay bandas ni huecos: el área ocupa el 100 % bajo las barras en tablet y móvil, con y sin
+   recorte de pantalla, y con la barra de tareas de la tablet.
+4. El comportamiento del teclado en API 26-29 frente a 30+ (D-T04-4) y con teclado físico conectado.
+5. Que la actividad no se recrea en ninguno de esos cambios (el test solo comprueba el manifest).
+6. Que 120 ms de debounce se siente bien y no hace saltar el contenido.
+7. Redimensionar la ventana flotante arrastrando (freeform) en tablets con ese modo.
+
 ## T05 — Room y repositorios
 
 ### D-T05-1 · 2026-10-04 · Room 3 como en UltimateDeck, SQLite del sistema en la app

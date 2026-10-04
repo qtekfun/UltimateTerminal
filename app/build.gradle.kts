@@ -304,6 +304,9 @@ dependencies {
 
     implementation(project(":terminal-emulator"))
 
+    // Used directly (flows, delay); declared instead of relying on what lifecycle brings in.
+    implementation(libs.kotlinx.coroutines.core)
+
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
