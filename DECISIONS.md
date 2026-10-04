@@ -1923,3 +1923,19 @@ Pruebas manuales del orquestador en un **Pixel 8** (Android 17, API 37, arm64, a
 ### Sin probar todavía
 Paneles divididos (T10), colores y fuentes (T12/T12c), montaje de `~/storage` (T13), hosts y claves SSH (T14), copias de seguridad (T15), gestos y teclado físico, y **todo lo de la tablet** (redimensionado, multiventana, paneles anchos).
 
+### Segunda ronda (Pixel 8, 2026-10-04, APK de `master` con T22b y T09b)
+
+Verificado en el dispositivo con el APK de `master` en `b6e3475`:
+
+- **Entrada con el teclado abierto (arreglo #23):** lo escrito aparece al instante, antes de pulsar Enter (`echo primero`, `echo segundo` y su salida, y `echo tercero` mientras se teclea). Ya no hay que ocultar el teclado.
+- **La fila de teclas sigue al teclado (RF-08):** con el teclado abierto se ve (teclas redondeadas en gris derivado del esquema) y al ocultarlo desaparece y el terminal ocupa toda la pantalla.
+- **Pestaña nueva (T09b):** pulsar "+" crea "Alpine Linux 2" y dibuja su prompt a la primera, sin cambiar de pestaña. Las pestañas se nombran con su distro (RF-13).
+- **Paneles divididos (T10):** "Dividir a la derecha" crea un segundo panel con su propio shell de Alpine (3 procesos proot en total); el borde morado marca el foco, la entrada va al panel con foco y las líneas largas hacen wrap.
+- **Apariencia (T12 y T12c):** la pantalla se abre desde el menú del "+"; muestra una vista previa con colores ANSI, el tema (sistema/claro/oscuro), el interruptor de Negro OLED, los colores dinámicos y la lista de esquemas. Elegir Solarized Dark repinta al instante todos los paneles y la barra de pestañas toma el acento del esquema; devolver Dracula restaura el fondo `#282A36`.
+- **Menú del "+" (T22b):** menú contextual oscuro con esquinas redondeadas e iconos de línea: Shell de Android, la distro, dividir a la derecha y hacia abajo, SSH, Gestionar distros y Apariencia.
+
+Defectos vistos (sin corregir todavía):
+- **El botón `⋯` del panel con foco tapa el final de la primera línea** cuando el texto llega al borde derecho.
+- **El diálogo "Mantener las sesiones activas" y la pantalla de Apariencia siguen con el aspecto de Material;** las rehacen T22c y T16.
+- **No comprobado todavía:** el rendimiento al desplazar con la barra translúcida, el repaso de TalkBack, la rotación y todo lo de la tablet.
+
