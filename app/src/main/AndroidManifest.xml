@@ -45,6 +45,8 @@
             android:name=".MainActivity"
             android:exported="true"
             android:resizeableActivity="true"
+            android:enableOnBackInvokedCallback="true"
+            tools:targetApi="33"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|density|fontScale|layoutDirection|locale"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>

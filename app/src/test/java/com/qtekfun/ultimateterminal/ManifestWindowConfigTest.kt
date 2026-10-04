@@ -30,6 +30,14 @@ class ManifestWindowConfigTest {
     private fun attribute(name: String) = activity.getAttributeNS(ANDROID, name)
 
     @Test
+    fun theActivityOptsInToBackCallbacksSoTheSystemBackReachesTheScreens() {
+        // The app targets API 28 (SPEC §2). On a recent Android that left the system Back ignored
+        // by every BackHandler: Settings, Appearance and the terminal root did nothing (found on a
+        // Pixel 8, API 37). Declaring the opt-in is what makes Compose's BackHandler receive it.
+        assertEquals("true", attribute("enableOnBackInvokedCallback"))
+    }
+
+    @Test
     fun theActivityHandlesEveryChangeThatResizesTheWindow() {
         val handled = attribute("configChanges").split("|").toSet()
         val required = setOf(
