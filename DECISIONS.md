@@ -2238,3 +2238,5 @@ Petición del usuario (Fedora es su distro habitual). Hecho sin dispositivo: pro
 
 **Retirado: el supuesto fallo de "Negro OLED activado y ningún esquema seleccionado".** No era de la app: el esquema seleccionado era "OLED Black" (el sexto de la lista, fuera de pantalla en mi captura) y Negro OLED estaba activado, coherente entre sí. Casi seguro lo cambié yo con toques de prueba mientras desplazaba la pantalla de Apariencia. Restauré Dracula con OLED apagado.
 
+
+**Comprobado en el Pixel 8 con la build de `master` (2026-10-04): "atrás" en el terminal no escribe nada en el shell.** Con el teclado visible y `echo prueba` sin enviar, una pulsación de "atrás" oculta el teclado (y con él la fila de teclas especiales) y la línea queda intacta, sin "Display all … possibilities?". Una pulsación más, sin teclado, deja la app en segundo plano, como se espera. La sospecha de la versión anterior queda cerrada. El diálogo "Mantener las sesiones activas" sigue con aspecto de Material (pendiente).
