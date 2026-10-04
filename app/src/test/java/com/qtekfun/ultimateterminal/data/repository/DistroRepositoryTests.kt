@@ -6,6 +6,7 @@ package com.qtekfun.ultimateterminal.data.repository
 import com.qtekfun.ultimateterminal.data.local.UltimateTerminalDatabase
 import com.qtekfun.ultimateterminal.data.local.entity.DistroEntity
 import com.qtekfun.ultimateterminal.data.local.inMemoryDatabase
+import com.qtekfun.ultimateterminal.data.local.runDatabaseTest
 import com.qtekfun.ultimateterminal.domain.Outcome
 import com.qtekfun.ultimateterminal.domain.model.DistroState
 import com.qtekfun.ultimateterminal.domain.model.DistroType
@@ -16,7 +17,6 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -31,14 +31,14 @@ class RoomDistroRepositoryTest : DistroRepositoryContract() {
     override fun close() = db.close()
 
     @Test
-    fun `installedAt comes from the clock`() = runTest {
+    fun `installedAt comes from the clock`() = runDatabaseTest {
         val distro = repo.add(NewDistro("x", DistroType.UBUNTU, "24.04", path("distros/x")))
 
         assertEquals(FIXED_CLOCK.instant(), (distro as Outcome.Success).value.installedAt)
     }
 
     @Test
-    fun `a stored row with a directory outside the storage is never returned`() = runTest {
+    fun `a stored row with a directory outside the storage is never returned`() = runDatabaseTest {
         // Such a row could come from a tampered backup; the path must not reach the file system.
         val id = db.distroDao().insert(
             DistroEntity(

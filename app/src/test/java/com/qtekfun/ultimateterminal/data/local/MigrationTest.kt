@@ -7,10 +7,10 @@ import android.content.Context
 import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
+import com.qtekfun.ultimateterminal.data.local.runDatabaseTest
 import io.mockk.every
 import io.mockk.mockk
 import java.io.File
-import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -61,7 +61,7 @@ class MigrationTest {
     }
 
     @Test
-    fun `opens a version 1 database with the latest code and keeps its data`() = runTest {
+    fun `opens a version 1 database with the latest code and keeps its data`() = runDatabaseTest {
         val file = File(dir, "v1.db")
         createFromSchema(
             file,

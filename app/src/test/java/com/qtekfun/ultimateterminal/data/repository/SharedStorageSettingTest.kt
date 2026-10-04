@@ -6,8 +6,8 @@ package com.qtekfun.ultimateterminal.data.repository
 import com.qtekfun.ultimateterminal.data.local.UltimateTerminalDatabase
 import com.qtekfun.ultimateterminal.data.local.entity.SettingEntity
 import com.qtekfun.ultimateterminal.data.local.inMemoryDatabase
+import com.qtekfun.ultimateterminal.data.local.runDatabaseTest
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -28,19 +28,19 @@ class SharedStorageSettingTest {
     fun tearDown() = db.close()
 
     @Test
-    fun `the shared storage is off on a fresh install`() = runTest {
+    fun `the shared storage is off on a fresh install`() = runDatabaseTest {
         assertFalse(settings.observe().first().sharedStorage)
     }
 
     @Test
-    fun `the shared storage setting is stored and read back`() = runTest {
+    fun `the shared storage setting is stored and read back`() = runDatabaseTest {
         settings.update { it.copy(sharedStorage = true) }
 
         assertTrue(settings.observe().first().sharedStorage)
     }
 
     @Test
-    fun `an unreadable stored value falls back to off`() = runTest {
+    fun `an unreadable stored value falls back to off`() = runDatabaseTest {
         db.settingDao().upsert(listOf(SettingEntity("shared_storage", "maybe")))
 
         assertFalse(settings.observe().first().sharedStorage)

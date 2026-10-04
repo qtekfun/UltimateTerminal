@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: 2026 UltimateTerminal contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# GitGuardian configuration. Keep it short and justify every entry.
+#
+# The backup tests encrypt and decrypt with made-up passphrases, which a scanner reads as
+# "Generic Password". They protect nothing and are not credentials. Real keys, tokens and
+# passwords must never be committed, in tests or anywhere else (CLAUDE.md).
+version: 2
+secret:
+  ignored_paths:
+    - "app/src/test/java/com/qtekfun/ultimateterminal/data/backup/**"

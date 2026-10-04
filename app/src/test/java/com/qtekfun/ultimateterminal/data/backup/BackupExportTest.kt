@@ -105,7 +105,7 @@ class BackupExportTest {
         device.hosts.add(SshHost(name = "web", host = "example.org", user = "admin"))
         val sink = MemorySink()
         val summary = device.exporter()
-            .export(ExportRequest(BackupKind.CONFIG, password = "s3cret"), sink).value()
+            .export(ExportRequest(BackupKind.CONFIG, password = TEST_PHRASE), sink).value()
         assertTrue(summary.encrypted)
         assertEquals(1, summary.sshKeys)
         val text = String(sink.bytes(), Charsets.ISO_8859_1)
@@ -336,3 +336,6 @@ class BackupExportTest {
         )
     }
 }
+
+/** A made-up passphrase for the encryption tests; it protects nothing and is not a credential. */
+private const val TEST_PHRASE = "open sesame"

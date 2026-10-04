@@ -3,6 +3,7 @@
 
 package com.qtekfun.ultimateterminal.data.repository
 
+import com.qtekfun.ultimateterminal.data.local.runDatabaseTest
 import com.qtekfun.ultimateterminal.domain.DomainError
 import com.qtekfun.ultimateterminal.domain.Outcome
 import com.qtekfun.ultimateterminal.domain.getOrNull
@@ -13,7 +14,6 @@ import com.qtekfun.ultimateterminal.domain.model.FsPath
 import com.qtekfun.ultimateterminal.domain.model.NewDistro
 import com.qtekfun.ultimateterminal.domain.repository.DistroRepository
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -51,7 +51,7 @@ abstract class DistroRepositoryContract {
     private fun failure(outcome: Outcome<*>): DomainError = (outcome as Outcome.Failure).error
 
     @Test
-    fun `the first distro becomes the default and later ones do not`() = runTest {
+    fun `the first distro becomes the default and later ones do not`() = runDatabaseTest {
         val first = add("debian")
         val second = add("ubuntu")
 
@@ -63,7 +63,7 @@ abstract class DistroRepositoryContract {
     }
 
     @Test
-    fun `add trims the name and keeps what was asked`() = runTest {
+    fun `add trims the name and keeps what was asked`() = runDatabaseTest {
         val distro = checkNotNull(
             repo.add(
                 NewDistro(
@@ -85,7 +85,7 @@ abstract class DistroRepositoryContract {
     }
 
     @Test
-    fun `add rejects bad names and bad users`() = runTest {
+    fun `add rejects bad names and bad users`() = runDatabaseTest {
         assertTrue(failure(repo.add(draft("   "))) is DomainError.InvalidName)
         assertTrue(failure(repo.add(draft("a".repeat(65)))) is DomainError.InvalidName)
         assertTrue(failure(repo.add(draft("bad\nname"))) is DomainError.InvalidName)
@@ -97,7 +97,7 @@ abstract class DistroRepositoryContract {
     }
 
     @Test
-    fun `names are unique ignoring case`() = runTest {
+    fun `names are unique ignoring case`() = runDatabaseTest {
         add("Debian")
 
         assertEquals(
@@ -107,7 +107,7 @@ abstract class DistroRepositoryContract {
     }
 
     @Test
-    fun `a directory cannot be registered twice`() = runTest {
+    fun `a directory cannot be registered twice`() = runDatabaseTest {
         add("one")
 
         assertTrue(failure(repo.add(draft("two", "distros/one"))) is DomainError.Io)
@@ -115,7 +115,7 @@ abstract class DistroRepositoryContract {
     }
 
     @Test
-    fun `distros are listed by name ignoring case`() = runTest {
+    fun `distros are listed by name ignoring case`() = runDatabaseTest {
         add("beta")
         add("Alpha")
         add("gamma")
@@ -124,7 +124,7 @@ abstract class DistroRepositoryContract {
     }
 
     @Test
-    fun `rename changes the name and checks it`() = runTest {
+    fun `rename changes the name and checks it`() = runDatabaseTest {
         val one = add("one")
         add("two")
 
@@ -136,7 +136,7 @@ abstract class DistroRepositoryContract {
     }
 
     @Test
-    fun `renaming a distro to its own name with another case is allowed`() = runTest {
+    fun `renaming a distro to its own name with another case is allowed`() = runDatabaseTest {
         val one = add("one")
 
         assertEquals(Outcome.Success(Unit), repo.rename(one.id, "ONE"))
@@ -144,7 +144,7 @@ abstract class DistroRepositoryContract {
     }
 
     @Test
-    fun `setDefault leaves exactly one default`() = runTest {
+    fun `setDefault leaves exactly one default`() = runDatabaseTest {
         add("one")
         val two = add("two")
         val three = add("three")
@@ -163,7 +163,7 @@ abstract class DistroRepositoryContract {
     }
 
     @Test
-    fun `removing the default promotes the oldest remaining distro`() = runTest {
+    fun `removing the default promotes the oldest remaining distro`() = runDatabaseTest {
         val one = add("one")
         val two = add("two")
         val three = add("three")
@@ -177,7 +177,7 @@ abstract class DistroRepositoryContract {
     }
 
     @Test
-    fun `removing a distro that is not the default keeps the default`() = runTest {
+    fun `removing a distro that is not the default keeps the default`() = runDatabaseTest {
         val one = add("one")
         val two = add("two")
 
@@ -187,7 +187,7 @@ abstract class DistroRepositoryContract {
     }
 
     @Test
-    fun `removing the last distro leaves no default`() = runTest {
+    fun `removing the last distro leaves no default`() = runDatabaseTest {
         val one = add("one")
 
         repo.remove(one.id)
@@ -197,7 +197,7 @@ abstract class DistroRepositoryContract {
     }
 
     @Test
-    fun `updateState records progress and keeps the size when none is given`() = runTest {
+    fun `updateState records progress and keeps the size when none is given`() = runDatabaseTest {
         val one = add("one")
 
         repo.updateState(one.id, DistroState.INSTALLING, sizeBytes = 1_234L)
@@ -210,7 +210,7 @@ abstract class DistroRepositoryContract {
     }
 
     @Test
-    fun `setDefaultUser checks the user`() = runTest {
+    fun `setDefaultUser checks the user`() = runDatabaseTest {
         val one = add("one")
 
         assertEquals(Outcome.Success(Unit), repo.setDefaultUser(one.id, "ana"))
@@ -220,7 +220,7 @@ abstract class DistroRepositoryContract {
     }
 
     @Test
-    fun `get returns null for unknown ids`() = runTest {
+    fun `get returns null for unknown ids`() = runDatabaseTest {
         assertNull(repo.get(1L))
         assertNull(repo.getDefault())
     }

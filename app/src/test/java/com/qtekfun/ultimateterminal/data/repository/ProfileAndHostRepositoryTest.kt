@@ -5,6 +5,7 @@ package com.qtekfun.ultimateterminal.data.repository
 
 import com.qtekfun.ultimateterminal.data.local.UltimateTerminalDatabase
 import com.qtekfun.ultimateterminal.data.local.inMemoryDatabase
+import com.qtekfun.ultimateterminal.data.local.runDatabaseTest
 import com.qtekfun.ultimateterminal.domain.DomainError
 import com.qtekfun.ultimateterminal.domain.Outcome
 import com.qtekfun.ultimateterminal.domain.getOrNull
@@ -15,7 +16,6 @@ import com.qtekfun.ultimateterminal.domain.model.Profile
 import com.qtekfun.ultimateterminal.domain.model.SshHost
 import java.time.Clock
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
@@ -50,7 +50,7 @@ class ProfileAndHostRepositoryTest {
     }
 
     @Test
-    fun `a profile is saved with its defaults and read back`() = runTest {
+    fun `a profile is saved with its defaults and read back`() = runDatabaseTest {
         val saved = checkNotNull(profiles.add(Profile(name = " Work ")).getOrNull())
 
         assertEquals("Work", saved.name)
@@ -61,7 +61,7 @@ class ProfileAndHostRepositoryTest {
     }
 
     @Test
-    fun `a profile keeps every field`() = runTest {
+    fun `a profile keeps every field`() = runDatabaseTest {
         val distroId = newDistroId()
         val saved = checkNotNull(
             profiles.add(
@@ -82,14 +82,14 @@ class ProfileAndHostRepositoryTest {
     }
 
     @Test
-    fun `a profile id given on add is ignored`() = runTest {
+    fun `a profile id given on add is ignored`() = runDatabaseTest {
         val saved = checkNotNull(profiles.add(Profile(id = 77L, name = "p")).getOrNull())
 
         assertTrue(saved.id != 77L)
     }
 
     @Test
-    fun `profiles check names and limits`() = runTest {
+    fun `profiles check names and limits`() = runDatabaseTest {
         profiles.add(Profile(name = "one"))
 
         assertEquals(DomainError.NameTaken("ONE"), failure(profiles.add(Profile(name = "ONE"))))
@@ -113,7 +113,7 @@ class ProfileAndHostRepositoryTest {
     }
 
     @Test
-    fun `a profile can be updated and removed`() = runTest {
+    fun `a profile can be updated and removed`() = runDatabaseTest {
         val one = checkNotNull(profiles.add(Profile(name = "one")).getOrNull())
         profiles.add(Profile(name = "two"))
 
@@ -132,26 +132,27 @@ class ProfileAndHostRepositoryTest {
     }
 
     @Test
-    fun `removing a distro clears it from profiles and hosts instead of deleting them`() = runTest {
-        val distroId = newDistroId()
-        val profile =
-            checkNotNull(profiles.add(Profile(name = "p", distroId = distroId)).getOrNull())
-        val host =
-            checkNotNull(
-                hosts.add(
-                    SshHost(name = "h", host = "h", user = "u", distroId = distroId)
-                ).getOrNull()
-            )
+    fun `removing a distro clears it from profiles and hosts instead of deleting them`() =
+        runDatabaseTest {
+            val distroId = newDistroId()
+            val profile =
+                checkNotNull(profiles.add(Profile(name = "p", distroId = distroId)).getOrNull())
+            val host =
+                checkNotNull(
+                    hosts.add(
+                        SshHost(name = "h", host = "h", user = "u", distroId = distroId)
+                    ).getOrNull()
+                )
 
-        distros.remove(distroId)
+            distros.remove(distroId)
 
-        assertNull(profiles.get(profile.id)?.distroId)
-        assertNull(hosts.get(host.id)?.distroId)
-        assertEquals("p", profiles.get(profile.id)?.name)
-    }
+            assertNull(profiles.get(profile.id)?.distroId)
+            assertNull(hosts.get(host.id)?.distroId)
+            assertEquals("p", profiles.get(profile.id)?.name)
+        }
 
     @Test
-    fun `a host is saved and read back`() = runTest {
+    fun `a host is saved and read back`() = runDatabaseTest {
         val saved = checkNotNull(
             hosts.add(
                 SshHost(
@@ -174,7 +175,7 @@ class ProfileAndHostRepositoryTest {
 
     @Test
     fun `hosts refuse anything that could be read as an ssh option or break the command line`() =
-        runTest {
+        runDatabaseTest {
             fun host(host: String = "srv", user: String = "ana", port: Int = 22) =
                 SshHost(name = "h$host$user$port", host = host, user = user, port = port)
 
@@ -193,7 +194,7 @@ class ProfileAndHostRepositoryTest {
         }
 
     @Test
-    fun `hosts accept names, addresses and ipv6`() = runTest {
+    fun `hosts accept names, addresses and ipv6`() = runDatabaseTest {
         listOf(
             "srv.example.com",
             "10.0.0.5",
@@ -209,7 +210,7 @@ class ProfileAndHostRepositoryTest {
     }
 
     @Test
-    fun `a host can be updated and removed`() = runTest {
+    fun `a host can be updated and removed`() = runDatabaseTest {
         val one = checkNotNull(hosts.add(SshHost(name = "one", host = "a", user = "u")).getOrNull())
         hosts.add(SshHost(name = "two", host = "b", user = "u"))
 
