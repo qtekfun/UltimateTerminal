@@ -53,6 +53,7 @@ fun DistroScreen(onClose: () -> Unit, viewModel: DistroViewModel = viewModel()) 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(modifier = Modifier.safeDrawingPadding().padding(16.dp)) {
             Header(state, onClose, onInstall = { dialog = DistroDialog.Install })
+            StorageAccessCard()
             state.installing?.let { InstallProgressCard(it, viewModel::cancelInstall) }
             state.message?.let { MessageBar(it, viewModel::dismissMessage) }
             DistroList(

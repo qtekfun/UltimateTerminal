@@ -38,6 +38,9 @@ funcionando:
 
 Lo que sí está verificado sin dispositivo: compila para las tres ABIs, los ejecutables se empaquetan
 en el APK con el tipo ELF y los puntos de entrada esperados, `./gradlew check` y el CI en verde.
+- T13, acceso a `/sdcard`: que el permiso de almacenamiento se conceda con `targetSdk` 28 en Android 11, 12, 13 y posteriores y
+  que con él los procesos nativos (proot) puedan leer y escribir en `/storage/emulated/0`, incluidos Descargas y Documentos;
+  que `cp /var/log/syslog ~/storage/downloads/` aparezca en la carpeta Descargas (ver D-T13-3 y "T13: lo que NO se ha validado").
 
 ## Decisiones
 
@@ -969,3 +972,46 @@ Nada de esto se ha visto en pantalla; solo hay tests de host.
 3. El renderizado de JetBrains Mono: negrita/cursiva con las cuatro variantes, ancho de celda correcto, y que no cambia el tamaño de la rejilla (`stty size`) respecto a la fuente del sistema.
 4. Iconos de las barras del sistema con esquemas claros y oscuros.
 5. La pantalla de ajustes para elegir esquema/tema aún no existe (T16): hoy solo se cambian por el repositorio de ajustes.
+
+## T13 — Acceso a los archivos del dispositivo
+
+### D-T13-1 · 2026-10-04 · Qué se monta y dónde
+- **Decisión:** con la función activada, cada sesión de proot recibe `~/storage/shared` (todo el almacenamiento compartido) y atajos a las carpetas habituales que existan en el dispositivo: `downloads` (Download), `dcim`, `documents`, `pictures`, `music` y `movies`. El origen es `Environment.getExternalStorageDirectory()` (normalmente `/storage/emulated/0`), no `/sdcard`, que es un enlace simbólico.
+- **Motivo:** `~/storage/downloads` es lo que pide la SPEC (RF-05) y `shared` cubre cualquier otra carpeta sin tener que listarlas todas. Solo se montan las carpetas que existen para no enseñar atajos rotos.
+- **Alternativas:** montar solo Descargas (poco útil); montar `/sdcard` directamente en `~/storage` (no deja sitio para los atajos).
+- **Impacto:** el cálculo vive en `domain/storage` (`SharedStoragePlanner`) y se aplica con `ProotSession.withSharedStorage`.
+
+### D-T13-2 · 2026-10-04 · Ajuste global, no por distro
+- **Decisión:** un solo interruptor (`AppSettings.sharedStorage`, clave `shared_storage`, desactivado por defecto) para todas las distros.
+- **Motivo:** la SPEC dice «por distro/ajuste»; el permiso de Android es del app entero, así que un interruptor por distro solo añadiría una pantalla sin dar más control real.
+- **Alternativas:** una columna en la tabla de distros (migración de Room y pantalla por distro). Se puede añadir más tarde sin romper nada.
+- **Impacto:** la clave entra en el backup de ajustes (T15) con el resto.
+
+### D-T13-3 · 2026-10-04 · Permiso: READ/WRITE_EXTERNAL_STORAGE, sin MANAGE_EXTERNAL_STORAGE (NO verificado en hardware)
+- **Decisión:** al activar el interruptor se piden `READ_EXTERNAL_STORAGE` y `WRITE_EXTERNAL_STORAGE`, y solo entonces. No se declara ni se pide `MANAGE_EXTERNAL_STORAGE`. Si el usuario ya concedió «acceso a todos los archivos» en los ajustes del sistema, también se acepta (`Environment.isExternalStorageManager()`).
+- **Motivo (hipótesis, sin comprobar en un dispositivo):** la app apunta a la API 28 a propósito (SPEC §2). A esa versión Android la trata como app con almacenamiento «clásico» y deja que un proceso lea y escriba por ruta con el permiso de siempre; es el modelo de Termux, que también apunta a 28. Pedir `MANAGE_EXTERNAL_STORAGE` obligaría a mandar al usuario a una pantalla de ajustes, es un permiso muy amplio y Google Play lo restringe; no hace falta si lo anterior funciona.
+- **Riesgos conocidos:** (1) en Android 13 y posteriores los permisos de almacenamiento se dividieron por tipo de medio y puede que, para una app que apunte a una versión anterior, el sistema solo conceda fotos, vídeo y audio y no Descargas ni Documentos; (2) desde Android 11 `Android/data` y `Android/obb` quedan fuera de alcance; (3) el sistema de archivos del almacenamiento compartido no admite enlaces simbólicos, bits de ejecución ni `chmod`, así que `ln -s`, `chmod +x` y los ejecutables dentro de `~/storage` fallarán o no tendrán efecto (igual que en Termux), y `--link2symlink` no puede emular enlaces duros allí.
+- **Plan si falla:** ofrecer «acceso a todos los archivos» con `ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION`. El código ya lo reconoce como permiso concedido; solo habría que declarar el permiso y añadir el botón. Queda pendiente de decidir tras probarlo en una tablet real.
+- **Para PRIVACY.md (T21):** el permiso solo se pide cuando el usuario activa la función; sirve para que las distros lean y escriban sus carpetas compartidas; ningún dato sale del dispositivo por ello. Ojo: el permiso está **declarado** en el manifiesto aunque la función esté apagada, y por eso aparece en la lista de permisos de la app.
+
+### D-T13-4 · 2026-10-04 · Degradar, no fallar
+- **Decisión:** si el permiso no está concedido, el almacenamiento no está montado o no se pueden crear los puntos de montaje, el plan queda como `Degraded(motivo)`, la sesión arranca igual y sin `~/storage`. Con la función apagada ni siquiera se consulta el permiso.
+- **Motivo:** un terminal que no abre por un permiso revocado es peor que uno sin `~/storage`.
+- **Impacto:** el aviso al usuario hoy es el texto bajo el interruptor («permiso no concedido»). El aviso al abrir una sesión llegará cuando el arranque de proot se conecte (ver siguiente punto).
+- **Importante, sin conectar:** todavía no hay ningún sitio que lance proot con una distro (T07 instala y T08 gestiona sesiones con el shell de Android). `SharedStorageMounts.prepare(...)` y `withSharedStorage(...)` están listos y probados, pero **nadie los llama aún**. Quien conecte proot a las sesiones debe usarlos; hasta entonces el interruptor se guarda pero no tiene efecto en una sesión.
+
+### D-T13-5 · 2026-10-04 · Los puntos de montaje se crean por el repositorio de ficheros
+- **Decisión:** los directorios vacíos donde proot monta (`<distro>/rootfs/root/storage/...`) se crean con `FileSystemRepository.createDirectories` y rutas validadas `FsPath`, en cada arranque (es idempotente). Se hace para que `ls ~/storage` los muestre: proot no inventa entradas en un directorio.
+- **Impacto:** no hay `java.io.File` en `domain` ni `ui`. Se hizo público `DistroInstaller.UNPACKED_NAME` (`rootfs`) para no duplicar la constante (cambio mínimo en código de T07).
+
+### D-T13-6 · 2026-10-04 · El código de Android va en `platform`, fuera de la cobertura
+- **Decisión:** `AndroidSharedStorageAccess` (permiso, ruta, `File.isDirectory`) está en `com.qtekfun.ultimateterminal.platform`, sin lógica propia. Kover solo mide `domain` y `data`, así que no cuenta; la lógica que decide está toda en `domain.storage` con tests.
+- **Motivo:** no se puede ejecutar en la JVM del host y un test que lo simule solo probaría el simulacro.
+- **Nota:** `Environment.getExternalStorageDirectory()` está obsoleta (API 29) y se usa con `@Suppress("DEPRECATION")` porque dar una ruta a un proceso nativo es justo lo que `targetSdk` 28 permite.
+
+### T13: lo que NO se ha validado (sin dispositivo)
+1. Que el diálogo de permiso salga y que, concedido, `/storage/emulated/0` se pueda leer y escribir desde proot (ver D-T13-3 y sus riesgos), en la tablet (API 31) y en Android 13 o posterior.
+2. El criterio de la SPEC: `cp /var/log/syslog ~/storage/downloads/` aparece en Descargas.
+3. Que proot monte (`-b`) esas rutas con `--link2symlink` y `--kill-on-exit` sin error, y que `ls ~/storage` muestre los puntos de montaje.
+4. La pantalla: el interruptor, el cambio del permiso en los ajustes del sistema mientras la app está en segundo plano y el botón «Abrir ajustes de la app».
+5. Que desactivar el interruptor no deje montajes colgados en una sesión ya abierta (cambia al abrir la siguiente).
