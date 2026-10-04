@@ -1586,3 +1586,84 @@ Solo hay tests de host. Falta comprobar en un móvil y en la tablet:
 - La forma del cursor y su parpadeo, el margen, y los colores de las barras con cada esquema (también
   con colores dinámicos activos y con el modo OLED).
 - Que cambiar la fuente o el espaciado con sesiones abiertas repinte y reajuste el pty sin cortar nada.
+## T15 — Copias de seguridad y restauración
+
+### D-T15-1 · 2026-10-04 · Formato: un tar plano, cifrado opcional por encima
+
+- **Decisión:** un archivo `.utbackup` es un `tar` plano (legible con cualquier `tar`) con `manifest.json` primero, `config.json` y una parte `distros/N.tar.gz` por distro. El cifrado, si se pide, envuelve todo el tar. El manifiesto lleva versión de formato, tipo, y el SHA-256 y tamaño de cada parte.
+- **Motivo:** restaurar puede validar el archivo entero antes de tocar nada, y un backup sin contraseña sigue siendo recuperable a mano.
+- **Alternativas:** un contenedor binario propio (más compacto, pero opaco e imposible de rescatar sin la app); un `.zip` (obliga a leer el directorio central al final: mal para flujos).
+- **Detalle:** el contenedor usa `BIGNUMBER_STAR` y no `BIGNUMBER_POSIX`: este último antepone una cabecera PAX a cada entrada y el archivo ya no empieza por `manifest.json`, que es como se reconoce un backup plano.
+
+### D-T15-2 · 2026-10-04 · Desviación de la SPEC: gzip en lugar de zstd
+
+- **Decisión:** las distros se comprimen con **gzip** (`java.util.zip`), no con zstd como pide la SPEC (`.tar.zst`).
+- **Motivo:** zstd en Java necesita una librería. `zstd-jni` empaqueta `.so` precompilados (prohibido por CLAUDE.md para F-Droid). `aircompressor` es Apache-2.0 y Java puro, pero su v3 se apoya en APIs recientes del JDK y en `Unsafe`, y no puedo validarlo en Android sin dispositivo. gzip no añade dependencias y ya es lo que el instalador sabe leer.
+- **Impacto:** archivos algo mayores que con zstd. Si más adelante se valida una librería, solo cambia el nombre y el compresor de las partes de distro: `format` sube a 2.
+
+### D-T15-3 · 2026-10-04 · Cifrado: AES-256-GCM por trozos con clave PBKDF2
+
+- **Decisión:** clave de 256 bits derivada de la contraseña con PBKDF2-HMAC-SHA256 (600 000 iteraciones, sal aleatoria de 16 bytes). Los datos se cifran en trozos de 64 KiB, cada uno con su etiqueta GCM. El nonce de cada trozo es un prefijo aleatorio del archivo, el número de trozo y una marca de «último»; la cabecera entera se autentica con cada trozo.
+- **Motivo:** el rootfs no cabe en RAM, y con esta construcción un trozo cambiado, repetido, reordenado o un archivo cortado (incluso justo entre dos trozos) falla la autenticación igual que una contraseña errónea. Una cabecera con iteraciones o tamaño de trozo absurdos se rechaza antes de gastar CPU.
+- **Impacto:** contraseña errónea y archivo manipulado son indistinguibles (`WrongPasswordOrCorrupt`): no se escribe nada en ninguno de los dos casos.
+
+### D-T15-4 · 2026-10-04 · Claves SSH: solo dentro de un backup cifrado
+
+- **Decisión:** las claves privadas SSH están cifradas con el Keystore del dispositivo, y esa clave no puede salir. Por eso un backup las lleva **en claro dentro del contenedor cifrado con la contraseña del usuario**, y la exportación **se niega** (`KeysNeedPassword`) a incluirlas sin contraseña. El usuario puede dejarlas fuera.
+- **Motivo:** la alternativa, escribirlas sin proteger en un archivo que viaja entre dispositivos, es justo lo que el modelo de amenazas de T14 evita.
+- **Impacto:** al restaurar sin las claves, un host que apuntaba a una clave pierde ese alias y queda sin clave, no roto.
+
+### D-T15-5 · 2026-10-04 · Restaurar solo añade; los ajustes se sustituyen
+
+- **Decisión:** restaurar nunca borra ni pisa lo que hay: perfiles, layouts, hosts y claves cuyo nombre (o alias) ya existe se conservan y se cuentan como «omitidos». Los ajustes sí se sustituyen, porque el objetivo es dejar la app igual. Las referencias entre elementos van por nombre o posición, nunca por id de base de datos, porque cambian entre dispositivos.
+- **Valores propios del dispositivo:** el interruptor de almacenamiento compartido **no se copia** (el permiso es del dispositivo y se vuelve a pedir). Valores fuera de rango se ajustan al límite o vuelven al valor por defecto.
+- **No incluido todavía:** teclas extra y atajos no están persistidos en la app, así que no hay nada que copiar. El `config.json` ignora campos desconocidos y lleva versión, de modo que se pueden añadir.
+
+### D-T15-6 · 2026-10-04 · Dos pasadas y distros transaccionales
+
+- **Decisión:** la primera pasada lee todo el archivo y comprueba etiquetas de cifrado, manifiesto, hash y tamaño de cada parte y la configuración, **sin escribir nada**. La segunda restaura y vuelve a comprobar cada parte al vuelo (el archivo puede haber cambiado entre pasadas, o venir de una fuente que cambia).
+- **Cada distro** es todo o nada: se registra, se desempaqueta en un directorio temporal con el extractor seguro de T07 (sin path traversal, sin escribir a través de enlaces, con límites de tamaño), se comprueba el hash y solo entonces se mueve a su sitio y se marca `READY`. Un fallo o una cancelación en cualquier punto la elimina.
+- **Entre distros no hay transacción:** si falla la segunda, la primera, ya completa y verificada, se queda. La configuración se aplica al final, después de las distros a las que puede referirse.
+- **Si el nombre ya existe**, la distro restaurada se llama `Nombre (restored)`, luego `(restored 2)`, etc.
+- **Impacto en disco:** exportar archiva cada distro primero en un directorio de trabajo privado (para conocer su hash antes de escribir el manifiesto), así que hace falta sitio para una copia comprimida temporal. Restaurar no necesita copia: lee del flujo.
+
+### D-T15-7 · 2026-10-04 · Lo que se conserva y lo que no del rootfs
+
+- Se conservan los nueve bits de permiso, los enlaces simbólicos como enlaces, las fechas, y los directorios. Los **sockets, tuberías y dispositivos se omiten**, como hace el extractor de T07.
+- Los **enlaces duros se archivan como ficheros independientes** (el tamaño crece si hay muchos).
+- **Propietarios:** todas las entradas se escriben como `root`. En el dispositivo todos los ficheros son del usuario de la app y proot presenta la propiedad por su cuenta, así que no hay un propietario real que conservar.
+- Un fichero del rootfs sin permiso de lectura para el propietario hace fallar la exportación con un error claro y sin dejar un archivo a medias (no se ha tratado de forzar el permiso). Es una hipótesis: si aparece en distros reales, habrá que cambiarlo.
+
+### D-T15-8 · 2026-10-04 · Cobertura
+
+- `data.backup` está medido por el umbral crítico de Kover: **100 % de línea y de rama (749/749 y 362/362)**. Para llegar se eliminaron ramas defensivas inalcanzables, y se añadieron al filtro de exclusión de Kover las clases `@Serializable` y los `$$serializer`: son datos puros con código generado cuyas ramas ningún test puede alcanzar, igual que ya se excluían Hilt y Room.
+- `TarGzExtractor` ganó la sobrecarga que extrae desde un flujo (para leer la parte de una distro sin copiarla); su comportamiento sobre ficheros no cambia y sus tests siguen en verde.
+
+### D-T15-9 · 2026-10-04 · Qué NO está validado (sin dispositivo)
+
+1. El selector de archivos del sistema (`ACTION_CREATE_DOCUMENT` y `ACTION_OPEN_DOCUMENT`) con proveedores reales (Drive, tarjeta SD), y que `openOutputStream(uri, "wt")` trunque en todos ellos.
+2. Una exportación y restauración de una distro **real** (cientos de MB) en un móvil: tiempos, uso de memoria, y que PBKDF2 con 600 000 iteraciones no tarde demasiado en un móvil de gama baja.
+3. Que el rootfs restaurado arranque con proot (depende de la validación de T02/T08b).
+4. Si una exportación larga sobrevive con la app en segundo plano: corre en el ámbito del ViewModel, **no** en el servicio en primer plano, así que Android puede matarla.
+5. La interfaz (diálogos, contraseña, progreso) y su accesibilidad con TalkBack.
+6. `mkfifo` hace falta en el host para uno de los tests (hay `mkfifo` en Linux y macOS).
+
+## Requisitos añadidos tras las primeras pruebas en hardware (2026-10-04)
+
+El usuario probó la app en un Pixel 8 y pidió tres cosas. Se anotan aquí qué requisito se tocó y por qué.
+
+### D-REQ-1 · 2026-10-04 · La fila de teclas extra sigue al teclado en pantalla
+- **Decisión:** `ExtraKeysConfig.onlyWithKeyboard` (por defecto `true`): la fila se dibuja solo mientras el teclado está visible (`WindowInsets.ime`), y su altura deja de reservarse en el cálculo de la rejilla cuando no se ve. SPEC RF-08 actualizado.
+- **Motivo:** con el teclado cerrado la fila (dos filas de 48 dp) comía terminal sin servir para escribir.
+- **Alternativas:** ocultarla siempre y mostrarla con un botón (más toques); atarla a "hay teclado físico" (no es fiable en Android). Se deja la opción para verla siempre.
+- **Impacto:** el cambio de tamaño del pty al abrir y cerrar el teclado ya estaba debounced (D-T04-2); la fila entra y sale con el teclado. El formato de texto guardado añade la línea `onlyWithKeyboard=`; un texto antiguo sin ella cuenta como `true`.
+- **Sin validar en el dispositivo:** que no haya parpadeo de la rejilla al animarse el teclado.
+
+### D-REQ-2 · 2026-10-04 · Arranque en la distro predeterminada: ya cumplido, con requisito explícito (RF-13)
+- **Comprobado en un Pixel 8:** con Alpine instalada, cerrar la app del todo y reabrirla deja `localhost:~#` (proot) en la primera pestaña.
+- **Decisión:** se convierte en el requisito RF-13 y se añade T09b para lo que falta: nombrar las pestañas con su distro y el repintado de pestañas nuevas.
+
+### D-REQ-3 · 2026-10-04 · La pantalla de Ajustes pasa a ser un requisito de acceso, no solo de contenido
+- **Hallazgo:** no existía ninguna forma de llegar a unos ajustes (T12, T13, T14 y T15 dejaron cada uno su tarjeta en la pantalla de distros). T16 era una tarea del final del plan.
+- **Decisión:** RF-11 exige un icono ⚙ permanente y secciones definidas; T16 se amplía con ellas y sube de prioridad.
+- **Motivo:** sin ajustes visibles, T12c (apariencia) y todas las opciones de T11–T15 no se pueden usar.

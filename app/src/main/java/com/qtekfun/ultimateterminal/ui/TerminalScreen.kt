@@ -186,7 +186,7 @@ private fun TerminalPane(
     onOpenDistros: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val extraKeys by viewModel.extraKeys.collectAsStateWithLifecycle()
+    val extraKeys = rememberShownExtraKeys(viewModel)
     val sticky by viewModel.stickyModifiers.collectAsStateWithLifecycle()
     val launchMessage by viewModel.launchMessage.collectAsStateWithLifecycle()
     Box(modifier) {

@@ -22,6 +22,7 @@ import com.qtekfun.ultimateterminal.domain.session.TabBarPlacement
 import com.qtekfun.ultimateterminal.domain.session.reserveForTabBar
 import com.qtekfun.ultimateterminal.domain.session.tabBarPlacement
 import com.qtekfun.ultimateterminal.domain.terminal.EdgeInsets
+import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.extraKeysHeightPx
 import com.qtekfun.ultimateterminal.domain.terminal.reserveBottom
 import com.qtekfun.ultimateterminal.domain.terminal.terminalLayoutFor
@@ -37,6 +38,17 @@ internal fun tabBarPlacementOf(windowSize: IntSize, density: Density): TabBarPla
     tabBarPlacement(with(density) { windowSize.width.toDp().value.toInt() })
 
 /**
+ * The extra-keys row as it is shown: the configured keys, hidden when the keyboard is. The grid and
+ * the row both read this, so the space the row gives back is the space the grid takes.
+ */
+@Composable
+internal fun rememberShownExtraKeys(viewModel: TerminalViewModel): ExtraKeysConfig {
+    val configured by viewModel.extraKeys.collectAsStateWithLifecycle()
+    val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    return configured.shownWith(keyboardVisible)
+}
+
+/**
  * Tells the terminal how big its grid is: the window, minus what the system bars, the keyboard, the
  * extra-keys row, the tab bar and the text margin take (T04), whenever any of them changes.
  */
@@ -49,7 +61,7 @@ internal fun LayoutEffect(
     marginDp: Int
 ) {
     val density = LocalDensity.current
-    val extraKeys by viewModel.extraKeys.collectAsStateWithLifecycle()
+    val extraKeys = rememberShownExtraKeys(viewModel)
     // The extra-keys row sits above the keyboard, so its height is not terminal area.
     val extraKeysPx = extraKeysHeightPx(extraKeys, with(density) { ExtraKeyRowHeight.roundToPx() })
     val placement = tabBarPlacementOf(windowSize, density)

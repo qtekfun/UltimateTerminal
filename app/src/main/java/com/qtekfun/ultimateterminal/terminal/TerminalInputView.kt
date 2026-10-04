@@ -12,6 +12,8 @@ import android.view.inputmethod.BaseInputConnection
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
+import com.qtekfun.ultimateterminal.domain.terminal.ComposingText
+import com.qtekfun.ultimateterminal.domain.terminal.CompositionEdit
 import com.qtekfun.ultimateterminal.domain.terminal.KeyInput
 
 /**
@@ -19,13 +21,14 @@ import com.qtekfun.ultimateterminal.domain.terminal.KeyInput
  * keyboard through an [InputConnection]. The screen itself is drawn in Compose; this view only
  * exists because Android delivers text input to a `View`.
  *
- * The soft keyboard is asked for plain, non-suggesting input so that it sends characters as they
- * are typed instead of composing words. Not validated on a device yet (see DECISIONS.md, T03).
+ * The soft keyboard is asked for plain, non-suggesting input, but Gboard still composes words and
+ * only commits them when the keyboard is hidden (found on a Pixel 8: what was typed did not reach
+ * the shell until then). So composing text is sent as it changes, see [ComposingText].
  */
 class TerminalInputView(context: Context) : View(context) {
     var sink: TerminalInputSink? = null
 
-    private val composing = StringBuilder()
+    private val composing = ComposingText()
 
     init {
         isFocusable = true
@@ -45,7 +48,7 @@ class TerminalInputView(context: Context) : View(context) {
             InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD or
             InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
         outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_FULLSCREEN or EditorInfo.IME_FLAG_NO_EXTRACT_UI
-        composing.clear()
+        composing.finish()
         return TerminalInputConnection()
     }
 
@@ -54,28 +57,25 @@ class TerminalInputView(context: Context) : View(context) {
 
     private inner class TerminalInputConnection : BaseInputConnection(this, false) {
         override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean {
-            composing.clear()
-            if (!text.isNullOrEmpty()) sink?.onText(text.toString())
+            send(composing.update(text?.toString().orEmpty()))
+            composing.finish()
             return true
         }
 
         override fun setComposingText(text: CharSequence?, newCursorPosition: Int): Boolean {
-            composing.clear()
-            composing.append(text)
+            send(composing.update(text?.toString().orEmpty()))
             return true
         }
 
+        // What was composed has already reached the shell: only the next word starts over.
         override fun finishComposingText(): Boolean {
-            if (composing.isNotEmpty()) sink?.onText(composing.toString())
-            composing.clear()
+            composing.finish()
             return true
         }
 
         override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean {
-            if (composing.isNotEmpty()) {
-                composing.clear()
-            } else if (beforeLength > 0) {
-                sink?.onDeleteBefore(beforeLength)
+            if (beforeLength > 0) {
+                sink?.onDeleteBefore(composing.deleteBefore(beforeLength))
             }
             return true
         }
@@ -84,6 +84,11 @@ class TerminalInputView(context: Context) : View(context) {
             if (event.action != KeyEvent.ACTION_DOWN) return true
             return sink?.onKey(keyInputOf(event)) ?: false
         }
+    }
+
+    private fun send(edit: CompositionEdit) {
+        if (edit.deleteCount > 0) sink?.onDeleteBefore(edit.deleteCount)
+        if (edit.insert.isNotEmpty()) sink?.onText(edit.insert)
     }
 
     private fun keyInputOf(event: KeyEvent): KeyInput {
