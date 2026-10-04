@@ -29,6 +29,8 @@ object SchemeCodec {
     private val hexColor = Regex("^#[0-9a-fA-F]{6}$")
     private val json = Json {
         prettyPrint = true
+        // `version` has a default value; without this it would be left out of the exported file.
+        encodeDefaults = true
         ignoreUnknownKeys = true
     }
 

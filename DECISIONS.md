@@ -932,7 +932,7 @@ atajos. No se ha visto la barra en ninguna pantalla. Pendiente en una tablet y u
 - **Decisión:** vienen Dracula (predeterminado), Solarized Dark, Solarized Light, Gruvbox Dark, Nord y un esquema OLED propio. Se acreditan en `THIRD_PARTY_NOTICES.md` y con el texto MIT completo en `assets/licenses/ColorSchemes-MIT.txt`.
 - **Verificado en los repositorios oficiales:** Solarized (© 2011 Ethan Schoonover, MIT), Dracula (© 2023 Dracula Theme, MIT), Nord (© 2016-presente Sven Greb, MIT) y Gruvbox (© Pavel Pertsev; MIT/X11 según su README y `package.json`, aunque el repositorio no trae un fichero `LICENSE`).
 - **Tango, retirado:** el primer borrador lo incluía como predeterminado diciendo «dominio público». **No pude verificar esa afirmación**: las guías de Tango se publican bajo CC BY-SA 2.5, que no es compatible con GPLv3, y no encontré una declaración clara para la paleta. Al no poder comprobarlo y querer evitar reclamaciones, se quitó. Si más adelante se verifica una fuente clara de licencia, se puede añadir.
-- **Cambios a las paletas:** pequeños retoques de legibilidad documentados en `BuiltInSchemes.kt`. Los esquemas MIT permiten modificar con atribución.
+- **Cambios a las paletas:** retoques mínimos de legibilidad, documentados junto a cada esquema en `BuiltInSchemes.kt` y exigidos por el test de contraste: Solarized Light (verde, amarillo y cian 1–2 % más oscuros: los oficiales dan 2,9–3,0:1) y Gruvbox Dark (rojo normal más claro: el oficial `CC241D` da 2,7:1). Los esquemas MIT permiten modificar con atribución.
 - **Impacto:** el esquema predeterminado cambia a Dracula. Un usuario que importe un esquema responde de su origen.
 
 ### D-T12-3 · 2026-10-04 · Modo OLED = variante del tema oscuro
@@ -952,7 +952,7 @@ atajos. No se ha visto la barra en ninguna pantalla. Pendiente en una tablet y u
 
 ### D-T12-6 · 2026-10-04 · Persistencia y tamaño de fuente
 - **Decisión:** tema, modo OLED, colores dinámicos, esquema elegido, esquemas importados y tamaño de fuente viven en el repositorio de ajustes de T05 (clave-valor). El tamaño del zoom de T11 se restaura una vez y solo se guardan los cambios del usuario, con un *debounce* de 500 ms (un pellizco genera muchos valores).
-- **Importación/exportación:** JSON versionado (`version: 1`) con `kotlinx.serialization`, probado con ida y vuelta. Un fichero de una versión desconocida se rechaza.
+- **Importación/exportación:** JSON versionado (`version: 1`) con `kotlinx.serialization`, probado con ida y vuelta. Un fichero de una versión desconocida se rechaza. Un test cazó que, con `encodeDefaults` apagado, `kotlinx.serialization` omitía el campo `version` al exportar (por tener valor por defecto): los ficheros no llevaban versión. Se activó `encodeDefaults`.
 
 ### D-T12-7 · 2026-10-04 · Contraste mínimo comprobado en tests
 - **Decisión:** cada esquema incluido debe cumplir: texto sobre fondo ≥ 4,5:1 (WCAG AA), cursor ≥ 3:1, texto sobre selección ≥ 3:1, cada color ANSI sobre el fondo ≥ 3:1 y el «negro brillante» ≥ 1,5:1; y lo mismo en su variante OLED.

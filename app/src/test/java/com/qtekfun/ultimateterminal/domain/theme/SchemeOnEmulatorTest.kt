@@ -36,7 +36,9 @@ class SchemeOnEmulatorTest {
 
     // The default scheme is shared by the whole library: leave it as the other tests expect it.
     @AfterEach
-    fun restore() = original.copyInto(shared)
+    fun restore() {
+        original.copyInto(shared)
+    }
 
     @Test
     fun aNewShellStartsWithTheSchemeColors() {

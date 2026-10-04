@@ -11,16 +11,19 @@ package com.qtekfun.ultimateterminal.domain.theme
 object BuiltInSchemes {
     const val DEFAULT_ID = "dracula"
 
-    private fun c(rgb: Int) = rgb or TerminalColorScheme.BLACK
+    // Palettes are written as hex strings, like the published schemes, and parsed once here.
+    private const val HEX_RADIX = 16
+
+    private fun c(hex: String) = hex.toInt(HEX_RADIX) or TerminalColorScheme.BLACK
 
     private fun scheme(
-        id: String,
         name: String,
-        ansi: List<Int>,
-        foreground: Int,
-        background: Int,
-        cursor: Int,
-        selection: Int
+        ansi: List<String>,
+        foreground: String,
+        background: String,
+        selection: String,
+        id: String = name.lowercase().replace(' ', '-'),
+        cursor: String = foreground
     ) = TerminalColorScheme(
         id = id,
         name = name,
@@ -37,71 +40,74 @@ object BuiltInSchemes {
      * instead of being the greys of the official terminal mapping, so bold text stays colored.
      */
     private val solarizedAnsiDark = listOf(
-        0x073642, 0xDC322F, 0x859900, 0xB58900, 0x268BD2, 0xD33682, 0x2AA198, 0xEEE8D5,
-        0x586E75, 0xCB4B16, 0x859900, 0xB58900, 0x268BD2, 0x6C71C4, 0x2AA198, 0xFDF6E3
+        "073642", "DC322F", "859900", "B58900", "268BD2", "D33682", "2AA198", "EEE8D5",
+        "586E75", "CB4B16", "859900", "B58900", "268BD2", "6C71C4", "2AA198", "FDF6E3"
     )
 
     val solarizedDark = scheme(
-        id = "solarized-dark",
         name = "Solarized Dark",
         ansi = solarizedAnsiDark,
-        foreground = 0x93A1A1,
-        background = 0x002B36,
-        cursor = 0x93A1A1,
-        selection = 0x073642
+        foreground = "93A1A1",
+        background = "002B36",
+        selection = "073642"
     )
 
-    /** The light variant uses base01 for text (the official base00 is below 4.5:1 on base3). */
+    /**
+     * The light variant uses base01 for text (the official base00 is below 4.5:1 on base3) and
+     * darkens green, yellow and cyan by 1 to 2 % (the official ones are 2.9:1 to 3.0:1 on base3,
+     * under the 3:1 the tests ask of every color a program may print). Everything else is official.
+     */
+    private val solarizedAnsiLight = listOf(
+        "073642", "DC322F", "829500", "B38700", "268BD2", "D33682", "299D94", "EEE8D5",
+        "93A1A1", "CB4B16", "829500", "B38700", "268BD2", "6C71C4", "299D94", "FDF6E3"
+    )
+
     val solarizedLight = scheme(
-        id = "solarized-light",
         name = "Solarized Light",
-        ansi = solarizedAnsiDark.toMutableList().also { it[8] = 0x93A1A1 },
-        foreground = 0x586E75,
-        background = 0xFDF6E3,
-        cursor = 0x586E75,
-        selection = 0xEEE8D5
+        ansi = solarizedAnsiLight,
+        foreground = "586E75",
+        background = "FDF6E3",
+        selection = "EEE8D5"
     )
 
     /** Dracula by Zeno Rocha and contributors (MIT). */
     val dracula = scheme(
-        id = "dracula",
         name = "Dracula",
         ansi = listOf(
-            0x21222C, 0xFF5555, 0x50FA7B, 0xF1FA8C, 0xBD93F9, 0xFF79C6, 0x8BE9FD, 0xF8F8F2,
-            0x6272A4, 0xFF6E6E, 0x69FF94, 0xFFFFA5, 0xD6ACFF, 0xFF92DF, 0xA4FFFF, 0xFFFFFF
+            "21222C", "FF5555", "50FA7B", "F1FA8C", "BD93F9", "FF79C6", "8BE9FD", "F8F8F2",
+            "6272A4", "FF6E6E", "69FF94", "FFFFA5", "D6ACFF", "FF92DF", "A4FFFF", "FFFFFF"
         ),
-        foreground = 0xF8F8F2,
-        background = 0x282A36,
-        cursor = 0xF8F8F2,
-        selection = 0x44475A
+        foreground = "F8F8F2",
+        background = "282A36",
+        selection = "44475A"
     )
 
-    /** Gruvbox (dark) by Pavel Pertsev (MIT). */
+    /**
+     * Gruvbox (dark) by Pavel Pertsev (MIT). The normal red is lightened from the official
+     * `CC241D` (2.7:1 on the background) to `DE271F`, to reach the 3:1 the tests ask of every
+     * color a program may print.
+     */
     val gruvboxDark = scheme(
-        id = "gruvbox-dark",
         name = "Gruvbox Dark",
         ansi = listOf(
-            0x282828, 0xCC241D, 0x98971A, 0xD79921, 0x458588, 0xB16286, 0x689D6A, 0xA89984,
-            0x928374, 0xFB4934, 0xB8BB26, 0xFABD2F, 0x83A598, 0xD3869B, 0x8EC07C, 0xEBDBB2
+            "282828", "DE271F", "98971A", "D79921", "458588", "B16286", "689D6A", "A89984",
+            "928374", "FB4934", "B8BB26", "FABD2F", "83A598", "D3869B", "8EC07C", "EBDBB2"
         ),
-        foreground = 0xEBDBB2,
-        background = 0x282828,
-        cursor = 0xEBDBB2,
-        selection = 0x504945
+        foreground = "EBDBB2",
+        background = "282828",
+        selection = "504945"
     )
 
     /** Nord by Arctic Ice Studio / Sven Greb (MIT). */
     val nord = scheme(
-        id = "nord",
         name = "Nord",
         ansi = listOf(
-            0x3B4252, 0xBF616A, 0xA3BE8C, 0xEBCB8B, 0x81A1C1, 0xB48EAD, 0x88C0D0, 0xE5E9F0,
-            0x4C566A, 0xBF616A, 0xA3BE8C, 0xEBCB8B, 0x81A1C1, 0xB48EAD, 0x8FBCBB, 0xECEFF4
+            "3B4252", "BF616A", "A3BE8C", "EBCB8B", "81A1C1", "B48EAD", "88C0D0", "E5E9F0",
+            "4C566A", "BF616A", "A3BE8C", "EBCB8B", "81A1C1", "B48EAD", "8FBCBB", "ECEFF4"
         ),
-        foreground = 0xD8DEE9,
-        background = 0x2E3440,
-        cursor = 0xD8DEE9,
-        selection = 0x434C5E
+        foreground = "D8DEE9",
+        background = "2E3440",
+        selection = "434C5E"
     )
 
     /** Pure black background for OLED screens, with the bright palette of Dracula (MIT). */
@@ -109,13 +115,13 @@ object BuiltInSchemes {
         id = "oled",
         name = "OLED Black",
         ansi = listOf(
-            0x000000, 0xFF5555, 0x50FA7B, 0xF1FA8C, 0x7AA2FF, 0xFF79C6, 0x8BE9FD, 0xE6E6E6,
-            0x6B6B6B, 0xFF6E6E, 0x69FF94, 0xFFFFA5, 0x9DBAFF, 0xFF92DF, 0xA4FFFF, 0xFFFFFF
+            "000000", "FF5555", "50FA7B", "F1FA8C", "7AA2FF", "FF79C6", "8BE9FD", "E6E6E6",
+            "6B6B6B", "FF6E6E", "69FF94", "FFFFA5", "9DBAFF", "FF92DF", "A4FFFF", "FFFFFF"
         ),
-        foreground = 0xE6E6E6,
-        background = 0x000000,
-        cursor = 0xFFFFFF,
-        selection = 0x2D2D2D
+        foreground = "E6E6E6",
+        background = "000000",
+        cursor = "FFFFFF",
+        selection = "2D2D2D"
     )
 
     val all: List<TerminalColorScheme> =

@@ -78,7 +78,6 @@ import kotlinx.coroutines.flow.drop
  * Prototype (T03, T04). Drawing, gestures, keyboard input and resizing have not been validated on
  * a device yet (see DECISIONS.md).
  */
-@OptIn(FlowPreview::class)
 @Composable
 fun TerminalScreen(
     scheme: TerminalColorScheme,
@@ -88,22 +87,12 @@ fun TerminalScreen(
     viewModel: TerminalViewModel = viewModel()
 ) {
     val density = LocalDensity.current
-    val context = LocalContext.current
-    val typefaces = remember { TerminalTypefaces.load(context) }
     // Before the layout effect below, so a shell that starts on the first layout has the colors.
-    LaunchedEffect(scheme) { viewModel.applyScheme(scheme) }
-    LaunchedEffect(viewModel) {
-        viewModel.fontSize.restore(initialFontSizeSp)
-        // The first value is the one just restored (or the default): only user changes are saved.
-        viewModel.fontSize.sizeSp.drop(1).debounce(FONT_SIZE_SAVE_DELAY_MILLIS)
-            .collect(onFontSizeChanged)
-    }
+    SchemeAndFontEffects(viewModel, scheme, initialFontSizeSp, onFontSizeChanged)
     val fontSizeSp by viewModel.fontSize.sizeSp.collectAsStateWithLifecycle()
     val extraKeys by viewModel.extraKeys.collectAsStateWithLifecycle()
     val sticky by viewModel.stickyModifiers.collectAsStateWithLifecycle()
-    val painter = remember(density, fontSizeSp, typefaces, scheme.selection) {
-        TerminalPainter(typefaces, with(density) { fontSizeSp.sp.toPx() }, scheme.selection)
-    }
+    val painter = rememberTerminalPainter(fontSizeSp, scheme)
     val inputView = remember { arrayOfNulls<TerminalInputView>(1) }
 
     var windowSize by remember { mutableStateOf(IntSize.Zero) }
@@ -160,6 +149,38 @@ fun TerminalScreen(
                 pane(Modifier.weight(1f).fillMaxHeight())
             }
         }
+    }
+}
+
+/** The painter for the current font size and scheme; the fonts are loaded once. */
+@Composable
+private fun rememberTerminalPainter(
+    fontSizeSp: Float,
+    scheme: TerminalColorScheme
+): TerminalPainter {
+    val density = LocalDensity.current
+    val context = LocalContext.current
+    val typefaces = remember { TerminalTypefaces.load(context) }
+    return remember(density, fontSizeSp, typefaces, scheme.selection) {
+        TerminalPainter(typefaces, with(density) { fontSizeSp.sp.toPx() }, scheme.selection)
+    }
+}
+
+/** Applies the stored colors and font size, and saves the font size when the user changes it. */
+@OptIn(FlowPreview::class)
+@Composable
+private fun SchemeAndFontEffects(
+    viewModel: TerminalViewModel,
+    scheme: TerminalColorScheme,
+    initialFontSizeSp: Float,
+    onFontSizeChanged: (Float) -> Unit
+) {
+    LaunchedEffect(scheme) { viewModel.applyScheme(scheme) }
+    LaunchedEffect(viewModel) {
+        viewModel.fontSize.restore(initialFontSizeSp)
+        // The first value is the one just restored (or the default): only user changes are saved.
+        viewModel.fontSize.sizeSp.drop(1).debounce(FONT_SIZE_SAVE_DELAY_MILLIS)
+            .collect(onFontSizeChanged)
     }
 }
 
