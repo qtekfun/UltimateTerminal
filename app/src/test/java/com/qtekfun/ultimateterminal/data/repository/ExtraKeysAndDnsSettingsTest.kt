@@ -6,10 +6,10 @@ package com.qtekfun.ultimateterminal.data.repository
 import com.qtekfun.ultimateterminal.data.local.UltimateTerminalDatabase
 import com.qtekfun.ultimateterminal.data.local.entity.SettingEntity
 import com.qtekfun.ultimateterminal.data.local.inMemoryDatabase
+import com.qtekfun.ultimateterminal.data.local.runDatabaseTest
 import com.qtekfun.ultimateterminal.domain.launch.ResolvConf
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -30,7 +30,7 @@ class ExtraKeysAndDnsSettingsTest {
     fun tearDown() = db.close()
 
     @Test
-    fun `a fresh install has the default row and the built-in DNS servers`() = runTest {
+    fun `a fresh install has the default row and the built-in DNS servers`() = runDatabaseTest {
         val now = settings.observe().first()
 
         assertEquals(ExtraKeysConfig.default(), now.extraKeys)
@@ -38,7 +38,7 @@ class ExtraKeysAndDnsSettingsTest {
     }
 
     @Test
-    fun `the extra keys are stored and read back with their options`() = runTest {
+    fun `the extra keys are stored and read back with their options`() = runDatabaseTest {
         val config = ExtraKeysConfig(
             listOf(listOf("esc", "tab"), listOf("up", "down")),
             visible = false,
@@ -51,7 +51,7 @@ class ExtraKeysAndDnsSettingsTest {
     }
 
     @Test
-    fun `the DNS servers are stored in order and read back`() = runTest {
+    fun `the DNS servers are stored in order and read back`() = runDatabaseTest {
         settings.update { it.copy(dnsFallbackServers = listOf("9.9.9.9", "2620:fe::fe")) }
 
         assertEquals(
@@ -61,7 +61,7 @@ class ExtraKeysAndDnsSettingsTest {
     }
 
     @Test
-    fun `a damaged DNS value keeps only what is an address`() = runTest {
+    fun `a damaged DNS value keeps only what is an address`() = runDatabaseTest {
         db.settingDao().upsert(
             listOf(SettingEntity("dns_fallback", "1.1.1.1, not-a-server, 8.8.8.8"))
         )
@@ -70,7 +70,7 @@ class ExtraKeysAndDnsSettingsTest {
     }
 
     @Test
-    fun `an unreadable extra keys value gives the default row`() = runTest {
+    fun `an unreadable extra keys value gives the default row`() = runDatabaseTest {
         db.settingDao().upsert(listOf(SettingEntity("extra_keys", "nothing useful here")))
 
         assertEquals(ExtraKeysConfig.default().rows, settings.observe().first().extraKeys.rows)
