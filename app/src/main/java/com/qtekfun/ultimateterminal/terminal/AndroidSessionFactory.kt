@@ -8,6 +8,7 @@ import com.qtekfun.ultimateterminal.data.proot.LaunchPlan
 import com.qtekfun.ultimateterminal.data.proot.ProotLaunch
 import com.qtekfun.ultimateterminal.data.proot.ProotSessionPlanner
 import com.qtekfun.ultimateterminal.domain.launch.LaunchProblem
+import com.qtekfun.ultimateterminal.domain.session.HostRegistry
 import com.qtekfun.ultimateterminal.domain.session.LaunchingSessionFactory
 import com.qtekfun.ultimateterminal.domain.session.SessionController
 import com.qtekfun.ultimateterminal.domain.session.SessionHandle
@@ -42,10 +43,14 @@ class AndroidSessionFactory(
     private val distroOf: (SessionId) -> Long?,
     private val scope: CoroutineScope
 ) : LaunchingSessionFactory {
-    private val hosts = mutableMapOf<SessionId, TerminalSessionHost>()
+    /**
+     * The hosts of the running sessions. Observable: the sessions state names a tab before its host
+     * exists, so whoever looks a host up must be told when it appears (see [HostRegistry]).
+     */
+    val hosts = HostRegistry<TerminalSessionHost>()
     private var scheme: TerminalColorScheme? = null
 
-    fun host(id: SessionId?): TerminalSessionHost? = id?.let(hosts::get)
+    fun host(id: SessionId?): TerminalSessionHost? = hosts[id]
 
     /** Makes [newScheme] the colors of every running shell, and of any shell started later. */
     fun applyScheme(newScheme: TerminalColorScheme) {
@@ -68,7 +73,7 @@ class AndroidSessionFactory(
             onExit(status)
         }
         scheme?.let(host::applyScheme)
-        hosts[id] = host
+        hosts.put(id, host)
         host.resize(layout.grid, layout.cellWidthPx, layout.cellHeightPx)
         val job = scope.launch { begin(host, id, launch, onExit) }
         return Handle(id, host, job, cleanup)

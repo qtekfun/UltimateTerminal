@@ -52,4 +52,35 @@ class ChromeColorsTest {
         assertEquals(0xFF000000.toInt(), oled.background)
         assertTrue(ChromeColorsFor.scheme(oled).surface != oled.background)
     }
+
+    @Test
+    fun theKeysOfEverySchemeAreReadableAndDifferFromTheirTray() {
+        BuiltInSchemes.all.forEach { scheme ->
+            val chrome = ChromeColorsFor.scheme(scheme)
+            assertTrue(ColorMath.contrast(chrome.onKey, chrome.key) >= 4.5, scheme.name)
+            assertTrue(ColorMath.contrast(chrome.onKey, chrome.keyPressed) >= 4.5, scheme.name)
+            assertTrue(chrome.key != chrome.surface, scheme.name)
+            assertTrue(chrome.keyPressed != chrome.key, scheme.name)
+        }
+    }
+
+    @Test
+    fun aKeyIsLighterThanItsTrayInADarkSchemeAndInALightOne() {
+        val dark = ChromeColorsFor.scheme(BuiltInSchemes.dracula)
+        val light = ChromeColorsFor.scheme(BuiltInSchemes.solarizedLight)
+
+        assertTrue(ColorMath.luminance(dark.key) > ColorMath.luminance(dark.surface))
+        assertTrue(ColorMath.luminance(light.key) > ColorMath.luminance(light.surface))
+    }
+
+    @Test
+    fun aPressedKeyIsDarkerThanItsCap() {
+        listOf(BuiltInSchemes.dracula, BuiltInSchemes.solarizedLight).forEach { scheme ->
+            val chrome = ChromeColorsFor.scheme(scheme)
+            assertTrue(
+                ColorMath.luminance(chrome.keyPressed) < ColorMath.luminance(chrome.key),
+                scheme.name
+            )
+        }
+    }
 }

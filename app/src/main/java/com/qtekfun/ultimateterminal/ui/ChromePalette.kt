@@ -25,6 +25,10 @@ data class ChromePalette(
     val outline: Color,
     val accent: Color,
     val onAccent: Color,
+    /** The cap of an extra key, a step lighter than the tray it sits on, and while pressed. */
+    val key: Color,
+    val keyPressed: Color,
+    val onKey: Color,
     val corner: Dp
 )
 
@@ -46,6 +50,9 @@ private fun materialChrome(corner: Dp): ChromePalette {
         outline = colors.outline,
         accent = colors.primary,
         onAccent = colors.onPrimary,
+        key = colors.surfaceVariant,
+        keyPressed = colors.outlineVariant,
+        onKey = colors.onSurfaceVariant,
         corner = corner
     )
 }
@@ -68,6 +75,9 @@ fun rememberChromePalette(
                 outline = Color(chrome.outline),
                 accent = Color(chrome.accent),
                 onAccent = Color(chrome.onAccent),
+                key = Color(chrome.key),
+                keyPressed = Color(chrome.keyPressed),
+                onKey = Color(chrome.onKey),
                 corner = corner
             )
         } else {

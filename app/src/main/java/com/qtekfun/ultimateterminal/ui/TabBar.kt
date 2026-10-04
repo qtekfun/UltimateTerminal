@@ -18,15 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -36,17 +28,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -55,10 +54,21 @@ import com.qtekfun.ultimateterminal.domain.session.DistroOption
 import com.qtekfun.ultimateterminal.domain.session.SessionId
 import com.qtekfun.ultimateterminal.domain.session.TabBarPlacement
 import com.qtekfun.ultimateterminal.domain.session.TabItem
+import com.qtekfun.ultimateterminal.domain.session.TabName
 import com.qtekfun.ultimateterminal.domain.session.TabSwitch
-import com.qtekfun.ultimateterminal.domain.session.TabTitle
 import com.qtekfun.ultimateterminal.domain.session.TabsController
 import com.qtekfun.ultimateterminal.domain.session.dropIndex
+import com.qtekfun.ultimateterminal.domain.session.tabNames
+import com.qtekfun.ultimateterminal.ui.ios.IosAction
+import com.qtekfun.ultimateterminal.ui.ios.IosActionRole
+import com.qtekfun.ultimateterminal.ui.ios.IosAlert
+import com.qtekfun.ultimateterminal.ui.ios.IosContextMenu
+import com.qtekfun.ultimateterminal.ui.ios.IosGlyph
+import com.qtekfun.ultimateterminal.ui.ios.IosIcon
+import com.qtekfun.ultimateterminal.ui.ios.IosMenuItem
+import com.qtekfun.ultimateterminal.ui.ios.IosSize
+import com.qtekfun.ultimateterminal.ui.ios.IosText
+import com.qtekfun.ultimateterminal.ui.ios.IosTheme
 
 /** Height of the bar when it runs along the top; also the minimum touch size (SPEC §6). */
 internal val TabBarHeight = 48.dp
@@ -69,15 +79,18 @@ internal val TabBarSideWidth = 192.dp
 private val TouchSize = 48.dp
 private val TabMinWidth = 96.dp
 private val TabMaxWidth = 200.dp
-private val TabTextPadding = 12.dp
-private const val MENU_ICON_ALPHA = 0.8f
+private val TabTextPadding = 14.dp
+private val PillInset = 6.dp
+private val BarPadding = 4.dp
+private const val INACTIVE_TAB_ALPHA = 0.72f
 private const val ENDED_TAB_ALPHA = 0.6f
 
 /**
- * The tabs: a row on narrow windows and a column on wide ones. A tap selects, a double tap or the
- * menu renames, a long press followed by a drag reorders, and the menu closes. Which tab takes
- * what is decided in the domain ([TabsController]); this only draws and reports touches. Not
- * validated on a device yet (see DECISIONS.md, T09).
+ * The tabs, drawn as capsules in the colors of the scheme: a row on narrow windows and a column on
+ * wide ones. A tap selects, a double tap renames, a long press followed by a drag reorders, and the
+ * active tab has a menu to rename and close it (every tab offers the same as screen-reader
+ * actions). Which tab takes what is decided in the domain ([TabsController]); this only draws and
+ * reports touches. Not validated on a device yet (see DECISIONS.md, T09 and T22b).
  */
 @Composable
 fun TabBar(
@@ -92,12 +105,13 @@ fun TabBar(
     var renaming by remember { mutableStateOf<TabItem?>(null) }
     val drag = remember { TabDrag() }
     val vertical = placement == TabBarPlacement.Side
+    val names = remember(items) { tabNames(items) }
 
     TabStrip(
         vertical = vertical,
         modifier = modifier,
         tabList = {
-            items.forEach { item ->
+            items.forEachIndexed { index, item ->
                 val actions = TabChipActions(
                     onSelect = { tabs.switchTo(TabSwitch.ById(item.id)) },
                     onRename = { renaming = item },
@@ -106,7 +120,12 @@ fun TabBar(
                         tabs.move(item.id, dropTarget(items, item.id, offset, drag))
                     }
                 )
-                TabChip(item, items.size, vertical, drag, actions)
+                TabChip(
+                    item,
+                    tabNameText(names[index]),
+                    TabChipBar(items.size, vertical, drag),
+                    actions
+                )
             }
         },
         newTab = {
@@ -120,7 +139,7 @@ fun TabBar(
     )
 
     renaming?.let { item ->
-        RenameDialog(
+        RenamePrompt(
             current = item.title.orEmpty(),
             onSave = {
                 tabs.rename(item.id, it)
@@ -130,7 +149,7 @@ fun TabBar(
         )
     }
     if (closing != null) {
-        CloseConfirmDialog(onConfirm = tabs::confirmClose, onDismiss = tabs::dismissClose)
+        CloseConfirm(onConfirm = tabs::confirmClose, onDismiss = tabs::dismissClose)
     }
 }
 
@@ -149,16 +168,37 @@ private fun TabStrip(
     newTab: @Composable () -> Unit
 ) {
     val description = stringResource(R.string.tab_bar_description)
+    val chrome = currentChrome()
+    val hairline = IosSize.hairline
     val bar = modifier
-        .background(currentChrome().surface)
+        .background(chrome.surface)
+        .drawBehind {
+            // A hairline between the bar and the terminal, as iOS bars have.
+            val width = hairline.toPx()
+            if (vertical) {
+                drawLine(
+                    chrome.outline,
+                    Offset(size.width, 0f),
+                    Offset(size.width, size.height),
+                    width
+                )
+            } else {
+                drawLine(
+                    chrome.outline,
+                    Offset(0f, size.height),
+                    Offset(size.width, size.height),
+                    width
+                )
+            }
+        }
         .semantics { contentDescription = description }
     if (vertical) {
-        Column(bar) {
+        Column(bar.padding(BarPadding)) {
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) { tabList() }
             newTab()
         }
     } else {
-        Row(bar, verticalAlignment = Alignment.CenterVertically) {
+        Row(bar.padding(horizontal = BarPadding), verticalAlignment = Alignment.CenterVertically) {
             Row(Modifier.weight(1f).horizontalScroll(rememberScrollState())) { tabList() }
             newTab()
         }
@@ -196,59 +236,104 @@ private class TabChipActions(
     val onDrop: (Float) -> Unit
 )
 
+/** What a tab needs to know about the bar it sits in. */
+private class TabChipBar(val count: Int, val vertical: Boolean, val drag: TabDrag)
+
+/** The texts a screen reader hears for a tab, and for what it can do with it. */
+private class TabSpeech(val description: String, val renameLabel: String, val closeLabel: String)
+
 @Composable
-private fun TabChip(
-    item: TabItem,
-    count: Int,
-    vertical: Boolean,
-    drag: TabDrag,
-    actions: TabChipActions
-) {
-    val name = item.title ?: stringResource(R.string.tab_default_title, item.id.value)
+private fun TabChip(item: TabItem, name: String, bar: TabChipBar, actions: TabChipActions) {
     val state = stringResource(
         if (item.running) R.string.tab_state_running else R.string.tab_state_ended
     )
-    val description = stringResource(R.string.tab_description, name, item.position, count, state)
-    val dragging = drag.id == item.id
-    val chrome = currentChrome()
-    val chip = if (vertical) {
+    val speech = TabSpeech(
+        stringResource(R.string.tab_description, name, item.position, bar.count, state),
+        stringResource(R.string.tab_rename),
+        stringResource(R.string.tab_close)
+    )
+    val dragging = bar.drag.id == item.id
+    val chip = if (bar.vertical) {
         Modifier.fillMaxWidth()
     } else {
         Modifier.widthIn(min = TabMinWidth, max = TabMaxWidth)
     }
+    // The whole 48 dp is the touch target; only the capsule inside it is colored.
     Row(
         chip
             .heightIn(min = TouchSize)
             .zIndex(if (dragging) 1f else 0f)
             .graphicsLayer {
-                if (dragging && vertical) translationY = drag.offsetPx
-                if (dragging && !vertical) translationX = drag.offsetPx
+                if (dragging && bar.vertical) translationY = bar.drag.offsetPx
+                if (dragging && !bar.vertical) translationX = bar.drag.offsetPx
             }
             .onSizeChanged {
-                drag.sizes[item.id] = (if (vertical) it.height else it.width).toFloat()
+                bar.drag.sizes[item.id] = (if (bar.vertical) it.height else it.width).toFloat()
             }
-            .background(
-                if (item.active) chrome.selected else chrome.surface,
-                RoundedCornerShape(chrome.corner)
-            )
-            .semantics(mergeDescendants = true) {
-                contentDescription = description
-                selected = item.active
-                role = Role.Tab
-            }
-            .tabGestures(item.id, vertical, drag, actions),
+            .capsule(if (item.active) currentChrome().selected else Color.Transparent, PillInset)
+            .tabSemantics(item.active, speech, actions)
+            .tabGestures(item.id, bar.vertical, bar.drag, actions),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val textAlpha = if (item.running) 1f else ENDED_TAB_ALPHA
-        Text(
-            name,
-            modifier = Modifier.weight(1f, fill = false).padding(start = TabTextPadding),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            style = MaterialTheme.typography.labelLarge,
-            color = chrome.onSurface.copy(alpha = textAlpha)
+        TabLabel(item, name, Modifier.weight(1f, fill = false))
+        if (item.active) TabMenu(name, actions)
+    }
+}
+
+/** The name of a tab: bolder when it is the active one, fainter when it ended or is not active. */
+@Composable
+private fun TabLabel(item: TabItem, name: String, modifier: Modifier) {
+    val alpha = when {
+        !item.running -> ENDED_TAB_ALPHA
+        item.active -> 1f
+        else -> INACTIVE_TAB_ALPHA
+    }
+    IosText(
+        name,
+        modifier = modifier.padding(
+            start = TabTextPadding,
+            end = if (item.active) 0.dp else TabTextPadding
+        ),
+        maxLines = 1,
+        style = IosTheme.typography.subheadline.copy(
+            fontWeight = if (item.active) FontWeight.SemiBold else null
+        ),
+        color = currentChrome().onSurface.copy(alpha = alpha)
+    )
+}
+
+/** What a screen reader says about a tab, and the actions it offers on every one of them. */
+private fun Modifier.tabSemantics(
+    active: Boolean,
+    speech: TabSpeech,
+    actions: TabChipActions
+): Modifier = semantics(mergeDescendants = true) {
+    contentDescription = speech.description
+    selected = active
+    role = Role.Tab
+    customActions = listOf(
+        CustomAccessibilityAction(speech.renameLabel) {
+            actions.onRename()
+            true
+        },
+        CustomAccessibilityAction(speech.closeLabel) {
+            actions.onClose()
+            true
+        }
+    )
+}
+
+/** Fills a capsule inside the element, [inset] short of its top and bottom, as a pill-shaped tab. */
+private fun Modifier.capsule(color: Color, inset: Dp): Modifier = drawBehind {
+    if (color.alpha > 0f) {
+        val top = inset.toPx()
+        val height = size.height - 2 * top
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(0f, top),
+            size = Size(size.width, height),
+            cornerRadius = CornerRadius(height / 2f)
         )
-        TabMenu(name, actions)
     }
 }
 
@@ -280,7 +365,7 @@ private fun Modifier.tabGestures(
         )
     }
 
-/** The "more" button of a tab, with its rename and close entries. */
+/** The "more" button of the active tab, with its rename and close entries. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TabMenu(name: String, actions: TabChipActions) {
@@ -293,25 +378,30 @@ private fun TabMenu(name: String, actions: TabChipActions) {
             .combinedClickable(onClick = { open = true }),
         contentAlignment = Alignment.Center
     ) {
-        Text("⋮", modifier = Modifier.alpha(MENU_ICON_ALPHA), color = currentChrome().onSurface)
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.tab_rename)) },
+        IosIcon(IosGlyph.ELLIPSIS, null, tint = currentChrome().onSurface, size = MenuIconSize)
+        IosContextMenu(expanded = open, onDismiss = { open = false }) {
+            IosMenuItem(
+                label = stringResource(R.string.tab_rename),
                 onClick = {
                     open = false
                     actions.onRename()
                 }
             )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.tab_close)) },
+            IosMenuItem(
+                label = stringResource(R.string.tab_close),
                 onClick = {
                     open = false
                     actions.onClose()
-                }
+                },
+                glyph = IosGlyph.CLOSE,
+                destructive = true,
+                showSeparator = false
             )
         }
     }
 }
+
+private val MenuIconSize = 20.dp
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -336,46 +426,7 @@ private fun NewTabButton(
             ),
         contentAlignment = Alignment.Center
     ) {
-        Text("+", style = MaterialTheme.typography.titleLarge, color = currentChrome().onSurface)
+        IosIcon(IosGlyph.PLUS, null, tint = IosTheme.colors.tint)
         NewTabMenu(menuOpen, { menuOpen = false }, choices, onNewTabIn, links)
     }
-}
-
-@Composable
-private fun RenameDialog(current: String, onSave: (String) -> Unit, onDismiss: () -> Unit) {
-    var text by remember { mutableStateOf(current) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.tab_rename_title)) },
-        text = {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it.take(TabTitle.MAX_LENGTH) },
-                singleLine = true,
-                label = { Text(stringResource(R.string.tab_rename_label)) },
-                supportingText = { Text(stringResource(R.string.tab_rename_hint)) }
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = { onSave(text) }) { Text(stringResource(R.string.tab_save)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.tab_cancel)) }
-        }
-    )
-}
-
-@Composable
-private fun CloseConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.tab_close_title)) },
-        text = { Text(stringResource(R.string.tab_close_message)) },
-        confirmButton = {
-            TextButton(onClick = onConfirm) { Text(stringResource(R.string.tab_close_confirm)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.tab_cancel)) }
-        }
-    )
 }

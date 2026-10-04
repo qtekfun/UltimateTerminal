@@ -1725,3 +1725,58 @@ El usuario probó la app en un Pixel 8 y pidió tres cosas. Se anotan aquí qué
 - La hoja inferior: tacto del arrastre, velocidad de proyección y que el `Dialog` sin atenuación de ventana se vea bien con el teclado.
 - El campo de búsqueda con el teclado (foco, IME, botón de borrar).
 - Rendimiento y consumo de memoria de las capas de desenfoque.
+
+## T09b — Pestañas: repintado de las nuevas y nombre de distro
+
+### D-T09b-1 · 2026-10-04 · Causa raíz de la pestaña en blanco: `activeHost` se calculaba antes de que existiera el host
+- **Hallazgo (Pixel 8):** una pestaña nueva salía en blanco hasta cambiar de pestaña y volver, y con el teclado visible lo escrito no se repintaba hasta ocultarlo. Se reprodujo en cold start y en pestañas creadas con "+".
+- **Causa:** `SessionManager.activeHost` era `state.map { factory.host(it.activeId) }.distinctUntilChanged()`. El estado publica la pestaña nueva **antes** de arrancar su sesión (el planificador lee la distro del estado ya publicado), y el host se registra en la fábrica después. En ese instante `factory.host(...)` devolvía `null`, `distinctUntilChanged` impedía repetir la consulta y el ViewModel retransmitía `flowOf(0)`: ningún aviso de cambio del emulador llegaba a la vista. Cualquier cosa que cambiara el estado (cambiar de pestaña, el cambio de tamaño al ocultar el teclado) repetía la consulta y "arreglaba" la pantalla, lo que explica los síntomas.
+- **Decisión:** `HostRegistry<T>` (dominio, genérico) guarda los hosts y expone un contador observable; `follow(activeId)` repite la consulta cada vez que un host se registra o se quita. `AndroidSessionFactory` lo usa en lugar de un `mutableMapOf`, `SessionManager.activeHost` es `registry.follow(...)`, y los paneles no activos (`InactivePane`) releen su host cuando cambia el registro (`hostChanges`), porque tenían el mismo defecto.
+- **Alternativas:** forzar un repintado periódico (esconde el fallo y gasta batería); registrar el host antes de publicar el estado (cambia el orden de arranque de T08, más riesgo).
+- **Prueba:** `HostRegistryTest` reproduce el orden del fallo (estado primero, host después) y comprueba que se sigue el host, que no hay emisiones repetidas y que un host cerrado deja de seguirse.
+- **Sin validar en dispositivo:** que la pestaña nueva se dibuje al instante y que lo escrito se repinte sin cambiar de pestaña.
+
+### D-T09b-2 · 2026-10-04 · Nombre de pestaña: la distro, numerada si se repite (RF-13)
+- **Decisión:** `tabNames` (dominio, puro) da `Custom` si el usuario renombró, `InDistro(distro, ordinal)` si no ("Alpine", "Alpine 2"...), y `Plain(n)` ("Shell n") para el shell de Android. Una pestaña renombrada no consume número de su distro.
+- **Motivo:** con varias pestañas en una distro, "Shell 1/2/3" no dice nada; el nombre del usuario siempre gana.
+
+### D-T09b-3 · 2026-10-04 · El círculo oscuro con "⋮" sobre el prompt no lo dibuja la app (sin confirmar)
+- **Hallazgo:** en las capturas del Pixel 8 hay un círculo oscuro con tres puntos en la esquina superior izquierda del terminal. Ninguna parte del código lo dibuja allí: el menú de paneles (`PaneMenu`) está arriba a la derecha y solo aparece con paneles divididos. Está anclado al origen de la vista de entrada (`TerminalInputView`, 1 dp), así que parece una función del sistema para editores con foco.
+- **Mitigación aplicada, sin confirmar:** `importantForAutofill = NO`, `setAutoHandwritingEnabled(false)` desde Android 14 y `IME_FLAG_NO_PERSONALIZED_LEARNING`. T08c ya lo había atribuido al menú de paneles sin mirar en el dispositivo y el círculo siguió ahí; no doy por resuelto este punto hasta verlo en un dispositivo.
+
+## T22b — Cromo del terminal estilo iOS
+
+### D-T22b-1 · 2026-10-04 · El cromo usa `ui/ios` (T22a) con los colores del esquema del terminal
+- **Decisión:** `TerminalScreen` envuelve el contenido en `IosTheme(decision, scheme)`, con `dark` y `oled` sacados del esquema (no del tema del sistema): la pantalla se dibuja en los colores del esquema y su cromo tiene que combinar con ellos. Las barras siguen usando `ChromePalette` (T12c) para superficies y texto.
+
+### D-T22b-2 · 2026-10-04 · Barra de pestañas: cápsulas, y el menú de la pestaña activa
+- **Decisión:** cada pestaña es una cápsula (`capsule`, dibujada con 6 dp de margen vertical dentro de un objetivo táctil de 48 dp, así que la cápsula es más baja que lo que se toca). La activa lleva el relleno `selected`, el texto en seminegrita y un botón `⋯` (menú con renombrar y cerrar, `IosContextMenu`); las demás, solo texto. Línea fina (0,5 dp) entre la barra y el terminal. Todas las pestañas ofrecen renombrar y cerrar como **acciones de accesibilidad**, así que ninguna función depende de ver el botón.
+- **Gestos:** se conservan (tocar selecciona, doble toque renombra, pulsación larga y arrastre reordena).
+- **Alternativas:** menú contextual por pulsación larga en todas (choca con el arrastre para reordenar).
+
+### D-T22b-3 · 2026-10-04 · Sin desenfoque en la barra de pestañas
+- **Decisión:** la barra usa el color `surface` del esquema, sin `backdropBar`. El desenfoque de T22a necesita contenido que pase *por debajo* de la barra, y aquí la barra no se solapa con el terminal (el cálculo de la rejilla la excluye). Solaparlas cambiaría el cálculo del tamaño del pty y no se puede validar sin dispositivo.
+- **Pendiente:** decidir en T22c / una vez probado en dispositivo si el terminal se dibuja bajo la barra.
+
+### D-T22b-4 · 2026-10-04 · Teclas extra como teclas de teclado
+- **Decisión:** cada tecla es una tecla redondeada con una línea inferior (el filo de una tecla), sobre una bandeja del color `surface`. Los colores salen del dominio (`ChromeColorsFor`: `key`, `keyPressed`, `onKey`): la tecla es **más clara que la bandeja** en esquemas claros y oscuros, y más oscura al pulsarla; el texto cumple contraste ≥ 4,5:1 en todos los esquemas incluidos (test). Ctrl/Alt armados y bloqueados siguen con el acento. `onlyWithKeyboard` se mantiene.
+- **Háptica:** la de `IosPressable` en cada tecla, como el clic de un teclado.
+
+### D-T22b-5 · 2026-10-04 · Menús y avisos con los componentes iOS
+- **"+" y paneles:** `IosContextMenu` con iconos Lucide a la derecha (D-T22a). Las entradas se construyen como lista para que la última no lleve separador. **Renombrar:** alerta iOS con campo de texto (`NamePrompt`: título, campo, nota y dos botones lado a lado), que toma el teclado sola; **cerrar:** `IosAlert` con el botón destructivo en rojo. **Aviso de lanzamiento:** tarjeta redondeada con sombra sobre las primeras filas; el icono va en rojo si es un problema.
+- **Botón de paneles:** objetivo de 48 dp con una cápsula de 30 dp dentro (cubre menos texto) y solo con paneles divididos.
+- **No tocado (T22c):** los diálogos de `SessionPrompts` (permisos), Distros, SSH, Apariencia y Ajustes.
+
+### D-T22b-6 · 2026-10-04 · Refactor forzado por detekt
+- `NamePrompt` recibe sus textos agrupados (`NamePromptTexts`), `TabChip` se parte en `TabChip`, `TabLabel` y `tabSemantics` con dos clases de contexto, los avisos y alertas de pestañas viven en `TabPrompts.kt`, y `TerminalScreen` agrupa lo que pasa a `TerminalContent`. Ninguna regla se relajó.
+
+### D-T22b-7 · 2026-10-04 · Qué NO está validado (sin dispositivo)
+- El aspecto real de las cápsulas, las teclas y los menús en un móvil y una tablet, en claro, oscuro y OLED.
+- La alerta de renombrar con el teclado (que el campo se vea y no lo tape), y el foco automático del campo.
+- Que el menú contextual salga en el sitio que se espera desde el borde de la pantalla (se ancla a la esquina superior derecha de su botón).
+- Los gestos de las pestañas con la cápsula, y TalkBack con las acciones personalizadas.
+- Que el círculo con "⋮" desaparezca (D-T09b-3).
+
+### D-T22b-8 · 2026-10-04 · Lección: pruebas deterministas
+- Esta rama no añade tests que dependan del reloj, del azar ni del tamaño de archivos comprimidos (la cobertura crítica fue intermitente por eso; ver D-T15-*/la PR de fixtures deterministas).
+

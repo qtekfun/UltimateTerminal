@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -60,12 +60,21 @@ import com.qtekfun.ultimateterminal.terminal.TerminalInputView
 import com.qtekfun.ultimateterminal.terminal.TerminalPainter
 import com.qtekfun.ultimateterminal.terminal.TerminalSessionHost
 import com.qtekfun.ultimateterminal.terminal.TerminalViewModel
+import com.qtekfun.ultimateterminal.ui.ios.IosAction
+import com.qtekfun.ultimateterminal.ui.ios.IosActionRole
+import com.qtekfun.ultimateterminal.ui.ios.IosAlert
+import com.qtekfun.ultimateterminal.ui.ios.IosContextMenu
+import com.qtekfun.ultimateterminal.ui.ios.IosGlyph
+import com.qtekfun.ultimateterminal.ui.ios.IosIcon
+import com.qtekfun.ultimateterminal.ui.ios.IosMenuItem
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /** The thin bar between two panes, and the touch target around it (the 48 dp of accessibility). */
 private val DividerThickness = 4.dp
 private val DividerTouchTarget = 48.dp
 private val PaneMenuButtonSize = 48.dp
+private val PaneMenuCapsuleSize = 30.dp
+private val PaneMenuIconSize = 18.dp
 private const val MENU_ALPHA = 0.85f
 private val FocusBorder = 2.dp
 private val NoFrames = MutableStateFlow(0)
@@ -105,6 +114,8 @@ fun TerminalPanes(
     val scene by viewModel.panes.scene.collectAsStateWithLifecycle()
     val focused by viewModel.panes.focused.collectAsStateWithLifecycle()
     val isSplit by viewModel.panes.isSplit.collectAsStateWithLifecycle()
+    // A pane's host is created after the scene names the pane: read again when one appears.
+    val hostChanges by viewModel.hostChanges.collectAsStateWithLifecycle()
     Box(modifier.onSizeChangedTo { areaSize = it }) {
         val current = scene ?: return@Box
         current.panes.forEachIndexed { index, box ->
@@ -122,7 +133,8 @@ fun TerminalPanes(
                     if (hasKeyboard) {
                         TerminalCanvas(viewModel, painter, onTap = { inputView[0]?.showKeyboard() })
                     } else {
-                        InactivePane(viewModel.hostOf(box.id), painter) {
+                        val host = remember(box.id, hostChanges) { viewModel.hostOf(box.id) }
+                        InactivePane(host, painter) {
                             viewModel.panes.focusPane(box.id)
                             inputView[0]?.showKeyboard()
                         }
@@ -236,7 +248,19 @@ private fun DividerHandle(divider: Divider, onDrag: (pointerPx: Float) -> Unit) 
     }
 }
 
-/** The "⋮" button of the pane that has the keyboard: split, zoom, swap and close. */
+/** One entry of the pane menu. */
+private class PaneAction(
+    val label: Int,
+    val glyph: IosGlyph?,
+    val destructive: Boolean = false,
+    val run: () -> Unit
+)
+
+/**
+ * The "⋮" button of the pane that has the keyboard: split, zoom, swap and close. It is only on
+ * screen when the tab is split. The touch target is 48 dp and the capsule inside it is smaller, so
+ * it covers little of the text under it.
+ */
 @Composable
 private fun PaneMenu(
     viewModel: TerminalViewModel,
@@ -253,40 +277,76 @@ private fun PaneMenu(
         Box(
             Modifier
                 .size(PaneMenuButtonSize)
-                .background(chrome.surface.copy(alpha = MENU_ALPHA), RoundedCornerShape(24.dp))
                 .semantics { contentDescription = description }
                 .pointerInput(Unit) { detectTapGestures { open = true } },
             contentAlignment = Alignment.Center
         ) {
-            Text("⋮", color = chrome.onSurface, style = MaterialTheme.typography.titleLarge)
+            Box(
+                Modifier
+                    .size(PaneMenuCapsuleSize)
+                    .background(chrome.surface.copy(alpha = MENU_ALPHA), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                IosIcon(IosGlyph.ELLIPSIS, null, tint = chrome.onSurface, size = PaneMenuIconSize)
+            }
         }
         val close = { open = false }
-        DropdownMenu(expanded = open, onDismissRequest = close) {
-            MenuEntry(R.string.pane_split_right, close, viewModel.panes::splitVertical)
-            MenuEntry(R.string.pane_split_down, close, viewModel.panes::splitHorizontal)
-            if (isSplit) {
-                val zoom = if (isZoomed) R.string.pane_unzoom else R.string.pane_zoom
-                MenuEntry(zoom, close, viewModel.panes::toggleZoom)
-                MenuEntry(R.string.pane_close, close, viewModel.panes::closePane)
-                for ((direction, label) in SwapLabels) {
-                    if (focused != null && scene.neighbour(focused, direction) != null) {
-                        MenuEntry(label, close) { viewModel.panes.swap(direction) }
-                    }
-                }
+        val entries = paneActions(viewModel, scene, focused, isSplit, isZoomed)
+        IosContextMenu(expanded = open, onDismiss = close) {
+            entries.forEachIndexed { index, entry ->
+                IosMenuItem(
+                    label = stringResource(entry.label),
+                    onClick = {
+                        close()
+                        entry.run()
+                    },
+                    glyph = entry.glyph,
+                    destructive = entry.destructive,
+                    showSeparator = index < entries.lastIndex
+                )
             }
         }
     }
 }
 
-@Composable
-private fun MenuEntry(label: Int, close: () -> Unit, action: () -> Unit) {
-    DropdownMenuItem(
-        text = { Text(stringResource(label)) },
-        onClick = {
-            close()
-            action()
-        }
+private fun paneActions(
+    viewModel: TerminalViewModel,
+    scene: PaneScene,
+    focused: SessionId?,
+    isSplit: Boolean,
+    isZoomed: Boolean
+): List<PaneAction> = buildList {
+    add(
+        PaneAction(
+            R.string.pane_split_right,
+            IosGlyph.CHEVRON_RIGHT,
+            run = viewModel.panes::splitVertical
+        )
     )
+    add(
+        PaneAction(
+            R.string.pane_split_down,
+            IosGlyph.CHEVRON_DOWN,
+            run = viewModel.panes::splitHorizontal
+        )
+    )
+    if (isSplit) {
+        val zoom = if (isZoomed) R.string.pane_unzoom else R.string.pane_zoom
+        add(PaneAction(zoom, null, run = viewModel.panes::toggleZoom))
+        for ((direction, label) in SwapLabels) {
+            if (focused != null && scene.neighbour(focused, direction) != null) {
+                add(PaneAction(label, null) { viewModel.panes.swap(direction) })
+            }
+        }
+        add(
+            PaneAction(
+                R.string.pane_close,
+                IosGlyph.CLOSE,
+                destructive = true,
+                run = viewModel.panes::closePane
+            )
+        )
+    }
 }
 
 private val SwapLabels = listOf(
@@ -312,20 +372,18 @@ private fun RefusalToasts(viewModel: TerminalViewModel) {
 private fun CloseConfirmation(viewModel: TerminalViewModel) {
     val pending by viewModel.panes.closing.pending.collectAsStateWithLifecycle()
     if (pending != null) {
-        AlertDialog(
-            onDismissRequest = viewModel.panes.closing::dismiss,
-            title = { Text(stringResource(R.string.pane_close_title)) },
-            text = { Text(stringResource(R.string.pane_close_message)) },
-            confirmButton = {
-                TextButton(onClick = viewModel.panes.closing::confirm) {
-                    Text(stringResource(R.string.tab_close_confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel.panes.closing::dismiss) {
-                    Text(stringResource(R.string.tab_cancel))
-                }
-            }
+        IosAlert(
+            title = stringResource(R.string.pane_close_title),
+            message = stringResource(R.string.pane_close_message),
+            actions = listOf(
+                IosAction(stringResource(R.string.tab_cancel), IosActionRole.CANCEL),
+                IosAction(
+                    stringResource(R.string.tab_close_confirm),
+                    IosActionRole.DESTRUCTIVE,
+                    viewModel.panes.closing::confirm
+                )
+            ),
+            onDismiss = viewModel.panes.closing::dismiss
         )
     }
 }

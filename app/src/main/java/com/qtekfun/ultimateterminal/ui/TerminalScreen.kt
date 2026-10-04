@@ -69,11 +69,13 @@ import com.qtekfun.ultimateterminal.domain.terminal.reserveBottom
 import com.qtekfun.ultimateterminal.domain.terminal.terminalLayoutFor
 import com.qtekfun.ultimateterminal.domain.terminal.withTextMargin
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
+import com.qtekfun.ultimateterminal.domain.theme.ThemeDecision
 import com.qtekfun.ultimateterminal.terminal.PainterStyle
 import com.qtekfun.ultimateterminal.terminal.TerminalInputView
 import com.qtekfun.ultimateterminal.terminal.TerminalPainter
 import com.qtekfun.ultimateterminal.terminal.TerminalTypefaces
 import com.qtekfun.ultimateterminal.terminal.TerminalViewModel
+import com.qtekfun.ultimateterminal.ui.ios.IosTheme
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
@@ -112,40 +114,84 @@ fun TerminalScreen(
     // The scheme's background fills the whole window, bars included; the content is padded by the
     // same insets the layout was computed with, so what is drawn is exactly what the pty is told.
     val chrome = rememberChromePalette(scheme, appearance)
-    CompositionLocalProvider(LocalChromePalette provides chrome) {
-        Box(
-            modifier.fillMaxSize().background(Color(scheme.background)).onSizeChanged {
-                windowSize = it
-            }
-        ) {
-            val padded = Modifier.fillMaxSize().padding(insets.toPadding(density))
-            val links = TabBarLinks(
-                openDistros = screens.openDistros,
-                openSsh = screens.openSsh,
-                openAppearance = screens.openAppearance,
-                splitRight = viewModel.panes::splitVertical,
-                splitDown = viewModel.panes::splitHorizontal
+    // The iOS-style bars, sheets and alerts follow the terminal's scheme, not the system theme: the
+    // screen is drawn in the scheme's colors and its chrome has to sit well with them.
+    val decision = remember(scheme) {
+        ThemeDecision(dark = scheme.isDark, oled = scheme.background == TerminalColorScheme.BLACK)
+    }
+    IosTheme(decision, scheme) {
+        CompositionLocalProvider(LocalChromePalette provides chrome) {
+            TerminalContent(
+                modifier,
+                TerminalParts(viewModel, painter, inputView, look, screens),
+                ContentLayout(placement, insets, density)
+            ) { windowSize = it }
+        }
+    }
+}
+
+/** What the terminal screen draws and talks to. */
+private data class TerminalParts(
+    val viewModel: TerminalViewModel,
+    val painter: TerminalPainter,
+    val inputView: Array<TerminalInputView?>,
+    val look: TerminalLook,
+    val screens: ScreenLinks
+)
+
+/** How the window is split between the tab bar, the terminal and what the system covers. */
+private data class ContentLayout(
+    val placement: TabBarPlacement,
+    val insets: EdgeInsets,
+    val density: Density
+)
+
+@Composable
+private fun TerminalContent(
+    modifier: Modifier,
+    parts: TerminalParts,
+    layout: ContentLayout,
+    onWindowSize: (IntSize) -> Unit
+) {
+    val viewModel = parts.viewModel
+    val painter = parts.painter
+    val inputView = parts.inputView
+    val screens = parts.screens
+    val look = parts.look
+    val (placement, insets, density) = layout
+    val (scheme, appearance) = look
+    Box(
+        modifier.fillMaxSize().background(Color(scheme.background)).onSizeChanged {
+            onWindowSize(it)
+        }
+    ) {
+        val padded = Modifier.fillMaxSize().padding(insets.toPadding(density))
+        val links = TabBarLinks(
+            openDistros = screens.openDistros,
+            openSsh = screens.openSsh,
+            openAppearance = screens.openAppearance,
+            splitRight = viewModel.panes::splitVertical,
+            splitDown = viewModel.panes::splitHorizontal
+        )
+        val pane = @Composable { paneModifier: Modifier ->
+            TerminalPane(
+                viewModel,
+                painter,
+                inputView,
+                appearance.marginDp.dp,
+                screens.openDistros,
+                paneModifier
             )
-            val pane = @Composable { paneModifier: Modifier ->
-                TerminalPane(
-                    viewModel,
-                    painter,
-                    inputView,
-                    appearance.marginDp.dp,
-                    screens.openDistros,
-                    paneModifier
-                )
+        }
+        if (placement == TabBarPlacement.Top) {
+            Column(padded) {
+                TabBarSlot(viewModel.tabs, placement, links)
+                pane(Modifier.weight(1f).fillMaxWidth())
             }
-            if (placement == TabBarPlacement.Top) {
-                Column(padded) {
-                    TabBarSlot(viewModel.tabs, placement, links)
-                    pane(Modifier.weight(1f).fillMaxWidth())
-                }
-            } else {
-                Row(padded) {
-                    TabBarSlot(viewModel.tabs, placement, links)
-                    pane(Modifier.weight(1f).fillMaxHeight())
-                }
+        } else {
+            Row(padded) {
+                TabBarSlot(viewModel.tabs, placement, links)
+                pane(Modifier.weight(1f).fillMaxHeight())
             }
         }
     }
