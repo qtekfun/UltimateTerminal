@@ -20,7 +20,11 @@ android {
         }
         externalNativeBuild {
             cmake {
-                cFlags += setOf("-std=c11", "-Wall", "-Wextra", "-Os", "-fno-stack-protector")
+                // The file-prefix-map keeps the checkout path out of the binary (reproducible builds).
+                cFlags += setOf(
+                    "-std=c11", "-Wall", "-Wextra", "-Os", "-fno-stack-protector",
+                    "-ffile-prefix-map=${rootDir}=."
+                )
             }
         }
     }

@@ -39,6 +39,9 @@ fun versionCodeOf(version: String): Int {
     return base * 100 + (rc.toIntOrNull() ?: 99)
 }
 
+/** Release signing from the environment (CI secrets); without it the release APK is unsigned. */
+val releaseKeystore: String? = System.getenv("UT_KEYSTORE_FILE")
+
 android {
     namespace = "com.qtekfun.ultimateterminal"
     compileSdk = 37
@@ -54,9 +57,28 @@ android {
         versionCode = versionCodeOf(appVersion)
         versionName = appVersion
 
+        externalNativeBuild {
+            cmake {
+                // Reproducible builds: the checkout path must not end up in the native binaries
+                // (__FILE__, debug info), or two machines would produce different .so files.
+                cFlags += "-ffile-prefix-map=$rootDir=."
+            }
+        }
+
         ndk {
             // proot needs a 64-bit or ARM host; x86_64 is for emulators.
             abiFilters += setOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        }
+    }
+
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = file(releaseKeystore)
+                storePassword = System.getenv("UT_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("UT_KEY_ALIAS")
+                keyPassword = System.getenv("UT_KEY_PASSWORD")
+            }
         }
     }
 
@@ -83,6 +105,7 @@ android {
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.findByName("release")
             // The git commit is not part of the APK: a build from a source tarball must match.
             vcsInfo.include = false
             isMinifyEnabled = true
