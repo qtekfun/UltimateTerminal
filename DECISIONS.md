@@ -24,6 +24,10 @@ funcionando:
   coincida con lo visible tras redimensionar (ver D-T03-4 a D-T03-6 y T04).
 - T03, release con R8: que los métodos nativos de `JNI` sobrevivan a la minificación (las reglas por
   defecto de Android conservan los nombres de los `native`, pero no se ha comprobado en un APK real).
+- T08, servicio en primer plano: que Android lo arranque con el tipo `specialUse` en 12–16, que la
+  notificación aparezca y sus acciones (nueva sesión, salir) funcionen, que el shell sobreviva a
+  cerrar la actividad y a apagar la pantalla, y que la UI se reconecte a la sesión viva. También el
+  wake lock real y el efecto del *phantom process killer* (ver D-T08-5).
 
 Lo que sí está verificado sin dispositivo: compila para las tres ABIs, los ejecutables se empaquetan
 en el APK con el tipo ELF y los puntos de entrada esperados, `./gradlew check` y el CI en verde.
@@ -446,3 +450,95 @@ Falta por hacer:
 - **Ratón y rueda** (reporte de ratón al shell, rueda para el historial): no está en este cambio.
 - **Persistencia y ajuste de la fila y de los atajos:** otra tarea (ajustes, T16).
 - **Efecto de los atajos de pestañas:** T09.
+
+## T08 — Servicio en primer plano y sesiones
+
+### D-T08-1 · 2026-10-04 · El ciclo de vida de las sesiones es lógica pura en `domain/session`
+
+- **Decisión:** `Sessions` (instantánea inmutable) y `SessionController` (con `SessionFactory`,
+  `SessionHandle` y `ServiceControl` como interfaces) deciden qué sesiones existen, cuál es la activa
+  y cuándo debe correr el servicio. No usan tipos de Android.
+- **Motivo:** CLAUDE.md pide la lógica de negocio en `domain`, y así las reglas de la SPEC RF-07
+  («el servicio vive mientras corra un shell y solo entonces») se prueban en el host.
+- **Reglas:** el servicio corre si hay al menos un shell *en ejecución*; una sesión terminada sigue
+  listada, para poder leer su salida o reiniciarla, pero no mantiene el servicio. Al cerrar la
+  activa se prefiere una en ejecución. Los ids no se reutilizan. Un shell que no puede arrancar queda
+  como sesión terminada con estado `-1`; uno que termina antes de que `start` devuelva se registra
+  igualmente (la sesión se publica antes de arrancar el shell).
+- **Impacto:** `SessionManager` (Android, `@Singleton`) es solo un adaptador fino. La capa Android no
+  tiene tests de host porque necesita un PTY.
+
+### D-T08-2 · 2026-10-04 · Tipo de servicio `specialUse`, no `dataSync`
+
+- **Decisión:** `foregroundServiceType="specialUse"` con el subtipo `terminal_sessions`, más los
+  permisos `FOREGROUND_SERVICE` y `FOREGROUND_SERVICE_SPECIAL_USE`.
+- **Motivo:** ningún tipo estándar describe un terminal. `dataSync` es el que se usa por costumbre,
+  pero está pensado para transferencias finitas y Android 15 le pone un tope de 6 horas por día
+  cuando el `targetSdk` es ≥ 35; cortaría un SSH largo. `specialUse` no tiene tope. La revisión que
+  Google Play exige para `specialUse` no aplica: no se publica allí (SPEC §2).
+- **Alternativas:** no declarar tipo (lo que hace Termux con `targetSdk` 28), válido hoy porque el
+  tipo solo es obligatorio con `targetSdk` ≥ 34; se declara de todos modos para no tener que
+  tocarlo el día que se suba el `targetSdk`.
+- **Impacto:** `ServiceCompat.startForeground` pasa el tipo solo desde API 34. **Sin validar en
+  dispositivo.** Si algún Android rechazara `specialUse` con `targetSdk` 28, la alternativa es quitar
+  el tipo y dejar solo los permisos.
+
+### D-T08-3 · 2026-10-04 · El servicio no posee las sesiones; las posee `SessionManager`
+
+- **Decisión:** las sesiones viven en un singleton de Hilt con la vida del proceso. El servicio solo
+  mantiene vivo el proceso, muestra la notificación, sostiene el wake lock y se detiene solo.
+  `TerminalViewModel` ya no arranca ni para el shell: se reconecta al activo. Cerrar la actividad
+  con «atrás» no mata el shell mientras el servicio corra.
+- **Motivo:** la UI se reconecta a sesiones vivas tras recrear o cerrar la actividad (SPEC RF-07),
+  y un servicio *bound* o un `Binder` habría añadido un ciclo de vida más sin ganar nada: servicio y
+  actividad comparten proceso.
+- **Detalles:** el contador de fotogramas del ViewModel cuenta cada emisión del host activo, porque
+  los contadores de dos hosts pueden coincidir y la pantalla no se redibujaría al cambiar de
+  sesión. «Salir» en la notificación cierra todas las sesiones y la actividad; después del primer
+  layout el ViewModel no vuelve a crear una sesión por su cuenta, para no resucitar el shell
+  mientras la pantalla se cierra.
+- **Pendiente:** el cambio entre sesiones desde la UI (pestañas) es T09; aquí solo hay una activa a
+  la vez, creada al abrir o desde la notificación.
+
+### D-T08-4 · 2026-10-04 · Permisos pedidos en contexto y optimización de batería solo como aviso
+
+- **Decisión:** cuando hay un shell en ejecución se muestra, una vez por arranque y como diálogo con
+  explicación, primero el permiso de notificaciones (API 33+) y después el aviso de batería. El
+  orden y las condiciones están en `nextPrompt`, probado. Lo rechazado no se vuelve a pedir en ese
+  arranque (persistirlo, con los ajustes, es T16).
+- **Batería:** se abre `ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS`, la pantalla de ajustes del
+  sistema. **No** se declara `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, que mostraría un diálogo de
+  exclusión directa: la app no se excluye sola y un test lo vigila. Es el «sin exclusión forzada»
+  que pidió el plan.
+- **Notificaciones con `targetSdk` 28:** Android 13+ solo exige el permiso en tiempo de ejecución a
+  apps con `targetSdk` ≥ 33, y a las demás les muestra su propio aviso al crear el canal. La app lo
+  pide explícitamente, con su explicación, antes de que ocurra. **Sin validar en dispositivo** cuál
+  de los dos aparece primero.
+- **Wake lock:** `PARTIAL_WAKE_LOCK` sin tiempo máximo, mientras haya un shell y el ajuste
+  `keepAwake` (modelo de T05) esté activo; se suelta al terminar el último shell y en `onDestroy`.
+  `WakelockTimeout` de Lint está suprimido en ese punto, con motivo: un tope anularía la función.
+  Cambiar el ajuste desde la UI llega con T16.
+
+### D-T08-5 · 2026-10-04 · Phantom process killer (Android 12+): documentado, sin mitigación en código
+
+- **Qué es:** desde Android 12 el sistema limita a 32 los procesos hijo («fantasma») por app y mata
+  el más antiguo al pasarse, **aunque haya un servicio en primer plano**. Cada programa que lance un
+  shell (y con proot, cada programa de la distro) cuenta. Un `tmux` con muchos paneles o varias
+  sesiones con SSH, `ssh` y `top` pueden llegar al límite y morir sin aviso.
+- **Qué hace falta del usuario hoy:** en Android 14 QPR1 y posteriores, Opciones de desarrollador →
+  «Desactivar restricciones de procesos secundarios». En 12–13 solo se desactiva con `adb`
+  (`settings put global settings_enable_monitor_phantom_procs false`, o
+  `device_config put activity_manager max_phantom_processes 2147483647`).
+- **Decisión:** la app no puede cambiar ese ajuste (necesita un permiso de sistema), así que no se
+  intenta nada en código. Se documentará en el README y la política de privacidad (T21) y es
+  un punto a explicar en la primera ejecución cuando exista la pantalla de ayuda.
+- **Impacto:** el servicio mantiene vivo el proceso, pero no garantiza que sobrevivan todos sus hijos.
+  **Sin medir:** no se sabe cuántos procesos fantasma cuenta cada shell con proot (T07).
+
+### D-T08-6 · 2026-10-04 · Qué NO está validado en T08
+
+Todo lo que necesita un dispositivo, por la prohibición del usuario: arranque del servicio y su tipo
+en cada versión de Android, la notificación y sus acciones, la reconexión de la UI al cambiar de
+actividad, el wake lock real, el comportamiento tras «Salir» y los diálogos de permisos. En el host
+están probados el ciclo de vida de las sesiones (`SessionsTest`, `SessionControllerTest`), el orden de
+los avisos (`SessionPromptsTest`) y el manifiesto del servicio (`ManifestServiceTest`).

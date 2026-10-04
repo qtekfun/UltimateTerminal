@@ -28,4 +28,20 @@
     <string name="extra_key_backslash">Barra invertida</string>
     <string name="extra_key_armed">Activa para la próxima tecla</string>
     <string name="extra_key_locked">Bloqueada</string>
+
+    <string name="notification_channel_name">Sesiones de terminal</string>
+    <string name="notification_channel_description">Mantiene tus sesiones de terminal activas en segundo plano</string>
+    <plurals name="notification_sessions">
+        <item quantity="one">%d sesión activa</item>
+        <item quantity="other">%d sesiones activas</item>
+    </plurals>
+    <string name="notification_new_session">Nueva sesión</string>
+    <string name="notification_exit">Salir</string>
+    <string name="prompt_notifications_title">Mantener las sesiones activas</string>
+    <string name="prompt_notifications_message">Android muestra una notificación mientras las sesiones de terminal siguen en segundo plano. Sin ella, el sistema puede detenerlas al salir de la app. Permítela para mantenerlas activas.</string>
+    <string name="prompt_battery_title">Optimización de batería</string>
+    <string name="prompt_battery_message">El ahorro de batería puede pausar tareas largas, como una conexión SSH, con la pantalla apagada. Puedes excluir esta app en los ajustes del sistema; no cambia nada salvo que lo elijas allí.</string>
+    <string name="prompt_allow">Permitir</string>
+    <string name="prompt_open_settings">Abrir ajustes</string>
+    <string name="prompt_not_now">Ahora no</string>
 </resources>

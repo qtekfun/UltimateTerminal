@@ -21,7 +21,7 @@ Reglas: una tarea cada vez, en su rama `feat/<tarea>`, con `./gradlew check` en 
 - [ ] **T07 Instalación y gestión de distros**: extraer a almacenamiento privado, transaccional (sin distros a medias), listar, renombrar, duplicar y eliminar; usuario por defecto y distro predeterminada.
 
 ## Fase 2 — Sesiones y terminal
-- [ ] **T08 Servicio en primer plano y sesiones**: el servicio posee PTY y procesos; la UI se reconecta; notificación persistente, wakelock opcional, aviso de batería y tipo de servicio para Android 14+.
+- [~] **T08 Servicio en primer plano y sesiones**: el servicio posee PTY y procesos; la UI se reconecta; notificación persistente, wakelock opcional, aviso de batería y tipo de servicio para Android 14+. *(ciclo de vida de sesiones, servicio, notificación, wake lock y avisos implementados; lógica y manifiesto probados en host, sin validar en dispositivo; ver D-T08-1 a D-T08-6 en `DECISIONS.md`)*
 - [ ] **T09 Multitab**: crear, cerrar, renombrar y reordenar pestañas; confirmación al cerrar con procesos vivos.
 - [ ] **T10 Paneles divididos** (pantallas anchas): dividir en horizontal/vertical con separadores arrastrables, y layout por `WindowSizeClass` (barra lateral o superior).
 - [~] **T11 Entrada** *(lógica y UI implementadas y probadas en host; sin validar en dispositivo y sin ratón; ver `DECISIONS.md`, T11)*: fila de teclas extra configurable con Ctrl/Alt pegajosos; teclado físico, atajos, ratón, copiar/pegar y zoom con pellizco.
