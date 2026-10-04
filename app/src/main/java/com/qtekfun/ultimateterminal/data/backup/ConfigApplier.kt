@@ -9,6 +9,7 @@ import com.qtekfun.ultimateterminal.domain.appearance.CursorShape
 import com.qtekfun.ultimateterminal.domain.appearance.CustomFont
 import com.qtekfun.ultimateterminal.domain.appearance.FontCatalog
 import com.qtekfun.ultimateterminal.domain.appearance.TerminalAppearance
+import com.qtekfun.ultimateterminal.domain.model.AppSettings
 import com.qtekfun.ultimateterminal.domain.model.Layout
 import com.qtekfun.ultimateterminal.domain.model.Profile
 import com.qtekfun.ultimateterminal.domain.model.SshHost
@@ -174,16 +175,30 @@ internal class ConfigApplier(repositories: BackupRepositories) {
                     FontZoom.MAX_SP
                 ),
                 customSchemes = custom,
-                prootCompatibilityMode = dto.prootCompatibilityMode ?: it.prootCompatibilityMode,
-                dnsFallbackServers = dto.dnsFallbackServers
-                    ?.let { servers -> DnsServers.parse(DnsServers.format(servers)).servers }
-                    ?: it.dnsFallbackServers,
-                extraKeys = dto.extraKeys?.let { text -> ExtraKeysConfig.parse(text).first }
-                    ?: it.extraKeys,
-                appearance = dto.appearance?.toAppearance(it.customFonts) ?: it.appearance
-            )
+                prootCompatibilityMode = dto.prootCompatibilityMode ?: it.prootCompatibilityMode
+            ).withLaterSettings(dto)
         }
     }
+}
+
+/**
+ * The settings that came after the first format (T16). A backup that predates them has none, and
+ * then the device keeps what it has; one that has them is read as untrusted: the servers must be
+ * addresses, the keys must be in the catalog and the numbers must be in range.
+ */
+private fun AppSettings.withLaterSettings(dto: SettingsDto): AppSettings {
+    val servers = dto.dnsFallbackServers
+    val keys = dto.extraKeys
+    val look = dto.appearance
+    return copy(
+        dnsFallbackServers = if (servers == null) {
+            dnsFallbackServers
+        } else {
+            DnsServers.parse(DnsServers.format(servers)).servers
+        },
+        extraKeys = if (keys == null) extraKeys else ExtraKeysConfig.parse(keys).first,
+        appearance = if (look == null) appearance else look.toAppearance(customFonts)
+    )
 }
 
 private fun ProfileDto.toProfile(distroIds: Map<String, Long>) = Profile(
