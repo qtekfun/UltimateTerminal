@@ -13,6 +13,8 @@ import com.qtekfun.ultimateterminal.domain.model.AppSettings
 import com.qtekfun.ultimateterminal.domain.model.Profile
 import com.qtekfun.ultimateterminal.domain.model.ThemeMode
 import com.qtekfun.ultimateterminal.domain.repository.SettingsRepository
+import com.qtekfun.ultimateterminal.domain.settings.DnsServers
+import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.FontZoom
 import com.qtekfun.ultimateterminal.domain.theme.SchemeCatalog
 import com.qtekfun.ultimateterminal.domain.theme.SchemeCodec
@@ -42,6 +44,8 @@ internal object SettingKeys {
     const val CURSOR_BLINK = "appearance_cursor_blink"
     const val CHROME_STYLE = "appearance_chrome_style"
     const val CORNER_DP = "appearance_corner_dp"
+    const val EXTRA_KEYS = "extra_keys"
+    const val DNS_FALLBACK = "dns_fallback"
 }
 
 class RoomSettingsRepository @Inject constructor(private val dao: SettingDao) : SettingsRepository {
@@ -91,7 +95,13 @@ class RoomSettingsRepository @Inject constructor(private val dao: SettingDao) : 
             customFonts = values[SettingKeys.CUSTOM_FONTS]
                 ?.let(FontCatalog::decodeList)
                 ?.take(FontCatalog.MAX_CUSTOM_FONTS)
-                ?: defaults.customFonts
+                ?: defaults.customFonts,
+            extraKeys = values[SettingKeys.EXTRA_KEYS]
+                ?.let { ExtraKeysConfig.parse(it).first }
+                ?: defaults.extraKeys,
+            dnsFallbackServers = values[SettingKeys.DNS_FALLBACK]
+                ?.let { DnsServers.parse(it).servers }
+                ?: defaults.dnsFallbackServers
         )
     }
 
@@ -138,7 +148,9 @@ class RoomSettingsRepository @Inject constructor(private val dao: SettingDao) : 
             settings.terminalFontSizeSp.coerceIn(FontZoom.MIN_SP, FontZoom.MAX_SP).toString()
         ),
         SettingEntity(SettingKeys.CUSTOM_SCHEMES, SchemeCodec.encodeList(settings.customSchemes)),
-        SettingEntity(SettingKeys.CUSTOM_FONTS, FontCatalog.encodeList(settings.customFonts))
+        SettingEntity(SettingKeys.CUSTOM_FONTS, FontCatalog.encodeList(settings.customFonts)),
+        SettingEntity(SettingKeys.EXTRA_KEYS, settings.extraKeys.serialize()),
+        SettingEntity(SettingKeys.DNS_FALLBACK, DnsServers.format(settings.dnsFallbackServers))
     ) + serializeAppearance(settings.appearance.sanitized())
 
     private fun serializeAppearance(appearance: TerminalAppearance) = listOf(

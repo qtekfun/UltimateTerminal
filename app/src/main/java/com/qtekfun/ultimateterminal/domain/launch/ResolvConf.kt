@@ -23,10 +23,19 @@ object ResolvConf {
     private const val MAX_ADDRESS_LENGTH = 45
     private val IPV6_CHARS = Regex("[0-9a-fA-F:.]+")
 
-    /** One `nameserver` line per usable address; anything that is not an IP literal is dropped. */
-    fun render(servers: List<String>): String {
+    /**
+     * One `nameserver` line per usable address; anything that is not an IP literal is dropped. With
+     * none left, [fallback] is used (the user's choice in Settings, or the built-in servers), and if
+     * that holds nothing usable either, the built-in ones.
+     */
+    fun render(servers: List<String>, fallback: List<String> = FALLBACK_SERVERS): String {
         val usable = servers.mapNotNull(::sanitize).distinct().take(MAX_SERVERS)
-        return (usable.ifEmpty { FALLBACK_SERVERS }).joinToString("") { "nameserver $it\n" }
+        val chosen = usable.ifEmpty {
+            fallback.mapNotNull(::sanitize).distinct().take(MAX_SERVERS).ifEmpty {
+                FALLBACK_SERVERS
+            }
+        }
+        return chosen.joinToString("") { "nameserver $it\n" }
     }
 
     /** An IPv4 or IPv6 literal without a zone (`fe80::1%wlan0` loses `%wlan0`), or null. */
