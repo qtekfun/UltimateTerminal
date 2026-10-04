@@ -20,3 +20,10 @@ fun interface ResolvConfSource {
     /** The absolute path of a fresh resolv.conf, or null if it could not be written. */
     suspend fun hostFile(): String?
 }
+
+/** Where the guest reads its resolver configuration. */
+const val RESOLV_CONF_GUEST_PATH = "/etc/resolv.conf"
+
+/** The bind that puts [hostFile] over the guest's resolv.conf; none if the file could not be written. */
+fun resolvConfBinds(hostFile: String?): List<ProotBind> =
+    listOfNotNull(hostFile?.let { ProotBind(it, RESOLV_CONF_GUEST_PATH) })

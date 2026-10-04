@@ -30,6 +30,8 @@ funcionando:
   `targetSdk` 28, que `uname -a` y `apk update` funcionen dentro de Alpine, que haya red (DNS), que `su -l <usuario>`
   funcione, que los montajes de T13 se vean y que el modo de compatibilidad (sin seccomp) arregle lo que falle
   (ver D-T08b-8 con el criterio de aceptación de la primera prueba en la tablet).
+- T14, SSH: el Keystore real, `ssh` dentro de proot con la clave temporal, el selector de archivos y la
+  limpieza del fichero de la clave (ver "T14: lo que NO se ha validado").
 - T08, servicio en primer plano: que Android lo arranque con el tipo `specialUse` en 12–16, que la
   notificación aparezca y sus acciones (nueva sesión, salir) funcionen, que el shell sobreviva a
   cerrar la actividad y a apagar la pantalla, y que la UI se reconecte a la sesión viva. También el
@@ -1074,6 +1076,173 @@ Nada de esto se ha visto en pantalla; solo hay tests de host.
 4. Iconos de las barras del sistema con esquemas claros y oscuros.
 5. La pantalla de ajustes para elegir esquema/tema aún no existe (T16): hoy solo se cambian por el repositorio de ajustes.
 
+## T14 — Hosts SSH y claves
+
+Alcance: lista de hosts guardados con alta/edición/borrado, conexión con un toque en una pestaña
+nueva, y gestión de claves (generar, importar, exportar, borrar) cifradas en reposo. Todo se ha
+probado solo en la JVM del host; ver "T14: lo que NO se ha validado" al final.
+
+### D-T14-1 · 2026-10-04 · `ssh` se lanza como vector de argumentos, sin shell
+**Decisión:** `SshCommand.build` devuelve una lista de argumentos (`ssh -o ServerAliveInterval=30 …
+-p <puerto> [-i <clave> -o IdentitiesOnly=yes] -- usuario@host`) que proot ejecuta directamente. No
+hay ninguna cadena de shell, así que no hace falta escapar nada: no existe el intérprete que lo
+leería. Aun así se validan host, usuario y puerto (`Validation`: un host que empieza por `-` se
+leería como opción de `ssh`; no se aceptan espacios ni metacaracteres), `--` termina las opciones
+antes del destino y la ruta de la clave solo puede ser `/tmp/.ut-ssh-<hex>`.
+**Motivo:** una inyección de comandos a través del nombre de un host guardado (o importado de una
+copia de seguridad) sería la vulnerabilidad más obvia de esta función. Eliminar el shell es más
+robusto que escapar bien.
+**Alternativas:** `sh -c "ssh …"` con escapado de comillas (un solo fallo de escapado es una
+ejecución de comandos); `ProxyCommand`/`LocalCommand` quedan fuera: no se emite ninguna opción
+`-o` que ejecute programas.
+**Impacto:** hay tests con entradas hostiles (`;`, `$(…)`, comillas, saltos de línea, `-oProxyCommand=…`,
+rutas con `..`). El nombre del host guardado es solo una etiqueta y nunca llega a la línea de comandos.
+
+### D-T14-2 · 2026-10-04 · Formato de claves: OpenSSH propio, sin librerías nuevas
+**Decisión:** el formato `openssh-key-v1` (clave privada sin passphrase) y la línea `authorized_keys`
+se escriben y leen en `OpenSshKeyFormat`, para Ed25519 y RSA. La importación acepta además PKCS#8 y
+PKCS#1 (solo RSA, que son las claves antiguas habituales) en `PrivateKeyText`. Una clave con passphrase
+se rechaza con un mensaje que explica cómo quitarla (`ssh-keygen -p`). No se admiten ECDSA, DSA ni
+certificados, ni Ed25519 en PKCS#8.
+**Motivo:** `ssh` necesita ese formato y la API de criptografía de la plataforma no lo produce. Es
+poco código (unos 200 líneas) y se prueba contra claves reales de `ssh-keygen`; BouncyCastle añadiría
+~2 MB y una licencia más para algo que no necesitamos.
+**Alternativas:** BouncyCastle (descartada por peso); generar las claves dentro de la distro con
+`ssh-keygen` (la clave nacería en texto plano en el rootfs, justo lo que se quiere evitar).
+**Impacto:** Ed25519 en PKCS#8 no se puede importar porque habría que derivar la clave pública de la
+semilla y el JDK no lo expone. Quien tenga una clave así la convierte con `ssh-keygen -p -m RFC4716`.
+
+### D-T14-3 · 2026-10-04 · Generación con la criptografía de la plataforma; Ed25519 solo desde Android 13
+**Decisión:** `JcaSshKeyGenerator` usa `KeyPairGenerator` (RSA de 3072 bits en todas las versiones;
+Ed25519 donde la plataforma lo tiene, Android 13 o posterior). La pantalla solo ofrece los tipos que
+`supportedTypes` dice que el dispositivo soporta. La generación RSA corre fuera del hilo principal.
+**Motivo:** `minSdk` 26 no tiene Ed25519 en `java.security`. RSA 3072 tarda unos segundos en un móvil;
+4096 podía tardar medio minuto.
+**Alternativas:** BouncyCastle para Ed25519 en API 26–32 (ver D-T14-2); ofrecer solo RSA.
+**Impacto:** en Android 8–12 el único tipo para generar es RSA. Importar Ed25519 funciona en todas.
+
+### D-T14-4 · 2026-10-04 · Cifrado en reposo: AES-256-GCM con una clave del Android Keystore
+**Decisión:** la clave privada (texto OpenSSH) se sella con `AesGcmSecretBox`: AES-256-GCM, IV de 12
+bytes aleatorio, formato `versión | longitud del IV | IV | texto cifrado + etiqueta`. El alias de la
+clave va como dato autenticado, así que un blob no se puede mover a otra clave. La clave AES está en
+el Android Keystore (`KeystoreSecretKey`, no exportable). Cada clave son dos ficheros en
+`files/storage/ssh-keys/`: `<alias>.key` (sellado, 0600) y `<alias>.meta` (JSON con nombre, tipo, clave
+pública y huella; el alias es el nombre del fichero). El `.meta` se escribe el último: una clave cuya
+escritura se interrumpió no aparece en la lista.
+**Motivo:** el Keystore impide sacar la clave del dispositivo, así que un volcado del almacenamiento (o
+una copia de seguridad) no revela las claves privadas. El formato y las comprobaciones de integridad
+se prueban en la JVM con una clave en memoria; solo el Keystore real necesita un dispositivo.
+**Alternativas:** `EncryptedFile`/Jetpack Security (obsoleto); exigir autenticación biométrica para
+cada uso (`setUserAuthenticationRequired`): mejor seguridad pero rompe la conexión de un toque.
+**Impacto:** como la clave del Keystore no sale del dispositivo, las claves de SSH **no se pueden
+restaurar tal cual en otro móvil** con la copia de seguridad (T15). Habrá que exportarlas (descifradas,
+con aviso) o cifrarlas con una contraseña del usuario, como ya hace Deck con las sesiones.
+
+### D-T14-5 · 2026-10-04 · Cómo llega la clave a `ssh`: un fichero temporal 0600 en el rootfs
+**Decisión:** al conectar, `SshConnector` descifra la clave y la escribe en
+`<rootfs>/tmp/.ut-ssh-<16 hex aleatorios>` (solo legible por la app, escritura atómica), pasa
+`-i /tmp/.ut-ssh-…` a `ssh` y borra el fichero cuando la sesión termina o se cierra. Los ficheros que
+deje un cierre brusco se borran al iniciar la siguiente conexión, salvo los de sesiones vivas. Las
+rutas pasan por `FileTrees.resolveInside`, que rechaza un enlace simbólico en el camino: el `/tmp` de un
+rootfs ajeno no puede apuntar fuera del almacenamiento.
+**Motivo:** `ssh -i` necesita un fichero. Es lo más simple que funciona con cualquier distro.
+**Alternativas:** `ssh-agent` dentro de la distro con `ssh-add -` leyendo la clave por la entrada
+estándar (la clave no llegaría a un fichero, pero hace falta orquestar el agente y su socket en cada
+pestaña); una FIFO (`ssh` abre la clave más de una vez); la variable de entorno (visible en
+`/proc/<pid>/environ`). El agente es la mejora natural si el modelo de amenazas lo pide.
+**Impacto:** la clave está en claro en el almacenamiento privado mientras dura la sesión (ver D-T14-6).
+
+### D-T14-6 · 2026-10-04 · Modelo de amenazas
+**Protege contra:** un volcado del almacenamiento o una copia de seguridad del sistema con la app
+cerrada (las claves están selladas con una clave que no sale del Keystore); una clave que acabe en
+un log (los tipos de clave no imprimen sus campos, y la interfaz solo recibe partes públicas); un host
+con caracteres de shell o que se lea como opción de `ssh` (D-T14-1); un `/tmp` enlazado fuera del
+almacenamiento; borrar una clave que aún usa un host.
+**No protege contra:** otra app con el mismo UID (ninguna) o con root en el dispositivo, que pueden leer
+el fichero temporal de la clave mientras la sesión está abierta o la memoria del proceso; un dispositivo
+desbloqueado en manos de otra persona (no se pide autenticación para usar la clave, ver D-T14-4);
+programas dentro de la distro, que pueden leer `/tmp/.ut-ssh-…` mientras dura la sesión; que el
+usuario guarde la clave privada exportada en un sitio inseguro (la pantalla avisa antes).
+**Impacto:** es un nivel parecido al de `~/.ssh/id_*` sin passphrase en cualquier Linux, con la
+ventaja de que en reposo está cifrada.
+
+### D-T14-7 · 2026-10-04 · Hueco encontrado: nada conectaba proot con las sesiones
+**Decisión:** T09 y T07 dejaron el `distroId` guardado en cada pestaña, pero `AndroidSessionFactory`
+solo sabía arrancar el shell de Android; `ProotCommandBuilder` (T02) no estaba en la inyección. T14 lo
+necesita para ejecutar `ssh` en una distro, así que añade el mínimo: `SessionLaunch` (comando, entorno
+y limpieza), `LaunchingSessionFactory` (una factoría que además sabe ejecutar un comando),
+`SessionController.newSession(distroId, launch)` y `DistroLaunchFactory`, que arma la línea de proot.
+`ProotCommandBuilder` queda inyectado en `SshModule`.
+**Motivo:** sin esto el botón "Conectar" no podría abrir nada.
+**Alternativas:** cambiar la firma de `SessionFactory` (rompía los tests de T08 y T09).
+**Impacto:** **las pestañas normales de una distro siguen abriendo el shell de Android**: lanzar proot
+en una pestaña sin comando es la misma pieza pero no se ha conectado al botón "+" de la barra
+(`TabsController.newTabIn`) para no tocar T09. Queda como tarea pendiente y es lo primero que habrá
+que hacer para que las distros sirvan para algo más que `ssh`. Tampoco hay "reiniciar" para una
+pestaña de `ssh`: `restartActive` abre un shell de Android.
+
+### D-T14-8 · 2026-10-04 · DNS dentro de proot
+**Decisión:** antes de conectar, `SshConnector` escribe `/etc/resolv.conf` del rootfs con
+`1.1.1.1` y `9.9.9.9` si falta o está vacío. No toca uno que el usuario haya configurado.
+**Motivo:** Android no tiene un `resolv.conf` que compartir y el de un rootfs recién instalado no
+funciona (el de Ubuntu es un enlace a un fichero que no existe), así que `ssh servidor.ejemplo`
+fallaría al resolver el nombre aunque la red funcione.
+**Alternativas:** leer los DNS del sistema (una app no puede, desde Android 8); montar uno propio con
+`-b`; no hacerlo (solo funcionarían las IP).
+**Impacto:** hay una decisión de privacidad: los nombres se resuelven con esos resolutores públicos,
+no con los de la red del usuario. Es solo para la distro. **Debería ser configurable** (T16).
+**Sustituida por D-T08b-6 (2026-10-04):** ahora hay un único mecanismo para todas las pestañas. Se usan los
+DNS de la red activa y `1.1.1.1`/`9.9.9.9` solo como último recurso. `SshConnector` ya no escribe nada en el
+rootfs. Nota sobre la alternativa descartada aquí: una app sí puede leer los DNS del sistema con
+`ConnectivityManager.getLinkProperties` (lo que no puede desde Android 8 es leer `net.dns1` con `getprop`).
+
+### D-T14-9 · 2026-10-04 · Pantallas, ViewModels y punto de entrada
+**Decisión:** dos pantallas (hosts y claves) con un ViewModel cada una (`SshViewModel`,
+`SshKeysViewModel`); la lista de claves de la pantalla de hosts es de solo lectura. La exportación de
+la clave privada y la importación desde fichero usan el selector del sistema (`CreateDocument` y
+`OpenDocument`), con un aviso antes de guardar la privada. La clave pública se copia al portapapeles.
+Una clave en uso por algún host no se puede borrar (`KeyInUse`). Botón "SSH" provisional junto al de
+"Distros" en `MainActivity`; debe ir al menú de "nueva pestaña" que T09 posee (como D-T07-7).
+**Motivo:** el límite de funciones por clase de detekt, y que cada pantalla tenga un solo trabajo.
+**Alternativas:** un único ViewModel (superaba el límite de funciones).
+**Impacto:** hosts sin clave abren `ssh` normal y piden la contraseña en la terminal.
+
+### D-T14-10 · 2026-10-04 · `known_hosts` y verificación de la clave del servidor
+**Decisión:** no se toca. `ssh` pregunta por la huella la primera vez y guarda `known_hosts` en
+`~/.ssh` del rootfs, como en cualquier Linux. No se pasa `StrictHostKeyChecking=no`.
+**Motivo:** desactivarlo anularía la protección contra un servidor suplantado.
+**Impacto:** el historial vive en el rootfs, así que viaja con la copia de seguridad de la distro.
+
+### D-T14-11 · 2026-10-04 · Verificado contra OpenSSH real, en el host
+**Decisión:** además de los tests unitarios, el formato de claves se contrastó con `ssh-keygen` y
+`sshd` de OpenSSH 10.2 en la máquina de desarrollo (no en un dispositivo): se leyeron claves
+generadas por `ssh-keygen` (OpenSSH Ed25519 y RSA, PKCS#1, PKCS#8) y las huellas coincidieron con
+`ssh-keygen -l`; `ssh-keygen -y` aceptó las copias que escribe `OpenSshKeyFormat` y dedujo la misma
+clave pública; las claves Ed25519 y RSA 3072 generadas por `JcaSshKeyGenerator` fueron aceptadas por
+`ssh-keygen`, y un `sshd` de usuario en el puerto 2222 de loopback las admitió con la misma forma de
+comando que construye `SshCommand` (`-p … -i … -o IdentitiesOnly=yes -- usuario@host`) y rechazó una
+clave ajena. Una clave ECDSA y las dos con passphrase (PEM y OpenSSH) se rechazaron con el error
+esperado.
+**Motivo:** que un formato "parezca" correcto no basta: solo `ssh` real dice si lo acepta.
+**Impacto:** no se commitean claves de prueba (un escáner de secretos las marcaría); el contraste se
+hizo con claves desechables y no es un test automático. Los tests unitarios cubren el round trip,
+la corrupción y los casos hostiles; si cambia el formato hay que repetir esta comprobación a mano.
+
+### T14: lo que NO se ha validado (sin dispositivo)
+- **Keystore real:** que `KeystoreSecretKey` cree la clave AES-256 y que `AesGcmSecretBox` selle y
+  abra con ella en Android 8 a 16 (el formato se probó con una clave en memoria, no con el Keystore).
+- **Generación en el móvil:** el tiempo real de RSA 3072 en un móvil de gama baja, y que Ed25519 esté
+  disponible en Android 13 o posterior (`supportedTypes` lo decide en tiempo de ejecución).
+- **`ssh` dentro de proot:** que la distro tenga `openssh-client` (no se instala; el usuario debe hacer
+  `apt install openssh-client` o `apk add openssh`; la pantalla no lo avisa todavía), que proot ejecute
+  `ssh` con la línea de `DistroLaunchFactory`, que `-i` acepte el fichero 0600 cuando proot simula root
+  (propietario y permisos vistos desde dentro) y que la red y el DNS funcionen (D-T14-8).
+- **Limpieza de la clave:** que el fichero temporal desaparezca al cerrar la pestaña y al morir el
+  proceso, y que los restos se borren en la siguiente conexión.
+- **Selector de archivos del sistema** (importar y exportar) y el portapapeles; la rotación con los
+  diálogos abiertos (`HostDraft` se guarda con `listSaver`); TalkBack y los 48 dp.
+- **Pestañas normales de una distro**: siguen abriendo el shell de Android (D-T14-7).
+
 ## T13 — Acceso a los archivos del dispositivo
 
 ### D-T13-1 · 2026-10-04 · Qué se monta y dónde
@@ -1124,20 +1293,20 @@ arrancaba siempre `/system/bin/sh`. T08b une las piezas. **Nada de esto se ha ej
 decisiones sobre el comportamiento real de proot son hipótesis hasta la primera prueba en la tablet (D-T08b-8).
 
 ### D-T08b-1 · 2026-10-04 · Un planificador puro decide; la fábrica solo ejecuta
-- **Decisión:** `ProotSessionPlanner` (`data/proot`) recibe un `ShellRequest(distroId, initialCommand)` y devuelve un `LaunchPlan`: `AndroidShell`, `FallbackToAndroid(aviso)`, `InDistro(proot, aviso?)` o `Failed(problema)`. No toca procesos. `AndroidSessionFactory` lo ejecuta.
+- **Decisión:** `ProotSessionPlanner` (`data/proot`) recibe el `distroId` de la pestaña (null = shell de Android) y devuelve un `LaunchPlan`: `AndroidShell`, `FallbackToAndroid(aviso)`, `InDistro(proot, aviso?)` o `Failed(problema)`. No toca procesos. `AndroidSessionFactory` lo ejecuta. Solo se usa cuando el que abre la pestaña **no** trae un `SessionLaunch` propio (ver D-T08b-9).
 - **Motivo:** todas las reglas (qué distro, qué usuario, qué montajes, qué errores) quedan probadas en la JVM. Lo único que necesita un dispositivo es el `fork/exec`.
 - **Alternativas:** decidir dentro de `TerminalSessionHost` (imposible de probar sin PTY); un `runBlocking` en el hilo principal (bloquearía la UI al consultar Room y el disco).
 - **Impacto:** `data/proot` pasa a cubrir también la política de arranque (Kover ≥85 % en `data`). El planificador se inyecta por constructor; los puertos del dispositivo (`ProotRuntime`, `ResolvConfSource`) tienen su implementación Android en `platform/`, sin lógica propia.
 
 ### D-T08b-2 · 2026-10-04 · El arranque es asíncrono: el host espera al plan y al tamaño
 - **Decisión:** `SessionFactory.start` no cambia de firma y devuelve el manejador al instante. El host recuerda el tamaño que pide la pantalla; la fábrica lanza una corrutina (hilo principal, que es donde la librería del emulador entrega sus callbacks) que obtiene el plan y llama a `host.launch(...)`. El PTY se crea cuando se conocen **las dos cosas**: qué ejecutar y qué tamaño tiene.
-- **Motivo:** el plan necesita Room y el disco (suspend). Evita tocar la interfaz `SessionFactory` y sus tres fakes de test. La petición (distro y comando) se lee del estado que el controlador ya publica antes de llamar a la fábrica, y hay un test que lo fija.
+- **Motivo:** el plan necesita Room y el disco (suspend). Evita tocar la interfaz `SessionFactory` y sus fakes de test. El distro de la pestaña se lee del estado que el controlador ya publica antes de llamar a la fábrica, y hay un test que lo fija. La fábrica implementa `LaunchingSessionFactory` (de T14), así que la firma que ve el controlador no cambia.
 - **Alternativas:** añadir el `ShellRequest` a `SessionFactory.start` (rompe los fakes y no resuelve la parte suspend).
 - **Impacto:** `TerminalSessionHost.stop()` olvida lo que había que ejecutar; «reiniciar» abre una sesión nueva (ya era así). Un `Handle.stop()` cancela la corrutina, así que una pestaña cerrada mientras arrancaba no deja nada.
 
 ### D-T08b-3 · 2026-10-04 · Qué se hace cuando no se puede abrir la distro
 - **Decisión:** sin distro pedida → shell de Android sin aviso (es la elección explícita «Android shell»). Distro pedida que no está lista o ya no existe → **shell de Android con un aviso descartable** y acceso a la pantalla de distros. Distro lista pero sin sus archivos, proot ausente, usuario no válido o sin carpeta temporal → **error explicado** (`LaunchProblem`) y la sesión termina como fallida; nunca una excepción.
-- **Un comando inicial nunca cae al shell de Android:** si la distro no sirve, falla con un mensaje, porque ejecutar otra cosa en su lugar (un `ssh` que se convierte en un shell local) sería engañoso.
+- **Una pestaña con `SessionLaunch` propio (ssh) no pasa por aquí**, así que nunca cae al shell de Android: si no puede arrancar, falla con su propio mensaje.
 - **Motivo:** la SPEC pide «sin distro lista, fallback al shell de Android» y «errores sellados, nunca un crash». Se separa «no hay distro todavía» (normal en un primer arranque) de «algo está roto».
 - **Impacto:** el aviso se dibuja encima de las primeras filas (no cambia el tamaño del PTY) y los textos están en inglés y español.
 
@@ -1146,15 +1315,16 @@ decisiones sobre el comportamiento real de proot son hipótesis hasta la primera
 - **Motivo:** antes el arranque pasaba siempre `null` (shell de Android) aunque hubiera una distro predeterminada.
 - **Alternativas:** abrir siempre el shell de Android (ignora la distro predeterminada).
 
-### D-T08b-5 · 2026-10-04 · Usuario de la distro y comando inicial: listas de argumentos, no líneas de shell
-- **Decisión:** `root` ejecuta el shell o el comando directamente (`-0`). Otro usuario pasa por `su -l <usuario>`; con comando inicial, `su -l <usuario> -c '<comando citado>'`. El nombre de usuario se valida con `[a-z_][a-z0-9_-]{0,31}` (un nombre que empiece por `-` se leería como opción de `su`). El comando es una **lista de argumentos** (no una línea): solo se cita (comillas simples POSIX) en el caso de `su -c`, que exige una cadena. Se rechazan comandos vacíos o con NUL.
-- **Motivo:** el comando inicial lo usará T14 con datos del usuario (host, usuario SSH, ruta de clave); una línea de shell sería un riesgo de inyección. Hay tests con entradas hostiles.
+### D-T08b-5 · 2026-10-04 · Usuario de la distro: `su -l`, con el nombre validado
+- **Decisión:** `root` ejecuta el shell directamente (`-0`). Otro usuario pasa por `su -l <usuario>`. El nombre se valida con `[a-z_][a-z0-9_-]{0,31}`: un nombre que empiece por `-` se leería como opción de `su`. Un comando (`ProotSession.command`, lo usa la conexión SSH) es una **lista de argumentos**, nunca una línea de shell, y corre con la identidad de proot (root), no con la del usuario.
+- **Motivo:** el nombre llega de la base de datos; validarlo en el planificador protege aunque una fila antigua no lo estuviera. Hay tests con nombres hostiles.
 - **Hipótesis sin validar:** que `su -l` funcione con proot y `-0` en Debian, Ubuntu y Alpine (busybox `su`), y que el usuario exista en la distro; si no existe, el shell termina con error de `su`.
 - **Límite:** `/bin/sh -l` es el shell de login por defecto en las tres distros (dash en Debian/Ubuntu, ash en Alpine); no se elige `bash` aunque exista.
 
 ### D-T08b-6 · 2026-10-04 · `/etc/resolv.conf` desde los DNS del dispositivo, con permiso `ACCESS_NETWORK_STATE`
 - **Decisión:** la app escribe `filesDir/resolv.conf` con los DNS de la red activa (`ConnectivityManager`) y lo monta con `-b` sobre `/etc/resolv.conf` de la distro. Solo se admiten literales IPv4/IPv6 (sin zona ni nombres ni saltos de línea) y como máximo tres (límite de glibc). Si el dispositivo no informa de ninguno, se usan `1.1.1.1` y `9.9.9.9`. Si no se puede escribir el fichero, la sesión arranca igual con un aviso.
 - **Motivo:** Android no tiene `/etc/resolv.conf` y el de un rootfs apunta a un resolvedor inexistente. No se depende de rutas de Termux. Montar un fichero evita modificar el rootfs.
+- **Un solo mecanismo (unificado con T14):** lo usan las pestañas normales (`ProotSessionPlanner`) y la conexión SSH (`DistroLaunchFactory`) por igual, a través de `ResolvConfSource` y `resolvConfBinds`. `SshConnector.ensureResolver` y su decisión D-T14-8 (escribir `1.1.1.1`/`9.9.9.9` en el rootfs) desaparecen. Los DNS del dispositivo van primero; los públicos son **último recurso**, constante `ResolvConf.FALLBACK_SERVERS`, para que T16 los haga configurables.
 - **Privacidad (para `PRIVACY.md`, T21):** los DNS de reserva son resolvedores públicos de terceros (Cloudflare y Quad9); solo se usan cuando el dispositivo no da ninguno. `ACCESS_NETWORK_STATE` es un permiso normal (no se pide al usuario) y solo sirve para leer esos servidores.
 - **Alternativas:** escribir `8.8.8.8` siempre (envía todo a un tercero aunque la red tenga DNS propio, y rompe DNS internos); copiar el `/etc/resolv.conf` del sistema (no existe desde Android 8).
 - **Sin validar:** que `getLinkProperties(activeNetwork)` devuelva servidores en todas las redes (VPN, datos móviles) y que el bind de un fichero sobre `/etc/resolv.conf` funcione con proot.
@@ -1170,3 +1340,16 @@ decisiones sobre el comportamiento real de proot son hipótesis hasta la primera
 - **Binds:** `/dev`, `/proc`, `/sys`, `/etc/resolv.conf` y los de T13. Android 8+ no deja leer `/proc/stat` ni `/proc/loadavg` a las apps: `top`, `uptime` o `free` pueden fallar. Termux lo resuelve con ficheros falsos; no se hace aquí todavía.
 - **El *phantom process killer* de Android 12+** puede matar procesos hijo de proot aunque el servicio esté en primer plano (D-T08-5).
 - **Criterio de aceptación (primera prueba en la tablet, solo cuando el usuario la autorice):** (1) instalar Alpine desde la pantalla de distros; (2) abrir una pestaña nueva y comprobar que el prompt es el de Alpine, no el de Android; (3) `uname -a` y `cat /etc/os-release` muestran Alpine; (4) `apk update` descarga índices (red y DNS); (5) con el almacenamiento compartido activado, `ls ~/storage/downloads`; (6) cerrar y reabrir la app con la sesión viva; (7) si (2) o (3) fallan, repetir con el modo de compatibilidad activado y anotar el resultado aquí. Hasta entonces, ninguna de estas afirmaciones es cierta.
+
+### D-T08b-9 · 2026-10-04 · Un solo mecanismo de «qué ejecutar» por pestaña: `SessionLaunch`
+- **Contexto:** T14 (ya en `master`) añadió `SessionLaunch(command, environment, onClosed)` para que la pantalla de hosts abra una pestaña con `ssh`, y yo había añadido un `initialCommand` por pestaña con el mismo fin. Eran dos caminos para lo mismo.
+- **Decisión:** gana `SessionLaunch`, porque lleva la limpieza `onClosed` (el fichero de la clave SSH se borra pase lo que pase con la sesión) y ya la usa la pantalla de hosts. Mi `initialCommand`, `ShellRequest`, los problemas `InvalidCommand`/`CommandNeedsDistro` y el citado `su -c` (`ShellQuote`) se eliminan: sin comandos del planificador no tenían uso.
+- **Reglas:** (1) con `SessionLaunch` se ejecuta tal cual, con proot ya construido por quien lo crea (`DistroLaunchFactory`); (2) sin él, decide `ProotSessionPlanner` según el distro de la pestaña. Nunca los dos.
+- **«+» y los demás atajos** abren por (2): distro predeterminada si está lista, shell de Android si no, con aviso.
+- **Reiniciar una pestaña SSH que terminó** (`restartActive`) abre un shell normal **de la misma distro** (por el planificador), no el de Android; el fichero de clave ya se borró al terminar, así que no se puede repetir la conexión: hay que reconectar desde la pantalla de hosts. Si la distro ya no sirve, se ve el aviso de «shell de Android» o el error; no pasa en silencio.
+- **Entradas de menú:** los botones provisionales «Distros» (T07) y «SSH» (T14) de `MainActivity` pasan al menú de «nueva pestaña» (pulsación larga en «+»).
+
+### D-T08b-10 · 2026-10-04 · Corrección de un fallo de T13: el directorio de la distro **es** el rootfs
+- **Hallazgo:** `DistroInstaller.publish` mueve lo que extrajo (`staging/rootfs`) a `distro.directory`; por tanto la raíz de la distro es `distro.directory` y no existe una carpeta `rootfs` dentro. T14 lo usa bien, pero `SharedStorageMounts` (T13, ya mergeada) creaba los puntos de montaje en `distro.directory/rootfs/…` (no existía, así que el montaje de `~/storage` no habría aparecido) y mi primera versión del planificador usaba la misma ruta (habría dado toda distro como «dañada»).
+- **Decisión:** `SharedStorageMounts` y el planificador usan `distro.directory`. `DistroInstaller.UNPACKED_NAME` pasa a ser privada (es solo el nombre de la carpeta de preparación) y su comentario, que decía lo contrario, se corrige. Los tests de T13 usaban la misma ruta equivocada y se corrigen; hay un test nuevo que fija `-r` en `distros/<token>`.
+- **Por qué no lo cazaron los tests:** el fake de sistema de ficheros y los tests de T13 construían la ruta con el mismo supuesto equivocado que el código. Lección: un test que comparte el supuesto con el código no lo comprueba; hace falta una prueba de extremo a extremo con un rootfs real en la primera prueba en la tablet.

@@ -114,15 +114,13 @@ class ProotCommandBuilderTest {
     }
 
     @Test
-    fun `a command for another user is one quoted string after su -c`() {
+    fun `a command runs as proot's identity whatever the user is`() {
         val command = builder.build(
-            ProotSession(rootfs, user = "dev", command = listOf("echo", "a b", "it's"))
+            ProotSession(rootfs, user = "dev", command = listOf("ssh", "host"))
         ).command
 
-        assertEquals(
-            listOf("su", "-l", "dev", "-c", "'echo' 'a b' 'it'\\''s'"),
-            command.takeLast(5)
-        )
+        assertEquals(listOf("ssh", "host"), command.takeLast(2))
+        assertFalse("su" in command)
     }
 
     @Test

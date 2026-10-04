@@ -7,7 +7,6 @@ import com.qtekfun.ultimateterminal.domain.Outcome
 import com.qtekfun.ultimateterminal.domain.getOrNull
 import com.qtekfun.ultimateterminal.domain.launch.LaunchNotice
 import com.qtekfun.ultimateterminal.domain.launch.LaunchProblem
-import com.qtekfun.ultimateterminal.domain.launch.ShellRequest
 import com.qtekfun.ultimateterminal.domain.model.Distro
 import com.qtekfun.ultimateterminal.domain.model.DistroState
 import com.qtekfun.ultimateterminal.domain.model.DistroType
@@ -73,7 +72,7 @@ class ProotSessionPlannerTest {
             NewDistro(name, DistroType.ALPINE, "3.20", path("distros/a1"), user)
         ) as Outcome.Success
         distros.updateState(added.value.id, state)
-        if (withRootfs) fileSystem.createDirectories(path("distros/a1/rootfs"))
+        if (withRootfs) fileSystem.createDirectories(path("distros/a1"))
         return checkNotNull(distros.get(added.value.id))
     }
 
@@ -81,18 +80,18 @@ class ProotSessionPlannerTest {
 
     @Test
     fun `a tab with no distro and no command opens the Android shell`() = runTest {
-        assertEquals(LaunchPlan.AndroidShell, planner.plan(ShellRequest(null)))
+        assertEquals(LaunchPlan.AndroidShell, planner.plan(null))
     }
 
     @Test
     fun `a ready distro starts proot on its root filesystem`() = runTest {
         val distro = install()
 
-        val plan = inDistro(planner.plan(ShellRequest(distro.id)))
+        val plan = inDistro(planner.plan(distro.id))
 
         val command = plan.launch.command
         assertEquals("/data/app/lib/arm64/libproot.so", command.first())
-        assertEquals("/storage/distros/a1/rootfs", command[command.indexOf("-r") + 1])
+        assertEquals("/storage/distros/a1", command[command.indexOf("-r") + 1])
         assertEquals("Alpine", plan.distroName)
         assertEquals(
             "/data/app/lib/arm64/libproot-loader.so",
@@ -107,7 +106,7 @@ class ProotSessionPlannerTest {
     fun `root gets root's home as the working directory`() = runTest {
         val distro = install()
 
-        val command = inDistro(planner.plan(ShellRequest(distro.id))).launch.command
+        val command = inDistro(planner.plan(distro.id)).launch.command
 
         assertEquals("/root", command[command.indexOf("-w") + 1])
         assertTrue("-0" in command)
@@ -118,7 +117,7 @@ class ProotSessionPlannerTest {
     fun `another user goes through su with a login shell`() = runTest {
         val distro = install(user = "dev")
 
-        val command = inDistro(planner.plan(ShellRequest(distro.id))).launch.command
+        val command = inDistro(planner.plan(distro.id)).launch.command
 
         assertEquals(listOf("su", "-l", "dev"), command.takeLast(3))
         assertTrue("HOME=/home/dev" in command)
@@ -126,36 +125,10 @@ class ProotSessionPlannerTest {
     }
 
     @Test
-    fun `an initial command replaces the login shell as an argument list`() = runTest {
-        val distro = install()
-
-        val command = inDistro(
-            planner.plan(ShellRequest(distro.id, listOf("ssh", "-p", "2222", "me@host")))
-        ).launch.command
-
-        assertEquals(listOf("ssh", "-p", "2222", "me@host"), command.takeLast(4))
-        assertFalse("-l" in command.takeLast(5))
-    }
-
-    @Test
-    fun `an initial command for another user is quoted once for su`() = runTest {
-        val distro = install(user = "dev")
-
-        val command = inDistro(
-            planner.plan(ShellRequest(distro.id, listOf("ssh", "x'; reboot; '")))
-        ).launch.command
-
-        assertEquals(
-            listOf("su", "-l", "dev", "-c", "'ssh' 'x'\\''; reboot; '\\'''"),
-            command.takeLast(5)
-        )
-    }
-
-    @Test
     fun `the resolv conf of the app is bound over the one of the distro`() = runTest {
         val distro = install()
 
-        val command = inDistro(planner.plan(ShellRequest(distro.id))).launch.command
+        val command = inDistro(planner.plan(distro.id)).launch.command
 
         assertTrue("/files/resolv.conf:/etc/resolv.conf" in command)
     }
@@ -165,7 +138,7 @@ class ProotSessionPlannerTest {
         val distro = install()
         dns.file = null
 
-        val plan = inDistro(planner.plan(ShellRequest(distro.id)))
+        val plan = inDistro(planner.plan(distro.id))
 
         assertEquals(LaunchNotice.DnsNotConfigured, plan.notice)
         assertFalse(plan.launch.command.any { it.endsWith(":/etc/resolv.conf") })
@@ -176,10 +149,10 @@ class ProotSessionPlannerTest {
         val distro = install()
         settings.update { it.copy(sharedStorage = true) }
 
-        val plan = inDistro(planner.plan(ShellRequest(distro.id)))
+        val plan = inDistro(planner.plan(distro.id))
 
         assertTrue("/storage/emulated/0:/root/storage/shared" in plan.launch.command)
-        assertTrue(fileSystem.exists(path("distros/a1/rootfs/root/storage/shared")))
+        assertTrue(fileSystem.exists(path("distros/a1/root/storage/shared")))
         assertNull(plan.notice)
     }
 
@@ -190,7 +163,7 @@ class ProotSessionPlannerTest {
             settings.update { it.copy(sharedStorage = true) }
             access.granted = false
 
-            val plan = inDistro(planner.plan(ShellRequest(distro.id)))
+            val plan = inDistro(planner.plan(distro.id))
 
             assertEquals(
                 LaunchNotice.StorageNotMounted(StorageDegradation.PERMISSION_DENIED),
@@ -203,10 +176,10 @@ class ProotSessionPlannerTest {
     fun `a disabled shared storage touches nothing`() = runTest {
         val distro = install()
 
-        planner.plan(ShellRequest(distro.id))
+        planner.plan(distro.id)
 
         assertEquals(0, access.permissionChecks)
-        assertFalse(fileSystem.exists(path("distros/a1/rootfs/root/storage")))
+        assertFalse(fileSystem.exists(path("distros/a1/root/storage")))
     }
 
     @Test
@@ -214,7 +187,7 @@ class ProotSessionPlannerTest {
         val distro = install()
         settings.update { it.copy(prootCompatibilityMode = true) }
 
-        val env = inDistro(planner.plan(ShellRequest(distro.id))).launch.environment
+        val env = inDistro(planner.plan(distro.id)).launch.environment
 
         assertEquals("1", env["PROOT_NO_SECCOMP"])
     }
@@ -223,7 +196,7 @@ class ProotSessionPlannerTest {
     fun `seccomp stays on by default`() = runTest {
         val distro = install()
 
-        val env = inDistro(planner.plan(ShellRequest(distro.id))).launch.environment
+        val env = inDistro(planner.plan(distro.id)).launch.environment
 
         assertFalse("PROOT_NO_SECCOMP" in env)
     }
@@ -232,47 +205,26 @@ class ProotSessionPlannerTest {
     fun `a distro that is not ready falls back to the Android shell with a notice`() = runTest {
         val distro = install(state = DistroState.INSTALLING)
 
-        val plan = planner.plan(ShellRequest(distro.id))
+        val plan = planner.plan(distro.id)
 
         assertEquals(LaunchPlan.FallbackToAndroid(LaunchNotice.DistroUnavailable("Alpine")), plan)
     }
 
     @Test
     fun `a distro that was removed falls back too, without a name`() = runTest {
-        val plan = planner.plan(ShellRequest(distroId = 99L))
+        val plan = planner.plan(99L)
 
         assertEquals(LaunchPlan.FallbackToAndroid(LaunchNotice.DistroUnavailable(null)), plan)
     }
 
     @Test
-    fun `a command never falls back to a shell that cannot run it`() = runTest {
-        val distro = install(state = DistroState.FAILED)
-
-        assertEquals(
-            LaunchPlan.Failed(LaunchProblem.DistroUnavailable("Alpine")),
-            planner.plan(ShellRequest(distro.id, listOf("ssh", "host")))
-        )
-        assertEquals(
-            LaunchPlan.Failed(LaunchProblem.DistroUnavailable(null)),
-            planner.plan(ShellRequest(99L, listOf("ssh", "host")))
-        )
-        assertEquals(
-            LaunchPlan.Failed(LaunchProblem.CommandNeedsDistro),
-            planner.plan(ShellRequest(null, listOf("ssh", "host")))
-        )
-    }
-
-    @Test
-    fun `an empty command or one with a NUL is refused`() = runTest {
+    fun `proot is rooted at the distro directory, not at a rootfs folder inside it`() = runTest {
         val distro = install()
 
-        listOf(emptyList(), listOf(""), listOf("ssh", "a\u0000b")).forEach { command ->
-            assertEquals(
-                LaunchPlan.Failed(LaunchProblem.InvalidCommand),
-                planner.plan(ShellRequest(distro.id, command)),
-                command.toString()
-            )
-        }
+        val command = inDistro(planner.plan(distro.id)).launch.command
+
+        assertEquals("/storage/distros/a1", command[command.indexOf("-r") + 1])
+        assertFalse(command.any { it.endsWith("/rootfs") })
     }
 
     @Test
@@ -281,7 +233,7 @@ class ProotSessionPlannerTest {
 
         assertEquals(
             LaunchPlan.Failed(LaunchProblem.DistroCorrupt("Alpine")),
-            planner.plan(ShellRequest(distro.id))
+            planner.plan(distro.id)
         )
     }
 
@@ -292,7 +244,7 @@ class ProotSessionPlannerTest {
 
         assertEquals(
             LaunchPlan.Failed(LaunchProblem.ProotMissing),
-            planner.plan(ShellRequest(distro.id))
+            planner.plan(distro.id)
         )
     }
 
@@ -303,7 +255,7 @@ class ProotSessionPlannerTest {
 
         assertEquals(
             LaunchPlan.Failed(LaunchProblem.TempDirUnavailable),
-            planner.plan(ShellRequest(distro.id))
+            planner.plan(distro.id)
         )
     }
 
@@ -320,7 +272,7 @@ class ProotSessionPlannerTest {
             SharedStorageMounts(fileSystem, access),
             runtime,
             dns
-        ).plan(ShellRequest(distro.id))
+        ).plan(distro.id)
 
         assertEquals(LaunchPlan.Failed(LaunchProblem.InvalidUser("-l")), plan)
         assertEquals(0, dns.calls)
@@ -331,7 +283,7 @@ class ProotSessionPlannerTest {
         val distro = install(withRootfs = false)
         settings.update { it.copy(sharedStorage = true) }
 
-        planner.plan(ShellRequest(distro.id))
+        planner.plan(distro.id)
 
         assertEquals(0, dns.calls)
         assertEquals(0, access.permissionChecks)

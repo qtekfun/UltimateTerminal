@@ -83,6 +83,7 @@ fun TabBar(
     tabs: TabsController,
     placement: TabBarPlacement,
     onOpenDistros: () -> Unit,
+    onOpenSsh: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val items by tabs.tabs.collectAsStateWithLifecycle()
@@ -113,7 +114,8 @@ fun TabBar(
                 choices,
                 onNewTab = tabs::newTab,
                 onNewTabIn = { tabs.newTabIn(it) },
-                onOpenDistros = onOpenDistros
+                onOpenDistros = onOpenDistros,
+                onOpenSsh = onOpenSsh
             )
         }
     )
@@ -311,7 +313,8 @@ private fun NewTabButton(
     choices: List<DistroOption>,
     onNewTab: () -> Unit,
     onNewTabIn: (Long?) -> Unit,
-    onOpenDistros: () -> Unit
+    onOpenDistros: () -> Unit,
+    onOpenSsh: () -> Unit
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val label = stringResource(R.string.tab_new)
@@ -339,6 +342,13 @@ private fun NewTabButton(
                     }
                 )
             }
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.ssh_open)) },
+                onClick = {
+                    menuOpen = false
+                    onOpenSsh()
+                }
+            )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.tab_manage_distros)) },
                 onClick = {

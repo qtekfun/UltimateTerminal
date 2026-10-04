@@ -4,7 +4,6 @@
 package com.qtekfun.ultimateterminal.data.proot
 
 import com.qtekfun.ultimateterminal.domain.launch.GuestUser
-import com.qtekfun.ultimateterminal.domain.launch.ShellQuote
 
 /** Where the guest sees a host directory. */
 data class ProotBind(val hostPath: String, val guestPath: String = hostPath)
@@ -30,8 +29,9 @@ data class ProotSession(
      */
     val user: String? = null,
     /**
-     * A program and arguments to run instead of [shell] (an argument list, never a shell line). For
-     * a user other than root it is quoted once, because `su -c` takes a single string.
+     * A program and arguments to run instead of [shell] (an argument list, never a shell line). It
+     * runs as proot's own identity (root with [fakeRoot]), not as [user]: only the SSH connection
+     * uses it, and it has no use for another user.
      */
     val command: List<String>? = null
 ) {
@@ -97,15 +97,11 @@ class ProotCommandBuilder(private val nativeLibraryDir: String, private val tmpD
         "/home"
     }
 
-    /** What the guest runs: the shell or the command, as root or through `su -l <user>`. */
-    private fun guestCommand(session: ProotSession): List<String> {
-        val command = session.command
-        return if (GuestUser.isRoot(session.user)) {
-            command ?: session.shell
-        } else {
-            val login = listOf("su", "-l", requireNotNull(session.user))
-            if (command == null) login else login + listOf("-c", ShellQuote.join(command))
-        }
+    /** What the guest runs: the command, or the login shell as root or through `su -l <user>`. */
+    private fun guestCommand(session: ProotSession): List<String> = when {
+        session.command != null -> session.command
+        GuestUser.isRoot(session.user) -> session.shell
+        else -> listOf("su", "-l", requireNotNull(session.user))
     }
 
     companion object {

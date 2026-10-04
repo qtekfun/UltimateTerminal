@@ -91,15 +91,6 @@ private fun problemText(problem: LaunchProblem): String = when (problem) {
     is LaunchProblem.InvalidUser ->
         stringResource(R.string.launch_problem_invalid_user, problem.user)
 
-    is LaunchProblem.DistroUnavailable -> problem.distroName?.let {
-        stringResource(R.string.launch_problem_distro_unavailable_named, it)
-    } ?: stringResource(R.string.launch_problem_distro_unavailable)
-
-    LaunchProblem.CommandNeedsDistro ->
-        stringResource(R.string.launch_problem_command_needs_distro)
-
-    LaunchProblem.InvalidCommand -> stringResource(R.string.launch_problem_invalid_command)
-
     LaunchProblem.TempDirUnavailable -> stringResource(R.string.launch_problem_tmp)
 
     LaunchProblem.Unexpected -> stringResource(R.string.launch_problem_unexpected)

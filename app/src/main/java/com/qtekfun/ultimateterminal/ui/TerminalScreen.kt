@@ -54,6 +54,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qtekfun.ultimateterminal.R
 import com.qtekfun.ultimateterminal.domain.session.TabBarPlacement
+import com.qtekfun.ultimateterminal.domain.session.TabsController
 import com.qtekfun.ultimateterminal.domain.session.reserveForTabBar
 import com.qtekfun.ultimateterminal.domain.session.tabBarPlacement
 import com.qtekfun.ultimateterminal.domain.terminal.CellPosition
@@ -85,6 +86,7 @@ fun TerminalScreen(
     initialFontSizeSp: Float,
     onFontSizeChanged: (Float) -> Unit,
     onOpenDistros: () -> Unit,
+    onOpenSsh: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: TerminalViewModel = viewModel()
 ) {
@@ -133,26 +135,32 @@ fun TerminalScreen(
         }
         if (placement == TabBarPlacement.Top) {
             Column(padded) {
-                TabBar(
-                    viewModel.tabs,
-                    placement,
-                    onOpenDistros,
-                    Modifier.fillMaxWidth().height(TabBarHeight)
-                )
+                TabBarSlot(viewModel.tabs, placement, onOpenDistros, onOpenSsh)
                 pane(Modifier.weight(1f).fillMaxWidth())
             }
         } else {
             Row(padded) {
-                TabBar(
-                    viewModel.tabs,
-                    placement,
-                    onOpenDistros,
-                    Modifier.fillMaxHeight().width(TabBarSideWidth)
-                )
+                TabBarSlot(viewModel.tabs, placement, onOpenDistros, onOpenSsh)
                 pane(Modifier.weight(1f).fillMaxHeight())
             }
         }
     }
+}
+
+/** The tab bar at the size its placement reserves, which the grid of the terminal leaves out. */
+@Composable
+private fun TabBarSlot(
+    tabs: TabsController,
+    placement: TabBarPlacement,
+    onOpenDistros: () -> Unit,
+    onOpenSsh: () -> Unit
+) {
+    val size = if (placement == TabBarPlacement.Top) {
+        Modifier.fillMaxWidth().height(TabBarHeight)
+    } else {
+        Modifier.fillMaxHeight().width(TabBarSideWidth)
+    }
+    TabBar(tabs, placement, onOpenDistros, onOpenSsh, size)
 }
 
 /** The terminal, the extra-keys row under it and, over the first rows, what the tab could not start. */

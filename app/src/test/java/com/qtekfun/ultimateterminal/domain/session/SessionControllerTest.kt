@@ -8,7 +8,6 @@ import com.qtekfun.ultimateterminal.domain.terminal.GridSize
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -240,47 +239,35 @@ class SessionControllerTest {
     }
 
     @Test
-    fun aSessionRemembersTheDistroAndProgramItWasAskedToRun() {
-        val id = controller.newSession(distroId = 4L, initialCommand = listOf("ssh", "host"))
+    fun aSessionRemembersTheDistroItWasOpenedIn() {
+        val id = controller.newSession(distroId = 4L)
 
-        val info = controller.state.value.items.single { it.id == id }
-        assertEquals(4L, info.distroId)
-        assertEquals(listOf("ssh", "host"), info.initialCommand)
+        assertEquals(4L, controller.state.value.items.single { it.id == id }.distroId)
     }
 
     @Test
-    fun aPlainSessionHasNoProgram() {
-        val id = controller.newSession()
-
-        assertNull(controller.state.value.items.single { it.id == id }.initialCommand)
-    }
-
-    @Test
-    fun theRequestIsPublishedBeforeTheShellStartsSoTheFactoryCanReadIt() {
-        var seen: SessionInfo? = null
+    fun theDistroIsPublishedBeforeTheShellStartsSoTheFactoryCanReadIt() {
+        var seen: Long? = null
         lateinit var probing: SessionController
         probing = SessionController(
             { id, _, _ ->
-                seen = probing.state.value.items.firstOrNull { it.id == id }
+                seen = probing.state.value.items.firstOrNull { it.id == id }?.distroId
                 FakeHandle()
             },
             service
         )
 
-        probing.newSession(distroId = 9L, initialCommand = listOf("htop"))
+        probing.newSession(distroId = 9L)
 
-        assertEquals(9L, seen?.distroId)
-        assertEquals(listOf("htop"), seen?.initialCommand)
+        assertEquals(9L, seen)
     }
 
     @Test
-    fun aSplitOpensInTheSameDistroButDoesNotRepeatTheProgram() {
-        controller.newSession(distroId = 4L, initialCommand = listOf("ssh", "host"))
+    fun aSplitOpensInTheSameDistro() {
+        controller.newSession(distroId = 4L)
 
         val split = checkNotNull(controller.splitActive(SplitOrientation.HORIZONTAL))
 
-        val info = controller.state.value.items.single { it.id == split }
-        assertEquals(4L, info.distroId)
-        assertNull(info.initialCommand)
+        assertEquals(4L, controller.state.value.items.single { it.id == split }.distroId)
     }
 }

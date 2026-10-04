@@ -30,6 +30,7 @@ import com.qtekfun.ultimateterminal.domain.theme.resolveTheme
 import com.qtekfun.ultimateterminal.terminal.SessionManager
 import com.qtekfun.ultimateterminal.ui.DistroScreen
 import com.qtekfun.ultimateterminal.ui.SessionPrompts
+import com.qtekfun.ultimateterminal.ui.SshScreen
 import com.qtekfun.ultimateterminal.ui.TerminalScreen
 import com.qtekfun.ultimateterminal.ui.theme.UltimateTerminalTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -79,6 +80,7 @@ class MainActivity : ComponentActivity() {
         val sessions by sessionManager.state.collectAsStateWithLifecycle()
         var hadSessions by remember { mutableStateOf(false) }
         var showDistros by rememberSaveable { mutableStateOf(false) }
+        var showSsh by rememberSaveable { mutableStateOf(false) }
         // "Exit" in the notification closes every session: close the screen with them.
         LaunchedEffect(sessions.items.isEmpty()) {
             if (sessions.items.isNotEmpty()) {
@@ -96,9 +98,11 @@ class MainActivity : ComponentActivity() {
                         settingsRepository.update { it.copy(terminalFontSizeSp = size) }
                     }
                 },
-                onOpenDistros = { showDistros = true }
+                onOpenDistros = { showDistros = true },
+                onOpenSsh = { showSsh = true }
             )
             if (showDistros) DistroScreen(onClose = { showDistros = false })
+            if (showSsh) SshScreen(onClose = { showSsh = false })
         }
         SessionPrompts(hasRunningSession = sessions.needsService)
     }

@@ -28,7 +28,8 @@ Reglas: una tarea cada vez, en su rama `feat/<tarea>`, con `./gradlew check` en 
   la distro elegida, pero nada lanzaba proot: toda pestaña abría el shell de Android. Un planificador decide qué arranca
   cada pestaña (distro `READY` con proot, o shell de Android con aviso, o error explicado), con `/etc/resolv.conf`,
   el usuario de la distro, los montajes de T13 y un modo de compatibilidad sin seccomp. Incluye el punto de extensión
-  «comando inicial» por pestaña (lo usará T14) y mueve el botón «Distros» al menú de «nueva pestaña».
+  unifica con el `SessionLaunch` de T14 en un único mecanismo de «qué ejecutar» por pestaña, corrige la ruta del rootfs
+  de T13 y mueve los botones «Distros» y «SSH» al menú de «nueva pestaña».
   *(Lógica probada en host; **no se ha ejecutado proot en ningún dispositivo**: ver `DECISIONS.md`, T08b.)*
 - [~] **T09 Multitab**: crear, cerrar, renombrar y reordenar pestañas; confirmación al cerrar con procesos vivos. *(implementada y probada solo en host; la barra no se ha visto en ningún dispositivo; ver `DECISIONS.md`, T09)*
 - [~] **T10 Paneles divididos** (pantallas anchas): dividir en horizontal/vertical con separadores arrastrables, y layout por `WindowSizeClass` (barra lateral o superior).
@@ -42,7 +43,7 @@ Reglas: una tarea cada vez, en su rama `feat/<tarea>`, con `./gradlew check` en 
 ## Fase 3 — Integración
 - [~] **T13 Acceso a archivos** *(lógica y pantalla implementadas y probadas en host; el permiso y el montaje reales sin validar, y proot aún no está conectado a las sesiones; ver `DECISIONS.md`, T13)*: bind-mount de `/sdcard` y Descargas en `~/storage`, con petición del permiso solo al activarlo.
   - *Verificación:* `cp` desde la distro aparece en Descargas del dispositivo.
-- [ ] **T14 Gestor de hosts SSH y claves**: hosts guardados, generar/importar/exportar claves cifradas con Keystore, lanzar `ssh` en una pestaña.
+- [~] **T14 Gestor de hosts SSH y claves**: hosts guardados, generar/importar/exportar claves cifradas con Keystore, lanzar `ssh` en una pestaña. *(implementada y probada en host, incluida una autenticación real con `sshd` de OpenSSH; sin validar en dispositivo y sin conectar a las pestañas normales de una distro; ver `DECISIONS.md`, T14)*
 - [ ] **T15 Copias de seguridad y restauración**: exportar una distro, solo la configuración o todo a `.tar.zst` (la configuración incluye tema, perfiles, atajos, layouts, teclas extra y hosts, en formato versionado), cifrado opcional AES-256-GCM/PBKDF2, restaurar también desde la bienvenida. **100 % de cobertura** en formato y cifrado.
   - *Verificación:* exportar en un dispositivo y restaurar en otro conserva permisos, propietarios y enlaces simbólicos; restaurar solo la configuración reproduce el mismo aspecto, atajos, perfiles y layouts.
 - [ ] **T16 Ajustes e i18n**: idioma, tema, scrollback, teclas extra, wakelock, copias de seguridad.

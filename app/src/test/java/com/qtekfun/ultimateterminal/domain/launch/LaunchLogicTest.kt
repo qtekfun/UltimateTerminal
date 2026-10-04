@@ -9,46 +9,6 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
-class ShellQuoteTest {
-    @Test
-    fun `a plain word is wrapped in single quotes`() {
-        assertEquals("'ssh'", ShellQuote.quote("ssh"))
-    }
-
-    @Test
-    fun `a single quote is closed, escaped and reopened`() {
-        assertEquals("'it'\\''s'", ShellQuote.quote("it's"))
-    }
-
-    @Test
-    fun `shell metacharacters stay inside the quotes`() {
-        assertEquals(
-            "'a; rm -rf / \$(id) `id` | &'",
-            ShellQuote.quote("a; rm -rf / \$(id) `id` | &")
-        )
-    }
-
-    @Test
-    fun `an empty argument is kept as an empty string`() {
-        assertEquals("''", ShellQuote.quote(""))
-    }
-
-    @Test
-    fun `arguments are joined by one space each`() {
-        assertEquals(
-            "'ssh' '-p' '22' 'host name'",
-            ShellQuote.join(listOf("ssh", "-p", "22", "host name"))
-        )
-    }
-
-    @Test
-    fun `a hostile argument cannot end its quote early`() {
-        val joined = ShellQuote.join(listOf("echo", "x'; touch /tmp/pwned; echo '"))
-
-        assertEquals("'echo' 'x'\\''; touch /tmp/pwned; echo '\\'''", joined)
-    }
-}
-
 class GuestUserTest {
     @Test
     fun `ordinary user names are valid`() {

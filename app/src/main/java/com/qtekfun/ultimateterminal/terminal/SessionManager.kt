@@ -5,12 +5,12 @@ package com.qtekfun.ultimateterminal.terminal
 
 import android.content.Context
 import com.qtekfun.ultimateterminal.data.proot.ProotSessionPlanner
-import com.qtekfun.ultimateterminal.domain.launch.ShellRequest
 import com.qtekfun.ultimateterminal.domain.model.DistroState
 import com.qtekfun.ultimateterminal.domain.repository.DistroRepository
 import com.qtekfun.ultimateterminal.domain.session.PaneEditor
 import com.qtekfun.ultimateterminal.domain.session.SessionController
 import com.qtekfun.ultimateterminal.domain.session.SessionId
+import com.qtekfun.ultimateterminal.domain.session.SessionLaunch
 import com.qtekfun.ultimateterminal.domain.session.Sessions
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
@@ -39,7 +39,7 @@ class SessionManager @Inject constructor(
 ) {
     // The emulator library delivers its callbacks on the main thread, so everything starts there.
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val factory = AndroidSessionFactory(context, planner, ::requestOf, scope)
+    private val factory = AndroidSessionFactory(context, planner, { distroOf(it) }, scope)
     private val controller = SessionController(factory, ServiceLauncher(context))
 
     val state: StateFlow<Sessions> get() = controller.state
@@ -56,11 +56,10 @@ class SessionManager @Inject constructor(
     /** The host of any session, which a pane of a split tab draws. */
     fun hostOf(id: SessionId): TerminalSessionHost? = factory.host(id)
 
-    /** What session [id] was asked to run, read from the state published before its shell starts. */
-    private fun requestOf(id: SessionId): ShellRequest =
-        controller.state.value.items.firstOrNull { it.id == id }
-            ?.let { ShellRequest(it.distroId, it.initialCommand) }
-            ?: ShellRequest(distroId = null)
+    /** The distro a session was opened in, read from the state published before its shell starts. */
+    private val distroOf: (SessionId) -> Long? = { id ->
+        controller.state.value.items.firstOrNull { it.id == id }?.distroId
+    }
 
     /**
      * Opens a tab in the default distro if it is ready, else in Android's shell: what the app does
@@ -73,8 +72,11 @@ class SessionManager @Inject constructor(
         }
     }
 
-    fun newSession(distroId: Long? = null, initialCommand: List<String>? = null): SessionId =
-        controller.newSession(distroId, initialCommand)
+    fun newSession(distroId: Long? = null): SessionId = controller.newSession(distroId)
+
+    /** Opens a tab that runs [launch] (for example `ssh` in a distro) instead of the Android shell. */
+    fun newSession(distroId: Long?, launch: SessionLaunch): SessionId =
+        controller.newSession(distroId, launch)
 
     fun close(id: SessionId) = controller.close(id)
 
@@ -85,10 +87,15 @@ class SessionManager @Inject constructor(
     /** Colors of every running shell, and of those started later. */
     fun applyScheme(scheme: TerminalColorScheme) = factory.applyScheme(scheme)
 
-    /** Replaces the active session with a fresh shell (the "restart" of a session that ended). */
+    /**
+     * Replaces the active session with a fresh shell (the "restart" of a session that ended), in the
+     * same distro. A tab that ran a launch (an `ssh` connection) is not run again: its key file was
+     * removed when it ended, so reconnecting goes through the hosts screen. It opens a plain shell of
+     * the distro, and if the distro is no longer usable the tab says so (D-T08b-9).
+     */
     fun restartActive() {
         val ended = controller.state.value.active ?: return
         controller.close(ended.id)
-        controller.newSession(ended.distroId, ended.initialCommand)
+        controller.newSession(ended.distroId)
     }
 }
