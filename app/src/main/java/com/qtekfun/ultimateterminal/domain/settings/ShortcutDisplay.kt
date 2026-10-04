@@ -18,6 +18,7 @@ object ShortcutDisplay {
         AppShortcut.SplitHorizontal, AppShortcut.SplitVertical, AppShortcut.ClosePane,
         AppShortcut.ToggleZoom,
         AppShortcut.FocusLeft, AppShortcut.FocusRight, AppShortcut.FocusUp, AppShortcut.FocusDown,
+        AppShortcut.ToggleBroadcast, AppShortcut.SaveLayout, AppShortcut.OpenLayouts,
         AppShortcut.Copy, AppShortcut.Paste,
         AppShortcut.ZoomIn, AppShortcut.ZoomOut, AppShortcut.ZoomReset
     )
