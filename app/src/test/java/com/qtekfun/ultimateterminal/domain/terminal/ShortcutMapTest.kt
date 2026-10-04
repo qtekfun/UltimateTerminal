@@ -159,4 +159,30 @@ class ShortcutMapTest {
             parsed.rejected.map { it.reason }
         )
     }
+
+    @Test
+    fun thePaneShortcutsAreBoundAndTheTabOnesAreKept() {
+        fun ctrlShift(code: Int) = key(code, ctrl = true, shift = true)
+        fun ctrlAlt(code: Int) = key(code, ctrl = true, alt = true)
+
+        assertEquals(AppShortcut.SplitHorizontal, defaults.match(ctrlShift(KeyEvent.KEYCODE_O)))
+        assertEquals(AppShortcut.SplitVertical, defaults.match(ctrlShift(KeyEvent.KEYCODE_E)))
+        assertEquals(AppShortcut.ClosePane, defaults.match(ctrlShift(KeyEvent.KEYCODE_Q)))
+        assertEquals(AppShortcut.ToggleZoom, defaults.match(ctrlShift(KeyEvent.KEYCODE_X)))
+        assertEquals(AppShortcut.FocusLeft, defaults.match(ctrlAlt(KeyEvent.KEYCODE_DPAD_LEFT)))
+        assertEquals(AppShortcut.FocusRight, defaults.match(ctrlAlt(KeyEvent.KEYCODE_DPAD_RIGHT)))
+        assertEquals(AppShortcut.FocusUp, defaults.match(ctrlAlt(KeyEvent.KEYCODE_DPAD_UP)))
+        assertEquals(AppShortcut.FocusDown, defaults.match(ctrlAlt(KeyEvent.KEYCODE_DPAD_DOWN)))
+        // Ctrl+Shift+W is still the tab, and plain Alt+arrow still reaches readline.
+        assertEquals(AppShortcut.CloseTab, defaults.match(ctrlShift(KeyEvent.KEYCODE_W)))
+        assertEquals(null, defaults.match(key(KeyEvent.KEYCODE_DPAD_LEFT, alt = true)))
+    }
+
+    @Test
+    fun theDefaultsSurviveTheStoredFormWithThePaneShortcuts() {
+        val parsed = ShortcutMap.parse(defaults.serialize())
+
+        assertEquals(emptyList<RejectedLine>(), parsed.rejected)
+        assertEquals(defaults.all, parsed.map.all)
+    }
 }
