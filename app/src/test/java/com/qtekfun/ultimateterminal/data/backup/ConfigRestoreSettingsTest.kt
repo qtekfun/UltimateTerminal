@@ -62,6 +62,36 @@ class ConfigRestoreSettingsTest {
     }
 
     @Test
+    fun eachLaterSettingIsKeptOrReplacedOnItsOwn() = runBlocking {
+        device.settings.update {
+            it.copy(
+                dnsFallbackServers = listOf("9.9.9.9"),
+                extraKeys = ExtraKeysConfig(listOf(listOf("esc"))),
+                appearance = TerminalAppearance(marginDp = 20)
+            )
+        }
+        val appearance = AppearanceDto("jetbrains-mono", 1f, 0f, 6, "BLOCK", false, "SCHEME", 8)
+
+        // Only the DNS servers come in the backup: the keys and the look stay.
+        val onlyDns = restore(sampleSettings().copy(dnsFallbackServers = listOf("1.1.1.1")))
+        assertEquals(listOf("1.1.1.1"), onlyDns.dnsFallbackServers)
+        assertEquals(listOf(listOf("esc")), onlyDns.extraKeys.rows)
+        assertEquals(20, onlyDns.appearance.marginDp)
+
+        // Only the keys come: the servers and the look stay.
+        val onlyKeys = restore(sampleSettings().copy(extraKeys = "tab ctrl\n"))
+        assertEquals(listOf(listOf("tab", "ctrl")), onlyKeys.extraKeys.rows)
+        assertEquals(listOf("1.1.1.1"), onlyKeys.dnsFallbackServers)
+        assertEquals(20, onlyKeys.appearance.marginDp)
+
+        // Only the look comes: the servers and the keys stay.
+        val onlyLook = restore(sampleSettings().copy(appearance = appearance))
+        assertEquals(6, onlyLook.appearance.marginDp)
+        assertEquals(listOf("1.1.1.1"), onlyLook.dnsFallbackServers)
+        assertEquals(listOf(listOf("tab", "ctrl")), onlyLook.extraKeys.rows)
+    }
+
+    @Test
     fun aFontThisDeviceDoesNotHaveFallsBackToTheBundledOne() = runBlocking {
         val appearance = AppearanceDto(
             fontId = "custom-font-from-another-phone",
