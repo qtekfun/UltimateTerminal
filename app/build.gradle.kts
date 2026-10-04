@@ -303,6 +303,8 @@ tasks.named("check") {
 // needs them, and credit it in THIRD_PARTY_NOTICES.md.
 licensee {
     allow("Apache-2.0")
+    // org.tukaani:xz, the xz decompressor for the Fedora root filesystem (T24).
+    allow("0BSD")
 }
 
 // Google Play Services, Firebase and Crashlytics are banned outright (F-Droid
@@ -375,6 +377,8 @@ dependencies {
     ksp(libs.room.compiler)
     implementation(libs.okhttp)
     implementation(libs.commons.compress)
+    // Reads the .tar.xz root filesystems (Fedora); 0BSD, see THIRD_PARTY_NOTICES.md.
+    implementation(libs.xz)
     implementation(libs.kotlinx.serialization.json)
 
     testImplementation(platform(libs.junit.bom))

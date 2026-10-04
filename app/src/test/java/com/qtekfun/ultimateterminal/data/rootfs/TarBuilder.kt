@@ -10,6 +10,8 @@ import java.util.zip.GZIPOutputStream
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
 import org.apache.commons.compress.archivers.tar.TarConstants
+import org.tukaani.xz.LZMA2Options
+import org.tukaani.xz.XZOutputStream
 
 /**
  * Builds small synthetic tar archives for the extractor tests. Names are written exactly as given
@@ -32,8 +34,11 @@ class TarBuilder {
         tar.closeArchiveEntry()
     }
 
-    fun file(name: String, content: String = "", mode: Int = 0b110_100_100): TarBuilder = apply {
-        val data = content.toByteArray()
+    fun file(name: String, content: String = "", mode: Int = 0b110_100_100): TarBuilder =
+        fileBytes(name, content.toByteArray(), mode)
+
+    /** A file whose content is not text, such as a compressed layer inside an OCI archive. */
+    fun fileBytes(name: String, data: ByteArray, mode: Int = 0b110_100_100): TarBuilder = apply {
         val entry = TarArchiveEntry(name, true).also {
             it.size = data.size.toLong()
             it.mode = mode
@@ -115,6 +120,9 @@ class TarBuilder {
 
     fun gzip(): ByteArray = gzipped(tar())
 
+    /** The tar compressed with xz, the way Fedora publishes its image. */
+    fun xz(): ByteArray = xzed(tar())
+
     /** Like [gzip], without compression; see [gzippedStored]. */
     fun gzipStored(): ByteArray = gzippedStored(tar())
 
@@ -128,6 +136,7 @@ class TarBuilder {
          */
         private val FIXED_TIME = Date(MODIFIED_MILLIS)
         private val PAX_COMMENT = "16 comment=test\n".toByteArray()
+        private const val XZ_PRESET = 1
         private const val TAR_BLOCK = 512
         private const val MODE_OFFSET = 100
         private const val MODE_LENGTH = 8
@@ -142,6 +151,13 @@ class TarBuilder {
         fun gzipped(data: ByteArray): ByteArray {
             val out = ByteArrayOutputStream()
             GZIPOutputStream(out).use { it.write(data) }
+            return out.toByteArray()
+        }
+
+        /** xz at preset 1, whose 1 MiB dictionary is small enough to build in a test. */
+        fun xzed(data: ByteArray): ByteArray {
+            val out = ByteArrayOutputStream()
+            XZOutputStream(out, LZMA2Options(XZ_PRESET)).use { it.write(data) }
             return out.toByteArray()
         }
 

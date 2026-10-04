@@ -23,7 +23,8 @@ data class RootfsEndpoints(
     val ubuntuRelease: String = "24.04",
     val debianArtifacts: String =
         "https://raw.githubusercontent.com/debuerreotype/docker-debian-artifacts",
-    val debianSuite: String = "trixie"
+    val debianSuite: String = "trixie",
+    val fedoraReleases: String = "https://dl.fedoraproject.org/pub/fedora/linux/releases"
 )
 
 /**
@@ -44,6 +45,7 @@ class OfficialRootfsCatalog(
         DistroFamily.ALPINE -> alpine(architecture)
         DistroFamily.UBUNTU -> ubuntu(architecture)
         DistroFamily.DEBIAN -> debian(architecture)
+        DistroFamily.FEDORA -> fedora(architecture)
     }
 
     private suspend fun alpine(architecture: Architecture): RootfsResult<RootfsSource> {
@@ -92,6 +94,75 @@ class OfficialRootfsCatalog(
         }
     }
 
+    /**
+     * Fedora's base container image, from the signed `CHECKSUM` of the newest release that has one.
+     * It is an OCI archive compressed with xz, and Fedora publishes no 32-bit ARM image.
+     */
+    private suspend fun fedora(architecture: Architecture): RootfsResult<RootfsSource> {
+        val arch = when (architecture) {
+            Architecture.ARM64 -> "aarch64"
+            Architecture.X86_64 -> "x86_64"
+            Architecture.ARMV7 -> null
+        }
+        return if (arch == null) {
+            RootfsResult.Failure(RootfsError.CatalogUnavailable("Fedora has no image for armv7"))
+        } else {
+            fetch("${endpoints.fedoraReleases}/").andThen { listing ->
+                fedoraNewest(IndexParsers.fedoraVersions(listing), architecture, arch)
+            }
+        }
+    }
+
+    /** The newest release that has an image: the very latest can be a branch still in the works. */
+    private suspend fun fedoraNewest(
+        versions: List<Int>,
+        architecture: Architecture,
+        arch: String
+    ): RootfsResult<RootfsSource> {
+        var result: RootfsResult<RootfsSource> =
+            RootfsResult.Failure(RootfsError.CatalogUnavailable("no Fedora release for $arch"))
+        val candidates = versions.take(FEDORA_RELEASES_TRIED).iterator()
+        while (result is RootfsResult.Failure && candidates.hasNext()) {
+            result = fedoraRelease(candidates.next(), architecture, arch)
+        }
+        return result
+    }
+
+    private suspend fun fedoraRelease(
+        version: Int,
+        architecture: Architecture,
+        arch: String
+    ): RootfsResult<RootfsSource> {
+        val images = "${endpoints.fedoraReleases}/$version/Container/$arch/images"
+        return fetch("$images/").andThen { listing ->
+            val image = IndexParsers.fedoraImage(listing, version, arch)
+            if (image == null) {
+                RootfsResult.Failure(
+                    RootfsError.CatalogUnavailable("Fedora $version has no image for $arch")
+                )
+            } else {
+                fetch("$images/${image.checksumFile}").andThen { text ->
+                    IndexParsers.fedoraChecksum(text, image.file)?.let {
+                        RootfsResult.Success(
+                            RootfsSource(
+                                DistroFamily.FEDORA,
+                                architecture,
+                                version.toString(),
+                                "$images/${image.file}",
+                                it.sha256,
+                                it.sizeBytes
+                            )
+                        )
+                    } ?: RootfsResult.Failure(
+                        RootfsError.CatalogUnavailable(
+                            "Fedora CHECKSUM has no entry for ${image.file}"
+                        )
+                    )
+                }
+            }
+        }
+    }
+
     private suspend fun fetch(url: String): RootfsResult<String> = withContext(io) {
         try {
             val request = Request.Builder().url(url).header("User-Agent", userAgent).build()
@@ -121,4 +192,9 @@ class OfficialRootfsCatalog(
     private fun RootfsSource?.orUnavailable(reason: String): RootfsResult<RootfsSource> =
         this?.let { RootfsResult.Success(it) }
             ?: RootfsResult.Failure(RootfsError.CatalogUnavailable(reason))
+
+    private companion object {
+        /** How many of the newest releases are tried before giving up. */
+        const val FEDORA_RELEASES_TRIED = 3
+    }
 }

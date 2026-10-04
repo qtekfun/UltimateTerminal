@@ -148,4 +148,65 @@ class IndexParsersTest {
             assertNull(IndexParsers.debian(bad, Architecture.ARM64, "trixie", url), bad)
         }
     }
+
+    @Test
+    fun fedoraReleasesAreListedNewestFirstAndIgnoreOtherLinks() {
+        assertEquals(listOf(45, 44, 43, 42), IndexParsers.fedoraVersions(Samples.FEDORA_RELEASES))
+        assertEquals(emptyList<Int>(), IndexParsers.fedoraVersions("<a href=\"test/\">test/</a>"))
+    }
+
+    @Test
+    fun fedoraTakesTheBaseImageAndNotTheMinimalOrToolboxOnes() {
+        val image = IndexParsers.fedoraImage(Samples.FEDORA_IMAGES, 44, "aarch64")
+
+        assertEquals(
+            IndexParsers.FedoraImage(
+                "Fedora-Container-Base-Generic-44-1.7.aarch64.oci.tar.xz",
+                "Fedora-Container-44-1.7-aarch64-CHECKSUM"
+            ),
+            image
+        )
+    }
+
+    @Test
+    fun fedoraImageIsNullForAnotherReleaseArchitectureOrWithoutItsChecksum() {
+        assertNull(IndexParsers.fedoraImage(Samples.FEDORA_IMAGES, 43, "aarch64"))
+        assertNull(IndexParsers.fedoraImage(Samples.FEDORA_IMAGES, 44, "x86_64"))
+        val noChecksum = Samples.FEDORA_IMAGES.lines().filterNot {
+            "CHECKSUM" in it
+        }.joinToString("\n")
+        assertNull(IndexParsers.fedoraImage(noChecksum, 44, "aarch64"))
+        assertNull(IndexParsers.fedoraImage("", 44, "aarch64"))
+    }
+
+    @Test
+    fun fedoraChecksumReadsTheHashAndSizeOfTheNamedFileOnly() {
+        val base = "Fedora-Container-Base-Generic-44-1.7.aarch64.oci.tar.xz"
+        val minimal = "Fedora-Container-Base-Generic-Minimal-44-1.7.aarch64.oci.tar.xz"
+
+        assertEquals(
+            IndexParsers.FedoraChecksum(Samples.FEDORA_SHA, Samples.FEDORA_SIZE),
+            IndexParsers.fedoraChecksum(Samples.FEDORA_CHECKSUM, base)
+        )
+        assertEquals(
+            IndexParsers.FedoraChecksum(
+                "2c00fc0e7890a5bfecbd243561e5a2d07d2661667e1b897eab549b83f6b1db9a",
+                51_427_176L
+            ),
+            IndexParsers.fedoraChecksum(Samples.FEDORA_CHECKSUM, minimal)
+        )
+    }
+
+    @Test
+    fun fedoraChecksumIsNullWithoutALineForTheFileOrWithAShortHash() {
+        val base = "Fedora-Container-Base-Generic-44-1.7.aarch64.oci.tar.xz"
+
+        assertNull(IndexParsers.fedoraChecksum(Samples.FEDORA_CHECKSUM, "other.tar.xz"))
+        assertNull(IndexParsers.fedoraChecksum("SHA256 ($base) = abc123", base))
+        // A file with no size line still has its hash.
+        assertEquals(
+            IndexParsers.FedoraChecksum(Samples.FEDORA_SHA, null),
+            IndexParsers.fedoraChecksum("SHA256 ($base) = ${Samples.FEDORA_SHA.uppercase()}", base)
+        )
+    }
 }

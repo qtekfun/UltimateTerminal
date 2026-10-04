@@ -89,6 +89,16 @@ class DistroInstallerTest {
     }
 
     @Test
+    fun aFedoraInstallRegistersAFedoraDistroWithTheNameAndUserOfTheRequest() = runTest {
+        val result = installer().install(InstallRequest(DistroFamily.FEDORA, "Fedora", "root"))
+
+        val distro = (result as InstallResult.Success).distro
+        assertEquals(DistroType.FEDORA, distro.type)
+        assertEquals("Fedora", distro.name)
+        assertEquals("root", distro.defaultUser)
+    }
+
+    @Test
     fun theInstallReportsEachPhaseInOrder() = runTest {
         val phases = mutableListOf<InstallPhase>()
 
@@ -316,6 +326,7 @@ class DistroInstallerTest {
         assertEquals(DistroType.DEBIAN, DistroFamily.DEBIAN.toType())
         assertEquals(DistroType.UBUNTU, DistroFamily.UBUNTU.toType())
         assertEquals(DistroType.ALPINE, DistroFamily.ALPINE.toType())
+        assertEquals(DistroType.FEDORA, DistroFamily.FEDORA.toType())
     }
 
     @Test

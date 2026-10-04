@@ -54,7 +54,8 @@ class OfficialRootfsCatalogTest {
             ubuntuBase = base("/ubuntu/releases"),
             ubuntuRelease = "24.04",
             debianArtifacts = base("/debian"),
-            debianSuite = "trixie"
+            debianSuite = "trixie",
+            fedoraReleases = base("/fedora/releases")
         ),
         io = Dispatchers.Unconfined
     )
@@ -179,5 +180,70 @@ class OfficialRootfsCatalogTest {
         val result = catalog.resolve(DistroFamily.ALPINE, Architecture.ARM64)
 
         assertTrue(result is RootfsResult.Failure && result.error is RootfsError.CatalogUnavailable)
+    }
+
+    private val fedoraImages = "/fedora/releases/44/Container/aarch64/images"
+
+    private fun serveFedora44() {
+        paths["/fedora/releases/"] = Samples.FEDORA_RELEASES
+        paths["$fedoraImages/"] = Samples.FEDORA_IMAGES
+        paths["$fedoraImages/Fedora-Container-44-1.7-aarch64-CHECKSUM"] = Samples.FEDORA_CHECKSUM
+    }
+
+    @Test
+    fun fedoraTakesTheNewestReleaseThatHasAnImageAndItsSignedChecksum() = runTest {
+        // 45 is listed but has no Container directory yet: the answer is 404 and 44 is tried next.
+        serveFedora44()
+
+        val result = catalog().resolve(DistroFamily.FEDORA, Architecture.ARM64)
+
+        val source = (result as RootfsResult.Success).value
+        assertEquals("44", source.version)
+        assertEquals(Samples.FEDORA_SHA, source.sha256)
+        assertEquals(Samples.FEDORA_SIZE, source.sizeBytes)
+        assertEquals(
+            base("$fedoraImages/Fedora-Container-Base-Generic-44-1.7.aarch64.oci.tar.xz"),
+            source.url
+        )
+        assertTrue(requested.any { it.startsWith("/fedora/releases/45/") })
+    }
+
+    @Test
+    fun fedoraHasNoImageForThe32BitArmAndSaysSoWithoutAskingTheNetwork() = runTest {
+        val result = catalog().resolve(DistroFamily.FEDORA, Architecture.ARMV7)
+
+        assertTrue(
+            ((result as RootfsResult.Failure).error as RootfsError.CatalogUnavailable)
+                .reason.contains("armv7")
+        )
+        assertTrue(requested.isEmpty())
+    }
+
+    @Test
+    fun fedoraGivesUpAfterThreeReleasesWithoutAnImage() = runTest {
+        paths["/fedora/releases/"] =
+            "<a href=\"47/\">47/</a><a href=\"46/\">46/</a><a href=\"45/\">45/</a><a href=\"44/\">44/</a>"
+
+        val result = catalog().resolve(DistroFamily.FEDORA, Architecture.ARM64)
+
+        assertTrue(result is RootfsResult.Failure)
+        assertEquals(3, requested.count { it.endsWith("/images/") })
+    }
+
+    @Test
+    fun fedoraWithoutAnEntryInItsChecksumIsUnavailable() = runTest {
+        serveFedora44()
+        paths["$fedoraImages/Fedora-Container-44-1.7-aarch64-CHECKSUM"] = "# nothing useful"
+
+        val result = catalog().resolve(DistroFamily.FEDORA, Architecture.ARM64)
+
+        assertTrue(result is RootfsResult.Failure)
+    }
+
+    @Test
+    fun fedoraWithoutAReleaseListingIsUnavailable() = runTest {
+        val result = catalog().resolve(DistroFamily.FEDORA, Architecture.X86_64)
+
+        assertTrue(result is RootfsResult.Failure)
     }
 }

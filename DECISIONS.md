@@ -2163,3 +2163,58 @@ Hecha en un clon aparte, sin dispositivos. Lo que solo puede decir el dispositiv
 - Que "atrás" del sistema se apile bien cuando Apariencia o Distribuciones se abren encima de Ajustes.
 - TalkBack: orden de lectura, rol y estado de los interruptores, y las filas de teclas.
 - El efecto real del historial, las teclas extra y el DNS en una sesión.
+
+## T24 — Fedora como distro
+
+Petición del usuario (Fedora es su distro habitual). Hecho sin dispositivo: probado en host con muestras sintéticas y con las respuestas reales de Fedora (listados y `CHECKSUM`) copiadas a los tests. **Pendiente de la prueba real en el Pixel 8.**
+
+### D-T24-1 · 2026-10-04 · Origen: la imagen de contenedor `Base` del release oficial, con su `CHECKSUM` firmado
+- **Decisión:** se usa `https://dl.fedoraproject.org/pub/fedora/linux/releases/<versión>/Container/<arq>/images/Fedora-Container-Base-Generic-<versión>-<compose>.<arq>.oci.tar.xz` (63 MB en Fedora 44, aarch64) y el hash SHA-256 de `Fedora-Container-<versión>-<compose>-<arq>-CHECKSUM`, que Fedora firma con PGP y que trae también el tamaño.
+- **Por qué esa imagen y no otra:** la capa trae `dnf5` (`usr/bin/dnf -> dnf5`, visto en su listado), que es lo que el usuario va a usar. La `Minimal` (49 MB) lleva una palabra más en el nombre y no se elige.
+- **Alternativa descartada:** `fedora-cloud/docker-brew-fedora` (rama `44`, `aarch64/fedora-<fecha>.tar`). Es más sencilla —su "`.tar`" es en realidad un gzip (empieza por `1f8b`), el extractor actual la leería—, pero el repositorio **no publica ningún SHA-256** (solo el SHA-1 de blob de git), así que no habría una verificación a la altura de las otras distros. Además su fecha cambia con cada actualización.
+- **Impacto:** el hash lo verifica `Sha256Verifier` como en las demás (T06), sobre el `.oci.tar.xz` entero.
+
+### D-T24-2 · 2026-10-04 · Qué versión: la más reciente que tenga imagen, sin URLs fijas
+- **Decisión:** el catálogo lee el listado de `releases/`, ordena los números de mayor a menor y prueba los tres primeros hasta dar con uno con `Container/<arq>/images/` y su `CHECKSUM`. Hoy (2026-10-04) 45 aparece listado pero no tiene directorio de contenedores (404), así que se elige **Fedora 44**.
+- **Motivo:** como D-T06-1: ninguna URL ni hash en el código, y una versión nueva se recoge sin actualizar la app. Probar solo la última fallaría justo cuando se abre una rama nueva.
+- **Riesgo aceptado:** la **firma PGP del `CHECKSUM` no se comprueba**: se lee el texto claro, que llega por HTTPS desde el servidor del proyecto. Es el mismo riesgo que D-T06-2. Mejora posible: llevar las claves de publicación de Fedora y verificar la firma (haría falta una biblioteca OpenPGP, hoy no justificada).
+- **Impacto:** las imágenes del release están congeladas en su fecha (la de Fedora 44 es del 2026-04-22); la distro se actualiza después con `dnf upgrade`.
+
+### D-T24-3 · 2026-10-04 · ABIs: arm64 y x86_64; Fedora no publica 32 bits de ARM
+- **Comprobado:** en Fedora 44 el directorio `armhfp`/`armv7hl` está vacío. El catálogo devuelve `CatalogUnavailable("Fedora has no image for armv7")` **sin tocar la red**.
+- **Pendiente:** el diálogo de instalación sigue listando Fedora en un dispositivo armv7 y falla al intentarlo con ese mensaje. Ocultar la opción por arquitectura queda para la pantalla de Distros nueva (T22c).
+
+### D-T24-4 · 2026-10-04 · Dos niveles de archivo: xz, tar OCI y capa gzip; la capa se halla por su contenido
+- **Hecho comprobado leyendo la imagen real en flujo:** el `.oci.tar.xz` contiene, en este orden, `blobs/`, `blobs/sha256/`, un blob JSON (config), **la capa de 66,8 MB** (gzip), otro blob JSON (manifiesto), `index.json` y `oci-layout`. **El manifiesto llega después de la capa**, así que no se puede localizar la capa leyéndolo.
+- **Decisión:** `OciArchive` reconoce una imagen OCI por su primera entrada y toma como capa el blob de `blobs/sha256/<64 hex>` cuyo contenido es un tar comprimido o plano (por la cabecera: gzip, xz, zstd, bzip2 o `ustar`), no JSON. La extrae en flujo con las mismas reglas de seguridad de T07 (`TarPass` y `SafeTreeWriter` no cambian).
+- **Integridad de la capa:** los blobs OCI se llaman como su propio SHA-256. Se calcula el de los bytes de la capa a medida que se leen (incluidos los que el descompresor no pide) y se compara con su nombre al terminar; si no coincide, `Corrupt("the OCI layer does not match its digest")` y el instalador descarta el directorio temporal (D-T07-1). Sirve de segunda comprobación sobre el hash del archivo entero.
+- **Una sola capa**, como Debian (D-T06-3): tras la capa se recorre el resto del archivo y otra capa daría `UnsupportedFormat("an OCI image with several layers")` en lugar de instalar medio sistema.
+- **Detalle técnico:** el flujo de la capa no admite `mark`/`reset` y rehace `skip` con `read`, porque cualquiera de las dos cosas esquivaría el cálculo del hash.
+
+### D-T24-5 · 2026-10-04 · Biblioteca xz: `org.tukaani:xz` 1.12 (0BSD), con límite de memoria
+- **Licencia:** 0BSD, comprobada en el POM de Maven Central y en `COPYING` del repositorio oficial (`tukaani-project/xz-java`); compatible con GPL-3.0-or-later. 0BSD no exige conservar ningún aviso; se acredita igualmente en `THIRD_PARTY_NOTICES.md`. `licensee` permite ahora `0BSD`.
+- **Aviso en el APK:** el jar de xz-java no trae `NOTICE` ni `LICENSE` (solo `META-INF/MANIFEST.MF` y el módulo), y 0BSD no obliga a conservar ningún aviso, así que, con el criterio de D-T23-2 (se empaquetan los textos de las dependencias que publican el suyo), no se añade nada a `res/raw` ni a `assets/licenses`. Queda acreditada en `THIRD_PARTY_NOTICES.md`.
+- **Verificación de dependencias:** el `jar` y el `pom` (Maven Central no publica `.module`) se descargaron y sus SHA-256 coinciden con los `.sha256` que publica Maven Central; se insertaron en `verification-metadata.xml` sin reformatear el fichero.
+- **Memoria:** `XZInputStream` se abre con un límite de **64 MiB** (el diccionario de un `xz -9`; el de Fedora pide del orden de 1 MiB). xz-java reserva el diccionario en el heap de Java, y un flujo que pida más se rechaza (`TooLarge`) en vez de arriesgar un `OutOfMemoryError`. Los demás errores del descompresor se clasifican como `Corrupt`.
+- **Bombas:** el xz comprime mucho más que gzip, así que la defensa no es el tamaño comprimido: la cuentan los límites que ya había sobre lo que se **escribe** (16 GiB y 2 millones de entradas) y se añade un tope de 8 GiB para el tamaño declarado de una capa.
+
+### D-T24-6 · 2026-10-04 · El formato se decide siempre por los primeros bytes, nunca por la extensión
+- `ArchiveFormat.open` ya miraba la cabecera mágica; ahora además lee xz. El instalador guarda el archivo descargado con un nombre fijo (`archive`) y los tests lo comprueban con un gzip llamado `.tar.xz` y un xz llamado `.tar.gz`. zstd y bzip2 siguen sin soporte y se nombran en el error.
+
+### D-T24-7 · 2026-10-04 · Espacio: la regla de T07 ya cubre Fedora
+- `InstallSpace` exige 5 veces el tamaño del archivo: unos 330 MB para los 66 MB de Fedora (el archivo más lo descomprimido, que se estima en unos 200 MB). **El tamaño descomprimido real no se ha medido**: se medirá en el dispositivo.
+
+### D-T24-8 · 2026-10-04 · Lo que Fedora necesita del lanzamiento de proot: nada nuevo, con tres cosas por vigilar
+- **`/etc/resolv.conf`:** la capa no lo trae y T08b lo resuelve con un bind de proot, no escribiendo en el rootfs: sirve igual.
+- **`PATH`:** el genérico (`/usr/local/sbin:…:/bin`) vale; `/bin` y `/sbin` son enlaces **relativos** a `usr/…` y proot los resuelve dentro de la distro. No hay ninguna comprobación de `bin/sh` en el lado del anfitrión (el repositorio de ficheros no sigue enlaces y la daría por inexistente).
+- **Enlaces relativos** (`etc/os-release -> ../usr/lib/os-release`, `usr/sbin -> bin`, `usr/local/sbin -> bin`): el extractor los guarda tal cual, y la regla de no escribir a través de un enlace sigue vigente.
+- **Por vigilar en el dispositivo:** `dnf5` bajo proot (seccomp, `ptrace`, `/proc` parcial, la base de datos de `rpm`) y el tiempo de la primera descarga.
+
+### D-T24-9 · 2026-10-04 · Qué se probó y qué no
+- **Tests de host (sin red real):** xz válido, truncado, dañado, con solo su magia, bomba y exceso de memoria (editando el diccionario de la cabecera del bloque y recalculando su CRC); imagen OCI de Fedora (capa única, envoltorio gzip o plano, nombres con `./`, capa tar plano, digest que no coincide, sin capa, varias capas, capa hostil con `..` y con escritura a través de enlace, bomba dentro de la capa); el flujo de la capa (lectura, `skip`, `mark`/`reset`, cierre); parsers y catálogo de Fedora con las respuestas reales (la nueva rama sin imagen, armv7, tres versiones sin imagen, `CHECKSUM` sin entrada); y el instalador registra `DistroType.FEDORA`. Las fechas de los tars son fijas y ningún test depende del reloj ni de los tamaños comprimidos.
+- **No cubierto por tests:** el tope de 8 GiB de una capa (hace falta una cabecera de tar con un tamaño absurdo escrita a mano).
+- **Sin validar en hardware, y criterios de la prueba real en el Pixel 8:**
+  1. Instalar Fedora desde la app: descarga de ~63 MB con progreso, comprobación de hash, extracción sin error y la distro "lista"; anotar el tiempo y el tamaño descomprimido.
+  2. Abrir una pestaña: `cat /etc/fedora-release` (debe decir Fedora Linux 44) y `echo $0`.
+  3. `dnf --version` y `dnf install -y nano` (red, DNS del dispositivo, escritura en `/var/lib` y `/var/cache`); `nano --version`.
+  4. Si `dnf` falla: probar el modo de compatibilidad (proot sin seccomp) y apuntar el error exacto.
