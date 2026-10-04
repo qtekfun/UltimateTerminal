@@ -5,7 +5,6 @@ package com.qtekfun.ultimateterminal.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -70,6 +69,7 @@ import com.qtekfun.ultimateterminal.ui.ios.IosMenuItem
 import com.qtekfun.ultimateterminal.ui.ios.IosSize
 import com.qtekfun.ultimateterminal.ui.ios.IosText
 import com.qtekfun.ultimateterminal.ui.ios.IosTheme
+import com.qtekfun.ultimateterminal.ui.settings.SettingsButton
 
 /** Height of the bar when it runs along the top; also the minimum touch size (SPEC §6). */
 internal val TabBarHeight = 48.dp
@@ -432,20 +432,5 @@ private fun NewTabButton(
     ) {
         IosIcon(IosGlyph.PLUS, null, tint = IosTheme.colors.tint)
         NewTabMenu(menuOpen, { menuOpen = false }, choices, onNewTabIn, links)
-    }
-}
-
-/** The gear that opens Settings (SPEC RF-11): always in the bar, 48 dp, with its spoken name. */
-@Composable
-private fun SettingsButton(onOpen: () -> Unit) {
-    val label = stringResource(R.string.settings_open)
-    Box(
-        Modifier
-            .size(TouchSize)
-            .semantics { contentDescription = label }
-            .clickable(onClickLabel = label, role = Role.Button, onClick = onOpen),
-        contentAlignment = Alignment.Center
-    ) {
-        IosIcon(IosGlyph.SETTINGS, null, tint = IosTheme.colors.tint)
     }
 }
