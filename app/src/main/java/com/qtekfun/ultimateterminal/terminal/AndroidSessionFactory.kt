@@ -142,7 +142,7 @@ class AndroidSessionFactory(
 
     /**
      * Types the command of a profile (with its Enter) into the shell once it has printed its first
-     * prompt and gone quiet, or after a maximum wait ([StartupInputGate], D-FIX-5). Typed earlier the
+     * prompt and gone quiet, or after a maximum wait ([StartupInputGate], D-FIX-7). Typed earlier the
      * terminal would echo it twice, once before the prompt exists and once after.
      */
     private suspend fun typeStartupInput(host: TerminalSessionHost, opening: PaneOpening?) {

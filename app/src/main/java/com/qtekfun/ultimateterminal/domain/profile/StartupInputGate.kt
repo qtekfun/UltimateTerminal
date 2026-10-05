@@ -4,7 +4,7 @@
 package com.qtekfun.ultimateterminal.domain.profile
 
 /**
- * Decides when the start-up command of a profile is typed into its shell (D-FIX-5). Typing at a fixed
+ * Decides when the start-up command of a profile is typed into its shell (D-FIX-7). Typing at a fixed
  * delay lands before the first prompt is drawn, so the terminal echoes the command twice. The shell
  * is ready when it has written something (its first prompt, or a banner and then the prompt) and
  * then gone quiet for [quietMillis]; if it never does, [maxWaitMillis] after the start the command is

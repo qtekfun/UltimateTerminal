@@ -39,7 +39,7 @@ data class PaneSpec(
     val startupInput: String?,
     /** The profile this came from, null when no profile was used. */
     val profileId: Long? = null,
-    /** The name of that profile, which names the tab it opens (D-FIX-2). */
+    /** The name of that profile, which names the tab it opens (D-FIX-4). */
     val profileName: String? = null
 )
 
@@ -53,7 +53,7 @@ data class PaneOpening(val spec: PaneSpec, val command: String? = null) {
     val distroId: Long? get() = (spec.target as? PaneTarget.InDistro)?.distroId
 
     /**
-     * What a pane made by splitting this one starts with (D-FIX-6): the same target, user and look,
+     * What a pane made by splitting this one starts with (D-FIX-8): the same target, user and look,
      * but not the start-up command, which would run a second time.
      */
     fun forSplit(): PaneOpening = PaneOpening(spec.copy(startupInput = null))

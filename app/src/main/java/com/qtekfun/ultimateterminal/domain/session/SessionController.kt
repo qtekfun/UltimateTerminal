@@ -133,7 +133,7 @@ class SessionController(
 
     override fun splitActive(orientation: SplitOrientation, opening: PaneOpening?): SessionId? {
         val source = mutableState.value.activeId
-        // A plain split of a pane opened with a profile keeps its distro and user (D-FIX-6).
+        // A plain split of a pane opened with a profile keeps its distro and user (D-FIX-8).
         val inherited = opening ?: source?.let { openings[it] }?.forSplit()
         val (next, id) = mutableState.value.split(orientation, inherited) ?: return null
         inherited?.let { openings[id] = it }

@@ -157,7 +157,7 @@ fun TerminalPanes(
 }
 
 /**
- * The red broadcast pill, in the header strip of the first pane (D-FIX-4), left of its menu button:
+ * The red broadcast pill, in the header strip of the first pane (D-FIX-6), left of its menu button:
  * over no terminal text, and the strip is as tall as its 48 dp touch target.
  */
 @Composable

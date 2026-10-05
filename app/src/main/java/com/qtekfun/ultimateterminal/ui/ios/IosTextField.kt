@@ -37,7 +37,7 @@ private const val FIELD_WEIGHT = 0.6f
  * A row of a grouped list that holds text: the [label] at the start and the field at the end, as in
  * the iOS forms. Put it in an [IosSection]; the last one takes `showSeparator = false`. A screen
  * reader reads the label and the text as one item. [isError] draws the label in red. A tap anywhere
- * on the row, the label included, focuses the field (D-FIX-3).
+ * on the row, the label included, focuses the field (D-FIX-5).
  */
 @Composable
 fun IosTextField(

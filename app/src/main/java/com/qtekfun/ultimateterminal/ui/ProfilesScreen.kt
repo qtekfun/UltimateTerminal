@@ -57,7 +57,7 @@ private sealed interface ProfileDialog {
 /**
  * The profiles screen (SPEC RF-12): list, create, edit and delete; tapping one offers to open it in a
  * new tab or in a split of the active tab. [onClose] leaves the screen; [onOpened] is what opening a
- * profile does once it has opened (D-FIX-1): the caller closes whatever is under it too.
+ * profile does once it has opened (D-FIX-3): the caller closes whatever is under it too.
  */
 @Composable
 fun ProfilesScreen(
