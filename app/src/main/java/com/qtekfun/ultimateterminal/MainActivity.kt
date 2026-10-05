@@ -116,11 +116,7 @@ class MainActivity : ComponentActivity() {
                 TerminalScreen(
                     look = TerminalLook(scheme, settings.appearance, typefaces),
                     initialFontSizeSp = settings.terminalFontSizeSp,
-                    onFontSizeChanged = { size ->
-                        scope.launch {
-                            settingsRepository.update { it.copy(terminalFontSizeSp = size) }
-                        }
-                    },
+                    onFontSizeChanged = { size -> scope.launch { saveFontSize(size) } },
                     screens = ScreenLinks(
                         openDistros = { showDistros = true },
                         openSsh = { showSsh = true },
@@ -159,6 +155,9 @@ class MainActivity : ComponentActivity() {
         }
         IosTheme(decision, scheme) { SessionPrompts(hasRunningSession = sessions.needsService) }
     }
+
+    private suspend fun saveFontSize(size: Float) =
+        settingsRepository.update { it.copy(terminalFontSizeSp = size) }
 
     /** "Exit" in the notification closes every session: close the screen with them. */
     @Composable
