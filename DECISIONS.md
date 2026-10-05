@@ -2671,3 +2671,7 @@ Solo texto, sin tocar código ni dispositivos. Todo lo que dice estar verificado
 - **Comprobado después:** el panel derecho también da 38 × 61 (división simétrica) y, al girar a vertical con los dos paneles, cada PTY sigue a su panel (derecho 61 × 36, izquierdo unas 56 × 36; la fila de teclas extra aparece con el teclado). Los paneles y su foco se mantienen al rotar.
 - **Sin comprobar:** pantalla dividida del sistema (`--windowingMode 3/4` falla en este EMUI) y la captura de tablet para F-Droid (la pantalla muestra el nombre de usuario real del usuario y "MyFedora"; se evita publicarla tal cual).
 - Ajustes del sistema que se tocaron (rotación fija, pantalla encendida) restaurados.
+
+### D-T20-8 · 2026-10-05 · `fdroid lint` pasa
+- Con `fdroidserver` 2.4.5 (entorno aislado, solo herramienta de desarrollo) y la configuración de categorías de `fdroiddata`, `fdroid lint com.qtekfun.ultimateterminal` termina sin avisos tras quitar los espacios finales de la línea `Binaries:` y aplicar el orden canónico de `fdroid rewritemeta` (categorías ordenadas). La huella de firma ya está en `AllowedAPKSigningKeys` (D-REL-2).
+- **Pendiente para enviarla a fdroiddata:** que la receta apunte a la primera versión final (`0.1.0`; F-Droid no ofrece las `-rc.N`) y comprobar que CMake 3.31.6 y el NDK fijado están disponibles en su servidor de compilación (D-T20-1..6).
