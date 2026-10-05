@@ -2453,3 +2453,13 @@ Evidencia (tablet Huawei): Fedora 44 mínima no trae `su` y el usuario elegido n
 
 ### D-USER-3 · 2026-10-05 · Códigos 127 y 126
 - La tarjeta «Sesión terminada» muestra un texto distinto para 127 («no se encontró un programa») y 126 («no se pudo ejecutar»), vía `ExitHint` (puro, probado). Otros códigos como antes.
+
+## Fallo al abrir la hoja de perfil (fix/profile-form-crash)
+
+Evidencia (Pixel 8, Android 17): Ajustes > Perfiles > «+» cerraba la app con `IllegalStateException: Vertically scrollable component was measured with an infinity maximum height constraints`. Hecho sin dispositivo.
+
+### D-FIX-1 · 2026-10-05 · El contenido de `IosBottomSheet` se desplaza una sola vez, y lo vigila un test
+- **Causa:** `IosBottomSheet` ya envuelve su contenido en un `Column` con `verticalScroll` (altura acotada por el detent). `ProfileEditorSheet` y `ShortcutSheet` (T12b) añadían otro `verticalScroll` dentro, que recibe altura infinita y lanza la excepción.
+- **Decisión:** se quita el `verticalScroll` interior de ambas hojas; el desplazamiento y el límite de altura son responsabilidad de la hoja. Revisadas todas las demás hojas (SSH, Apariencia: editor de esquemas y selector de color, distros, copias, DNS, guardar disposición): no anidan ningún scroll ni `LazyColumn`.
+- **Protección:** `SheetScrollNestingTest` (sin dependencias nuevas) lee las fuentes y falla si un fichero que abre un `IosBottomSheet` usa `verticalScroll`, `LazyColumn` o cuadrículas verticales perezosas, y comprueba que la hoja desplaza una sola vez. Regla: contenido de hoja = columna simple; si hace falta una lista larga, hacerla con `Column` o dar a la hoja una altura acotada explícita.
+- **Sin validar en dispositivo:** que «+» y editar perfil, y editar un atajo, abran la hoja y se desplacen con el teclado abierto (Pixel 8).
