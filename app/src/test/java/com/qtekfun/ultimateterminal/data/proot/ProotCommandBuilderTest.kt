@@ -3,6 +3,7 @@
 
 package com.qtekfun.ultimateterminal.data.proot
 
+import com.qtekfun.ultimateterminal.domain.launch.GuestAccount
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -86,20 +87,41 @@ class ProotCommandBuilderTest {
         assertEquals("1", env["PROOT_NO_SECCOMP"])
     }
 
-    @Test
-    fun `a named user runs through su with the home of that user`() {
-        val command = builder.build(ProotSession(rootfs, user = "dev")).command
+    private val dev = GuestAccount("dev", 1000, 1001, "/home/dev", "/bin/bash")
 
-        assertTrue("HOME=/home/dev" in command)
-        assertEquals(listOf("su", "-l", "dev"), command.takeLast(3))
-        assertTrue("-0" in command)
+    @Test
+    fun `a named user runs its login shell under proot's identity switch, without su`() {
+        val command = builder.build(ProotSession(rootfs, account = dev)).command
+
+        assertEquals("1000:1001", command[command.indexOf("-i") + 1])
+        assertFalse("-0" in command)
+        assertFalse("su" in command)
+        val start = command.indexOf("/usr/bin/env")
+        assertEquals(
+            listOf(
+                "/usr/bin/env",
+                "-i",
+                "HOME=/home/dev",
+                "USER=dev",
+                "LOGNAME=dev",
+                "SHELL=/bin/bash",
+                "TERM=xterm-256color",
+                "LANG=C.UTF-8",
+                "PATH=${ProotCommandBuilder.GUEST_PATH}",
+                "/bin/bash",
+                "-l"
+            ),
+            command.subList(start, command.size)
+        )
     }
 
     @Test
     fun `root as a named user is the same as no user`() {
         assertEquals(
             builder.build(ProotSession(rootfs)).command,
-            builder.build(ProotSession(rootfs, user = "root")).command
+            builder.build(
+                ProotSession(rootfs, account = GuestAccount("root", 0, 0, "/root", "/bin/sh"))
+            ).command
         )
     }
 
@@ -116,11 +138,12 @@ class ProotCommandBuilderTest {
     @Test
     fun `a command runs as proot's identity whatever the user is`() {
         val command = builder.build(
-            ProotSession(rootfs, user = "dev", command = listOf("ssh", "host"))
+            ProotSession(rootfs, account = dev, command = listOf("ssh", "host"))
         ).command
 
         assertEquals(listOf("ssh", "host"), command.takeLast(2))
-        assertFalse("su" in command)
+        assertTrue("-0" in command)
+        assertFalse("-i" in command.take(command.indexOf("/usr/bin/env")))
     }
 
     @Test

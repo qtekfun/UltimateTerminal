@@ -3,6 +3,7 @@
 
 package com.qtekfun.ultimateterminal.data.proot
 
+import com.qtekfun.ultimateterminal.domain.launch.GuestAccountResolver
 import com.qtekfun.ultimateterminal.domain.launch.GuestUser
 import com.qtekfun.ultimateterminal.domain.launch.LaunchNotice
 import com.qtekfun.ultimateterminal.domain.launch.LaunchProblem
@@ -35,6 +36,8 @@ class ProotSessionPlanner @Inject constructor(
     private val dns: ResolvConfSource,
     private val fakeProc: FakeProcSource = FakeProcSource.None
 ) {
+    private val accounts = GuestAccountResolver(fileSystem)
+
     /** [distroId] is the distro the tab was opened in, null for the Android shell. */
     suspend fun plan(distroId: Long?): LaunchPlan {
         if (distroId == null) return LaunchPlan.AndroidShell
@@ -66,18 +69,24 @@ class ProotSessionPlanner @Inject constructor(
 
     private suspend fun buildLaunch(distro: Distro, tmpDir: String): LaunchPlan {
         val user = distro.defaultUser.takeUnless(GuestUser::isRoot)
-        val home = GuestUser.homeOf(user)
+        // No `su` in the guest (Fedora ships none): the user's ids come from /etc/passwd (D-USER-1).
+        val login = user?.let { accounts.resolve(distro.directory, it) }
+        if (user != null &&
+            login == null
+        ) {
+            return LaunchPlan.Failed(LaunchProblem.UserUnavailable(user))
+        }
+        val home = login?.account?.home ?: GuestUser.homeOf(user)
         val app = settings.observe().first()
         val storage = mounts.prepare(distro, app.sharedStorage, home)
         val resolvConf = dns.hostFile()
         val session = ProotSession(
             rootfs = fileSystem.absolutePathOf(distro.directory),
-            // `su -l` changes to the user's home itself; a path that may not exist cannot be `-w`.
-            workingDirectory = if (user == null) home else "/",
+            workingDirectory = login?.workingDirectory ?: home,
             binds = ProotSession.DEFAULT_BINDS + resolvConfBinds(resolvConf) +
                 fakeProcBinds(fakeProc.hostFiles()),
             disableSeccomp = app.prootCompatibilityMode,
-            user = user
+            account = login?.account
         ).withSharedStorage(storage)
         val notice = when {
             storage is StorageMountPlan.Degraded -> LaunchNotice.StorageNotMounted(storage.reason)

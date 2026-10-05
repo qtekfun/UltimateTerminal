@@ -3,6 +3,7 @@
 
 package com.qtekfun.ultimateterminal.data.proot
 
+import com.qtekfun.ultimateterminal.domain.launch.GuestAccount
 import com.qtekfun.ultimateterminal.domain.launch.GuestUser
 
 /** Where the guest sees a host directory. */
@@ -24,10 +25,11 @@ data class ProotSession(
     val disableSeccomp: Boolean = false,
     val term: String = "xterm-256color",
     /**
-     * The user the shell runs as, null for root. A user other than root goes through `su -l`, which
-     * needs the fake root (`-0`) to be allowed to change identity.
+     * The user the shell runs as, null for root. A user other than root runs its login shell
+     * directly under proot's own identity switch (`-i uid:gid`), with HOME, USER and LOGNAME set:
+     * nothing in the guest has to provide `su` (D-USER-1).
      */
-    val user: String? = null,
+    val account: GuestAccount? = null,
     /**
      * A program and arguments to run instead of [shell] (an argument list, never a shell line). It
      * runs as proot's own identity (root with [fakeRoot]), not as [user]: only the SSH connection
@@ -59,7 +61,13 @@ class ProotCommandBuilder(private val nativeLibraryDir: String, private val tmpD
             add("--link2symlink")
             // Do not leave tracees behind when the session ends.
             add("--kill-on-exit")
-            if (session.fakeRoot) add("-0")
+            val account = session.activeAccount()
+            if (account != null) {
+                add("-i")
+                add("${account.uid}:${account.gid}")
+            } else if (session.fakeRoot) {
+                add("-0")
+            }
             add("-r")
             add(session.rootfs)
             session.binds.forEach { bind ->
@@ -69,16 +77,9 @@ class ProotCommandBuilder(private val nativeLibraryDir: String, private val tmpD
             add("-w")
             add(session.workingDirectory)
             // A clean guest environment: the host process environment is Android's, not Linux's.
-            addAll(
-                listOf(
-                    "/usr/bin/env",
-                    "-i",
-                    "HOME=${homeOf(session)}",
-                    "TERM=${session.term}",
-                    "LANG=C.UTF-8",
-                    "PATH=$GUEST_PATH"
-                )
-            )
+            addAll(listOf("/usr/bin/env", "-i", "HOME=${homeOf(session)}"))
+            addAll(identityEnv(session))
+            addAll(listOf("TERM=${session.term}", "LANG=C.UTF-8", "PATH=$GUEST_PATH"))
             addAll(guestCommand(session))
         }
         val environment = buildMap {
@@ -89,19 +90,26 @@ class ProotCommandBuilder(private val nativeLibraryDir: String, private val tmpD
         return ProotLaunch(command, environment)
     }
 
-    private fun homeOf(session: ProotSession) = if (session.user != null) {
-        GuestUser.homeOf(session.user)
+    /** The non-root account that runs the login shell; none for root or for a [command]. */
+    private fun ProotSession.activeAccount(): GuestAccount? =
+        account?.takeIf { command == null && !GuestUser.isRoot(it.name) }
+
+    private fun identityEnv(session: ProotSession): List<String> = session.activeAccount()?.let {
+        listOf("USER=${it.name}", "LOGNAME=${it.name}", "SHELL=${it.shell}")
+    } ?: emptyList()
+
+    private fun homeOf(session: ProotSession) = if (session.activeAccount() != null) {
+        session.activeAccount()?.home ?: "/"
     } else if (session.fakeRoot) {
         "/root"
     } else {
         "/home"
     }
 
-    /** What the guest runs: the command, or the login shell as root or through `su -l <user>`. */
+    /** What the guest runs: the command, or the login shell of root or of the account. */
     private fun guestCommand(session: ProotSession): List<String> = when {
         session.command != null -> session.command
-        GuestUser.isRoot(session.user) -> session.shell
-        else -> listOf("su", "-l", requireNotNull(session.user))
+        else -> session.activeAccount()?.let { listOf(it.shell, "-l") } ?: session.shell
     }
 
     companion object {
