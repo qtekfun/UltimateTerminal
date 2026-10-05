@@ -3,45 +3,30 @@
 
 package com.qtekfun.ultimateterminal.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qtekfun.ultimateterminal.R
 import com.qtekfun.ultimateterminal.domain.model.SshHost
 import com.qtekfun.ultimateterminal.ssh.SshUiState
 import com.qtekfun.ultimateterminal.ssh.SshViewModel
-
-private val MIN_TOUCH = 48.dp
+import com.qtekfun.ultimateterminal.ui.ios.IosAccessory
+import com.qtekfun.ultimateterminal.ui.ios.IosAction
+import com.qtekfun.ultimateterminal.ui.ios.IosActionRole
+import com.qtekfun.ultimateterminal.ui.ios.IosActionSheet
+import com.qtekfun.ultimateterminal.ui.ios.IosBarButton
+import com.qtekfun.ultimateterminal.ui.ios.IosBarIconButton
+import com.qtekfun.ultimateterminal.ui.ios.IosGlyph
+import com.qtekfun.ultimateterminal.ui.ios.IosLargeTitleScreen
+import com.qtekfun.ultimateterminal.ui.ios.IosListRow
+import com.qtekfun.ultimateterminal.ui.ios.IosSection
 
 /** The SSH hosts screen (SPEC RF-09): saved servers, one tap to connect, and the key manager. */
 @Composable
@@ -51,31 +36,59 @@ fun SshScreen(onClose: () -> Unit, viewModel: SshViewModel = viewModel()) {
     var dialog by remember { mutableStateOf<HostDialog?>(null) }
     if (showKeys) {
         SshKeysScreen(onBack = { showKeys = false })
-    } else {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Column(modifier = Modifier.safeDrawingPadding().padding(16.dp)) {
-                HostsHeader(
-                    onAdd = { dialog = HostDialog.Edit(null) },
-                    onKeys = { showKeys = true },
-                    onClose = onClose
-                )
-                if (state.busy) BusyBar()
-                state.message?.let { SshMessageBar(it, viewModel::dismissMessage) }
-                HostList(
-                    state = state,
-                    onConnect = { viewModel.connect(it.id, onOpened = onClose) },
-                    onEdit = { dialog = HostDialog.Edit(it) },
-                    onDelete = { dialog = HostDialog.Delete(it) }
+        return
+    }
+    BackHandler(onBack = onClose)
+    val addLabel = stringResource(R.string.ssh_add_host)
+    IosLargeTitleScreen(
+        title = stringResource(R.string.ssh_title),
+        leading = { IosBarButton(stringResource(R.string.ssh_close), onClose) },
+        trailing = {
+            IosBarIconButton(IosGlyph.PLUS, addLabel, { dialog = HostDialog.Edit(null) })
+        }
+    ) {
+        if (state.busy) item { BusyBar() }
+        state.message?.let { message ->
+            item { SshMessageBar(message, viewModel::dismissMessage) }
+        }
+        item {
+            IosSection {
+                IosListRow(
+                    title = stringResource(R.string.ssh_keys_open),
+                    glyph = IosGlyph.KEY,
+                    accessory = IosAccessory.Chevron,
+                    showSeparator = false,
+                    onClick = { showKeys = true }
                 )
             }
         }
-        HostDialogHost(dialog, state, viewModel) { dialog = null }
+        item {
+            HostList(
+                state,
+                onAdd = { dialog = HostDialog.Edit(null) },
+                onOpen = { dialog = HostDialog.Actions(it) }
+            )
+        }
     }
+    HostDialogHost(
+        dialog = dialog,
+        state = state,
+        viewModel = viewModel,
+        navigation = HostNavigation(
+            show = { dialog = it },
+            // The action sheet closes itself after an action ran, and the action may have opened
+            // the next dialog: only close what is still the sheet, reading the state as it is now.
+            closeActions = { if (dialog is HostDialog.Actions) dialog = null },
+            closeScreen = onClose
+        )
+    )
 }
 
 internal sealed interface HostDialog {
     /** [host] is null when adding a new one. */
     data class Edit(val host: SshHost?) : HostDialog
+
+    data class Actions(val host: SshHost) : HostDialog
 
     data class Delete(val host: SshHost) : HostDialog
 }
@@ -85,8 +98,10 @@ private fun HostDialogHost(
     dialog: HostDialog?,
     state: SshUiState,
     viewModel: SshViewModel,
-    dismiss: () -> Unit
+    navigation: HostNavigation
 ) {
+    val show = navigation.show
+    val dismiss = { show(null) }
     when (dialog) {
         null -> Unit
 
@@ -99,6 +114,17 @@ private fun HostDialogHost(
                 dismiss()
             },
             onDismiss = dismiss
+        )
+
+        is HostDialog.Actions -> HostActions(
+            host = dialog.host,
+            canConnect = !state.busy,
+            actions = HostActionTargets(
+                connect = { viewModel.connect(dialog.host.id, onOpened = navigation.closeScreen) },
+                edit = { show(HostDialog.Edit(dialog.host)) },
+                delete = { show(HostDialog.Delete(dialog.host)) }
+            ),
+            dismiss = navigation.closeActions
         )
 
         is HostDialog.Delete -> ConfirmDialog(
@@ -114,98 +140,77 @@ private fun HostDialogHost(
     }
 }
 
-@Composable
-private fun HostsHeader(onAdd: () -> Unit, onKeys: () -> Unit, onClose: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            stringResource(R.string.ssh_title),
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.semantics { heading() }
-        )
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onAdd, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                Text(stringResource(R.string.ssh_add_host))
-            }
-            TextButton(onClick = onKeys, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                Text(stringResource(R.string.ssh_keys_open))
-            }
-            TextButton(onClick = onClose, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                Text(stringResource(R.string.ssh_close))
-            }
-        }
-    }
-}
+/** How the dialogs of the hosts screen move between each other and leave the screen. */
+private class HostNavigation(
+    val show: (HostDialog?) -> Unit,
+    val closeActions: () -> Unit,
+    val closeScreen: () -> Unit
+)
 
-@Composable
-internal fun BusyBar() {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        Text(stringResource(R.string.ssh_busy), style = MaterialTheme.typography.bodyMedium)
-        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-    }
-}
+private class HostActionTargets(
+    val connect: () -> Unit,
+    val edit: () -> Unit,
+    val delete: () -> Unit
+)
 
+/** What can be done with one host: the sheet that slides up when its row is tapped. */
 @Composable
-private fun HostList(
-    state: SshUiState,
-    onConnect: (SshHost) -> Unit,
-    onEdit: (SshHost) -> Unit,
-    onDelete: (SshHost) -> Unit
-) {
-    if (state.hosts.isEmpty()) {
-        Text(
-            stringResource(R.string.ssh_no_hosts),
-            modifier = Modifier.padding(vertical = 24.dp),
-            style = MaterialTheme.typography.bodyLarge
-        )
-    } else {
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(state.hosts, key = { it.id }) { host ->
-                HostCard(host, !state.busy, onConnect, onEdit, onDelete)
-            }
-        }
-    }
-}
-
-@Composable
-private fun HostCard(
+private fun HostActions(
     host: SshHost,
-    enabled: Boolean,
-    onConnect: (SshHost) -> Unit,
-    onEdit: (SshHost) -> Unit,
-    onDelete: (SshHost) -> Unit
+    canConnect: Boolean,
+    actions: HostActionTargets,
+    dismiss: () -> Unit
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(host.name, style = MaterialTheme.typography.titleMedium)
-            Text(
-                stringResource(R.string.ssh_host_summary, host.user, host.host, host.port),
-                style = MaterialTheme.typography.bodyMedium
+    val items = buildList {
+        if (canConnect) {
+            add(
+                IosAction(stringResource(R.string.ssh_connect), onClick = actions.connect)
             )
-            val connectLabel = stringResource(R.string.ssh_connect_to, host.name)
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                itemVerticalAlignment = Alignment.CenterVertically
-            ) {
-                Button(
-                    onClick = { onConnect(host) },
-                    enabled = enabled,
-                    modifier = Modifier
-                        .heightIn(min = MIN_TOUCH)
-                        .semantics { contentDescription = connectLabel }
-                ) { Text(stringResource(R.string.ssh_connect)) }
-                TextButton(onClick = {
-                    onEdit(host)
-                }, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                    Text(stringResource(R.string.ssh_edit))
-                }
-                TextButton(onClick = {
-                    onDelete(host)
-                }, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                    Text(stringResource(R.string.ssh_delete))
-                }
+        }
+        add(IosAction(stringResource(R.string.ssh_edit), onClick = actions.edit))
+        add(
+            IosAction(
+                stringResource(R.string.ssh_delete),
+                IosActionRole.DESTRUCTIVE,
+                actions.delete
+            )
+        )
+    }
+    IosActionSheet(
+        actions = items,
+        cancelLabel = stringResource(R.string.dialog_cancel),
+        onDismiss = dismiss,
+        title = host.name
+    )
+}
+
+@Composable
+private fun HostList(state: SshUiState, onAdd: () -> Unit, onOpen: (SshHost) -> Unit) {
+    if (state.hosts.isEmpty()) {
+        IosSection(footer = stringResource(R.string.ssh_no_hosts)) {
+            IosListRow(
+                title = stringResource(R.string.ssh_add_host),
+                glyph = IosGlyph.PLUS,
+                accessory = IosAccessory.Chevron,
+                showSeparator = false,
+                onClick = onAdd
+            )
+        }
+    } else {
+        IosSection {
+            state.hosts.forEachIndexed { index, host ->
+                IosListRow(
+                    title = host.name,
+                    subtitle = stringResource(
+                        R.string.ssh_host_summary,
+                        host.user,
+                        host.host,
+                        host.port
+                    ),
+                    accessory = IosAccessory.Chevron,
+                    showSeparator = index != state.hosts.lastIndex,
+                    onClick = { onOpen(host) }
+                )
             }
         }
     }
