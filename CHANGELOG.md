@@ -11,7 +11,8 @@ and the project uses [SemVer](https://semver.org/).
 ## [Unreleased]
 
 Work towards the first release (`0.1.0`). Nothing has been released yet; the version in the tree is
-`0.1.0-rc.1`. Early software: it has been tried by hand on one phone (a Pixel 8) and not on a tablet.
+`0.1.0-rc.1`. Early software: it has been tried by hand on a Pixel 8 and, for window resizing only, on a
+Huawei MRO-W09 tablet.
 What is verified on a device and what is only tested on a computer is in the README.
 
 ### Added
@@ -19,7 +20,7 @@ What is verified on a device and what is only tested on a computer is in the REA
 - Terminal with a real PTY, Termux's emulator, scrollback, selection and pinch zoom, resizing with the
   window, the keyboard and rotation.
 - Linux distributions through proot (built from source for arm64, armv7 and x86_64): install Debian,
-  Ubuntu or Alpine from their official mirrors with SHA-256 checks, open them in a tab, list, rename,
+  Ubuntu, Alpine or Fedora from their official mirrors with SHA-256 checks, open them in a tab, list, rename,
   duplicate and delete them, choose a default one that opens when the app starts.
 - Profiles (distro, user, scrollback, start-up command), saved pane layouts that reopen as a tab, typing in
   several panes at once with a visible indicator, and keyboard shortcuts you can change; the shortcuts travel
@@ -34,12 +35,37 @@ What is verified on a device and what is only tested on a computer is in the REA
   (AES-256-GCM), and restore. Gzip-compressed rather than `.tar.zst`.
 - Appearance: colour schemes you can edit, import and export, light, dark and pure-black OLED themes, a
   bundled font (JetBrains Mono) or your own font file, cursor shape, margins and tab bar style.
-- A set of iOS-style interface components for the redesign that is coming (not applied to the screens yet).
+- Fedora as a distribution (the official container image, a `tar.xz` read with `org.tukaani:xz`, 0BSD, with
+  a memory limit); Fedora has no 32-bit ARM image. `dnf` works under proot on a Pixel 8.
+- Non-root users: a user that does not exist in the distro is created (`/etc/passwd`, `/etc/group`, a home) and
+  the shell runs as that user with proot's `-i uid:gid`, with no `su`. The session-ended card explains exit
+  codes 127 and 126.
+- From the Distros list: change a distro's default user, and set the default distro.
+- An iOS-style interface: large titles, grouped lists, sheets, alerts, menus and a slider, applied to the
+  tab bar, the extra keys, Distros, a nine-section Settings screen, SSH, Appearance, profiles and layouts.
+- Three styles for the extra keys (flat, capsule, classic) with a live preview in Appearance.
+- Accessibility: roles, headings and actions for every gesture (select, rename, close and move tabs, move the
+  pane divider), 48 dp touch targets, and large-font layouts, from an audit of the code. The terminal itself
+  does not expose its text to TalkBack.
+- Tests of the key flows on the host (install and launch, backup round trip, resize) and instrumented tests
+  for a real proot guest, a backup round trip and the activity (`docs/TESTING.md`).
+- A throughput guard test for the emulator and a procedure to measure start-up and bulk output
+  (`docs/PERFORMANCE.md`).
 - English and Spanish.
 - Fastlane metadata for F-Droid, `README.md`, `CONTRIBUTING.md` and `PRIVACY.md`.
 
 ### Changed
 
+- A tab opened from a profile is named after the profile; other tabs are named after their distro.
+- Opening a profile or a layout closes Settings so the new tab is visible at once.
+- Each pane of a split tab has its own 48 dp header strip for the pane menu and the broadcast indicator,
+  so they no longer cover the text. A pane created by splitting inherits the distro and user of the pane
+  it came from, without the start-up command.
+- The start-up command of a profile is typed once the shell has drawn its first prompt (or after 5 s at
+  most), instead of after a fixed delay.
+- The on-screen keyboard closes while Settings or another screen covers the terminal.
+- The extra-keys labels follow the system font only up to 1.2x.
+- "Credits and licenses" joins the hard-wrapped lines into paragraphs and shows one row per component.
 - The extra-keys row is shown only while the on-screen keyboard is up (an option, on by default).
 - The battery-optimisation prompt opens the system dialog directly instead of the general battery list.
 - Inside a distribution, name resolution uses the network's DNS servers first and the public resolvers
@@ -52,14 +78,37 @@ Found on a device:
 - Installing a distribution from the app crashed every time: it asked Android for the storage's
   `FileStore`, which the system denies to apps. It now reads the free space with `StatFs`.
 - What you typed on the soft keyboard did not reach the shell until the keyboard was hidden, because the
-  keyboard holds a word while composing it. Text is now sent as it is typed.
+  keyboard holds a word while composing it. Text is now sent as it is typed. Verified on the Pixel 8.
+- The extra-keys row stayed visible with the keyboard hidden; it now follows the keyboard. Verified on the Pixel 8.
+- A new tab stayed blank until you switched tabs and came back; it is now drawn at once. Verified on the Pixel 8.
+- The Back button and gesture did nothing in any screen (the activity did not declare the back callback
+  that Android 13+ needs); it now goes back, and in the terminal it hides the keyboard without typing
+  anything into the shell. Verified on the Pixel 8.
+- Back on an Android 12 tablet: the terminal view no longer consumes the system keys (Back, Home, Recents,
+  Menu, power, volume). Not verified on the tablet yet.
+- Opening a profile for editing, or a shortcut, closed the app (a vertical scroll nested in a sheet);
+  fixed and guarded by a test. Verified on the Pixel 8.
+
+Found on a device and fixed, not looked at again on one:
+
+- Text fields now take focus from a tap anywhere on the row, and the form no longer shifts when a warning
+  appears.
+- The active tab's menu button could be cut off by the "+" button with three or more tabs; the active
+  tab is now scrolled fully into view. Not verified on a device yet.
+- A non-root user failed to start (code 127) in a distro without `su`, such as Fedora; fixed by the
+  non-root users above. Verified on the Pixel 8.
 
 ### Known limitations
 
-- Not yet verified on a tablet, nor on a device: split panes, themes and fonts, SSH keys with the real
-  Keystore, backup export and restore, and the `~/storage` permission on Android 13 and later.
-- A tab created after the first one can stay blank until you switch tabs and come back.
-- There is no app-wide settings screen yet. Programs that read `/proc/stat` and a few other files may fail
+- Not verified on a device: SSH keys with the real Keystore, backup export and restore with the file
+  picker, the `~/storage` permission on Android 13 and later, fonts of your own, Debian and Ubuntu.
+- On the tablet only window resizing was checked; split-screen mode, split panes and a distro were not.
+- TalkBack and font scale 2.0 have not been tried on a device. Cold start to prompt is 1.63 s median on a
+  debug build, above the 1.5 s goal; a release build has not been timed.
+- Fedora is offered on a 32-bit ARM device and fails with a message there.
+- A profile's colour scheme, font and size are stored but not applied per pane.
+- The text of the initial command can be echoed twice if the shell prints slowly at start-up.
+- Programs that read `/proc/stat` and a few other files may fail
   inside a distribution; some are replaced by approximate fake files.
 - Programs of 32-bit architecture inside a 64-bit distribution do not run, and System V shared memory may fail.
 - From Android 12 the system may kill the child processes of an app even with a foreground service (about 32
