@@ -29,6 +29,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -205,6 +206,13 @@ data class TerminalLook(
     val typefaces: TerminalTypefaces
 )
 
+/**
+ * True while another screen (Settings, Appearance, Distros, SSH) is drawn over the terminal. The
+ * terminal stays composed underneath, so without this its input view would keep the keyboard open
+ * over those screens. Provided by `MainActivity`.
+ */
+val LocalTerminalCovered = compositionLocalOf { false }
+
 /** The other screens the terminal opens from its menus. */
 class ScreenLinks(
     val openDistros: () -> Unit,
@@ -306,7 +314,11 @@ internal fun TerminalOverlays(viewModel: TerminalViewModel, inputView: Array<Ter
             update = { it.sink = viewModel.keyboard },
             modifier = Modifier.size(1.dp)
         )
-        LaunchedEffect(Unit) { inputView[0]?.showKeyboard() }
+        // Opens once when the terminal first shows (not when it starts already covered); after a
+        // screen covers it the keyboard is hidden and only a tap on the terminal brings it back.
+        val covered = LocalTerminalCovered.current
+        LaunchedEffect(Unit) { if (!covered) inputView[0]?.showKeyboard() }
+        LaunchedEffect(covered) { if (covered) inputView[0]?.hideKeyboard() }
 
         if (selection != null) {
             TextButton(
