@@ -29,6 +29,8 @@ been checked.
   selection, pinch zoom, and a terminal that resizes with the window, the keyboard and rotation.
 - **Tabs and panes:** several tabs, and split panes inside a tab. On wide windows the tab sidebar shrinks to a
   slim rail when you tap the terminal (tap the rail to open it again; Settings > Terminal turns this off).
+  "+" opens a tab of the default distro; the three-dots button next to it opens the menu to choose a distro,
+  split, open profiles and layouts, or go to Settings (a long press on "+" does the same).
 - **Profiles, layouts and broadcast (Terminator-style):** named profiles (distro, user, scrollback,
   start-up command), saved pane layouts that reopen as a tab, typing in several panes at once with a
   red indicator, and shortcuts you can change. A profile's colour scheme, font and size are stored but not

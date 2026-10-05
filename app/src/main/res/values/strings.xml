@@ -103,6 +103,9 @@
     <string name="tab_bar_description">Tabs</string>
     <string name="tab_new">New tab</string>
     <string name="tab_new_choose">Choose where to open a new tab</string>
+    <string name="tab_new_more">More options</string>
+    <string name="tab_new_more_open">Menu open</string>
+    <string name="tab_new_more_closed">Menu closed</string>
     <string name="tab_shell_option">Android shell</string>
     <string name="tab_menu">Options for %1$s</string>
     <string name="tab_rename">Rename</string>

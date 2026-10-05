@@ -10,6 +10,10 @@ and the project uses [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- A visible "More options" button (three dots) next to "+" in the top bar, the side bar and the rail opens the
+  menu that used to be reachable only by long-pressing "+" (a long press still works).
+
 ### Fixed
 - Importing a font no longer fails with "missing letters" for every font.
 

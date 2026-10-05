@@ -50,6 +50,7 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -145,7 +146,8 @@ fun TabBar(
                 choices,
                 onNewTab = tabs::newTab,
                 onNewTabIn = { tabs.newTabIn(it) },
-                links = links
+                links = links,
+                stacked = vertical && sidebar.collapsed
             )
             SettingsButton(links.screens.openSettings)
         }
@@ -454,33 +456,81 @@ private fun TabMenu(name: String, actions: TabChipActions) {
 
 internal val MenuIconSize = 20.dp
 
+/** Which control the new-tab menu hangs from, so that it opens next to the one that was used. */
+private enum class NewTabMenuSource { PLUS, MORE }
+
+/**
+ * The "+" and, next to it, the explicit "more options" button: a tap on "+" opens a tab of the default
+ * distro, and the button (or a long press on "+", kept as a shortcut) opens the menu. Stacked in the
+ * rail, which is 56 dp wide, and side by side elsewhere. The button is not a focus target (D-T26-7).
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun NewTabButton(
     choices: List<DistroOption>,
     onNewTab: () -> Unit,
     onNewTabIn: (Long?) -> Unit,
-    links: TabBarLinks
+    links: TabBarLinks,
+    stacked: Boolean
 ) {
-    var menuOpen by remember { mutableStateOf(false) }
+    var menuFrom by remember { mutableStateOf<NewTabMenuSource?>(null) }
     val label = stringResource(R.string.tab_new)
     val chooseLabel = stringResource(R.string.tab_new_choose)
-    Box(
-        Modifier
-            .size(TouchSize)
-            .semantics {
-                contentDescription = label
-                role = Role.Button
-            }
-            .combinedClickable(
-                onClickLabel = label,
-                onClick = onNewTab,
-                onLongClickLabel = chooseLabel,
-                onLongClick = { menuOpen = true }
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        IosIcon(IosGlyph.PLUS, null, tint = IosTheme.colors.tint)
-        NewTabMenu(menuOpen, { menuOpen = false }, choices, onNewTabIn, links)
+    val plus: @Composable () -> Unit = {
+        Box(
+            Modifier
+                .size(TouchSize)
+                .semantics {
+                    contentDescription = label
+                    role = Role.Button
+                }
+                .combinedClickable(
+                    onClickLabel = label,
+                    onClick = onNewTab,
+                    onLongClickLabel = chooseLabel,
+                    onLongClick = { menuFrom = NewTabMenuSource.PLUS }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            IosIcon(IosGlyph.PLUS, null, tint = IosTheme.colors.tint)
+            NewTabMenu(menuFrom == NewTabMenuSource.PLUS, { menuFrom = null }, choices, onNewTabIn, links)
+        }
+    }
+    val more: @Composable () -> Unit = {
+        val text = stringResource(R.string.tab_new_more)
+        val state = stringResource(
+            if (menuFrom != null) R.string.tab_new_more_open else R.string.tab_new_more_closed
+        )
+        val open = { menuFrom = NewTabMenuSource.MORE }
+        Box(
+            Modifier
+                .size(TouchSize)
+                .semantics {
+                    contentDescription = text
+                    stateDescription = state
+                    role = Role.Button
+                    onClick(label = chooseLabel) {
+                        open()
+                        true
+                    }
+                }
+                // A tap gesture and a semantic action, not `clickable`, so it never takes the keyboard.
+                .pointerInput(Unit) { detectTapGestures { open() } },
+            contentAlignment = Alignment.Center
+        ) {
+            IosIcon(IosGlyph.ELLIPSIS, null, tint = IosTheme.colors.tint, size = MenuIconSize)
+            NewTabMenu(menuFrom == NewTabMenuSource.MORE, { menuFrom = null }, choices, onNewTabIn, links)
+        }
+    }
+    if (stacked) {
+        Column {
+            plus()
+            more()
+        }
+    } else {
+        Row {
+            plus()
+            more()
+        }
     }
 }

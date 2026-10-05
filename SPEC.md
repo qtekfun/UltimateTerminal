@@ -106,7 +106,7 @@ Terminal para Android pensada para **mantenedores de servidores** y sucesora esp
 
 ### RF-11 Ajustes e internacionalización
 - Inglés y español; sigue el idioma del sistema.
-- **Pantalla de Ajustes siempre accesible:** un icono permanente (⚙) en la barra de pestañas y una entrada en el menú de "+". No puede depender de abrir antes otra pantalla.
+- **Pantalla de Ajustes siempre accesible:** un icono permanente (⚙) en la barra de pestañas y una entrada en el menú de "+". Ese menú se abre con un botón visible (⋯, "Más opciones") junto al "+" en la barra superior, la lateral y el raíl; la pulsación larga en "+" se mantiene como atajo. No puede depender de abrir antes otra pantalla.
 - Secciones: **Apariencia** (tema, modo OLED, esquema, fuente, tamaño, márgenes, cursor; RF-10 y T12c), **Terminal** (scrollback, campana), **Teclado** (filas de teclas extra, ocultar con el teclado, atajos), **Sesiones** (wakelock, permiso de segundo plano), **Distros** (instalar, predeterminada, modo de compatibilidad), **Almacenamiento** (`~/storage`), **Red** (DNS de respaldo), **Copias de seguridad** (RF-06) y **Acerca de** (versión, licencias y créditos).
 - **Criterios:** todos los ajustes del MVP se cambian desde esa pantalla, sin editar ficheros ni usar adb; se conservan al reiniciar y viajan en la copia de configuración (RF-06).
 

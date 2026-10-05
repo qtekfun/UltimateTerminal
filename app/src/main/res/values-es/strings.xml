@@ -99,6 +99,9 @@
     <string name="tab_bar_description">Pestañas</string>
     <string name="tab_new">Nueva pestaña</string>
     <string name="tab_new_choose">Elegir dónde abrir una pestaña nueva</string>
+    <string name="tab_new_more">Más opciones</string>
+    <string name="tab_new_more_open">Menú abierto</string>
+    <string name="tab_new_more_closed">Menú cerrado</string>
     <string name="tab_shell_option">Shell de Android</string>
     <string name="tab_menu">Opciones de %1$s</string>
     <string name="tab_rename">Renombrar</string>
