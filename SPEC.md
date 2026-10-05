@@ -144,12 +144,15 @@ Petición del usuario: «si no hay distro, muestra directamente una configuraci�
 ### RF-16 Barra lateral de pestañas dinámica
 Petición del usuario (0.1.1): «quiero que la barra lateral en horizontal se encoja al pulsar en el terminal, es decir, que tenga un tamaño dinámico». En ventanas anchas (RF-03, desde 600 dp) la columna de pestañas ocupaba un ancho fijo y, p. ej. en media pantalla, dejaba al terminal con 49 columnas. Ahora tiene dos estados:
 - **Desplegada** (192 dp): el aspecto de siempre (píldoras con nombre, «+», ⚙) más un botón con un chevrón para contraerla.
-- **Contraída** (franja de 56 dp, con zonas táctiles de 48 dp): la inicial de cada pestaña (la activa resaltada), «+» y ⚙, y arriba un chevrón para desplegarla. Tocar la franja (o su chevrón) la despliega; una pulsación larga sobre una pestaña también (ahí están el menú de renombrar/cerrar y el arrastre para reordenar).
+- **Contraída** (franja de 56 dp, con zonas táctiles de 48 dp): la inicial de cada pestaña (la activa resaltada), «+» y ⚙, y arriba un chevrón para desplegarla. Tocar la franja (o su chevrón) la despliega; una pulsación larga sobre una pestaña pregunta «¿Cerrar <nombre>?», igual que en la barra completa (ahí están el menú de renombrar/cerrar y el arrastre para reordenar).
 - **Automático:** al tocar un panel del terminal la barra se contrae; solo cambia el estado al tocar, nunca se contrae sola por tiempo. Se muestra desplegada al abrir la app. En la barra superior (ventanas estrechas) no cambia nada.
 - **Ajuste** en Ajustes > Terminal: «Contraer la barra lateral al usar el terminal» (por defecto activado); desactivado = siempre desplegada, y no se muestra ningún control para contraerla. Viaja en la copia de configuración (RF-06) con un campo versionado.
 - **El PTY** se redimensiona **una vez** por cambio, al ancho final (el área del terminal se calcula con el ancho de destino y solo su dibujo se desliza durante la animación), sin perder el scrollback ni el foco del teclado. Con «Quitar animaciones» del sistema el cambio es instantáneo.
 - **Accesibilidad:** la franja y sus pestañas dicen nombre, posición («pestaña 2 de 3»), estado y seleccionada; el control de desplegar/contraer tiene etiqueta, y cada pestaña ofrece la acción personalizada «Desplegar/Contraer la barra lateral».
 - **Criterios:** tocar el terminal en horizontal en una tablet o en un móvil ancho contrae la barra y el terminal gana columnas (`stty size`); tocar la franja la despliega y el terminal las pierde; el teclado no se cierra al animarse; en vertical en el Pixel 8 todo queda igual. (Pendiente de comprobar en dispositivo.)
+
+### RF-17 Pulsación larga en una pestaña
+Petición del usuario (0.1.2): «si mantengo pulsada una pestaña de la barra, que salga la confirmación de cierre». Una pulsación larga sobre una pestaña (barra completa o franja) que se suelta sin moverse muestra «¿Cerrar <nombre>?» con Cerrar/Cancelar, aunque su proceso ya haya terminado; si hay un proceso vivo se añade el aviso de que se detendrá. Pulsación larga y arrastre sigue reordenando (y no pregunta). Tocar selecciona y doble toque renombra, como antes. TalkBack conserva sus acciones (renombrar, cerrar, mover). (Pendiente de comprobar en dispositivo.)
 
 ## 4. Fuera de alcance (MVP)
 - Cualquier entorno gráfico (X11, Wayland, VNC).
