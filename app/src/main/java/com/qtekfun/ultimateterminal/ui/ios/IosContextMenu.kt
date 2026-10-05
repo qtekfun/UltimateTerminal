@@ -49,7 +49,7 @@ fun IosContextMenu(
     val colors = IosTheme.colors
     val visible = remember { MutableTransitionState(false).apply { targetState = true } }
     Popup(
-        alignment = Alignment.TopEnd,
+        popupPositionProvider = MenuPositionProvider,
         onDismissRequest = onDismiss,
         properties = PopupProperties(focusable = true)
     ) {

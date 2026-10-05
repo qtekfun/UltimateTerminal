@@ -51,6 +51,7 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -148,7 +149,8 @@ fun TabBar(
                 choices,
                 onNewTab = tabs::newTab,
                 onNewTabIn = { tabs.newTabIn(it) },
-                links = links
+                links = links,
+                stacked = vertical && sidebar.collapsed
             )
             SettingsButton(links.screens.openSettings)
         }
@@ -468,34 +470,3 @@ private fun TabMenu(name: String, actions: TabChipActions) {
 }
 
 internal val MenuIconSize = 20.dp
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun NewTabButton(
-    choices: List<DistroOption>,
-    onNewTab: () -> Unit,
-    onNewTabIn: (Long?) -> Unit,
-    links: TabBarLinks
-) {
-    var menuOpen by remember { mutableStateOf(false) }
-    val label = stringResource(R.string.tab_new)
-    val chooseLabel = stringResource(R.string.tab_new_choose)
-    Box(
-        Modifier
-            .size(TouchSize)
-            .semantics {
-                contentDescription = label
-                role = Role.Button
-            }
-            .combinedClickable(
-                onClickLabel = label,
-                onClick = onNewTab,
-                onLongClickLabel = chooseLabel,
-                onLongClick = { menuOpen = true }
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        IosIcon(IosGlyph.PLUS, null, tint = IosTheme.colors.tint)
-        NewTabMenu(menuOpen, { menuOpen = false }, choices, onNewTabIn, links)
-    }
-}
