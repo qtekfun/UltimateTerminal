@@ -13,5 +13,8 @@ sealed interface IosAccessory {
 
     data class Value(val text: String, val chevron: Boolean = false) : IosAccessory
 
+    /** A colour chip with its [text] (a hex code, say) beside it, for colour pickers. */
+    data class Swatch(val argb: Int, val text: String) : IosAccessory
+
     data class Toggle(val checked: Boolean, val onChange: (Boolean) -> Unit) : IosAccessory
 }

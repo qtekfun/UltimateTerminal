@@ -4,6 +4,7 @@
 package com.qtekfun.ultimateterminal.ui.ios
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -75,7 +77,8 @@ fun IosSection(
 /**
  * One row of a grouped list: [title] with an optional [subtitle] and leading [glyph], and an
  * [accessory] at the end. It highlights while pressed. A row with a [IosAccessory.Toggle] flips it
- * when the row is tapped. [destructive] draws it in red.
+ * when the row is tapped. [destructive] draws it in red. [detail] is drawn under the text (a row
+ * of colour chips, say) and is not a touch target of its own.
  */
 @Composable
 fun IosListRow(
@@ -87,6 +90,7 @@ fun IosListRow(
     destructive: Boolean = false,
     enabled: Boolean = true,
     showSeparator: Boolean = true,
+    detail: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null
 ) {
     val colors = IosTheme.colors
@@ -106,7 +110,12 @@ fun IosListRow(
             subtitle,
             glyph,
             accessory,
-            RowLook(destructive, enabled, separatorInset = if (showSeparator) inset else null)
+            RowLook(
+                destructive,
+                enabled,
+                separatorInset = if (showSeparator) inset else null,
+                detail = detail
+            )
         )
     }
     if (action == null) {
@@ -129,7 +138,12 @@ fun IosListRow(
 }
 
 /** How a row looks beyond its text: red, dimmed, and where its separator starts (null for none). */
-private class RowLook(val destructive: Boolean, val enabled: Boolean, val separatorInset: Dp?)
+private class RowLook(
+    val destructive: Boolean,
+    val enabled: Boolean,
+    val separatorInset: Dp?,
+    val detail: (@Composable () -> Unit)? = null
+)
 
 @Composable
 private fun RowContent(
@@ -174,8 +188,11 @@ private fun RowLabels(title: String, subtitle: String?, look: RowLook, modifier:
         if (subtitle != null) {
             IosText(subtitle, style = IosTheme.typography.footnote, color = colors.secondaryLabel)
         }
+        look.detail?.invoke()
     }
 }
+
+private val SwatchSize = 28.dp
 
 /** A hairline along the bottom edge, starting [inset] from the start; none when [inset] is null. */
 private fun Modifier.rowSeparator(inset: Dp?, color: Color): Modifier = if (inset == null) {
@@ -206,6 +223,26 @@ private fun Accessory(accessory: IosAccessory, enabled: Boolean) {
                 maxLines = 1
             )
             if (accessory.chevron) Chevron()
+        }
+
+        is IosAccessory.Swatch -> {
+            IosText(
+                accessory.text,
+                style = IosTheme.typography.footnote,
+                color = colors.secondaryLabel,
+                maxLines = 1
+            )
+            Box(
+                Modifier
+                    .size(SwatchSize)
+                    .clip(RoundedCornerShape(IosRadius.segment))
+                    .background(Color(accessory.argb))
+                    .border(
+                        IosSize.hairline,
+                        colors.separator,
+                        RoundedCornerShape(IosRadius.segment)
+                    )
+            )
         }
 
         is IosAccessory.Toggle -> IosSwitch(
