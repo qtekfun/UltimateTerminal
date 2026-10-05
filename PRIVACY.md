@@ -5,7 +5,7 @@
 
 # Privacy policy / Política de privacidad
 
-Last updated / Última actualización: 2026-10-04 · Version / Versión: 0.1.0-rc.1
+Last updated / Última actualización: 2026-10-05 · Version / Versión: 0.1.0-rc.1
 
 [English](#english) · [Español](#español)
 
@@ -31,15 +31,17 @@ The app only uses the network for what you start:
 
 - **Installing a distribution.** It downloads the root filesystem from the project's official
   mirror and checks it with SHA-256 before using it: Alpine Linux from `dl-cdn.alpinelinux.org`, Ubuntu from
-  `cdimage.ubuntu.com`, and Debian from `raw.githubusercontent.com` (the repository where the
-  Debian maintainers publish their images). Those servers can see your IP address and the file you ask for,
+  `cdimage.ubuntu.com`, Debian from `raw.githubusercontent.com` (the repository where the
+  Debian maintainers publish their images) and Fedora from `dl.fedoraproject.org` (the official
+  container image and its checksum file). Those servers can see your IP address and the file you ask for,
   as with any download. Only HTTPS is used.
 - **What you run in the terminal.** `apt`, `apk`, `ssh`, `curl` and anything else you start inside a
   distribution make the connections you tell them to, to servers you choose. Their traffic is not
   handled by this app, and the software of each distribution has its own privacy terms.
 - **Name resolution (DNS).** Inside a distribution the app uses the DNS servers of your current network. Only
   if the device reports none, it falls back to the public resolvers **1.1.1.1 (Cloudflare) and 9.9.9.9
-  (Quad9)**, which would then see the names you look up. The app has no setting for this yet.
+  (Quad9)**, which would then see the names you look up. You can replace them with your own servers in
+  Settings, Network.
 
 ### Permissions, and why each is there
 
@@ -48,8 +50,8 @@ The app only uses the network for what you start:
 | `INTERNET` | To download distributions and so that the programs you run can reach the network. |
 | `ACCESS_NETWORK_STATE` | To read the DNS servers of the current network, for the distribution's `resolv.conf`. Android grants it without asking. |
 | `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_SPECIAL_USE` | To keep your terminal sessions (an `ssh` connection, a long job) alive when the app is in the background. Android requires a visible notification while it runs. The service type is "special use" because no standard type fits a terminal. |
-| `POST_NOTIFICATIONS` (Android 13+) | To show that notification. |
-| `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | So the app can ask you, with the system's own dialog, to let it run without battery optimisation, so a long task is not paused with the screen off. It only opens that dialog; nothing changes unless you accept. It is optional. |
+| `POST_NOTIFICATIONS` (Android 13+) | To show that notification. The app explains it in its own alert before the system prompt, and you can say no (also in Settings, Sessions). |
+| `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | So the app can ask you, with the system's own dialog, to let it run without battery optimisation, so a long task is not paused with the screen off. It only opens that dialog (`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`); nothing changes unless you accept. It is optional. |
 | `WAKE_LOCK` | For the optional "keep awake" setting. Off unless you turn it on. |
 | `READ_EXTERNAL_STORAGE` and `WRITE_EXTERNAL_STORAGE` | Only to let the distribution read and write your shared folders (Downloads, Documents, photos) under `~/storage`. The app asks for it **only when you turn that option on**, and the option is off by default. The permission is declared in the app, but it is not used otherwise. On newer versions of Android the system may grant it only for media files. |
 
@@ -99,15 +101,17 @@ La app solo usa la red para lo que tú inicias:
 
 - **Instalar una distribución.** Descarga el sistema de archivos del mirror oficial del proyecto y lo
   comprueba con SHA-256 antes de usarlo: Alpine Linux desde `dl-cdn.alpinelinux.org`, Ubuntu desde
-  `cdimage.ubuntu.com` y Debian desde `raw.githubusercontent.com` (el repositorio donde los mantenedores de
-  Debian publican sus imágenes). Esos servidores pueden ver tu dirección IP y el archivo que pides, como en
+  `cdimage.ubuntu.com`, Debian desde `raw.githubusercontent.com` (el repositorio donde los mantenedores de
+  Debian publican sus imágenes) y Fedora desde `dl.fedoraproject.org` (la imagen de contenedor oficial y su
+  archivo de sumas de comprobación). Esos servidores pueden ver tu dirección IP y el archivo que pides, como en
   cualquier descarga. Solo se usa HTTPS.
 - **Lo que ejecutes en la terminal.** `apt`, `apk`, `ssh`, `curl` y todo lo que lances dentro de una
   distribución hacen las conexiones que les indiques, a servidores que tú eliges. Su tráfico no lo gestiona
   esta app, y el software de cada distribución tiene sus propios términos de privacidad.
 - **Resolución de nombres (DNS).** Dentro de una distribución la app usa los servidores DNS de tu red actual.
   Solo si el dispositivo no informa de ninguno, recurre a los resolutores públicos **1.1.1.1 (Cloudflare) y
-  9.9.9.9 (Quad9)**, que entonces verían los nombres que consultas. La app aún no tiene un ajuste para esto.
+  9.9.9.9 (Quad9)**, que entonces verían los nombres que consultas. Puedes sustituirlos por tus propios
+  servidores en Ajustes, Red.
 
 ### Permisos, y por qué está cada uno
 
@@ -116,8 +120,8 @@ La app solo usa la red para lo que tú inicias:
 | `INTERNET` | Para descargar distribuciones y para que los programas que ejecutas accedan a la red. |
 | `ACCESS_NETWORK_STATE` | Para leer los servidores DNS de la red actual, para el `resolv.conf` de la distribución. Android lo concede sin preguntar. |
 | `FOREGROUND_SERVICE` y `FOREGROUND_SERVICE_SPECIAL_USE` | Para mantener vivas tus sesiones de terminal (una conexión `ssh`, una tarea larga) cuando la app está en segundo plano. Android exige una notificación visible mientras funciona. El tipo de servicio es «uso especial» porque ningún tipo estándar encaja con una terminal. |
-| `POST_NOTIFICATIONS` (Android 13+) | Para mostrar esa notificación. |
-| `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | Para que la app pueda pedirte, con el diálogo del propio sistema, que la dejes funcionar sin optimización de batería, y que una tarea larga no se pause con la pantalla apagada. Solo abre ese diálogo; no cambia nada si no aceptas. Es opcional. |
+| `POST_NOTIFICATIONS` (Android 13+) | Para mostrar esa notificación. La app lo explica en un aviso propio antes del del sistema, y puedes decir que no (también en Ajustes, Sesiones). |
+| `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | Para que la app pueda pedirte, con el diálogo del propio sistema, que la dejes funcionar sin optimización de batería, y que una tarea larga no se pause con la pantalla apagada. Solo abre ese diálogo (`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`); no cambia nada si no aceptas. Es opcional. |
 | `WAKE_LOCK` | Para el ajuste opcional «mantener despierto». Desactivado salvo que lo actives. |
 | `READ_EXTERNAL_STORAGE` y `WRITE_EXTERNAL_STORAGE` | Solo para que la distribución lea y escriba tus carpetas compartidas (Descargas, Documentos, fotos) en `~/storage`. La app lo pide **solo cuando activas esa opción**, que viene desactivada. El permiso está declarado en la app, pero no se usa para nada más. En versiones recientes de Android el sistema puede concederlo solo para archivos multimedia. |
 

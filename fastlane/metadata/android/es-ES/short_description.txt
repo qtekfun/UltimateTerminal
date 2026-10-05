@@ -1,1 +1,1 @@
-Distros Linux en Android con proot. Libre, privado y sin rastreo.
+Debian, Ubuntu, Alpine, Fedora en Android con proot. Libre, sin rastreo.

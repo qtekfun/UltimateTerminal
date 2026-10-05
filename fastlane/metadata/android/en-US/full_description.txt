@@ -1,19 +1,22 @@
 UltimateTerminal is a terminal for Android for people who look after servers from a phone or a tablet. It is inspired by Termux: a newer interface that is meant to fill the whole screen on tablets, and full Linux distributions that run through proot, like WSL on Windows. Terminal only: there is no graphical environment.
 
-<b>Early pre-release.</b> Much of the app has only been tested on a computer. It has been checked on one phone (Android 17) and not yet on tablets. The list below says what is in the code; the README says what has been verified on a device.
+<b>Early pre-release.</b> Much of the app has only been tested on a computer. It has been tried by hand on one phone (Android 17) and, for window resizing only, on one tablet (Android 12). The list below says what is in the code; the README says what has been verified on a device.
 
 <b>What it does</b>
-• Installs Debian, Ubuntu or Alpine Linux from their official mirrors, checking the download with SHA-256, and opens it in a tab with a root shell. apt or apk, ssh, nmap and python work inside. Alpine is the one tried on a device; Debian and Ubuntu are tested only on a computer
-• Several tabs and split panes, profiles, saved pane layouts, typing in several panes at once and shortcuts you can change
+• Installs Debian, Ubuntu, Alpine Linux or Fedora from their official mirrors, checking the download with SHA-256, and opens it in a tab. apk, dnf, ssh, nmap and python work inside. Alpine and Fedora have been tried on a device; Debian and Ubuntu are tested only on a computer
+• Works as root or as a user of your choice, which is created for you if the distro does not have it
+• Several tabs and split panes, profiles (distro, user, start-up command), saved pane layouts, typing in several panes at once with a red indicator, and shortcuts you can change
 • A row of extra keys (Esc, Tab, Ctrl, Alt, arrows) that shows while the keyboard is up, hardware-keyboard shortcuts and pinch zoom
-• A terminal that resizes with the window, the keyboard, split screen and rotation
+• A terminal that resizes with the window, the keyboard and rotation (checked on a phone and a tablet, including a resized window), and with split screen (not checked on a device)
 • Saved SSH hosts, and SSH keys you can generate, import and export; the keys are encrypted with the Android Keystore
 • Optional access to the device storage from the distro, under ~/storage, for example to copy logs to Downloads. The permission is asked only when you turn it on
 • Backups of one distribution, of the settings, or of everything, optionally encrypted with a password, to restore on another device
-• Appearance: colour schemes, a pure-black OLED mode, a bundled monospace font or your own font file
+• Appearance: colour schemes, a pure-black OLED mode, a bundled monospace font or your own font file, and three styles for the extra keys
+• An iOS-style interface, in English and Spanish
+• Accessibility: labels and actions for every gesture, large touch targets and large-font layouts, from a code review. Not yet tried with TalkBack
 
 <b>Not there yet</b>
-The iOS-style redesign, and accessibility and performance work.
+TalkBack and large-font checks on a device, a timed release build (start-up to prompt is 1.6 s on a debug build, a little above the 1.5 s goal), and split screen on tablets.
 
 <b>Why it is not on Google Play</b>
 To run programs from its own storage the app targets Android 9 (API 28), which Google Play no longer accepts. That is what lets distributions run without root.
