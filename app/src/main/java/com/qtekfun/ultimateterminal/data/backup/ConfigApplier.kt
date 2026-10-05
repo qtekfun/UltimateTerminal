@@ -196,8 +196,7 @@ private fun AppSettings.withLaterSettings(dto: SettingsDto): AppSettings {
     val look = dto.appearance
     return copy(
         shortcuts = restoredShortcuts(dto.shortcuts, shortcuts),
-        sidebarMode = dto.sidebar?.takeIf { it.version == SidebarDto.VERSION }
-            ?.let { SidebarMode.parse(it.mode) } ?: sidebarMode,
+        sidebarMode = restoredSidebar(dto.sidebar, sidebarMode),
         dnsFallbackServers = if (servers == null) {
             dnsFallbackServers
         } else {
@@ -220,6 +219,13 @@ private fun restoredShortcuts(dto: ShortcutsDto?, current: ShortcutMap): Shortcu
         ?.let { ShortcutText.analyze(it.bindings).map }
     return readable?.takeIf { it.all.isNotEmpty() } ?: current
 }
+
+/**
+ * The sidebar mode of a backup, or [current] when it has none or was written in a format this app
+ * does not know; a mode name it does not know is the default.
+ */
+private fun restoredSidebar(dto: SidebarDto?, current: SidebarMode): SidebarMode =
+    if (dto != null && dto.version == SidebarDto.VERSION) SidebarMode.parse(dto.mode) else current
 
 private fun ProfileDto.toProfile(distroIds: Map<String, Long>) = Profile(
     name = name,
