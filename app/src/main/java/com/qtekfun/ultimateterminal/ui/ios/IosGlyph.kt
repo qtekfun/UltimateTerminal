@@ -27,6 +27,7 @@ enum class IosGlyph(@DrawableRes val resId: Int) {
     INFO(R.drawable.ic_ios_info),
     KEY(R.drawable.ic_ios_key_round),
     PLUS(R.drawable.ic_ios_plus),
+    POWER(R.drawable.ic_ios_power),
     SEARCH(R.drawable.ic_ios_search),
     SETTINGS(R.drawable.ic_ios_settings),
     TERMINAL(R.drawable.ic_ios_terminal),

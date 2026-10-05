@@ -99,6 +99,11 @@ class SessionManager @Inject constructor(
 
     fun close(id: SessionId) = controller.close(id)
 
+    /**
+     * Kills every session's process and forgets them. With no running shell left the controller also
+     * stops the foreground service, and with it the notification and the wake lock: this is all
+     * "Exit" needs from the session layer (D-EXIT-2).
+     */
     fun closeAll() = controller.closeAll()
 
     fun onLayout(layout: TerminalLayout) = controller.onLayout(layout)

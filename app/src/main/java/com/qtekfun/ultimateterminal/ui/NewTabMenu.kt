@@ -12,7 +12,12 @@ import com.qtekfun.ultimateterminal.ui.ios.IosGlyph
 import com.qtekfun.ultimateterminal.ui.ios.IosMenuItem
 
 /** One entry of the "+" menu. */
-private class NewTabEntry(val label: String, val glyph: IosGlyph, val run: () -> Unit)
+private class NewTabEntry(
+    val label: String,
+    val glyph: IosGlyph,
+    val run: () -> Unit,
+    val destructive: Boolean = false
+)
 
 /**
  * Where a new tab can open, and the other screens: the split, profiles and layouts, SSH, distros and
@@ -28,8 +33,8 @@ internal fun NewTabMenu(
 ) {
     val shell = stringResource(R.string.tab_shell_option)
     val entries = choices.map { choice ->
-        NewTabEntry(choice.name ?: shell, IosGlyph.TERMINAL) { onNewTabIn(choice.id) }
-    } + paneEntries(links) + screenEntries(links.screens)
+        NewTabEntry(choice.name ?: shell, IosGlyph.TERMINAL, { onNewTabIn(choice.id) })
+    } + paneEntries(links) + screenEntries(links.screens) + exitEntry(links.screens)
     IosContextMenu(expanded = open, onDismiss = close) {
         entries.forEachIndexed { index, entry ->
             IosMenuItem(
@@ -39,6 +44,7 @@ internal fun NewTabMenu(
                     entry.run()
                 },
                 glyph = entry.glyph,
+                destructive = entry.destructive,
                 showSeparator = index < entries.lastIndex
             )
         }
@@ -85,3 +91,12 @@ private fun screenEntries(screens: ScreenLinks): List<NewTabEntry> = listOf(
     NewTabEntry(stringResource(R.string.tab_manage_distros), IosGlyph.FOLDER, screens.openDistros),
     NewTabEntry(stringResource(R.string.appearance_open), IosGlyph.TERMINAL, screens.openAppearance)
 )
+
+/** Last and in the destructive color: it ends every session and leaves the app. */
+@Composable
+private fun exitEntry(screens: ScreenLinks) = NewTabEntry(
+    stringResource(R.string.exit_open),
+    IosGlyph.POWER,
+    screens.requestExit,
+    destructive = true
+).let(::listOf)

@@ -126,6 +126,13 @@
     <string name="tab_cancel">Cancel</string>
     <string name="tab_close_title">Close %1$s?</string>
     <string name="tab_close_message">A program is still running in it and will be stopped.</string>
+    <string name="exit_open">Exit</string>
+    <string name="exit_title">Exit UltimateTerminal?</string>
+    <plurals name="exit_message">
+        <item quantity="one">%d session will be closed and its program stopped.</item>
+        <item quantity="other">%d sessions will be closed and their programs stopped.</item>
+    </plurals>
+    <string name="exit_confirm">Exit</string>
     <string name="tab_close_confirm">Close</string>
 
     <!-- SSH hosts and keys (T14) -->
