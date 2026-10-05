@@ -10,6 +10,9 @@ and the project uses [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- Importing a font no longer fails with "missing letters" for every font.
+
 ## [0.1.1] - 2026-10-05
 
 Fixes and improvements found in the first days of use. The ones marked "not yet verified" are tested on a
