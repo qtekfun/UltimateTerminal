@@ -48,4 +48,15 @@ object SheetDetents {
             SheetSnap.To(detents.minBy { kotlin.math.abs(it.fraction - projected) })
         }
     }
+
+    /**
+     * The height of a sheet resting at [fraction] of the [fullHeightPx] window, with a keyboard of
+     * [imePx] up. The sheet sits above the keyboard, so it is cut to the large detent's share of what is left
+     * (the large detent's own margin); with no keyboard it keeps its detent height.
+     */
+    fun heightAboveKeyboard(fraction: Float, fullHeightPx: Float, imePx: Float): Float {
+        val desired = fraction * fullHeightPx
+        val available = (fullHeightPx - imePx.coerceAtLeast(0f)).coerceAtLeast(0f)
+        return minOf(desired, available * SheetDetent.LARGE.fraction)
+    }
 }

@@ -48,4 +48,27 @@ class SheetDetentsTest {
             SheetDetents.snap(0.5f, 0f, emptyList())
         }
     }
+
+    @Test
+    fun withoutAKeyboardASheetKeepsItsDetentHeight() {
+        assertEquals(500f, SheetDetents.heightAboveKeyboard(0.5f, 1000f, 0f), 0.001f)
+    }
+
+    @Test
+    fun aKeyboardThatLeavesRoomDoesNotChangeTheHeight() {
+        assertEquals(300f, SheetDetents.heightAboveKeyboard(0.3f, 1000f, 400f), 0.001f)
+    }
+
+    @Test
+    fun aKeyboardThatWouldCoverTheSheetShrinksItToWhatIsLeft() {
+        // 1000 px window, 450 px keyboard: 550 px are left and the sheet keeps at most 94 % of them.
+        assertEquals(500f, SheetDetents.heightAboveKeyboard(0.5f, 1000f, 450f), 0.001f)
+        assertEquals(517f, SheetDetents.heightAboveKeyboard(0.94f, 1000f, 450f), 0.001f)
+    }
+
+    @Test
+    fun aKeyboardAsTallAsTheWindowLeavesNothing() {
+        assertEquals(0f, SheetDetents.heightAboveKeyboard(0.5f, 1000f, 1200f), 0.001f)
+        assertEquals(500f, SheetDetents.heightAboveKeyboard(0.5f, 1000f, -5f), 0.001f)
+    }
 }
