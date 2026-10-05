@@ -2296,3 +2296,19 @@ Petición del usuario (Fedora es su distro habitual). Hecho sin dispositivo: pro
 - **Fallo 1:** el teclado en pantalla sigue abierto sobre Ajustes y tapa contenido al venir del terminal.
 - **Fallo 2:** "Créditos y licencias" muestra el texto con los saltos de línea duros del `.md` como filas separadas y la tabla como filas sueltas, en inglés. Legible pero feo; no se pierde ningún crédito.
 - Ambos fallos se pasan a un agente (rama `fix/ime-and-credits`).
+
+## Correcciones tras pruebas en el Pixel 8
+
+### D-FIX-1 · 2026-10-05 · El teclado se oculta mientras otra pantalla cubre el terminal
+
+- **Hallazgo:** el terminal sigue compuesto bajo Ajustes, Apariencia, Distros y SSH (se dibujan encima), así que su `TerminalInputView` conservaba el foco y el teclado quedaba abierto sobre esas pantallas.
+- **Decisión:** `MainActivity` publica `LocalTerminalCovered` (true si alguna de esas pantallas está abierta). `TerminalOverlays` llama a `TerminalInputView.hideKeyboard()` (quita el foco y oculta el IME) al pasar a cubierto, y el teclado automático de la primera composición no se abre si ya empieza cubierto (p. ej. al girar con Ajustes abierto). Al volver, el teclado no se fuerza: lo abre un toque en el terminal.
+- **Sin test unitario:** es pegamento de vista e IME sin lógica pura; hay que comprobarlo en el dispositivo.
+
+- **Atrás en la tableta Huawei (Android 12):** el botón/gesto "atrás" no hacía nada en las subpáginas de Ajustes. Causa probable: la vista de entrada, aún con el foco bajo Ajustes, consumía **todas** las teclas (también `KEYCODE_BACK`) en `onKeyDown`, así que el `BackHandler` de Compose no se ejecutaba (y casa con el antiguo "atrás llega a bash como Tab"). Dos capas: `SystemKeys.isSystemKey` (Atrás, Inicio, Apps recientes, Menú, encendido y volumen) hace que `onKeyDown` y `sendKeyEvent` de la vista no consuman ni codifiquen esas teclas (con test), y la vista suelta el foco (`clearFocus`) cuando otra pantalla cubre el terminal (D-FIX-1). **Sin verificar en la tableta.**
+
+### D-FIX-2 · 2026-10-05 · "Créditos y licencias": párrafos unidos y una fila por componente
+
+- **Hallazgo:** `Notices.parse` trataba cada línea del `.md` (cortada a mano) como una fila y las tablas salían como "Componente · Licencia · Notas".
+- **Decisión:** las líneas consecutivas se unen en un párrafo (los saltos en blanco y las viñetas separan); cada fila de tabla es un `NoticeItem` con el componente como título y el resto de celdas (licencia, notas) como texto secundario. Se omiten solo la fila de cabecera de las tablas (los nombres de columna) y el párrafo "This file must be updated…", que es una instrucción a los mantenedores. Ningún crédito, aviso ni texto de licencia se pierde (los textos de licencia van aparte, en `LicenseTexts`).
+- **Pendiente:** el contenido de `THIRD_PARTY_NOTICES.md` sigue en inglés (texto legal fuente); la interfaz que lo rodea sí está localizada.
