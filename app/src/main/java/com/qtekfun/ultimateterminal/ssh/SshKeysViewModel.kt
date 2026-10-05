@@ -8,6 +8,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.qtekfun.ultimateterminal.di.IoDispatcher
+import com.qtekfun.ultimateterminal.domain.ssh.DefaultKeyName
 import com.qtekfun.ultimateterminal.domain.ssh.SshError
 import com.qtekfun.ultimateterminal.domain.ssh.SshKeyInfo
 import com.qtekfun.ultimateterminal.domain.ssh.SshKeyService
@@ -91,9 +92,17 @@ class SshKeysViewModel @Inject constructor(
         }
     }
 
-    /** Reads a key file the user picked, to fill the import form; null if it cannot be read. */
-    fun readKeyFile(resolver: ContentResolver, source: Uri, onRead: (String?) -> Unit) {
-        viewModelScope.launch { onRead(withContext(io) { KeyFiles.read(resolver, source) }) }
+    /**
+     * Reads a key file the user picked, to fill the import form: its text (null if it cannot be
+     * read) and the name to suggest for the key, taken from the file name (D-SSH-1).
+     */
+    fun readKeyFile(resolver: ContentResolver, source: Uri, onRead: (String?, String) -> Unit) {
+        viewModelScope.launch {
+            val (text, display) = withContext(io) {
+                KeyFiles.read(resolver, source) to KeyFiles.displayName(resolver, source)
+            }
+            onRead(text, DefaultKeyName.from(display, uiState.value.keys.map { it.name }))
+        }
     }
 
     fun dismissMessage() = local.update { it.copy(message = null) }
