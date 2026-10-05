@@ -52,7 +52,11 @@ private sealed interface LayoutDialog {
  * too, once the user has read what it changed.
  */
 @Composable
-fun LayoutsScreen(onClose: () -> Unit, viewModel: LayoutsViewModel = viewModel()) {
+fun LayoutsScreen(
+    onClose: () -> Unit,
+    onOpened: () -> Unit = onClose,
+    viewModel: LayoutsViewModel = viewModel()
+) {
     val layouts by viewModel.layouts.collectAsStateWithLifecycle()
     var dialog by remember { mutableStateOf<LayoutDialog?>(null) }
     BackHandler(onBack = onClose)
@@ -74,7 +78,7 @@ fun LayoutsScreen(onClose: () -> Unit, viewModel: LayoutsViewModel = viewModel()
     LayoutDialogs(
         dialog = dialog,
         viewModel = viewModel,
-        onClose = onClose,
+        onClose = onOpened,
         show = { dialog = it },
         // The action sheet closes itself after an action ran, and the action may have opened the
         // next dialog: only close what is still the sheet, reading the state as it is now.
