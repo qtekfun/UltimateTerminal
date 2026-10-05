@@ -86,6 +86,7 @@ internal fun LabeledSlider(
                 onValueChange = { dragging = it },
                 range = range,
                 description = label,
+                valueDescription = valueText,
                 onValueChangeFinished = { onChange(dragging) }
             )
         }

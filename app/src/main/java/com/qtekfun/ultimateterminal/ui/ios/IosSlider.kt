@@ -30,6 +30,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.qtekfun.ultimateterminal.domain.ios.SliderMath
@@ -41,7 +42,7 @@ private val ThumbSize = 28.dp
  * The iOS slider: a thin track filled with the tint up to a round white thumb. It is 48 dp tall to
  * hit. [onValueChange] runs on every move and [onValueChangeFinished] when the finger lifts or
  * after a tap, so a caller can save once. A screen reader reads [description] and the value and
- * can raise and lower it.
+ * can raise and lower it; [valueDescription] is how it says the value ("14 sp") instead of a percentage.
  */
 @Composable
 fun IosSlider(
@@ -50,6 +51,7 @@ fun IosSlider(
     range: ClosedFloatingPointRange<Float>,
     description: String,
     modifier: Modifier = Modifier,
+    valueDescription: String? = null,
     onValueChangeFinished: () -> Unit = {}
 ) {
     val change by rememberUpdatedState(onValueChange)
@@ -62,6 +64,7 @@ fun IosSlider(
             .semantics {
                 contentDescription = description
                 progressBarRangeInfo = ProgressBarRangeInfo(value, range)
+                valueDescription?.let { stateDescription = it }
                 setProgress { target ->
                     change(target.coerceIn(range.start, range.endInclusive))
                     finished()
