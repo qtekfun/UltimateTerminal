@@ -3,15 +3,15 @@
 
 package com.qtekfun.ultimateterminal.data.backup
 
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
 import com.qtekfun.ultimateterminal.data.storage.FileTrees
 import com.qtekfun.ultimateterminal.data.storage.OwnerAccess
 import com.qtekfun.ultimateterminal.domain.backup.BackupError
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.file.AccessDeniedException
-import java.nio.file.Paths
 import java.nio.file.Files
+import java.nio.file.Paths
 import java.nio.file.attribute.PosixFilePermissions
 import java.util.zip.GZIPInputStream
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
@@ -113,7 +113,10 @@ class RootfsArchiverTest {
         File(root, "locked/inner/file").writeText("deep")
         Files.createSymbolicLink(File(root, "etc/abs").toPath(), Paths.get("/etc/ssl/missing.so"))
         Files.createSymbolicLink(File(root, "etc/up").toPath(), Paths.get("../usr"))
-        Files.createLink(File(root, "usr/bin/sudoreplay").toPath(), File(root, "usr/bin/sudo").toPath())
+        Files.createLink(
+            File(root, "usr/bin/sudoreplay").toPath(),
+            File(root, "usr/bin/sudo").toPath()
+        )
         OwnerAccess.setMode(File(root, "etc/shadow").toPath(), 0)
         OwnerAccess.setMode(File(root, "usr/bin/sudo").toPath(), 0b100_001_001_001)
         OwnerAccess.setMode(File(root, "locked/inner").toPath(), 0)
@@ -162,7 +165,11 @@ class RootfsArchiverTest {
         TarArchiveInputStream(GZIPInputStream(ByteArrayInputStream(out.toByteArray()))).use { tar ->
             while (true) {
                 val entry = tar.nextEntry ?: break
-                if (entry.name == "etc/shadow") assertEquals("root:*:0", tar.readAllBytes().decodeToString())
+                if (entry.name ==
+                    "etc/shadow"
+                ) {
+                    assertEquals("root:*:0", tar.readAllBytes().decodeToString())
+                }
             }
         }
     }

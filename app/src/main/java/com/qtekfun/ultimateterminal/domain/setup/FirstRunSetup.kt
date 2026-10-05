@@ -53,9 +53,12 @@ object FirstRunSetup {
 
         SetupGate.SHOWING -> when {
             inputs.skipped -> SetupGate.CLOSED
+
             // Not before the restore is done: the first distro to land is not the default yet.
             inputs.restoring -> SetupGate.SHOWING
+
             hasReady(inputs.distros) -> SetupGate.CLOSED
+
             else -> SetupGate.SHOWING
         }
     }

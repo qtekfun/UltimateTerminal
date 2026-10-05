@@ -16,7 +16,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import java.time.LocalDate
 import com.qtekfun.ultimateterminal.R
 import com.qtekfun.ultimateterminal.backup.BackupUiState
 import com.qtekfun.ultimateterminal.backup.BackupViewModel
@@ -30,6 +29,7 @@ import com.qtekfun.ultimateterminal.ui.ios.IosGlyph
 import com.qtekfun.ultimateterminal.ui.ios.IosListRow
 import com.qtekfun.ultimateterminal.ui.ios.IosProgress
 import com.qtekfun.ultimateterminal.ui.labelRes
+import java.time.LocalDate
 
 private const val BACKUP_MIME = "application/octet-stream"
 
@@ -89,14 +89,17 @@ internal fun BackupPage(nav: PageNav, viewModel: BackupViewModel = viewModel()) 
         onExportConfirm = { request ->
             exporting = false
             pending = request
-            val distroName = state.distros.firstOrNull { it.id == request.distroId }?.name
-            create.launch(
-                BackupFileName.suggest(request.kind, distroName, LocalDate.now())
-            )
+            create.launch(suggestedName(state, request))
         },
         onExportDismiss = { exporting = false },
         viewModel = viewModel
     )
+}
+
+/** The name the picker starts with: the app, the distro if it is a distro backup, and the date. */
+private fun suggestedName(state: BackupUiState, request: ExportRequest): String {
+    val distroName = state.distros.firstOrNull { it.id == request.distroId }?.name
+    return BackupFileName.suggest(request.kind, distroName, LocalDate.now())
 }
 
 /** The export form and the password prompt of an encrypted backup, when they are due. */

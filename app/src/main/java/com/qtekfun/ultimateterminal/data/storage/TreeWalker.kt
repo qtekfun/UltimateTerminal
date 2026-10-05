@@ -41,16 +41,13 @@ internal object TreeWalker {
         purpose: Purpose = Purpose.READ,
         skipUnreadable: Boolean = false
     ) {
-        visit(root, Files.readAttributes(root, BasicFileAttributes::class.java, NOFOLLOW), Walk(visitor, purpose, skipUnreadable))
+        val walk = Walk(visitor, purpose, skipUnreadable)
+        visit(root, attributes(root), walk)
     }
 
     private val NOFOLLOW = LinkOption.NOFOLLOW_LINKS
 
-    private class Walk(
-        val visitor: TreeVisitor,
-        val purpose: Purpose,
-        val skipUnreadable: Boolean
-    )
+    private class Walk(val visitor: TreeVisitor, val purpose: Purpose, val skipUnreadable: Boolean)
 
     private fun visit(path: Path, attrs: BasicFileAttributes, walk: Walk) {
         if (attrs.isDirectory) directory(path, attrs, walk) else walk.visitor.visitFile(path, attrs)
@@ -68,13 +65,16 @@ internal object TreeWalker {
                 emptyList()
             }
             for (child in children) {
-                visit(child, Files.readAttributes(child, BasicFileAttributes::class.java, NOFOLLOW), walk)
+                visit(child, attributes(child), walk)
             }
         } finally {
             if (walk.purpose == Purpose.READ) OwnerAccess.restore(dir, saved)
         }
         walk.visitor.leaveDirectory(dir)
     }
+
+    private fun attributes(path: Path): BasicFileAttributes =
+        Files.readAttributes(path, BasicFileAttributes::class.java, NOFOLLOW)
 
     private fun open(dir: Path, purpose: Purpose): Int? = when (purpose) {
         Purpose.READ -> OwnerAccess.openDirectory(dir)
