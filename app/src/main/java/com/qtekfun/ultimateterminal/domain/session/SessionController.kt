@@ -4,6 +4,9 @@
 package com.qtekfun.ultimateterminal.domain.session
 
 import com.qtekfun.ultimateterminal.domain.model.SplitOrientation
+import com.qtekfun.ultimateterminal.domain.profile.PaneOpening
+import com.qtekfun.ultimateterminal.domain.profile.PlannedNode
+import com.qtekfun.ultimateterminal.domain.profile.openings
 import com.qtekfun.ultimateterminal.domain.terminal.GridSize
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -74,8 +77,21 @@ interface SessionEditor {
 
 /** What the pane logic needs from the session owner: it also starts and sizes the shells. */
 interface PaneEditor : SessionEditor {
-    /** Splits the pane that has the keyboard; the new shell gets it. Null if nothing is active. */
-    fun splitActive(orientation: SplitOrientation): SessionId?
+    /**
+     * Splits the pane that has the keyboard; the new shell gets it. Null if nothing is active. An
+     * [opening] (a profile) says where and how the new pane starts; without one it is a plain
+     * shell in the same distro.
+     */
+    fun splitActive(orientation: SplitOrientation, opening: PaneOpening? = null): SessionId?
+
+    /**
+     * A new tab with the panes of [root], each started as its spec says; the first is the tab and
+     * has the keyboard. Returns the tab's session.
+     */
+    fun openTab(root: PlannedNode): SessionId
+
+    /** What the pane [id] was opened with, null for a plain one (and for one that is gone). */
+    fun openingOf(id: SessionId): PaneOpening?
 
     /** Tells each pty the size of its pane, skipping those whose size did not change. */
     fun applyPaneLayouts(layouts: Map<SessionId, TerminalLayout>)
@@ -92,6 +108,7 @@ class SessionController(
     initialLayout: TerminalLayout = DEFAULT_LAYOUT
 ) : PaneEditor {
     private val handles = mutableMapOf<SessionId, SessionHandle>()
+    private val openings = mutableMapOf<SessionId, PaneOpening>()
     private val sizes = PtySizes(handles)
     private val mutableState = MutableStateFlow(Sessions())
     private var serviceWanted = false
@@ -110,14 +127,30 @@ class SessionController(
         return startPublished(next, id, launch)
     }
 
-    override fun splitActive(orientation: SplitOrientation): SessionId? {
-        val (next, id) = mutableState.value.split(orientation) ?: return null
+    override fun splitActive(orientation: SplitOrientation, opening: PaneOpening?): SessionId? {
+        val (next, id) = mutableState.value.split(orientation, opening) ?: return null
+        opening?.let { openings[id] = it }
         return startPublished(next, id, null)
     }
+
+    override fun openTab(root: PlannedNode): SessionId {
+        val (next, ids) = mutableState.value.openedTab(root)
+        // Remembered before any shell starts: the factory reads it when it begins.
+        ids.zip(root.openings()).forEach { (id, opening) -> openings[id] = opening }
+        publish(next)
+        ids.forEach { startShell(it, null) }
+        return ids.first()
+    }
+
+    override fun openingOf(id: SessionId): PaneOpening? = openings[id]
 
     private fun startPublished(next: Sessions, id: SessionId, launch: SessionLaunch?): SessionId {
         // Published first: a shell that ends at once reports to a session that exists.
         publish(next)
+        return startShell(id, launch)
+    }
+
+    private fun startShell(id: SessionId, launch: SessionLaunch?): SessionId {
         val onExit = { status: Int -> onExited(id, status) }
         // One start only: a launch that fails must not fall back to a second, plain shell.
         val handle = if (factory is LaunchingSessionFactory) {
@@ -139,6 +172,7 @@ class SessionController(
     override fun close(id: SessionId) {
         publish(mutableState.value.closed(id))
         sizes.forget(id)
+        openings.remove(id)
         handles.remove(id)?.stop()
     }
 
@@ -146,6 +180,7 @@ class SessionController(
     fun closeAll() {
         val stopped = handles.values.toList()
         handles.clear()
+        openings.clear()
         sizes.clear()
         publish(mutableState.value.allClosed())
         stopped.forEach(SessionHandle::stop)

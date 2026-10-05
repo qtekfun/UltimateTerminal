@@ -4,24 +4,68 @@
 package com.qtekfun.ultimateterminal.domain.session
 
 import com.qtekfun.ultimateterminal.domain.model.SplitOrientation
+import com.qtekfun.ultimateterminal.domain.profile.PaneOpening
+import com.qtekfun.ultimateterminal.domain.profile.PlannedNode
+import com.qtekfun.ultimateterminal.domain.profile.openings
 
 /**
  * Splits the pane that has the keyboard: a new running session, in the same distro, takes the second
  * half and gets the keyboard. A zoomed tab is shown whole again. Null when there is no active
  * session.
  */
-fun Sessions.split(orientation: SplitOrientation): Pair<Sessions, SessionId>? {
+fun Sessions.split(
+    orientation: SplitOrientation,
+    opening: PaneOpening? = null
+): Pair<Sessions, SessionId>? {
     val source = activeId?.let { active -> items.firstOrNull { it.id == active } } ?: return null
     val tab = tabOf(source.id)
     val id = SessionId(nextId)
     val tree = treeOf(tab).split(source.id, orientation, id)
     val next = copy(
-        items = items + SessionInfo(id, SessionState.Running, distroId = source.distroId),
+        // A pane opened with a profile goes where the profile says; a plain one stays with its source.
+        items = items + SessionInfo(
+            id,
+            SessionState.Running,
+            distroId = if (opening == null) source.distroId else opening.distroId
+        ),
         activeId = id,
         nextId = nextId + 1,
         panes = panes + (tab to PaneTab(tree, focus = id))
     )
     return next to id
+}
+
+/**
+ * A new tab with the panes of [root], one running session each, in reading order: the first pane is
+ * the tab itself and has the keyboard. Returns the new snapshot and the sessions in that order, so
+ * the caller can start a shell for each. A single pane makes a plain tab, not a split one.
+ */
+fun Sessions.openedTab(root: PlannedNode): Pair<Sessions, List<SessionId>> {
+    var next = nextId
+    val ids = mutableListOf<SessionId>()
+    val tree = plannedTree(root) { SessionId(next++).also(ids::add) }
+    val openings = root.openings()
+    val added = ids.zip(openings).map { (id, opening) ->
+        SessionInfo(id, SessionState.Running, distroId = opening.distroId)
+    }
+    val tab = ids.first()
+    val opened = copy(
+        items = items + added,
+        activeId = tab,
+        nextId = next,
+        panes = if (ids.size > 1) panes + (tab to PaneTab(tree, focus = tab)) else panes
+    )
+    return opened to ids
+}
+
+private fun plannedTree(node: PlannedNode, sessionFor: () -> SessionId): PaneNode = when (node) {
+    is PlannedNode.Pane -> PaneNode.Leaf(sessionFor())
+
+    is PlannedNode.Split -> {
+        // Evaluated in order: the first pane gets the first session.
+        val first = plannedTree(node.first, sessionFor)
+        PaneNode.Branch(node.orientation, node.ratio, first, plannedTree(node.second, sessionFor))
+    }
 }
 
 /** Gives the keyboard to the pane [id], without leaving its tab; an unknown id changes nothing. */

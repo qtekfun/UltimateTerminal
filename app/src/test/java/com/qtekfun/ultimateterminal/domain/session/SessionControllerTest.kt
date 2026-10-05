@@ -4,6 +4,11 @@
 package com.qtekfun.ultimateterminal.domain.session
 
 import com.qtekfun.ultimateterminal.domain.model.SplitOrientation
+import com.qtekfun.ultimateterminal.domain.profile.PaneLook
+import com.qtekfun.ultimateterminal.domain.profile.PaneOpening
+import com.qtekfun.ultimateterminal.domain.profile.PaneSpec
+import com.qtekfun.ultimateterminal.domain.profile.PaneTarget
+import com.qtekfun.ultimateterminal.domain.profile.PlannedNode
 import com.qtekfun.ultimateterminal.domain.terminal.GridSize
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -269,5 +274,66 @@ class SessionControllerTest {
         val split = checkNotNull(controller.splitActive(SplitOrientation.HORIZONTAL))
 
         assertEquals(4L, controller.state.value.items.single { it.id == split }.distroId)
+    }
+}
+
+class SessionControllerOpeningsTest {
+    private val started = mutableListOf<SessionId>()
+    private val stopped = mutableListOf<SessionId>()
+    private val controller = SessionController(
+        SessionFactory { id, _, _ ->
+            started += id
+            object : SessionHandle {
+                override fun resize(layout: TerminalLayout) = Unit
+
+                override fun stop() {
+                    stopped += id
+                }
+            }
+        },
+        { }
+    )
+    private val opening = PaneOpening(
+        PaneSpec(PaneTarget.AndroidShell, PaneLook(scrollbackLines = 500), "ls\r")
+    )
+    private val tab = PlannedNode.Split(
+        SplitOrientation.VERTICAL,
+        0.5f,
+        PlannedNode.Pane(opening.spec),
+        PlannedNode.Pane(opening.spec)
+    )
+
+    @Test
+    fun openingATabStartsAShellForEveryPaneAndRemembersWhatEachWasOpenedWith() {
+        val first = controller.openTab(tab)
+
+        val ids = controller.state.value.paneIdsOf(first)
+        assertEquals(ids, started)
+        assertEquals(listOf(opening, opening), ids.map { controller.openingOf(it) })
+    }
+
+    @Test
+    fun aPaneSplitWithAnOpeningRemembersItAndAPlainSplitDoesNot() {
+        controller.newSession()
+
+        val profiled = controller.splitActive(SplitOrientation.VERTICAL, opening)!!
+        val plain = controller.splitActive(SplitOrientation.VERTICAL)!!
+
+        assertEquals(opening, controller.openingOf(profiled))
+        assertEquals(null, controller.openingOf(plain))
+    }
+
+    @Test
+    fun whatAPaneWasOpenedWithIsForgottenWhenItClosesOrEverythingCloses() {
+        val first = controller.openTab(tab)
+        val second = controller.state.value.paneIdsOf(first)[1]
+
+        controller.close(second)
+        assertEquals(null, controller.openingOf(second))
+        assertEquals(opening, controller.openingOf(first))
+
+        controller.closeAll()
+        assertEquals(null, controller.openingOf(first))
+        assertEquals(listOf(second, first), stopped)
     }
 }

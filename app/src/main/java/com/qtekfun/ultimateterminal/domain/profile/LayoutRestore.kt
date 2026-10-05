@@ -11,7 +11,11 @@ import com.qtekfun.ultimateterminal.domain.session.snapRatio
 
 /** A node of a restore plan: the shape of the saved layout, each pane with what it opens. */
 sealed interface PlannedNode {
-    data class Pane(val spec: PaneSpec) : PlannedNode
+    /**
+     * [command] is the start-up command that the saved layout gave this pane itself (not the
+     * profile's), kept so that saving the tab again does not turn it into the profile's.
+     */
+    data class Pane(val spec: PaneSpec, val command: String? = null) : PlannedNode
 
     data class Split(
         val orientation: SplitOrientation,
@@ -37,12 +41,13 @@ data class LayoutRestorePlan(
     val notices: List<LayoutNotice>
 ) {
     /** The panes in reading order (first to second, depth first), as the sessions will be created. */
-    val panes: List<PaneSpec> get() = root.panes()
+    val panes: List<PaneSpec> get() = root.openings().map { it.spec }
 }
 
-private fun PlannedNode.panes(): List<PaneSpec> = when (this) {
-    is PlannedNode.Pane -> listOf(spec)
-    is PlannedNode.Split -> first.panes() + second.panes()
+/** What each pane of the plan opens, in reading order (first to second, depth first). */
+fun PlannedNode.openings(): List<PaneOpening> = when (this) {
+    is PlannedNode.Pane -> listOf(PaneOpening(spec, command))
+    is PlannedNode.Split -> first.openings() + second.openings()
 }
 
 /** Why a saved layout is not restored at all. */
@@ -108,7 +113,8 @@ class LayoutRestorePlanner(
                 notices += LayoutNotice.ForPane(index, PaneNotice.ProfileMissing(profileId))
             }
             ready.notices.forEach { notices += LayoutNotice.ForPane(index, it) }
-            return PlannedNode.Pane(ready.spec)
+            // A pane that fell back to plain opens without its command, and is saved that way.
+            return PlannedNode.Pane(ready.spec, node.command?.takeIf { ready.spec.startupInput != null })
         }
     }
 

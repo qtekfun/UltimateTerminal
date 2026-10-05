@@ -3,10 +3,12 @@
 
 package com.qtekfun.ultimateterminal.domain.broadcast
 
+import android.view.KeyEvent
 import com.qtekfun.ultimateterminal.domain.Outcome
 import com.qtekfun.ultimateterminal.domain.map
 import com.qtekfun.ultimateterminal.domain.model.Validation
 import com.qtekfun.ultimateterminal.domain.session.SessionId
+import com.qtekfun.ultimateterminal.domain.terminal.KeyInput
 
 /** To which panes of a tab what is typed in one of them is also sent (Terminator's "broadcast"). */
 sealed interface BroadcastMode {
@@ -102,3 +104,27 @@ data class BroadcastState(
     private fun inGroup(name: String, active: SessionId, panes: List<SessionId>): List<SessionId>? =
         if (groupOf[active] == name) panes.filter { groupOf[it] == name } else null
 }
+
+/**
+ * What a key press is for broadcasting. Characters, Enter, Tab and Backspace are typing and go to
+ * the panes of the broadcast; Ctrl and Alt chords, Escape, the arrows, Home, End, Page keys, Insert,
+ * Delete and the function keys drive whatever runs in the pane that has the keyboard (they interrupt,
+ * move in an editor, page a viewer), so they stay there (D-T12b-5).
+ */
+fun KeyInput.inputKind(): InputKind = when {
+    ctrl || alt -> InputKind.CONTROL
+
+    keyCode in CONTROL_KEYS || keyCode in KeyEvent.KEYCODE_F1..KeyEvent.KEYCODE_F12 ->
+        InputKind.CONTROL
+
+    else -> InputKind.TEXT
+}
+
+private val CONTROL_KEYS = setOf(
+    KeyEvent.KEYCODE_ESCAPE,
+    KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN,
+    KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
+    KeyEvent.KEYCODE_MOVE_HOME, KeyEvent.KEYCODE_MOVE_END,
+    KeyEvent.KEYCODE_PAGE_UP, KeyEvent.KEYCODE_PAGE_DOWN,
+    KeyEvent.KEYCODE_INSERT, KeyEvent.KEYCODE_FORWARD_DEL
+)

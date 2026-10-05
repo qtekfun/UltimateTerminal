@@ -41,6 +41,16 @@ data class PaneSpec(
     val profileId: Long? = null
 )
 
+/**
+ * What a pane was opened with: its [spec] and the [command] its saved layout gave it (null if the
+ * command, if any, is the profile's). The session owner remembers it for as long as the pane
+ * lives, so the factory can start the shell as the profile says and a tab can be saved as a layout.
+ */
+data class PaneOpening(val spec: PaneSpec, val command: String? = null) {
+    /** The distro to open in; null for Android's own shell. */
+    val distroId: Long? get() = (spec.target as? PaneTarget.InDistro)?.distroId
+}
+
 /** Why a pane could not be opened as asked. A notice, by contrast, only says what was changed. */
 sealed interface ProfileProblem {
     /** The profile names a distro that is not installed. */
