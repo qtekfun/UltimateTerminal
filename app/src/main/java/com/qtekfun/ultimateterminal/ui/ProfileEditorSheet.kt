@@ -5,8 +5,6 @@ package com.qtekfun.ultimateterminal.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,7 +68,7 @@ internal fun ProfileEditorSheet(
     val wrong = (result as? ProfileFormResult.Invalid)?.fields.orEmpty()
     val title = if (profile == null) R.string.profiles_editor_new else R.string.profiles_editor_edit
     IosBottomSheet(onDismiss = onDismiss, detents = listOf(SheetDetent.LARGE)) {
-        Column(Modifier.imePadding().verticalScroll(rememberScrollState())) {
+        Column(Modifier.imePadding()) {
             IosSheetHeader(
                 title = stringResource(title),
                 cancelLabel = stringResource(R.string.dialog_cancel),
