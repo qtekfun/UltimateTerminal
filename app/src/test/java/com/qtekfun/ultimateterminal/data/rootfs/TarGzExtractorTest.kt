@@ -4,6 +4,7 @@
 package com.qtekfun.ultimateterminal.data.rootfs
 
 import com.qtekfun.ultimateterminal.data.storage.NioFileSystemRepository
+import com.qtekfun.ultimateterminal.data.storage.OwnerAccess
 import com.qtekfun.ultimateterminal.domain.Outcome
 import com.qtekfun.ultimateterminal.domain.distro.ExtractionError
 import com.qtekfun.ultimateterminal.domain.distro.ExtractionResult
@@ -159,6 +160,25 @@ class TarGzExtractorTest {
             ),
             modes
         )
+    }
+
+    @Test
+    fun aFileNobodyCanReadKeepsItsModeAndIsStillReadableThroughOwnerAccess() {
+        val archive = TarBuilder()
+            .dir("etc")
+            .file("etc/shadow", "root:*:0", mode = 0)
+            .file("usr-sudo", "ELF", mode = 0x849) // octal 4111: execute-only and setuid
+            .gzip()
+
+        val result = unpack(archive)
+
+        assertInstanceOf(ExtractionResult.Success::class.java, result)
+        assertEquals(0, OwnerAccess.modeOf(out("etc/shadow").toPath()))
+        assertEquals(0b001_001_001, OwnerAccess.modeOf(out("usr-sudo").toPath()))
+        val text = OwnerAccess.reading(out("etc/shadow").toPath()) {
+            it.readBytes().decodeToString()
+        }
+        assertEquals("root:*:0", text)
     }
 
     @Test

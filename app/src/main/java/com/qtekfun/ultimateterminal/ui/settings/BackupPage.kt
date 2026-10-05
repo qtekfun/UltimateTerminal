@@ -19,6 +19,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qtekfun.ultimateterminal.R
 import com.qtekfun.ultimateterminal.backup.BackupUiState
 import com.qtekfun.ultimateterminal.backup.BackupViewModel
+import com.qtekfun.ultimateterminal.domain.backup.BackupFileName
 import com.qtekfun.ultimateterminal.domain.backup.ExportRequest
 import com.qtekfun.ultimateterminal.ui.ExportSheet
 import com.qtekfun.ultimateterminal.ui.PasswordSheet
@@ -28,9 +29,9 @@ import com.qtekfun.ultimateterminal.ui.ios.IosGlyph
 import com.qtekfun.ultimateterminal.ui.ios.IosListRow
 import com.qtekfun.ultimateterminal.ui.ios.IosProgress
 import com.qtekfun.ultimateterminal.ui.labelRes
+import java.time.LocalDate
 
 private const val BACKUP_MIME = "application/octet-stream"
-private const val BACKUP_FILE_NAME = "ultimateterminal-backup.utbackup"
 
 /**
  * Export and restore of backups (SPEC RF-06). The files are chosen with the system picker, so the
@@ -51,7 +52,8 @@ internal fun BackupPage(nav: PageNav, viewModel: BackupViewModel = viewModel()) 
     val open = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let(viewModel::startRestore)
     }
-    val explanation = stringResource(R.string.backup_explanation) + hint(state)
+    val explanation = stringResource(R.string.backup_explanation) + " " +
+        stringResource(R.string.backup_where_it_goes) + hint(state)
     SettingsPage(stringResource(R.string.settings_section_backup), nav.backLabel, nav.back) {
         section(footer = explanation) {
             IosListRow(
@@ -87,11 +89,17 @@ internal fun BackupPage(nav: PageNav, viewModel: BackupViewModel = viewModel()) 
         onExportConfirm = { request ->
             exporting = false
             pending = request
-            create.launch(BACKUP_FILE_NAME)
+            create.launch(suggestedName(state, request))
         },
         onExportDismiss = { exporting = false },
         viewModel = viewModel
     )
+}
+
+/** The name the picker starts with: the app, the distro if it is a distro backup, and the date. */
+private fun suggestedName(state: BackupUiState, request: ExportRequest): String {
+    val distroName = state.distros.firstOrNull { it.id == request.distroId }?.name
+    return BackupFileName.suggest(request.kind, distroName, LocalDate.now())
 }
 
 /** The export form and the password prompt of an encrypted backup, when they are due. */

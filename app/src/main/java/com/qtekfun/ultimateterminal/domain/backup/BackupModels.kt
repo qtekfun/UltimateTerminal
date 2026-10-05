@@ -94,6 +94,13 @@ sealed interface BackupError {
 
     data class InsufficientSpace(val requiredBytes: Long, val availableBytes: Long) : BackupError
 
+    /**
+     * A file of the distro could not be read, even after giving the app (its owner) access. The
+     * export stops and writes nothing. [path] is relative to the distro; [denied] tells a refusal
+     * of the system from a file that vanished or broke.
+     */
+    data class UnreadableFile(val path: String, val denied: Boolean) : BackupError
+
     data class Extraction(val error: ExtractionError) : BackupError
 
     data class Io(val message: String) : BackupError

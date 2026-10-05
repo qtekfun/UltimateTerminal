@@ -358,8 +358,8 @@
     <string name="backup_phase_verifying">Checking the backup…</string>
     <string name="backup_phase_restoring">Restoring the distros…</string>
     <string name="backup_phase_applying">Applying the settings…</string>
-    <string name="backup_exported">Backup saved (%1$s). Distros included: %2$d.</string>
-    <string name="backup_exported_encrypted">Encrypted backup saved (%1$s). Distros included: %2$d.</string>
+    <string name="backup_exported">Backup saved as %1$s (%2$s). Distros included: %3$d. Copy this file to a safe place (a computer or a USB drive) to restore it on another device.</string>
+    <string name="backup_exported_encrypted">Encrypted backup saved as %1$s (%2$s). Distros included: %3$d. Copy this file to a safe place (a computer or a USB drive); you need the password to restore it.</string>
     <string name="backup_restored">Backup restored. Distros: %1$d. Profiles: %2$d. Layouts: %3$d. Hosts: %4$d. Keys: %5$d. Kept as they were because they already existed: %6$d. Turn the device storage switch on again if you use it.</string>
     <string name="backup_error_not_a_backup">This file is not a backup of this app.</string>
     <string name="backup_error_password_required">This backup is encrypted: a password is needed.</string>
@@ -374,6 +374,10 @@
     <string name="backup_error_space">Not enough free space: %1$s needed, %2$s available.</string>
     <string name="backup_error_extraction">The distro in the backup could not be unpacked safely: %1$s</string>
     <string name="backup_error_io">Could not read or write the file: %1$s</string>
+    <string name="backup_error_unreadable_denied">Skipped: the backup was not created because the system does not let the app read “%1$s”. Nothing was changed; try again, and if it keeps happening, report that file.</string>
+    <string name="backup_error_unreadable">Skipped: the backup was not created because “%1$s” could not be read (it may have been removed meanwhile). Nothing was changed; try again.</string>
+    <string name="backup_file_unnamed">the file you chose</string>
+    <string name="backup_where_it_goes">The file is saved where you choose in the next step, in any folder the system file picker offers (Downloads, for example), so you can copy or share it from there. Your distros themselves stay in the app’s private storage; inside a distro, ~/storage is your device storage.</string>
 
     <!-- iOS-style components (T22a) -->
     <string name="ios_state_on">On</string>

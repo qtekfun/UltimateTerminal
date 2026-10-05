@@ -6,6 +6,7 @@ package com.qtekfun.ultimateterminal.platform
 import android.content.ContentResolver
 import android.net.Uri
 import android.provider.DocumentsContract
+import android.provider.OpenableColumns
 import com.qtekfun.ultimateterminal.domain.backup.BackupSink
 import com.qtekfun.ultimateterminal.domain.backup.BackupSource
 import java.io.IOException
@@ -31,3 +32,10 @@ class ContentResolverBackupSink(private val resolver: ContentResolver, private v
         runCatching { DocumentsContract.deleteDocument(resolver, uri) }
     }
 }
+
+/** The name the user gave the document in the picker, or null when the provider does not say. */
+fun documentName(resolver: ContentResolver, uri: Uri): String? = runCatching {
+    resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+        if (cursor.moveToFirst()) cursor.getString(0) else null
+    }
+}.getOrNull()

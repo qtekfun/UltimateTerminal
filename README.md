@@ -124,6 +124,20 @@ long session with many programs can be cut short. There is no mitigation in the 
 files are denied by SELinux, so `top` and `htop` rely on approximate fake files. A non-root user keeps
 the extra Android groups that proot inherits.
 
+## FAQ: where are my files? Why are distros in private storage?
+
+Distros live in the app's private storage, not on the sdcard or in a shared folder. Shared storage has no
+symbolic links, no Unix permissions or owners and no executable bit, and it is mounted `noexec`, so a Linux
+root filesystem (and proot) cannot work there; it is also readable by other apps, and Android 11 and later
+block apps from using it like that anyway. To get your files out:
+
+- **Backups:** Settings > Backups > Export saves one `.utbackup` file wherever you choose with the system
+  file picker (Downloads, a USB drive, a cloud folder), named `UltimateTerminal-<date>.utbackup`. Copy it to
+  a computer or a USB stick; on a new device, restore it from the first-run screen or from Settings >
+  Backups (it asks for the password if you set one).
+- **`~/storage`:** with "Device storage" turned on in Settings, the phone's shared storage is mounted inside
+  every distro at `~/storage`; `cp report.pdf ~/storage/downloads/` puts the file in your Downloads folder.
+
 ## Why not Google Play
 
 To run programs from its own storage the app targets Android 9 (API 28, `targetSdk 28`): from API 29

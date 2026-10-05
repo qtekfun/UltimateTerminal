@@ -19,7 +19,9 @@ data class SetupInputs(
     /** Some tab is already open (the app was reopened with its sessions alive). */
     val hasSessions: Boolean,
     /** The user chose "use the Android shell for now"; lasts as long as the process. */
-    val skipped: Boolean
+    val skipped: Boolean,
+    /** A backup is being restored: its distros arrive one by one, and the default comes last. */
+    val restoring: Boolean = false
 )
 
 /** The rules of the first-run setup (SPEC RF-15): when it shows, and what it offers. */
@@ -49,8 +51,16 @@ object FirstRunSetup {
             else -> SetupGate.SHOWING
         }
 
-        SetupGate.SHOWING ->
-            if (inputs.skipped || hasReady(inputs.distros)) SetupGate.CLOSED else SetupGate.SHOWING
+        SetupGate.SHOWING -> when {
+            inputs.skipped -> SetupGate.CLOSED
+
+            // Not before the restore is done: the first distro to land is not the default yet.
+            inputs.restoring -> SetupGate.SHOWING
+
+            hasReady(inputs.distros) -> SetupGate.CLOSED
+
+            else -> SetupGate.SHOWING
+        }
     }
 
     /**
