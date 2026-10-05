@@ -6,7 +6,6 @@ package com.qtekfun.ultimateterminal.ui
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -147,7 +146,7 @@ internal fun HostEditDialog(
     }
     val title = if (host == null) R.string.ssh_host_add_title else R.string.ssh_host_edit_title
     IosBottomSheet(onDismiss = onDismiss, detents = listOf(SheetDetent.LARGE)) {
-        Column(Modifier.imePadding()) {
+        Column {
             IosSheetHeader(
                 title = stringResource(title),
                 cancelLabel = stringResource(R.string.dialog_cancel),
@@ -238,7 +237,7 @@ internal fun GenerateKeyDialog(
     var name by rememberSaveable { mutableStateOf("") }
     var type by rememberSaveable { mutableStateOf(types.firstOrNull() ?: SshKeyType.RSA) }
     IosBottomSheet(onDismiss = onDismiss, detents = listOf(SheetDetent.LARGE)) {
-        Column(Modifier.imePadding()) {
+        Column {
             IosSheetHeader(
                 title = stringResource(R.string.ssh_generate_title),
                 cancelLabel = stringResource(R.string.dialog_cancel),
@@ -288,7 +287,7 @@ internal fun ImportKeyDialog(
         }
     }
     IosBottomSheet(onDismiss = onDismiss, detents = listOf(SheetDetent.LARGE)) {
-        Column(Modifier.imePadding()) {
+        Column {
             IosSheetHeader(
                 title = stringResource(R.string.ssh_import_title),
                 cancelLabel = stringResource(R.string.dialog_cancel),

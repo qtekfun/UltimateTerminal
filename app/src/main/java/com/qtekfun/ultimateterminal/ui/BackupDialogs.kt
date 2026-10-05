@@ -4,7 +4,6 @@
 package com.qtekfun.ultimateterminal.ui
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,7 +40,7 @@ internal fun ExportSheet(
     var repeat by rememberSaveable { mutableStateOf("") }
     val problem = ExportForm.problem(kind, distroId, includeKeys, password, repeat)
     IosBottomSheet(onDismiss = onDismiss, detents = listOf(SheetDetent.LARGE)) {
-        Column(Modifier.imePadding()) {
+        Column {
             IosSheetHeader(
                 title = stringResource(R.string.backup_dialog_title),
                 cancelLabel = stringResource(R.string.backup_cancel),
@@ -153,7 +152,7 @@ private fun PasswordSection(
 internal fun PasswordSheet(onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
     var password by remember { mutableStateOf("") }
     IosBottomSheet(onDismiss = onDismiss, detents = listOf(SheetDetent.LARGE)) {
-        Column(Modifier.imePadding()) {
+        Column {
             IosSheetHeader(
                 title = stringResource(R.string.backup_password_title),
                 cancelLabel = stringResource(R.string.backup_cancel),

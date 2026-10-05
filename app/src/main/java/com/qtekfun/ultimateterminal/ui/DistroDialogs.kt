@@ -4,7 +4,6 @@
 package com.qtekfun.ultimateterminal.ui
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,7 +38,7 @@ internal fun InstallSheet(
     // Follows the chosen family until the user types a name of their own.
     val shownName = name ?: DistroNames.suggest(familyName, existingNames)
     IosBottomSheet(onDismiss = onDismiss, detents = listOf(SheetDetent.LARGE)) {
-        Column(Modifier.imePadding()) {
+        Column {
             IosSheetHeader(
                 title = stringResource(R.string.install_title),
                 cancelLabel = stringResource(R.string.dialog_cancel),
@@ -85,7 +84,7 @@ internal fun NameSheet(
 ) {
     var text by rememberSaveable { mutableStateOf(initial) }
     IosBottomSheet(onDismiss = onDismiss, detents = listOf(SheetDetent.LARGE)) {
-        Column(Modifier.imePadding()) {
+        Column {
             IosSheetHeader(
                 title = title,
                 cancelLabel = stringResource(R.string.dialog_cancel),
@@ -112,7 +111,7 @@ internal fun UserSheet(initial: String, onConfirm: (String) -> Unit, onDismiss: 
     var text by rememberSaveable { mutableStateOf(initial) }
     val valid = GuestUser.isValid(text.trim())
     IosBottomSheet(onDismiss = onDismiss, detents = listOf(SheetDetent.LARGE)) {
-        Column(Modifier.imePadding()) {
+        Column {
             IosSheetHeader(
                 title = stringResource(R.string.distro_change_user_title),
                 cancelLabel = stringResource(R.string.dialog_cancel),

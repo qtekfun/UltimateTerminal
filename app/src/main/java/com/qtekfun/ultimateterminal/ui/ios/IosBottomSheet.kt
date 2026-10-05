@@ -18,12 +18,16 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -125,23 +129,21 @@ private fun BoxWithConstraintsScope.SheetBody(
         }
     }
 
+    // The sheet sits above the keyboard and shrinks to what is left (D-FIX-9).
+    val density = LocalDensity.current
+    val imePx = WindowInsets.ime.getBottom(density).toFloat()
     val scrimAlpha = SCRIM_ALPHA * (fraction.value / initial.fraction).coerceIn(0f, 1f)
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = scrimAlpha))
-            .clickable(
-                interactionSource = remember {
-                    MutableInteractionSource()
-                },
-                indication = null
-            ) { onDismiss() }
-    )
+    Scrim(scrimAlpha, onDismiss)
     Column(
         modifier
             .align(Alignment.BottomCenter)
             .fillMaxWidth()
-            .height(maxHeight * fraction.value)
+            .padding(bottom = with(density) { imePx.toDp() })
+            .height(
+                with(density) {
+                    SheetDetents.heightAboveKeyboard(fraction.value, heightPx, imePx).toDp()
+                }
+            )
             .clip(RoundedCornerShape(topStart = IosRadius.sheet, topEnd = IosRadius.sheet))
             .background(colors.cell)
             .clickable(
@@ -170,10 +172,25 @@ private fun BoxWithConstraintsScope.SheetBody(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = IosSpacing.md)
-                .navigationBarsPadding(),
+                .windowInsetsPadding(WindowInsets.navigationBars.exclude(WindowInsets.ime)),
             content = content
         )
     }
+}
+
+@Composable
+private fun Scrim(alpha: Float, onDismiss: () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = alpha))
+            .clickable(
+                interactionSource = remember {
+                    MutableInteractionSource()
+                },
+                indication = null
+            ) { onDismiss() }
+    )
 }
 
 @Composable
