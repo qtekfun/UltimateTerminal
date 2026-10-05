@@ -10,6 +10,11 @@ and the project uses [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- The on-screen keyboard no longer covers the text field you are typing in: sheets (install a distro, rename, profiles,
+  layouts, shortcuts, SSH, backup) rise above the keyboard and the focused field scrolls into view, and the
+  full-screen forms, including the first-run setup, keep the field and the main button reachable.
+
 ### Added
 - The tab sidebar on wide windows (landscape, tablets, split-screen) is now dynamic: it shrinks to a slim
   rail of tab initials when you tap the terminal, so the terminal gets more columns, and opens again when

@@ -75,7 +75,8 @@ fun IosTextField(
             modifier = Modifier
                 .weight(FIELD_WEIGHT)
                 .padding(start = IosSpacing.sm)
-                .focusRequester(focus),
+                .focusRequester(focus)
+                .bringIntoViewOnFocus(),
             singleLine = true,
             textStyle = body.copy(color = colors.label, textAlign = TextAlign.End),
             cursorBrush = SolidColor(colors.tint),
@@ -125,7 +126,11 @@ fun IosTextArea(
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth().padding(top = IosSpacing.xs).focusRequester(focus),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = IosSpacing.xs)
+                .focusRequester(focus)
+                .bringIntoViewOnFocus(),
             minLines = minLines,
             maxLines = maxLines,
             textStyle = IosTheme.typography.body.copy(color = colors.label),

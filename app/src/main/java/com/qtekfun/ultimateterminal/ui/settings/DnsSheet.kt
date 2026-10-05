@@ -4,7 +4,6 @@
 package com.qtekfun.ultimateterminal.ui.settings
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,7 +39,7 @@ internal fun DnsSheet(
     val parsed = DnsServers.parse(text)
     val hint = stringResource(R.string.settings_dns_hint)
     IosBottomSheet(onDismiss = onDismiss, detents = listOf(SheetDetent.LARGE)) {
-        Column(Modifier.imePadding()) {
+        Column {
             IosSheetHeader(
                 title = stringResource(R.string.settings_dns_sheet_title),
                 cancelLabel = stringResource(R.string.dialog_cancel),
