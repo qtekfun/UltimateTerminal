@@ -10,6 +10,17 @@ Thanks for helping. This file says how the project is run; [`SPEC.md`](SPEC.md) 
 three before changing behaviour, and [`CLAUDE.md`](CLAUDE.md) for the working rules (it also guides the
 AI assistant that does much of the development here).
 
+## Getting the code
+
+proot is built from a git submodule, so clone with it, or fetch it afterwards:
+
+```
+git clone --recurse-submodules https://github.com/qtekfun/UltimateTerminal.git
+git submodule update --init      # if you cloned without --recurse-submodules
+```
+
+Without the submodule `third_party/proot` is empty and the native build fails.
+
 ## Work flow
 
 - The main branch is **`master`**. Do not commit to it directly.
@@ -75,6 +86,18 @@ This is an F-Droid app and a GPL-3.0-or-later project. These rules are not negot
   ./gradlew :app:cleanTestDebugUnitTest :app:koverVerifyCritical --no-build-cache
   ```
 
+- **Run the tests.** Host tests (JVM, no device): `./gradlew testDebugUnitTest`, or `./gradlew check` for
+  everything CI runs. Instrumented tests need a device or emulator and are never run by CI; with more
+  than one device attached, pick one with `ANDROID_SERIAL`, and keep the app installed afterwards:
+
+  ```
+  ANDROID_SERIAL=<serial> ./gradlew connectedDebugAndroidTest \
+    -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true
+  ```
+
+  Without `leaveApksInstalledAfterRun=true` Android Gradle Plugin uninstalls the app after the run, which
+  deletes the data of the installed app (distros, settings). Read [`docs/TESTING.md`](docs/TESTING.md)
+  first: it lists each test class, what needs the network and how to run a single one.
 - Host tests cannot see everything: a call that works on the JVM can throw on Android (a real example is
   `Files.getFileStore`, which Android denies to apps). When something can only be checked on a device,
   say so in `DECISIONS.md` under "not validated" and in the pull request, and do not write that it works.
@@ -87,11 +110,35 @@ exceptions thrown at the UI. All file and network I/O runs off the main thread. 
 logged, and terminal contents never are. Warnings of Kotlin and Lint are errors, and detekt and ktlint
 are not relaxed to pass.
 
+## Dependencies and verification metadata
+
+Every dependency is pinned by checksum in `gradle/verification-metadata.xml`, and the build fails on a
+file that is not listed. After adding a dependency (once its license is checked and it is in
+`THIRD_PARTY_NOTICES.md`), regenerate the metadata:
+
+```
+./gradlew --write-verification-metadata sha256 --no-daemon --max-workers=2 <a task that resolves it, e.g. check>
+```
+
+Review the diff: it should only add the components you introduced, with nothing removed or reformatted.
+If you see unrelated additions, run it with a clean `GRADLE_USER_HOME`, as was done for the test
+dependencies, so only what the build needs is recorded. Dependabot pull requests get their checksums
+refreshed by the `Dependabot verification` workflow.
+
 ## Decisions
 
 When you choose something the spec did not decide, or you depart from it, add an entry to
 `DECISIONS.md` (date, decision, reason, alternatives, impact) and list anything you could not verify.
 If the spec is ambiguous or something is missing, ask rather than guess.
+
+- `DECISIONS.md` is append-only: add your section **at the end of the file**, never in the middle, and
+  number new entries `D-<TASK>-<N>` continuing from the last one of that task. Do not edit other
+  people's entries; if one becomes wrong, add a new entry that says so.
+- Because everybody appends at the end, two branches almost always conflict there. The resolution is
+  mechanical: rebase onto `master`, keep both blocks (yours after the one already in `master`), and
+  renumber yours if the same `D-` number was taken.
+- Record what was verified on a device and what was not, and keep `PLAN.md` honest: `[x]` only when
+  verified, `[~]` with a note when some part is only tested on the host.
 
 ## Reporting a security problem
 

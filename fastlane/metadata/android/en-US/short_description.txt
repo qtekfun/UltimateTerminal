@@ -1,1 +1,1 @@
-Linux distros on Android with proot. Free, private, no tracking.
+Debian, Ubuntu, Alpine, Fedora on Android with proot. Free, no tracking.
