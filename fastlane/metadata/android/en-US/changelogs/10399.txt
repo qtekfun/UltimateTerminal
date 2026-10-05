@@ -1,0 +1,1 @@
+Release 0.1.3. Closing the app is reliable: an Exit entry in the menu, and Exit in the notification no longer leaves a "0 sessions" notification or an empty app. When the last session ends, the app closes. Early software: the README says what is verified on a device.
