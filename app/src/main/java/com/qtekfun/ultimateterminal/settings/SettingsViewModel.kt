@@ -11,6 +11,7 @@ import com.qtekfun.ultimateterminal.domain.repository.SettingsRepository
 import com.qtekfun.ultimateterminal.domain.session.SidebarMode
 import com.qtekfun.ultimateterminal.domain.settings.ScrollbackChoices
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
+import com.qtekfun.ultimateterminal.domain.terminal.KeyboardType
 import com.qtekfun.ultimateterminal.domain.terminal.ShortcutMap
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -40,6 +41,8 @@ class SettingsViewModel @Inject constructor(private val repository: SettingsRepo
         edit { it.copy(defaultScrollbackLines = ScrollbackChoices.forEmulator(lines)) }
 
     fun setSidebarMode(mode: SidebarMode) = edit { it.copy(sidebarMode = mode) }
+
+    fun setKeyboardType(type: KeyboardType) = edit { it.copy(keyboardType = type) }
 
     fun editExtraKeys(transform: (ExtraKeysConfig) -> ExtraKeysConfig) =
         edit { it.copy(extraKeys = transform(it.extraKeys)) }

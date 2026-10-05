@@ -82,6 +82,7 @@ Terminal para Android pensada para **mantenedores de servidores** y sucesora esp
 ### RF-08 Entrada
 - **Fila de teclas extra** (Esc, Tab, Ctrl, Alt, flechas, etc.), configurable, con Ctrl/Alt pegajosos. **Solo se muestra mientras el teclado en pantalla está visible**: al ocultarlo desaparece y devuelve su espacio al terminal (opción "ocultar con el teclado", activa por defecto, para quien prefiera verla siempre).
 - **Teclado físico completo:** F1–F12, combinaciones Ctrl/Alt, atajos de la app (**(DEFECTO)** `Ctrl+Shift+T` nueva pestaña, `Alt+n` cambiar de pestaña), ratón y rueda.
+- **Tipo de teclado en pantalla:** ajuste en Ajustes > Teclado con tres opciones: **Normal** (**(DEFECTO)**, campo de texto sin sugerencias ni variación de contraseña, para que cada móvil muestre su teclado de siempre y no el «teclado seguro» de algunos fabricantes), **Compatible** (campo de contraseña visible, que algunos teclados necesitan para no autocorregir en un terminal) y **Sin procesar** (sin tipo de entrada, como la opción `input-type` de Termux: solo pulsaciones de teclas). Se guarda y entra en la copia de configuración; cambiarlo reinicia la entrada del teclado. (Pendiente de comprobar en dispositivo.)
 - Copiar/pegar, selección táctil con asas, zoom con pellizco.
 
 ### RF-09 Gestor de hosts SSH

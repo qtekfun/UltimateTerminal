@@ -54,7 +54,9 @@ internal data class SettingsDto(
     /** The application shortcuts (T12b); null in a backup that predates them. */
     val shortcuts: ShortcutsDto? = null,
     /** The sidebar mode (T26); null in a backup that predates it. */
-    val sidebar: SidebarDto? = null
+    val sidebar: SidebarDto? = null,
+    /** The keyboard type (SPEC RF-08); null in a backup that predates it. */
+    val keyboard: KeyboardDto? = null
 )
 
 /**
@@ -63,6 +65,17 @@ internal data class SettingsDto(
  */
 @Serializable
 internal data class SidebarDto(val version: Int = VERSION, val mode: String) {
+    companion object {
+        const val VERSION = 1
+    }
+}
+
+/**
+ * The kind of text field the soft keyboard is told the terminal is, with a [version] like
+ * [SidebarDto]: a version this app does not know is left alone.
+ */
+@Serializable
+internal data class KeyboardDto(val version: Int = VERSION, val type: String) {
     companion object {
         const val VERSION = 1
     }

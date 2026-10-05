@@ -5,7 +5,6 @@ package com.qtekfun.ultimateterminal.terminal
 
 import android.content.Context
 import android.os.Build
-import android.text.InputType
 import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import android.view.View
@@ -17,13 +16,15 @@ import com.qtekfun.ultimateterminal.domain.session.KeyboardIntent
 import com.qtekfun.ultimateterminal.domain.terminal.ComposingText
 import com.qtekfun.ultimateterminal.domain.terminal.CompositionEdit
 import com.qtekfun.ultimateterminal.domain.terminal.KeyInput
+import com.qtekfun.ultimateterminal.domain.terminal.KeyboardFlags
+import com.qtekfun.ultimateterminal.domain.terminal.KeyboardType
 
 /**
  * An invisible view that receives the keyboard for the terminal: hardware keys, and the soft
  * keyboard through an [InputConnection]. The screen itself is drawn in Compose; this view only
  * exists because Android delivers text input to a `View`.
  *
- * The soft keyboard is asked for plain, non-suggesting input, but Gboard still composes words and
+ * The soft keyboard is asked for plain, non-suggesting input (see [KeyboardType]), but Gboard still composes words and
  * only commits them when the keyboard is hidden (found on a Pixel 8: what was typed did not reach
  * the shell until then). So composing text is sent as it changes, see [ComposingText].
  */
@@ -34,6 +35,17 @@ class TerminalInputView(context: Context) : View(context) {
 
     /** What the user last asked for; losing the focus to a layout change does not change it. */
     private var keyboardWanted = false
+
+    /**
+     * What the soft keyboard is told this view is. It is read when the keyboard connects, so a
+     * change restarts the input to make the keyboard read it again.
+     */
+    var keyboardType: KeyboardType = KeyboardType.DEFAULT
+        set(value) {
+            if (field == value) return
+            field = value
+            context.getSystemService(InputMethodManager::class.java)?.restartInput(this)
+        }
 
     init {
         isFocusable = true
@@ -76,12 +88,9 @@ class TerminalInputView(context: Context) : View(context) {
     override fun onCheckIsTextEditor(): Boolean = true
 
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection {
-        outAttrs.inputType = InputType.TYPE_CLASS_TEXT or
-            InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD or
-            InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-        outAttrs.imeOptions =
-            EditorInfo.IME_FLAG_NO_FULLSCREEN or EditorInfo.IME_FLAG_NO_EXTRACT_UI or
-            EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
+        val flags = KeyboardFlags.of(keyboardType)
+        outAttrs.inputType = flags.inputType
+        outAttrs.imeOptions = flags.imeOptions
         composing.finish()
         return TerminalInputConnection()
     }

@@ -397,6 +397,11 @@
     <string name="settings_scrollback_header">Historial</string>
     <string name="settings_scrollback_option">%1$s líneas</string>
     <string name="settings_scrollback_footer">Cuántas líneas guarda cada terminal para volver atrás. Se aplica a las pestañas que abras desde ahora.</string>
+    <string name="settings_keyboard_type_header">Tipo de teclado</string>
+    <string name="settings_keyboard_type_normal">Normal</string>
+    <string name="settings_keyboard_type_compatible">Compatible (evita el autocorrector)</string>
+    <string name="settings_keyboard_type_raw">Sin procesar</string>
+    <string name="settings_keyboard_type_footer">Normal: tu teclado de siempre, sin sugerencias. Compatible: pide un campo de tipo contraseña para que algunos teclados dejen de autocorregir; con esto puede aparecer el teclado seguro de algunos fabricantes. Sin procesar: sin campo de texto, el teclado envía pulsaciones de teclas simples.</string>
     <string name="settings_keys_header">Fila de teclas extra</string>
     <string name="settings_keys_show">Mostrar la fila</string>
     <string name="settings_keys_follow">Solo con el teclado</string>

@@ -93,4 +93,113 @@ class ComposingTextTest {
 
         assertEquals("echo", line)
     }
+
+    // The calls of a soft keyboard on a normal text field, replayed against the line of the shell.
+    private inner class Keyboard {
+        var line = ""
+
+        fun setComposing(text: String) {
+            line = apply(line, composing.update(text))
+        }
+
+        fun commit(text: String) {
+            setComposing(text)
+            composing.finish()
+        }
+
+        fun finishComposing() = composing.finish()
+
+        fun deleteBefore(count: Int) {
+            line = line.dropLast(composing.deleteBefore(count))
+        }
+    }
+
+    @Test
+    fun aCompositionReplacedByAnotherLeavesOnlyTheSecond() {
+        val keyboard = Keyboard()
+        keyboard.setComposing("teh")
+        keyboard.setComposing("the")
+
+        assertEquals("the", keyboard.line)
+    }
+
+    @Test
+    fun committingADifferentTextThanWasComposedCorrectsTheLine() {
+        val keyboard = Keyboard()
+        keyboard.setComposing("ecoh")
+        keyboard.commit("echo ")
+
+        assertEquals("echo ", keyboard.line)
+        assertFalse(composing.isComposing)
+    }
+
+    @Test
+    fun theNextWordAfterACommitStartsOverWithoutErasingTheLast() {
+        val keyboard = Keyboard()
+        keyboard.commit("ls ")
+        keyboard.setComposing("-l")
+        keyboard.setComposing("-la")
+
+        assertEquals("ls -la", keyboard.line)
+    }
+
+    @Test
+    fun deletingBeforeTheCursorAfterACommitErasesCommittedText() {
+        val keyboard = Keyboard()
+        keyboard.commit("ls -la")
+        keyboard.deleteBefore(2)
+
+        assertEquals("ls -", keyboard.line)
+    }
+
+    @Test
+    fun deletingInsideTheCompositionAndComposingAgainKeepsTheLineRight() {
+        val keyboard = Keyboard()
+        keyboard.setComposing("abc")
+        keyboard.deleteBefore(1)
+        keyboard.setComposing("abd")
+
+        assertEquals("abd", keyboard.line)
+    }
+
+    @Test
+    fun theSpaceBeforeAPunctuationMarkIsReplacedByTheKeyboard() {
+        val keyboard = Keyboard()
+        keyboard.commit("hi ")
+        keyboard.deleteBefore(1)
+        keyboard.commit(". ")
+
+        assertEquals("hi. ", keyboard.line)
+    }
+
+    @Test
+    fun aSwipedWordReplacedByAnotherSwipeLeavesTheLastOne() {
+        val keyboard = Keyboard()
+        keyboard.commit("say ")
+        keyboard.setComposing("hello")
+        keyboard.setComposing("jello")
+        keyboard.commit("world ")
+
+        assertEquals("say world ", keyboard.line)
+    }
+
+    @Test
+    fun aNewlineInTheTextIsSentAsTextAndKeptWhenTheWordEnds() {
+        val keyboard = Keyboard()
+        keyboard.setComposing("ls")
+        keyboard.commit("ls\n")
+        keyboard.setComposing("pwd")
+
+        assertEquals("ls\npwd", keyboard.line)
+    }
+
+    @Test
+    fun finishingTheCompositionKeepsItAndTheNextOneDoesNotTouchIt() {
+        val keyboard = Keyboard()
+        keyboard.setComposing("cd")
+        keyboard.finishComposing()
+        keyboard.setComposing("/tmp")
+
+        assertEquals("cd/tmp", keyboard.line)
+    }
 }

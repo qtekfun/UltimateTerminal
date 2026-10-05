@@ -9,6 +9,7 @@ import com.qtekfun.ultimateterminal.domain.launch.ResolvConf
 import com.qtekfun.ultimateterminal.domain.session.SidebarMode
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.FontZoom
+import com.qtekfun.ultimateterminal.domain.terminal.KeyboardType
 import com.qtekfun.ultimateterminal.domain.terminal.ShortcutMap
 import com.qtekfun.ultimateterminal.domain.theme.BuiltInSchemes
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
@@ -48,5 +49,7 @@ data class AppSettings(
     /** The application shortcuts: which key combination does what (SPEC RF-12). */
     val shortcuts: ShortcutMap = ShortcutMap.defaults(),
     /** Whether the side tab bar collapses to a rail when the terminal is used (SPEC RF-16). */
-    val sidebarMode: SidebarMode = SidebarMode.DEFAULT
+    val sidebarMode: SidebarMode = SidebarMode.DEFAULT,
+    /** What the soft keyboard is told the terminal is; the normal keyboard by default (SPEC RF-08). */
+    val keyboardType: KeyboardType = KeyboardType.DEFAULT
 )

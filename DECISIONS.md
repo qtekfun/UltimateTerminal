@@ -2729,3 +2729,23 @@ Solo texto, sin tocar código ni dispositivos. Todo lo que dice estar verificado
 - Se quitaron los `Column(Modifier.imePadding())` de todas las hojas (ahora lo hace la hoja una vez; mantenerlos habría añadido un hueco duplicado).
 - Los avisos centrados (`NamePrompt`, `IosAlert`) no cambian: son diálogos pequeños con la ventana redimensionable por defecto.
 - Sin comprobar en dispositivo: falta el Pixel 8 con el teclado abierto en la hoja de instalar distro, la pantalla de configuración inicial, renombrar, el formulario de perfil, la hoja de guardar disposición y la de atajos.
+
+## D-KBD · Tipo de teclado en pantalla (fix/avoid-secure-keyboard)
+
+### D-KBD-1 · Causa y arreglo
+- `TerminalInputView.onCreateInputConnection` declaraba `TYPE_TEXT_VARIATION_VISIBLE_PASSWORD`. Los marcos de teclado de varios fabricantes (EMUI/HarmonyOS, MIUI/HyperOS, ColorOS y otros) tratan cualquier campo de contraseña como entrada segura y muestran su teclado seguro en lugar del normal. Es la causa por el código; **la hipótesis no se ha comprobado en un móvil de esas marcas**.
+- Se añade el ajuste «Tipo de teclado» (`KeyboardType`): **Normal** (por defecto: `TYPE_CLASS_TEXT or NO_SUGGESTIONS`, sin variación; `AUTO_COMPLETE` no se activa), **Compatible** (el comportamiento anterior, con la variación de contraseña visible) y **Sin procesar** (`TYPE_NULL`, como la opción `input-type` de Termux). Las `imeOptions` (`NO_FULLSCREEN`, `NO_EXTRACT_UI`, `NO_PERSONALIZED_LEARNING`) son las mismas en las tres.
+- El valor por defecto es Normal para todos los dispositivos: **no se detecta el fabricante** (frágil y inexacto). Quien note que su teclado autocorrige en el terminal, elige Compatible. Coste: en el Pixel 8 con Gboard hay que comprobar si Normal basta para que no autocorrija ni componga de más (por eso el ajuste existe).
+
+### D-KBD-2 · Estructura y persistencia
+- `domain/terminal/KeyboardType.kt`: el enum, `parse` (un nombre desconocido es el valor por defecto) y `KeyboardFlags.of`, que da `inputType` e `imeOptions` con constantes locales; un test las compara con las de `InputType`/`EditorInfo` y comprueba cada modo, así se prueba sin Android.
+- `AppSettings.keyboardType`, clave `keyboard_type` en Room (`RoomSettingsRepository`), `SettingsViewModel.setKeyboardType` y una sección de tres filas con marca en Ajustes > Teclado, con una línea de pie por opción (incluye que el teclado seguro de algunos fabricantes puede aparecer con Compatible). Textos en `values/` y `values-es/`.
+- Copia de configuración: `SettingsDto.keyboard: KeyboardDto?` con `version` (1) y `type`, igual que `SidebarDto`: null (copia anterior) o una versión que esta app no conoce deja el valor del dispositivo; un nombre desconocido es el valor por defecto. Tests en `ConfigRestoreSettingsTest` y `ConfigRestoreTest`; `data.backup` sigue al 100 %.
+- La vista lo recibe por `LocalKeyboardType` (`MainActivity` lo provee desde los ajustes, como `LocalTerminalCovered`) y `TerminalOverlays` lo asigna a `TerminalInputView.keyboardType`; el setter llama a `InputMethodManager.restartInput(view)` solo si el valor cambia, porque `onCreateInputConnection` se lee al conectar el teclado.
+
+### D-KBD-3 · Flujo de texto con el teclado normal
+- `ComposingText` no cambia: envía la edición mínima (borrar lo que cambió, escribir lo nuevo) para `setComposingText`/`commitText`, y `deleteSurroundingText` pasa tal cual como Retroceso. Con el campo normal y `NO_SUGGESTIONS` el teclado no debería sugerir ni autocorregir, pero si compone, el resultado en la línea es el mismo. Nuevos tests en `ComposingTextTest` con una línea simulada: composición sustituida por otra, `commit` distinto de lo compuesto, borrar tras confirmar, borrar dentro de la composición y seguir, el espacio automático tras puntuación (borrar 1 y escribir «. »), escribir deslizando y sustituir la palabra, `\n` como texto (el teclado lo convierte en `\r`) y fin de composición. `newCursorPosition` se sigue ignorando (el terminal no tiene cursor de edición). Enter y Retroceso como eventos de tecla, Ctrl/Alt pegajosos y el teclado físico no se tocan.
+- En **Sin procesar** la conexión sigue existiendo y atiende `sendKeyEvent`; sin `TYPE_NULL` real no se puede saber qué teclado manda eventos de tecla y cuál texto: comprobar en dispositivo.
+
+### D-KBD-4 · Qué falta comprobar en dispositivo
+- Pixel 8 con Gboard en los tres modos: que escribir llega a la shell sin esperar a ocultar el teclado, que Normal no autocorrige, Retroceso y Enter, y que cambiar de modo con el teclado abierto lo reinicia. Un móvil Huawei/Honor, Xiaomi u OPPO: que con Normal sale el teclado normal y no el seguro, y qué pasa con Compatible.

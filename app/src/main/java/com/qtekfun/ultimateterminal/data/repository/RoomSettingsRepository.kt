@@ -18,6 +18,7 @@ import com.qtekfun.ultimateterminal.domain.session.SidebarMode
 import com.qtekfun.ultimateterminal.domain.settings.DnsServers
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.FontZoom
+import com.qtekfun.ultimateterminal.domain.terminal.KeyboardType
 import com.qtekfun.ultimateterminal.domain.terminal.ShortcutMap
 import com.qtekfun.ultimateterminal.domain.theme.SchemeCatalog
 import com.qtekfun.ultimateterminal.domain.theme.SchemeCodec
@@ -52,6 +53,7 @@ internal object SettingKeys {
     const val DNS_FALLBACK = "dns_fallback"
     const val SHORTCUTS = "shortcuts"
     const val SIDEBAR_MODE = "sidebar_mode"
+    const val KEYBOARD_TYPE = "keyboard_type"
 }
 
 class RoomSettingsRepository @Inject constructor(private val dao: SettingDao) : SettingsRepository {
@@ -117,7 +119,8 @@ class RoomSettingsRepository @Inject constructor(private val dao: SettingDao) : 
             ?.let { DnsServers.parse(it).servers }
             ?: dnsFallbackServers,
         shortcuts = values[SettingKeys.SHORTCUTS]?.let { ShortcutMap.parse(it).map } ?: shortcuts,
-        sidebarMode = values[SettingKeys.SIDEBAR_MODE]?.let(SidebarMode::parse) ?: sidebarMode
+        sidebarMode = values[SettingKeys.SIDEBAR_MODE]?.let(SidebarMode::parse) ?: sidebarMode,
+        keyboardType = values[SettingKeys.KEYBOARD_TYPE]?.let(KeyboardType::parse) ?: keyboardType
     )
 
     /** Each value that is missing or unreadable keeps its default; numbers are clamped into range. */
@@ -168,7 +171,8 @@ class RoomSettingsRepository @Inject constructor(private val dao: SettingDao) : 
         SettingEntity(SettingKeys.EXTRA_KEYS, settings.extraKeys.serialize()),
         SettingEntity(SettingKeys.DNS_FALLBACK, DnsServers.format(settings.dnsFallbackServers)),
         SettingEntity(SettingKeys.SHORTCUTS, settings.shortcuts.serialize()),
-        SettingEntity(SettingKeys.SIDEBAR_MODE, settings.sidebarMode.name)
+        SettingEntity(SettingKeys.SIDEBAR_MODE, settings.sidebarMode.name),
+        SettingEntity(SettingKeys.KEYBOARD_TYPE, settings.keyboardType.name)
     ) + serializeAppearance(settings.appearance.sanitized())
 
     private fun serializeAppearance(appearance: TerminalAppearance) = listOf(
