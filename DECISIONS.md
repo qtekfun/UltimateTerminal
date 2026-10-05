@@ -2496,3 +2496,21 @@ Evidencia (Pixel 8): la hoja de acciones de una distro instalada no permitía ca
 ### D-DISTRO-3 · 2026-10-05 · La pestaña activa siempre se ve entera
 - **Decisión:** el «⋯» solo existe en la pestaña activa, que crece al activarse y podía quedar bajo el «+» al final de la barra. Cada pestaña lleva un `BringIntoViewRequester` y, cuando pasa a activa (o cambia el número de pestañas), espera un fotograma (ya con el nuevo tamaño) y se desplaza a la vista. Sin cálculo propio, así que no hay lógica pura que probar.
 - **Por validar en dispositivo:** con 3 o más pestañas en móvil, el «⋯» de la activa queda completo y tocable.
+
+### Sexta ronda (Pixel 8, 2026-10-05, build de `master` en `e2f115a`: arreglo del cierre de las hojas de T12b)
+
+**Verificado en el dispositivo.**
+- **El cierre de T12b está arreglado (#58):** "Perfiles" > "+", editar un perfil y la hoja de un atajo (Ajustes > Teclado > Atajos) abren sin cerrar la app y se guardan.
+- **Perfil con usuario inexistente en Fedora:** perfil "dev" (distro predeterminada = Fedora, usuario `ops`, comando `echo hola`) → "Abrir en una pestaña nueva": el prompt es `[ops@localhost ~]$` y el comando se ejecuta. La causa del 127 de la tablet (falta de `su`, usuario inexistente) queda resuelta también en Fedora.
+- **División y difusión:** "Dividir a la derecha" funciona; el botón `⋯` está ahora en una franja sobre el panel y no pisa el texto. "Escribir en todos los paneles" muestra el aviso rojo "Lo que escribes llega a 2 paneles", con marco rojo en ambos paneles, y el texto llega a los dos shells (uno como `ops`, otro como `root`).
+- **Layouts:** guardar los paneles ("dos · 2 paneles"), listarlo y abrirlo reproduce los dos paneles con sus usuarios.
+
+**Fallos de uso hallados (no cierran la app).**
+1. **Ajustes se queda abierto tras abrir un perfil o un layout:** al elegir "Abrir en una pestaña nueva" o "Abrir" el usuario sigue en la raíz de Ajustes y tiene que pulsar "Listo" para ver la pestaña.
+2. **El nombre de la pestaña ignora el del perfil:** la pestaña abierta desde el perfil "dev" se llama "Fedora 2".
+3. **Los campos de texto de los formularios solo toman el foco al tocar su parte derecha:** tocar la etiqueta ("Nombre", "Usuario") no hace nada. Además, al escribir en el primero, el texto de ayuda en rojo desaparece y el formulario se desplaza, así que un segundo toque posterior cae en otro campo.
+4. **El aviso rojo de difusión tapa el comienzo de la primera línea del panel.**
+5. **El comando inicial se ve dos veces:** se escribe 800 ms tras arrancar el shell, antes de que dibuje el prompt, y el eco del terminal lo repite (una vez sin prompt y otra con él). Es solo estético.
+6. El panel nuevo de una división no lleva el perfil del panel original (usa la distro predeterminada).
+
+**Pendiente de verificar con la build siguiente:** "Cambiar usuario…" (#59) y el recorte del `⋯` con tres pestañas, que ya están en `master` pero no en la build probada.
