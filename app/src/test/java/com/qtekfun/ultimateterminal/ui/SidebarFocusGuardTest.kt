@@ -31,6 +31,13 @@ class SidebarFocusGuardTest {
     }
 
     @Test
+    fun `a long press on a rail tab asks to close and does not expand the bar`() {
+        val rail = text("ui/TabRail.kt")
+        assertTrue("onLongPress = { actions.onAskClose() }" in rail)
+        assertFalse("onNeedBar" in rail)
+    }
+
+    @Test
     fun `the sidebar files never hide the keyboard`() {
         listOf("ui/Sidebar.kt", "ui/TabRail.kt", "ui/TabBar.kt").forEach {
             assertFalse("hideKeyboard" in text(it), it)

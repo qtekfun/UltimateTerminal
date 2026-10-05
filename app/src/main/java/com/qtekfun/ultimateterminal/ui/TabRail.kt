@@ -69,17 +69,12 @@ internal fun tabSpeech(item: TabItem, name: String, count: Int): TabSpeech {
 
 /**
  * A tab of the rail: its initial, with the active one highlighted. A tap selects it; a long press
- * opens the bar, where the rename and close menu and the drag to reorder are. A screen reader
+ * asks to close it, as in the full bar (D-TAB-3); the chevron or a tap on the rail opens the bar,
+ * where the rename and close menu and the drag to reorder are. A screen reader
  * hears the same as for the full tab (name, position, state, selected) and has the same actions.
  */
 @Composable
-internal fun RailTab(
-    item: TabItem,
-    name: String,
-    bar: TabChipBar,
-    actions: TabChipActions,
-    onNeedBar: () -> Unit
-) {
+internal fun RailTab(item: TabItem, name: String, bar: TabChipBar, actions: TabChipActions) {
     val speech = tabSpeech(item, name, bar.count)
     Box(
         Modifier
@@ -87,7 +82,10 @@ internal fun RailTab(
             .capsule(if (item.active) currentChrome().selected else Color.Transparent, PillInset)
             .tabSemantics(item.active, speech, actions)
             .pointerInput(item.id) {
-                detectTapGestures(onTap = { actions.onSelect() }, onLongPress = { onNeedBar() })
+                detectTapGestures(
+                    onTap = { actions.onSelect() },
+                    onLongPress = { actions.onAskClose() }
+                )
             },
         contentAlignment = Alignment.Center
     ) {

@@ -121,7 +121,7 @@
     <string name="tab_rename_hint">Leave it empty to use the default name</string>
     <string name="tab_save">Save</string>
     <string name="tab_cancel">Cancel</string>
-    <string name="tab_close_title">Close this tab?</string>
+    <string name="tab_close_title">Close %1$s?</string>
     <string name="tab_close_message">A program is still running in it and will be stopped.</string>
     <string name="tab_close_confirm">Close</string>
 
