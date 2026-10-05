@@ -16,6 +16,14 @@ and the project uses [SemVer](https://semver.org/).
   you tap the rail. Settings > Terminal > "Collapse the sidebar when you use the terminal" (on by default;
   off keeps it always expanded) is included in configuration backups.
 
+### Fixed
+- On some phones (Huawei, Xiaomi, OPPO, vivo and others) the manufacturer's secure password keyboard
+  appeared instead of the normal one, because the terminal presented itself as a visible-password field.
+  Settings > Keyboard > "Keyboard type" now offers Normal (the new default: a plain text field without
+  suggestions), Compatible (the former behaviour, for keyboards that autocorrect otherwise) and Raw (no
+  input type, plain key presses). The choice is included in configuration backups. Not yet verified on a
+  device.
+
 ## [0.1.0] - 2026-10-05
 
 First release. A free (GPL-3.0-or-later) terminal for Android with Linux distributions through proot, no
