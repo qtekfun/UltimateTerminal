@@ -17,6 +17,7 @@ Releases are signed with the project's own key, and the builds are reproducible:
 
 **Never commit the key, its passwords or the base64 of the key.** `*.jks` and `*.keystore` are in `.gitignore`.
 
+0. Shortcut: `scripts/create-signing-key.sh` does steps 1-2 below in one go (it asks for the password, creates the key outside the repository, uploads the four secrets with `gh` and prints the fingerprint of step 3).
 1. Create the key, and keep the file and passwords somewhere safe and **backed up**: if the key is lost, users would have to uninstall to update.
    ```sh
    keytool -genkeypair -v -keystore ultimateterminal-release.jks -alias ultimateterminal \

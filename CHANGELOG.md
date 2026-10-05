@@ -10,8 +10,10 @@ and the project uses [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
-Work towards the first release (`0.1.0`). Nothing has been released yet; the version in the tree is
-`0.1.0-rc.1`. Early software: it has been tried by hand on a Pixel 8 and, for window resizing only, on a
+## [0.1.0-rc.2] - 2026-10-05
+
+First pre-release on the way to `0.1.0` (`0.1.0-rc.1` was only the version in the tree before anything
+was published). Early software: it has been tried by hand on a Pixel 8 and, for window resizing only, on a
 Huawei MRO-W09 tablet.
 What is verified on a device and what is only tested on a computer is in the README.
 
