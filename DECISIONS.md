@@ -2855,3 +2855,13 @@ Con tests en el anfitrión (JVM): modos, enlaces (absolutos, relativos, rotos), 
 - **Con #101, en el OPPO PGEM10:** con una sesión, pulsar "Salir" en la notificación (app en primer plano) quita la notificación, detiene el servicio (sin registro de servicio ni notificación), saca la tarea de recientes y vuelve al escritorio. Con la app en segundo plano, igual. Reabrir con el icono: una pestaña de Alpine y una sola pulsación, con el servicio y la notificación de nuevo.
 - **Sin comprobar aún:** "Salir" con la pantalla apagada, cerrar la última pestaña con su X (la app debe cerrarse), entrar desde recientes con la tarea viva, y la entrada "Salir" del menú (#102, pendiente de reconstruir sobre #101).
 - **Dispositivo:** el OPPO PGEM10 del usuario (se confundió antes con el CPH2841, que no se toca). Pantalla fija restaurada al terminar.
+
+### D-EXIT-1 · 2026-10-05 · Entrada «Salir» en el menú «⋯»/«+» (RF-16)
+- **Petición:** «una entrada Salir en el menú para cerrar la app por completo». Es la última del menú (tinta destructiva, glifo `POWER` de Lucide, mismo conjunto ISC), así que sale igual en la barra superior, la lateral y el raíl (comparten `NewTabMenu`).
+- **Pregunta o no (`exitStep`, lógica pura probada):** con alguna sesión en ejecución, alerta `IosAlert` normal (TalkBack la lee como alerta) «¿Salir de UltimateTerminal?» con el número («Se cerrarán N sesiones…», plural) y Cancelar/Salir; las sesiones ya terminadas no cuentan. Sin ninguna en ejecución se sale sin preguntar.
+
+### D-EXIT-2 · 2026-10-05 · Cómo se sale: parar el servicio y `finishAndRemoveTask`, sin matar el proceso
+- Salir llama a `SessionManager.shutdownAll()`, el único camino de apagado (D-NOTIF-1): cierra todas las sesiones, para el servicio (notificación y wakelock) y, por el gancho `onEmpty` (`AppTaskFinisher.finishAll()`), quita la tarea aunque la actividad esté parada. Después `MainActivity.exitApp()` llama también a `finishAndRemoveTask()`: ese gancho no se dispara si no había ninguna sesión que cerrar, y en ese caso hace falta. `FinishWithSessions`/`StartupTabRule` no chocan: solo actúan al llegar a cero sesiones y terminan la misma tarea.
+- **No** se usa `Process.killProcess`: es el último recurso (salta los ciclos de vida y no deja a Hilt/Room cerrar). Android puede dejar el proceso vacío en caché un rato, pero sin servicio, hilos de sesión ni wakelock no ejecuta nada; abrir la app después crea una actividad nueva y, al no haber sesiones, `TerminalViewModel` abre la pestaña predeterminada, como un arranque en frío.
+- **Pendiente de verificar en dispositivo:** Pixel 8, Salir con y sin sesiones vivas, con la pantalla apagada y reabriendo; que no queda notificación ni proceso activo.
+

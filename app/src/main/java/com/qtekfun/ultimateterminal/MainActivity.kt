@@ -33,7 +33,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qtekfun.ultimateterminal.domain.model.AppSettings
 import com.qtekfun.ultimateterminal.domain.repository.SettingsRepository
+import com.qtekfun.ultimateterminal.domain.session.ExitStep
+import com.qtekfun.ultimateterminal.domain.session.Sessions
 import com.qtekfun.ultimateterminal.domain.session.StartupTabRule
+import com.qtekfun.ultimateterminal.domain.session.exitStep
 import com.qtekfun.ultimateterminal.domain.setup.SetupGate
 import com.qtekfun.ultimateterminal.domain.theme.SchemeCatalog
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
@@ -44,6 +47,7 @@ import com.qtekfun.ultimateterminal.terminal.SessionManager
 import com.qtekfun.ultimateterminal.terminal.TerminalFontLoader
 import com.qtekfun.ultimateterminal.ui.AppearanceScreen
 import com.qtekfun.ultimateterminal.ui.DistroScreen
+import com.qtekfun.ultimateterminal.ui.ExitConfirm
 import com.qtekfun.ultimateterminal.ui.LayoutsScreen
 import com.qtekfun.ultimateterminal.ui.LocalTerminalCovered
 import com.qtekfun.ultimateterminal.ui.ProfileLinks
@@ -137,6 +141,7 @@ class MainActivity : ComponentActivity() {
         var showDistros by rememberSaveable { mutableStateOf(false) }
         var showSsh by rememberSaveable { mutableStateOf(false) }
         var showAppearance by rememberSaveable { mutableStateOf(false) }
+        var askExit by rememberSaveable { mutableStateOf(false) }
         var overlay by rememberSaveable(stateSaver = ProfileOverlay.Saver) {
             mutableStateOf(ProfileOverlay())
         }
@@ -158,11 +163,8 @@ class MainActivity : ComponentActivity() {
                         openSsh = { showSsh = true },
                         openAppearance = { showAppearance = true },
                         openSettings = { showSettings = true },
-                        profiles = ProfileLinks(
-                            openProfiles = { overlay = overlay.copy(profiles = true) },
-                            openLayouts = { overlay = overlay.copy(layouts = true) },
-                            saveLayout = { overlay = overlay.copy(saveLayout = true) }
-                        )
+                        requestExit = { requestExit(sessions) { askExit = true } },
+                        profiles = overlay.links { overlay = it }
                     )
                 )
             }
@@ -189,7 +191,38 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        IosTheme(decision, scheme) { SessionPrompts(hasRunningSession = sessions.needsService) }
+        Prompts(sessions, askExit, IosThemeArgs(decision, scheme)) { askExit = false }
+    }
+
+    /** The prompts over everything: the background permissions and the exit confirmation. */
+    @Composable
+    private fun Prompts(
+        sessions: Sessions,
+        askExit: Boolean,
+        theme: IosThemeArgs,
+        onExitDismissed: () -> Unit
+    ) = IosTheme(theme.decision, theme.scheme) {
+        SessionPrompts(hasRunningSession = sessions.needsService)
+        val step = exitStep(sessions)
+        if (askExit && step is ExitStep.Ask) ExitConfirm(step.sessions, ::exitApp, onExitDismissed)
+    }
+
+    /** The "Exit" entry: leaves at once with nothing running, else asks through [ask] (D-EXIT-1). */
+    private fun requestExit(sessions: Sessions, ask: () -> Unit) {
+        when (exitStep(sessions)) {
+            ExitStep.ExitNow -> exitApp()
+            is ExitStep.Ask -> ask()
+        }
+    }
+
+    /**
+     * Ends everything through the one shutdown path (D-EXIT-2): sessions, service, notification and,
+     * through the manager's empty hook, the task. That hook does not fire with no session to close, so
+     * the task is also removed here.
+     */
+    private fun exitApp() {
+        sessionManager.shutdownAll()
+        finishAndRemoveTask()
     }
 
     /** Which of the profile screens are open. */
@@ -199,6 +232,13 @@ class MainActivity : ComponentActivity() {
         val saveLayout: Boolean = false
     ) {
         val any: Boolean get() = profiles || layouts || saveLayout
+
+        /** The links that open each of these screens, which [onShown] stores. */
+        fun links(onShown: (ProfileOverlay) -> Unit) = ProfileLinks(
+            openProfiles = { onShown(copy(profiles = true)) },
+            openLayouts = { onShown(copy(layouts = true)) },
+            saveLayout = { onShown(copy(saveLayout = true)) }
+        )
 
         companion object {
             val Saver = listSaver<ProfileOverlay, Boolean>(
@@ -254,3 +294,5 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+private class IosThemeArgs(val decision: ThemeDecision, val scheme: TerminalColorScheme)

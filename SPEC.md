@@ -79,6 +79,11 @@ Terminal para Android pensada para **mantenedores de servidores** y sucesora esp
 - **Criterios:** un `ssh` o una tarea larga sobreviven al cambiar de app y a apagar la pantalla.
 - Restaurar pestañas tras un cierre real (no procesos): **(DEFECTO) backlog**.
 
+### RF-16 Salir de la app
+- Última entrada del menú «⋯»/«+» (barra superior, lateral y raíl): **Salir**, con icono de apagado. Con sesiones vivas pide confirmar («¿Salir de UltimateTerminal?», con el número de sesiones que se cerrarán); sin ninguna, sale directamente.
+- Salir cierra todas las sesiones (mata sus procesos), detiene el servicio en primer plano (quita la notificación y libera el wakelock) y cierra la tarea (`finishAndRemoveTask`).
+- **Criterios:** tras Salir no queda servicio ni notificación; abrir la app después es un arranque normal (una pestaña nueva).
+
 ### RF-08 Entrada
 - **Fila de teclas extra** (Esc, Tab, Ctrl, Alt, flechas, etc.), configurable, con Ctrl/Alt pegajosos. **Solo se muestra mientras el teclado en pantalla está visible**: al ocultarlo desaparece y devuelve su espacio al terminal (opción "ocultar con el teclado", activa por defecto, para quien prefiera verla siempre).
 - **Teclado físico completo:** F1–F12, combinaciones Ctrl/Alt, atajos de la app (**(DEFECTO)** `Ctrl+Shift+T` nueva pestaña, `Alt+n` cambiar de pestaña), ratón y rueda.
