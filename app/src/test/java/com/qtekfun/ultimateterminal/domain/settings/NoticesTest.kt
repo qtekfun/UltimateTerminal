@@ -33,22 +33,105 @@ class NoticesTest {
     }
 
     @Test
-    fun marksAreDroppedAndTableRowsBecomeOneLine() {
+    fun marksAreDroppedAndEachTableRowBecomesOneItemWithItsDetails() {
         val used = Notices.parse(sample).first { it.title == "Used now" }
 
         assertEquals(
             listOf(
-                "Component · License",
-                "Kotlin, © JetBrains · Apache-2.0",
-                "AndroidX, © AOSP · Apache-2.0"
+                NoticeItem("Kotlin, © JetBrains", "Apache-2.0"),
+                NoticeItem("AndroidX, © AOSP", "Apache-2.0")
             ),
-            used.lines
+            used.items
         )
         assertEquals(
-            listOf("UltimateTerminal is free software under the GPL (see LICENSE)."),
-            Notices.parse(sample).first().lines
+            listOf(NoticeItem("UltimateTerminal is free software under the GPL (see LICENSE).")),
+            Notices.parse(sample).first().items
         )
-        assertEquals(listOf("Something later, soon"), Notices.parse(sample).last().lines)
+        assertEquals(
+            listOf(NoticeItem("Something later, soon")),
+            Notices.parse(sample).last().items
+        )
+    }
+
+    @Test
+    fun theColumnsAfterTheNameAreTheDetailOfTheRow() {
+        val table = """
+            ## Used
+
+            | Component | License | Notes |
+            |---|---|---|
+            | OkHttp, © Square | Apache-2.0 | HTTP client |
+        """.trimIndent()
+
+        assertEquals(
+            listOf(NoticeItem("OkHttp, © Square", "Apache-2.0\nHTTP client")),
+            Notices.parse(table).single().items
+        )
+    }
+
+    @Test
+    fun hardWrappedLinesJoinIntoOneParagraphAndBlankLinesSeparateThem() {
+        val wrapped = """
+            ## Notes
+
+            The color schemes are credited
+            with their copyright lines
+            in the bundled file.
+
+            A second paragraph,
+            also wrapped.
+        """.trimIndent()
+
+        assertEquals(
+            listOf(
+                NoticeItem(
+                    "The color schemes are credited with their copyright lines in the bundled file."
+                ),
+                NoticeItem("A second paragraph, also wrapped.")
+            ),
+            Notices.parse(wrapped).single().items
+        )
+    }
+
+    @Test
+    fun aListItemKeepsItsContinuationLinesAndEachBulletIsItsOwnItem() {
+        val list = """
+            ## Sources
+
+            - **Alpine** minirootfs, from the CDN.
+            - **Debian** built with the tool
+              published as an image.
+        """.trimIndent()
+
+        assertEquals(
+            listOf(
+                NoticeItem("Alpine minirootfs, from the CDN."),
+                NoticeItem("Debian built with the tool published as an image.")
+            ),
+            Notices.parse(list).single().items
+        )
+    }
+
+    @Test
+    fun theMaintenanceSentenceIsDroppedButTheNoticeAroundItStays() {
+        val intro = """
+            It is not affiliated with anyone.
+
+            This file must be updated in the same change that adds
+            a library. Original notices are kept.
+
+            ## Used
+
+            | A | B |
+            |---|---|
+            | Lib | MIT |
+        """.trimIndent()
+
+        val sections = Notices.parse(intro)
+
+        val notice = NoticeItem("It is not affiliated with anyone.")
+        assertEquals(listOf(notice), sections.first().items)
+        assertEquals(listOf(NoticeItem("Lib", "MIT")), sections.last().items)
     }
 
     @Test
@@ -66,7 +149,11 @@ class NoticesTest {
 
         assertTrue(sections.size >= 2, "the file has several sections")
         assertTrue(sections.any { it.title == "Used now" })
-        assertTrue(sections.flatMap { it.lines }.any { "Apache-2.0" in it })
-        assertTrue(sections.flatMap { it.lines }.none { "](" in it || "**" in it })
+        assertTrue(sections.flatMap { it.items }.any { it.detail?.contains("Apache-2.0") == true })
+        val shown = sections.flatMap { it.items }.flatMap { listOfNotNull(it.title, it.detail) }
+        assertTrue(shown.none { "](" in it || "**" in it })
+        assertTrue(shown.none { it.startsWith("This file must be updated") })
+        val titles = sections.flatMap { it.items }.map { it.title }
+        assertTrue(titles.any { it.startsWith("Apache Commons Compress 1.28.0") })
     }
 }
