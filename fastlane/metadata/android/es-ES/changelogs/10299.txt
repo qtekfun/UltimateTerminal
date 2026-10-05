@@ -1,0 +1,1 @@
+Versión 0.1.2. Un botón visible de más opciones para el menú de pestañas nuevas, mantener pulsada una pestaña pide confirmar el cierre, las claves SSH importadas toman el nombre del archivo y ya se puede importar una Nerd Font. Software temprano: el README dice qué está verificado en un dispositivo.

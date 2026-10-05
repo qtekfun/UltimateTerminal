@@ -1,0 +1,1 @@
+Release 0.1.2. A visible More options button for the new-tab menu, long-press a tab to confirm closing it, an imported SSH key is named after its file, and importing a Nerd Font now works. Early software: the README says what is verified on a device.
