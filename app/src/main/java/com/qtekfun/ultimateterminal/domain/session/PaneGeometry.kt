@@ -83,13 +83,33 @@ private fun placeBranch(node: PaneNode.Branch, area: PaneRect, path: DividerPath
     place(node.second, secondArea, path.child(1), out)
 }
 
-/** The size, in cells, each pane's pty has to be told: the pane's area, as T04 does for a window. */
+/**
+ * The size, in cells, each pane's pty has to be told: the pane's area, as T04 does for a window,
+ * less the [headerPx] strip at the top that holds the pane's menu button (see [belowHeader]).
+ */
 fun paneLayouts(
     scene: PaneScene,
     cellWidthPx: Float,
-    cellHeightPx: Int
+    cellHeightPx: Int,
+    headerPx: Int = 0
 ): Map<SessionId, TerminalLayout> = scene.panes.associate { (id, rect) ->
-    id to terminalLayoutFor(rect.width, rect.height, EdgeInsets.NONE, cellWidthPx, cellHeightPx)
+    id to terminalLayoutFor(
+        rect.width,
+        rect.height,
+        EdgeInsets(0, headerPx.coerceAtLeast(0), 0, 0),
+        cellWidthPx,
+        cellHeightPx
+    )
+}
+
+/**
+ * The part of a pane that holds terminal text: [rect] less the header strip, where the menu button
+ * lives so it never covers a line of text. A tab that is split gives every pane the same strip,
+ * focused or not, so moving the keyboard between panes never resizes a pty.
+ */
+fun belowHeader(rect: PaneRect, headerPx: Int): PaneRect {
+    val header = headerPx.coerceIn(0, rect.height)
+    return rect.copy(top = rect.top + header, height = rect.height - header)
 }
 
 /**

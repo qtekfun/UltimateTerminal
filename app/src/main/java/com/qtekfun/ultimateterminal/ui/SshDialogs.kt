@@ -5,87 +5,85 @@ package com.qtekfun.ultimateterminal.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.qtekfun.ultimateterminal.R
+import com.qtekfun.ultimateterminal.domain.ios.SheetDetent
 import com.qtekfun.ultimateterminal.domain.model.Distro
 import com.qtekfun.ultimateterminal.domain.model.SshHost
 import com.qtekfun.ultimateterminal.domain.ssh.SshKeyInfo
 import com.qtekfun.ultimateterminal.domain.ssh.SshKeyType
 import com.qtekfun.ultimateterminal.ssh.SshKeysViewModel
 import com.qtekfun.ultimateterminal.ssh.SshMessage
+import com.qtekfun.ultimateterminal.ui.ios.IosAccessory
+import com.qtekfun.ultimateterminal.ui.ios.IosAction
+import com.qtekfun.ultimateterminal.ui.ios.IosActionRole
+import com.qtekfun.ultimateterminal.ui.ios.IosAlert
+import com.qtekfun.ultimateterminal.ui.ios.IosBottomSheet
+import com.qtekfun.ultimateterminal.ui.ios.IosGlyph
+import com.qtekfun.ultimateterminal.ui.ios.IosListRow
+import com.qtekfun.ultimateterminal.ui.ios.IosProgress
+import com.qtekfun.ultimateterminal.ui.ios.IosSection
+import com.qtekfun.ultimateterminal.ui.ios.IosSheetHeader
+import com.qtekfun.ultimateterminal.ui.ios.IosTextArea
+import com.qtekfun.ultimateterminal.ui.ios.IosTextField
 
-private val MIN_TOUCH = 48.dp
+private val PROGRESS_INSET = 16.dp
 
+/** The result of the last action, as a row that dismisses itself when tapped. */
 @Composable
 internal fun SshMessageBar(message: SshMessage, onDismiss: () -> Unit) {
-    Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(start = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(message.text(), modifier = Modifier.weight(1f))
-            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                Text(stringResource(R.string.msg_dismiss))
-            }
-        }
+    IosSection {
+        IosListRow(
+            title = message.text(),
+            glyph = IosGlyph.INFO,
+            accessory = IosAccessory.Value(stringResource(R.string.msg_dismiss)),
+            showSeparator = false,
+            onClick = onDismiss
+        )
     }
 }
 
+/** Shown while a key is being generated, imported or saved. */
+@Composable
+internal fun BusyBar() {
+    IosSection {
+        IosListRow(title = stringResource(R.string.ssh_busy), showSeparator = false)
+        IosProgress(null, Modifier.padding(horizontal = PROGRESS_INSET, vertical = 8.dp))
+    }
+}
+
+/** An alert with a cancel button and one confirming action, in red when [destructive]. */
 @Composable
 internal fun ConfirmDialog(
     title: String,
     body: String,
     confirm: String,
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    destructive: Boolean = true
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(body) },
-        confirmButton = {
-            TextButton(onClick = onConfirm, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                Text(confirm)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                Text(stringResource(R.string.dialog_cancel))
-            }
-        }
+    val role = if (destructive) IosActionRole.DESTRUCTIVE else IosActionRole.DEFAULT
+    IosAlert(
+        title = title,
+        message = body,
+        actions = listOf(
+            IosAction(stringResource(R.string.dialog_cancel), IosActionRole.CANCEL),
+            IosAction(confirm, role, onConfirm)
+        ),
+        onDismiss = onDismiss
     )
 }
 
@@ -148,22 +146,18 @@ internal fun HostEditDialog(
         mutableStateOf(HostDraft.of(host))
     }
     val title = if (host == null) R.string.ssh_host_add_title else R.string.ssh_host_edit_title
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(title)) },
-        text = { HostFields(draft, keys, distros) { draft = it } },
-        confirmButton = {
-            TextButton(
-                onClick = { onSave(draft.toHost(host?.id ?: 0L)) },
-                modifier = Modifier.heightIn(min = MIN_TOUCH)
-            ) { Text(stringResource(R.string.ssh_save)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                Text(stringResource(R.string.dialog_cancel))
-            }
+    IosBottomSheet(onDismiss = onDismiss, detents = listOf(SheetDetent.LARGE)) {
+        Column(Modifier.imePadding()) {
+            IosSheetHeader(
+                title = stringResource(title),
+                cancelLabel = stringResource(R.string.dialog_cancel),
+                confirmLabel = stringResource(R.string.ssh_save),
+                onCancel = onDismiss,
+                onConfirm = { onSave(draft.toHost(host?.id ?: 0L)) }
+            )
+            HostFields(draft, keys, distros) { draft = it }
         }
-    )
+    }
 }
 
 @Composable
@@ -173,69 +167,64 @@ private fun HostFields(
     distros: List<Distro>,
     onChange: (HostDraft) -> Unit
 ) {
-    Column(
-        modifier = Modifier.verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Field(R.string.ssh_field_name, draft.name) { onChange(draft.copy(name = it)) }
-        Field(R.string.ssh_field_host, draft.address) { onChange(draft.copy(address = it)) }
-        Field(R.string.ssh_field_port, draft.port, KeyboardType.Number) {
-            onChange(draft.copy(port = it.filter(Char::isDigit)))
-        }
-        Field(R.string.ssh_field_user, draft.user) { onChange(draft.copy(user = it)) }
-        val noKey = listOf<Pair<String?, String>>(null to stringResource(R.string.ssh_key_none))
-        Choice(R.string.ssh_field_key, noKey + keys.map { it.alias to it.name }, draft.keyAlias) {
-            onChange(draft.copy(keyAlias = it))
-        }
-        val defaultDistro =
-            listOf<Pair<Long?, String>>(null to stringResource(R.string.ssh_distro_default))
-        val distroChoices = defaultDistro + distros.map { it.id to it.name }
-        Choice(R.string.ssh_field_distro, distroChoices, draft.distroId) {
-            onChange(draft.copy(distroId = it))
-        }
+    IosSection {
+        IosTextField(
+            draft.name,
+            { onChange(draft.copy(name = it)) },
+            stringResource(R.string.ssh_field_name)
+        )
+        IosTextField(
+            draft.address,
+            { onChange(draft.copy(address = it)) },
+            stringResource(R.string.ssh_field_host),
+            keyboardType = KeyboardType.Uri
+        )
+        IosTextField(
+            draft.port,
+            { onChange(draft.copy(port = it.filter(Char::isDigit))) },
+            stringResource(R.string.ssh_field_port),
+            keyboardType = KeyboardType.Number
+        )
+        IosTextField(
+            draft.user,
+            { onChange(draft.copy(user = it)) },
+            stringResource(R.string.ssh_field_user),
+            showSeparator = false
+        )
     }
-}
-
-@Composable
-private fun Field(
-    label: Int,
-    value: String,
-    keyboard: KeyboardType = KeyboardType.Text,
-    onChange: (String) -> Unit
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onChange,
-        label = { Text(stringResource(label)) },
-        singleLine = true,
-        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = keyboard),
-        modifier = Modifier.fillMaxWidth()
+    val noKey = listOf<Pair<String?, String>>(null to stringResource(R.string.ssh_key_none))
+    ChoiceSection(
+        header = stringResource(R.string.ssh_field_key),
+        options = noKey + keys.map { it.alias to it.name },
+        selected = draft.keyAlias,
+        onSelect = { onChange(draft.copy(keyAlias = it)) }
+    )
+    val defaultDistro =
+        listOf<Pair<Long?, String>>(null to stringResource(R.string.ssh_distro_default))
+    ChoiceSection(
+        header = stringResource(R.string.ssh_field_distro),
+        options = defaultDistro + distros.map { it.id to it.name },
+        selected = draft.distroId,
+        onSelect = { onChange(draft.copy(distroId = it)) }
     )
 }
 
-/** A short list of radio choices; the options are few (keys, distros), so no menu is needed. */
+/** A short list of choices with a check on the chosen one; the options are few (keys, distros). */
 @Composable
-private fun <T> Choice(
-    label: Int,
+private fun <T> ChoiceSection(
+    header: String,
     options: List<Pair<T, String>>,
     selected: T,
     onSelect: (T) -> Unit
 ) {
-    Column(modifier = Modifier.selectableGroup()) {
-        Text(stringResource(label), style = MaterialTheme.typography.labelLarge)
-        options.forEach { (value, text) ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = MIN_TOUCH)
-                    .selectable(selected = value == selected, role = Role.RadioButton) {
-                        onSelect(value)
-                    },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                RadioButton(selected = value == selected, onClick = null)
-                Text(text, modifier = Modifier.padding(start = 8.dp))
-            }
+    IosSection(header = header) {
+        options.forEachIndexed { index, (value, text) ->
+            IosListRow(
+                title = text,
+                accessory = if (value == selected) IosAccessory.Check else IosAccessory.None,
+                showSeparator = index != options.lastIndex,
+                onClick = { onSelect(value) }
+            )
         }
     }
 }
@@ -248,33 +237,31 @@ internal fun GenerateKeyDialog(
 ) {
     var name by rememberSaveable { mutableStateOf("") }
     var type by rememberSaveable { mutableStateOf(types.firstOrNull() ?: SshKeyType.RSA) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.ssh_generate_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Field(R.string.ssh_field_name, name) { name = it }
-                Choice(
-                    label = R.string.ssh_field_key,
-                    options = types.map { it to stringResource(typeLabel(it)) },
-                    selected = type,
-                    onSelect = { type = it }
+    IosBottomSheet(onDismiss = onDismiss, detents = listOf(SheetDetent.LARGE)) {
+        Column(Modifier.imePadding()) {
+            IosSheetHeader(
+                title = stringResource(R.string.ssh_generate_title),
+                cancelLabel = stringResource(R.string.dialog_cancel),
+                confirmLabel = stringResource(R.string.ssh_key_generate),
+                onCancel = onDismiss,
+                onConfirm = { onGenerate(name, type) }
+            )
+            IosSection {
+                IosTextField(
+                    name,
+                    { name = it },
+                    stringResource(R.string.ssh_field_name),
+                    showSeparator = false
                 )
             }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                onGenerate(name, type)
-            }, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                Text(stringResource(R.string.ssh_key_generate))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                Text(stringResource(R.string.dialog_cancel))
-            }
+            ChoiceSection(
+                header = stringResource(R.string.ssh_field_key),
+                options = types.map { it to stringResource(typeLabel(it)) },
+                selected = type,
+                onSelect = { type = it }
+            )
         }
-    )
+    }
 }
 
 private fun typeLabel(type: SshKeyType): Int = when (type) {
@@ -300,47 +287,37 @@ internal fun ImportKeyDialog(
             }
         }
     }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.ssh_import_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    stringResource(R.string.ssh_import_hint),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Field(R.string.ssh_field_name, name) { name = it }
-                OutlinedTextField(
+    IosBottomSheet(onDismiss = onDismiss, detents = listOf(SheetDetent.LARGE)) {
+        Column(Modifier.imePadding()) {
+            IosSheetHeader(
+                title = stringResource(R.string.ssh_import_title),
+                cancelLabel = stringResource(R.string.dialog_cancel),
+                confirmLabel = stringResource(R.string.ssh_key_import),
+                onCancel = onDismiss,
+                onConfirm = { onImport(name, text) }
+            )
+            val footer = stringResource(
+                if (unreadable) R.string.ssh_import_unreadable else R.string.ssh_import_hint
+            )
+            IosSection(footer = footer) {
+                IosTextField(name, { name = it }, stringResource(R.string.ssh_field_name))
+                IosTextArea(
                     value = text,
                     onValueChange = { text = it },
-                    label = { Text(stringResource(R.string.ssh_import_field)) },
-                    minLines = 3,
-                    maxLines = 6,
+                    label = stringResource(R.string.ssh_import_field),
                     isError = unreadable,
-                    supportingText = if (unreadable) {
-                        { Text(stringResource(R.string.ssh_import_unreadable)) }
-                    } else {
-                        null
-                    },
-                    modifier = Modifier.fillMaxWidth()
+                    showSeparator = false
                 )
-                TextButton(
-                    onClick = { pick.launch(arrayOf("*/*")) },
-                    modifier = Modifier.heightIn(min = MIN_TOUCH)
-                ) { Text(stringResource(R.string.ssh_import_choose)) }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                onImport(name, text)
-            }, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                Text(stringResource(R.string.ssh_key_import))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                Text(stringResource(R.string.dialog_cancel))
+            IosSection {
+                IosListRow(
+                    title = stringResource(R.string.ssh_import_choose),
+                    glyph = IosGlyph.FOLDER,
+                    accessory = IosAccessory.Chevron,
+                    showSeparator = false,
+                    onClick = { pick.launch(arrayOf("*/*")) }
+                )
             }
         }
-    )
+    }
 }

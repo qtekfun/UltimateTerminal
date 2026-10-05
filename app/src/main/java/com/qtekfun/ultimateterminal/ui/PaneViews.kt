@@ -13,14 +13,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,6 +43,7 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -56,7 +53,6 @@ import com.qtekfun.ultimateterminal.R
 import com.qtekfun.ultimateterminal.domain.model.SplitOrientation
 import com.qtekfun.ultimateterminal.domain.session.Divider
 import com.qtekfun.ultimateterminal.domain.session.FocusDirection
-import com.qtekfun.ultimateterminal.domain.session.PaneArea
 import com.qtekfun.ultimateterminal.domain.session.PaneRect
 import com.qtekfun.ultimateterminal.domain.session.PaneScene
 import com.qtekfun.ultimateterminal.domain.session.SessionId
@@ -77,6 +73,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 /** The thin bar between two panes, and the touch target around it (the 48 dp of accessibility). */
 private val DividerThickness = 4.dp
 private val DividerTouchTarget = 48.dp
+
+/**
+ * The strip at the top of every pane of a split tab. The "⋯" button lives in it, so the menu never
+ * covers a line of text; the pty is told the pane less this strip ([belowHeader]).
+ */
+private val PaneHeaderHeight = 40.dp
 private val PaneMenuButtonSize = 48.dp
 private val PaneMenuCapsuleSize = 30.dp
 private val PaneMenuIconSize = 18.dp
@@ -99,26 +101,15 @@ fun TerminalPanes(
 ) {
     val density = LocalDensity.current
     val dividerPx = with(density) { DividerThickness.roundToPx() }
+    val isSplit by viewModel.panes.isSplit.collectAsStateWithLifecycle()
+    val headerPx = with(density) { if (isSplit) PaneHeaderHeight.roundToPx() else 0 }
     var areaSize by remember { mutableStateOf(IntSize.Zero) }
-    LaunchedEffect(areaSize, painter, dividerPx) {
-        if (areaSize != IntSize.Zero) {
-            viewModel.panes.onArea(
-                PaneArea(
-                    areaSize.width,
-                    areaSize.height,
-                    painter.cellWidth,
-                    painter.cellHeight,
-                    dividerPx
-                )
-            )
-        }
-    }
+    ReportArea(viewModel, painter, areaSize, PaneStrips(dividerPx, headerPx))
     RefusalToasts(viewModel)
     CloseConfirmation(viewModel)
 
     val scene by viewModel.panes.scene.collectAsStateWithLifecycle()
     val focused by viewModel.panes.focused.collectAsStateWithLifecycle()
-    val isSplit by viewModel.panes.isSplit.collectAsStateWithLifecycle()
     // A pane's host is created after the scene names the pane: read again when one appears.
     val hostChanges by viewModel.hostChanges.collectAsStateWithLifecycle()
     Box(modifier.onSizeChangedTo { areaSize = it }) {
@@ -133,7 +124,8 @@ fun TerminalPanes(
                         index + 1,
                         current.panes.size
                     ),
-                    outlined = isSplit && hasKeyboard
+                    outlined = isSplit && hasKeyboard,
+                    header = if (isSplit) PaneHeaderHeight else 0.dp
                 ) {
                     if (hasKeyboard) {
                         TerminalCanvas(viewModel, painter, onTap = { inputView[0]?.showKeyboard() })
@@ -165,11 +157,12 @@ private fun FocusedControls(
     focused: SessionId?
 ) {
     val rect = focused?.let { scene.rectOf(it) } ?: return
-    PanePlacement(rect, description = null, outlined = false) {
-        TerminalOverlays(viewModel, inputView)
-        // A lone pane has nothing to swap, zoom or close, and its split lives in the tab bar's "+"
-        // menu: the button would only sit over the first line of the text (found on a Pixel 8).
-        val isSplit by viewModel.panes.isSplit.collectAsStateWithLifecycle()
+    val isSplit by viewModel.panes.isSplit.collectAsStateWithLifecycle()
+    // A lone pane has nothing to swap, zoom or close, and its split lives in the tab bar's "+"
+    // menu. In a split the button sits in the header strip, above the text and not over it.
+    val header = if (isSplit) PaneHeaderHeight else 0.dp
+    PanePlacement(rect, description = null, outlined = false, header = 0.dp) {
+        Box(Modifier.padding(top = header)) { TerminalOverlays(viewModel, inputView) }
         if (isSplit) PaneMenu(viewModel, scene, focused, Modifier.align(Alignment.TopEnd))
     }
 }
@@ -184,6 +177,7 @@ private fun PanePlacement(
     rect: PaneRect,
     description: String?,
     outlined: Boolean,
+    header: Dp,
     content: @Composable BoxScope.() -> Unit
 ) {
     val density = LocalDensity.current
@@ -194,7 +188,9 @@ private fun PanePlacement(
         .clipToBounds()
     if (description != null) box = box.semantics { contentDescription = description }
     if (outlined) box = box.border(FocusBorder, currentChrome().accent)
-    Box(box, content = content)
+    Box(box) {
+        Box(Modifier.fillMaxSize().padding(top = header), content = content)
+    }
 }
 
 /** A pane that does not have the keyboard: its shell, live, and a tap to give it the keyboard. */
@@ -285,9 +281,9 @@ private class PaneAction(
 )
 
 /**
- * The "⋮" button of the pane that has the keyboard: split, zoom, swap and close. It is only on
- * screen when the tab is split. The touch target is 48 dp and the capsule inside it is smaller, so
- * it covers little of the text under it.
+ * The "⋯" button of the pane that has the keyboard: split, zoom, swap and close. It is only on
+ * screen when the tab is split, in the header strip of the pane ([PaneHeaderHeight]) that no text
+ * uses. The touch target is 48 dp, 8 dp taller than the strip, and the capsule inside is smaller.
  */
 @Composable
 private fun PaneMenu(

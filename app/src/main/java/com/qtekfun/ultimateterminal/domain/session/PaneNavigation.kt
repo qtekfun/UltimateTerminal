@@ -51,18 +51,21 @@ const val MIN_PANE_ROWS = 4
 
 /**
  * Whether a pane of [rect] can be split along [orientation] and leave both halves at least
- * [MIN_PANE_COLUMNS] x [MIN_PANE_ROWS] cells, counting the divider.
+ * [MIN_PANE_COLUMNS] x [MIN_PANE_ROWS] cells of text, counting the divider and the [headerPx]
+ * strip each pane of a split tab carries at its top.
  */
 fun canSplit(
     rect: PaneRect,
     orientation: SplitOrientation,
     cellWidthPx: Float,
     cellHeightPx: Int,
-    dividerPx: Int
+    dividerPx: Int,
+    headerPx: Int = 0
 ): Boolean = when (orientation) {
     SplitOrientation.VERTICAL ->
-        rect.width - dividerPx >= 2 * MIN_PANE_COLUMNS * cellWidthPx
+        rect.width - dividerPx >= 2 * MIN_PANE_COLUMNS * cellWidthPx &&
+            rect.height - headerPx >= MIN_PANE_ROWS * cellHeightPx
 
     SplitOrientation.HORIZONTAL ->
-        rect.height - dividerPx >= 2 * MIN_PANE_ROWS * cellHeightPx
+        rect.height - dividerPx >= 2 * (MIN_PANE_ROWS * cellHeightPx + headerPx)
 }

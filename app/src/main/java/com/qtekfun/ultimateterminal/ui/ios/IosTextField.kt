@@ -3,6 +3,7 @@
 
 package com.qtekfun.ultimateterminal.ui.ios
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -75,6 +76,47 @@ fun IosTextField(
                 keyboardType = if (secure) KeyboardType.Password else keyboardType,
                 autoCorrectEnabled = false
             )
+        )
+    }
+}
+
+/**
+ * A row of a grouped list for text of several lines (a pasted key, say): the [label] above and the
+ * field under it, from the start. It grows to [maxLines] and then scrolls.
+ */
+@Composable
+fun IosTextArea(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    minLines: Int = 3,
+    maxLines: Int = 6,
+    isError: Boolean = false,
+    showSeparator: Boolean = true
+) {
+    val colors = IosTheme.colors
+    Column(
+        modifier
+            .fillMaxWidth()
+            .fieldSeparator(if (showSeparator) IosSpacing.md else null, colors.separator)
+            .padding(horizontal = IosSpacing.md, vertical = IosSpacing.sm)
+            .semantics(mergeDescendants = true) {}
+    ) {
+        IosText(
+            label,
+            style = IosTheme.typography.footnote,
+            color = if (isError) colors.destructive else colors.secondaryLabel
+        )
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth().padding(top = IosSpacing.xs),
+            minLines = minLines,
+            maxLines = maxLines,
+            textStyle = IosTheme.typography.body.copy(color = colors.label),
+            cursorBrush = SolidColor(colors.tint),
+            keyboardOptions = KeyboardOptions(autoCorrectEnabled = false)
         )
     }
 }
