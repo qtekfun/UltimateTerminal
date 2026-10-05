@@ -278,11 +278,19 @@ internal fun ImportKeyDialog(
     var name by rememberSaveable { mutableStateOf("") }
     var text by rememberSaveable { mutableStateOf("") }
     var unreadable by rememberSaveable { mutableStateOf(false) }
+    // The last name we filled in, so a second pick replaces it but never what the user typed.
+    var suggested by rememberSaveable { mutableStateOf("") }
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
-            viewModel.readKeyFile(resolver, uri) { content ->
+            viewModel.readKeyFile(resolver, uri) { content, suggestion ->
                 unreadable = content == null
-                content?.let { text = it }
+                content?.let {
+                    text = it
+                    if (suggestion.isNotEmpty() && (name.isBlank() || name == suggested)) {
+                        name = suggestion
+                        suggested = suggestion
+                    }
+                }
             }
         }
     }

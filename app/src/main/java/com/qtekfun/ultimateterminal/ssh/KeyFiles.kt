@@ -5,6 +5,7 @@ package com.qtekfun.ultimateterminal.ssh
 
 import android.content.ContentResolver
 import android.net.Uri
+import android.provider.OpenableColumns
 
 /** Reads and writes the small key files the user picks with the system file chooser. */
 internal object KeyFiles {
@@ -25,6 +26,14 @@ internal object KeyFiles {
                 size += count
             }
             if (size <= MAX_BYTES) String(buffer, 0, size, Charsets.UTF_8) else null
+        }
+    }.getOrNull()
+
+    /** The file's display name as the provider reports it, or null if it does not say. */
+    fun displayName(resolver: ContentResolver, source: Uri): String? = runCatching {
+        val columns = arrayOf(OpenableColumns.DISPLAY_NAME)
+        resolver.query(source, columns, null, null, null)?.use {
+            if (it.moveToFirst()) it.getString(0) else null
         }
     }.getOrNull()
 

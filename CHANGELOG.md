@@ -10,6 +10,11 @@ and the project uses [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Importing an SSH key from a file suggests the file's name as the key's name (without a `.pem`, `.key` or
+  `.txt` ending; a number is added if the name is taken). You can still change it. Not yet verified on a
+  real device.
+
 ### Fixed
 - Importing a font no longer fails with "missing letters" for every font.
 
