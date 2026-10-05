@@ -41,6 +41,7 @@ import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -117,6 +118,7 @@ fun TabBar(
                     onSelect = { tabs.switchTo(TabSwitch.ById(item.id)) },
                     onRename = { renaming = item },
                     onClose = { tabs.requestClose(item.id) },
+                    onMove = { step -> tabs.move(item.id, item.position - 1 + step) },
                     onDrop = { offset ->
                         tabs.move(item.id, dropTarget(items, item.id, offset, drag))
                     }
@@ -237,6 +239,7 @@ private class TabChipActions(
     val onSelect: () -> Unit,
     val onRename: () -> Unit,
     val onClose: () -> Unit,
+    val onMove: (step: Int) -> Unit,
     val onDrop: (Float) -> Unit
 )
 
@@ -244,7 +247,14 @@ private class TabChipActions(
 private class TabChipBar(val count: Int, val vertical: Boolean, val drag: TabDrag)
 
 /** The texts a screen reader hears for a tab, and for what it can do with it. */
-private class TabSpeech(val description: String, val renameLabel: String, val closeLabel: String)
+private class TabSpeech(
+    val description: String,
+    val renameLabel: String,
+    val closeLabel: String,
+    val selectLabel: String,
+    val moveEarlier: String?,
+    val moveLater: String?
+)
 
 @Composable
 private fun TabChip(item: TabItem, name: String, bar: TabChipBar, actions: TabChipActions) {
@@ -254,7 +264,11 @@ private fun TabChip(item: TabItem, name: String, bar: TabChipBar, actions: TabCh
     val speech = TabSpeech(
         stringResource(R.string.tab_description, name, item.position, bar.count, state),
         stringResource(R.string.tab_rename),
-        stringResource(R.string.tab_close)
+        stringResource(R.string.tab_close),
+        stringResource(R.string.tab_select),
+        // Dragging is the only touch way to reorder, so a screen reader gets the same as actions.
+        if (item.position > 1) stringResource(R.string.tab_move_earlier) else null,
+        if (item.position < bar.count) stringResource(R.string.tab_move_later) else null
     )
     val dragging = bar.drag.id == item.id
     val chip = if (bar.vertical) {
@@ -315,16 +329,31 @@ private fun Modifier.tabSemantics(
     contentDescription = speech.description
     selected = active
     role = Role.Tab
-    customActions = listOf(
-        CustomAccessibilityAction(speech.renameLabel) {
-            actions.onRename()
-            true
-        },
-        CustomAccessibilityAction(speech.closeLabel) {
-            actions.onClose()
-            true
+    // The tap is a raw pointer gesture, which a screen reader cannot trigger: give it a click.
+    onClick(label = speech.selectLabel) {
+        actions.onSelect()
+        true
+    }
+    customActions = buildList {
+        add(
+            CustomAccessibilityAction(speech.renameLabel) {
+                actions.onRename()
+                true
+            }
+        )
+        add(
+            CustomAccessibilityAction(speech.closeLabel) {
+                actions.onClose()
+                true
+            }
+        )
+        speech.moveEarlier?.let {
+            add(CustomAccessibilityAction(it) { actions.onMove(-1).let { true } })
         }
-    )
+        speech.moveLater?.let {
+            add(CustomAccessibilityAction(it) { actions.onMove(1).let { true } })
+        }
+    }
 }
 
 /** Fills a capsule inside the element, [inset] short of its top and bottom, as a pill-shaped tab. */
@@ -378,7 +407,10 @@ private fun TabMenu(name: String, actions: TabChipActions) {
     Box(
         Modifier
             .size(TouchSize)
-            .semantics { contentDescription = label }
+            .semantics {
+                contentDescription = label
+                role = Role.Button
+            }
             .combinedClickable(onClick = { open = true }),
         contentAlignment = Alignment.Center
     ) {
@@ -421,7 +453,10 @@ private fun NewTabButton(
     Box(
         Modifier
             .size(TouchSize)
-            .semantics { contentDescription = label }
+            .semantics {
+                contentDescription = label
+                role = Role.Button
+            }
             .combinedClickable(
                 onClickLabel = label,
                 onClick = onNewTab,

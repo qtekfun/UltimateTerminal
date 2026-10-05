@@ -6,6 +6,8 @@
 <resources>
     <string name="app_name">UltimateTerminal</string>
     <string name="terminal_copy">Copiar</string>
+    <string name="terminal_description">Terminal</string>
+    <string name="terminal_show_keyboard">Mostrar el teclado</string>
     <string name="terminal_session_ended">Sesión terminada (código %1$d). Toca para reiniciar</string>
     <string name="extra_key_esc">Escape</string>
     <string name="extra_key_tab">Tabulador</string>
@@ -95,6 +97,9 @@
     <string name="tab_menu">Opciones de %1$s</string>
     <string name="tab_rename">Renombrar</string>
     <string name="tab_close">Cerrar pestaña</string>
+    <string name="tab_select">Seleccionar</string>
+    <string name="tab_move_earlier">Mover antes</string>
+    <string name="tab_move_later">Mover después</string>
     <string name="tab_state_running">en ejecución</string>
     <string name="tab_state_ended">terminada</string>
     <string name="tab_description">%1$s, pestaña %2$d de %3$d, %4$s</string>
@@ -187,6 +192,8 @@
     <string name="pane_swap_up">Intercambiar con el panel de arriba</string>
     <string name="pane_swap_down">Intercambiar con el panel de abajo</string>
     <string name="pane_divider">Separador de paneles. Arrastra para cambiar el tamaño</string>
+    <string name="pane_divider_back">Mover el separador hacia atrás</string>
+    <string name="pane_divider_forward">Mover el separador hacia delante</string>
     <string name="pane_too_small">No hay espacio suficiente para dividir aquí</string>
     <string name="pane_close_title">¿Cerrar este panel?</string>
     <string name="pane_close_message">Todavía se está ejecutando un programa en él y se detendrá.</string>
@@ -389,8 +396,8 @@
     <string name="settings_keys_add_footer">Las teclas que ya están en una fila no se ofrecen otra vez. Máximo por fila: %1$d. Número máximo de filas: %2$d.</string>
     <string name="settings_keys_none_left">Todas las teclas están en uso</string>
     <string name="settings_keys_full">Las filas están llenas. Quita una tecla para añadir otra.</string>
-    <string name="settings_keys_move_left">Mover a la izquierda</string>
-    <string name="settings_keys_move_right">Mover a la derecha</string>
+    <string name="settings_keys_move_left">Mover antes</string>
+    <string name="settings_keys_move_right">Mover después</string>
     <string name="settings_keys_remove">Quitar</string>
     <string name="settings_keys_reset">Restaurar las teclas por defecto</string>
     <string name="settings_keys_reset_title">¿Restaurar las teclas por defecto?</string>

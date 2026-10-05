@@ -23,7 +23,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 
 private val MinTouch = 48.dp
@@ -35,7 +37,7 @@ internal fun SectionTitle(text: String) {
         text,
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(top = 8.dp)
+        modifier = Modifier.padding(top = 8.dp).semantics { heading() }
     )
 }
 
@@ -92,7 +94,10 @@ internal fun LabeledSlider(
             onValueChange = { dragging = it },
             onValueChangeFinished = { onChange(dragging) },
             valueRange = range,
-            modifier = Modifier.semantics { contentDescription = label }
+            modifier = Modifier.semantics {
+                contentDescription = label
+                stateDescription = valueText
+            }
         )
     }
 }

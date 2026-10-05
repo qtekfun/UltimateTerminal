@@ -40,7 +40,12 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntOffset
@@ -196,9 +201,16 @@ private fun PanePlacement(
 @Composable
 private fun InactivePane(host: TerminalSessionHost?, painter: TerminalPainter, onTap: () -> Unit) {
     val frame by (host?.frame ?: NoFrames).collectAsStateWithLifecycle()
+    val showKeyboard = stringResource(R.string.terminal_show_keyboard)
     Canvas(
         Modifier
             .fillMaxSize()
+            .semantics {
+                onClick(label = showKeyboard) {
+                    onTap()
+                    true
+                }
+            }
             .pointerInput(host) { detectTapGestures { onTap() } }
     ) {
         val emulator = host?.emulator
@@ -227,11 +239,27 @@ private fun DividerHandle(divider: Divider, onDrag: (pointerPx: Float) -> Unit) 
     val origin by rememberUpdatedState(if (vertical) left else top)
     val report by rememberUpdatedState(onDrag)
     val description = stringResource(R.string.pane_divider)
+    val backLabel = stringResource(R.string.pane_divider_back)
+    val forwardLabel = stringResource(R.string.pane_divider_forward)
+    // Dragging is the only touch way to resize, so a screen reader gets two steps as actions.
+    val center = (if (vertical) width else height) / 2f
     Box(
         Modifier
             .offset { IntOffset(left, top) }
             .size(with(density) { width.toDp() }, with(density) { height.toDp() })
-            .semantics { contentDescription = description }
+            .semantics {
+                contentDescription = description
+                customActions = listOf(
+                    CustomAccessibilityAction(backLabel) {
+                        report(origin + center - touchPx)
+                        true
+                    },
+                    CustomAccessibilityAction(forwardLabel) {
+                        report(origin + center + touchPx)
+                        true
+                    }
+                )
+            }
             .pointerInput(divider.path) {
                 detectDragGestures { change, _ ->
                     change.consume()
@@ -277,7 +305,14 @@ private fun PaneMenu(
         Box(
             Modifier
                 .size(PaneMenuButtonSize)
-                .semantics { contentDescription = description }
+                .semantics {
+                    contentDescription = description
+                    role = Role.Button
+                    onClick {
+                        open = true
+                        true
+                    }
+                }
                 .pointerInput(Unit) { detectTapGestures { open = true } },
             contentAlignment = Alignment.Center
         ) {

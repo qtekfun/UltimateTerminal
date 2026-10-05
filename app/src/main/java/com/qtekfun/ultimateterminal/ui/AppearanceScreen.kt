@@ -27,6 +27,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -57,7 +59,7 @@ fun AppearanceScreen(onClose: () -> Unit, viewModel: AppearanceViewModel = viewM
                 Text(
                     stringResource(R.string.appearance_title),
                     style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f).semantics { heading() }
                 )
                 TextButton(onClick = onClose, modifier = Modifier.heightIn(min = MinTouch)) {
                     Text(stringResource(R.string.appearance_close))

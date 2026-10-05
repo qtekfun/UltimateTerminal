@@ -6,6 +6,8 @@
 <resources>
     <string name="app_name">UltimateTerminal</string>
     <string name="terminal_copy">Copy</string>
+    <string name="terminal_description">Terminal</string>
+    <string name="terminal_show_keyboard">Show the keyboard</string>
     <string name="terminal_session_ended">Session ended (exit %1$d). Tap to restart</string>
     <string name="extra_key_esc">Escape</string>
     <string name="extra_key_tab">Tab</string>
@@ -99,6 +101,9 @@
     <string name="tab_menu">Options for %1$s</string>
     <string name="tab_rename">Rename</string>
     <string name="tab_close">Close tab</string>
+    <string name="tab_select">Select</string>
+    <string name="tab_move_earlier">Move earlier</string>
+    <string name="tab_move_later">Move later</string>
     <string name="tab_state_running">running</string>
     <string name="tab_state_ended">ended</string>
     <string name="tab_description">%1$s, tab %2$d of %3$d, %4$s</string>
@@ -191,6 +196,8 @@
     <string name="pane_swap_up">Swap with the pane above</string>
     <string name="pane_swap_down">Swap with the pane below</string>
     <string name="pane_divider">Pane divider. Drag to resize</string>
+    <string name="pane_divider_back">Move the divider back</string>
+    <string name="pane_divider_forward">Move the divider forward</string>
     <string name="pane_too_small">There is not enough room to split here</string>
     <string name="pane_close_title">Close this pane?</string>
     <string name="pane_close_message">A program is still running in it and will be stopped.</string>
@@ -393,8 +400,8 @@
     <string name="settings_keys_add_footer">Keys already in a row are not offered again. Maximum per row: %1$d. Maximum number of rows: %2$d.</string>
     <string name="settings_keys_none_left">All the keys are in use</string>
     <string name="settings_keys_full">The rows are full. Remove a key to add another.</string>
-    <string name="settings_keys_move_left">Move left</string>
-    <string name="settings_keys_move_right">Move right</string>
+    <string name="settings_keys_move_left">Move earlier</string>
+    <string name="settings_keys_move_right">Move later</string>
     <string name="settings_keys_remove">Remove</string>
     <string name="settings_keys_reset">Restore the default keys</string>
     <string name="settings_keys_reset_title">Restore the default keys?</string>
