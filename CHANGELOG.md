@@ -11,9 +11,12 @@ and the project uses [SemVer](https://semver.org/).
 ## [Unreleased]
 
 ### Fixed
-- Closing the sessions with "Exit" in the notification no longer makes the app reopen empty and close again
-  (needing a second tap): the app now starts with one tab of the default distro, and an app kept in recents
-  with no sessions opens one tab when it comes back.
+- "Exit" in the notification now stops the service and removes the notification for good (it could be re-posted
+  as "0 sessions"), and no longer makes the app reopen empty and need a second tap.
+
+### Changed
+- When the last session goes away, by any path (notification "Exit", the last tab closed), the app closes
+  completely, also from recents. Opening it again is a normal start with one tab.
 
 ## [0.1.2] - 2026-10-05
 

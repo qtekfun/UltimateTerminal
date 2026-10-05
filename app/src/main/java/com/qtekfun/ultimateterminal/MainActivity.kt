@@ -29,7 +29,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qtekfun.ultimateterminal.domain.model.AppSettings
@@ -232,26 +231,25 @@ class MainActivity : ComponentActivity() {
         settingsRepository.update { it.copy(terminalFontSizeSp = size) }
 
     /**
-     * Never zero tabs on screen (RF-13b, D-NOTIF-1): the last tab closed while the screen is in
-     * front closes the app; sessions that vanished while it was stopped (the notification's Exit)
-     * are not acted on there, and the next resume opens a fresh tab of the default distro.
+     * A stale screen never shows an empty app (RF-13b, D-NOTIF-1). The task is normally removed by
+     * [SessionManager] when the last session goes; this covers an activity that outlived it, which
+     * finishes itself when it comes back or sees the sessions go, and never opens a tab on its own.
      */
     @Composable
     private fun FinishWithSessions(count: Int) {
-        val lifecycle = LocalLifecycleOwner.current.lifecycle
         var hadSessions by remember { mutableStateOf(false) }
         LaunchedEffect(count) {
-            val resumed = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
-            when (StartupTabRule.onSessionsChanged(count, hadSessions, resumed)) {
-                StartupTabRule.Action.FINISH -> finishAndRemoveTask()
-                else -> Unit
+            if (StartupTabRule.onSessionsChanged(count, hadSessions) ==
+                StartupTabRule.Action.FINISH
+            ) {
+                finishAndRemoveTask()
             }
             hadSessions = count > 0
         }
         LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-            val action = StartupTabRule.onResume(sessionManager.state.value.items.size)
-            if (action == StartupTabRule.Action.OPEN_DEFAULT_TAB) {
-                sessionManager.newDefaultSession(onlyIfEmpty = true)
+            val count = sessionManager.state.value.items.size
+            if (StartupTabRule.onResume(count, hadSessions) == StartupTabRule.Action.FINISH) {
+                finishAndRemoveTask()
             }
         }
     }

@@ -8,36 +8,29 @@ import org.junit.jupiter.api.Test
 
 class StartupTabRuleTest {
     @Test
-    fun resumingWithNoSessionOpensTheDefaultTab() {
-        assertEquals(StartupTabRule.Action.OPEN_DEFAULT_TAB, StartupTabRule.onResume(0))
+    fun aStaleScreenThatComesBackWithNoSessionsFinishes() {
+        assertEquals(StartupTabRule.Action.FINISH, StartupTabRule.onResume(0, hadSessions = true))
+    }
+
+    @Test
+    fun aColdStartWithNoSessionYetDoesNotFinish() {
+        assertEquals(StartupTabRule.Action.NONE, StartupTabRule.onResume(0, hadSessions = false))
+        assertEquals(
+            StartupTabRule.Action.NONE,
+            StartupTabRule.onSessionsChanged(0, hadSessions = false)
+        )
     }
 
     @Test
     fun resumingWithSessionsDoesNothing() {
-        assertEquals(StartupTabRule.Action.NONE, StartupTabRule.onResume(2))
+        assertEquals(StartupTabRule.Action.NONE, StartupTabRule.onResume(2, hadSessions = true))
     }
 
     @Test
-    fun theLastTabClosedInFrontClosesTheApp() {
+    fun reachingZeroAfterHavingSessionsFinishes() {
         assertEquals(
             StartupTabRule.Action.FINISH,
-            StartupTabRule.onSessionsChanged(0, hadSessions = true, resumed = true)
-        )
-    }
-
-    @Test
-    fun sessionsGoneWhileNotResumedDoNotFinishTheScreen() {
-        assertEquals(
-            StartupTabRule.Action.NONE,
-            StartupTabRule.onSessionsChanged(0, hadSessions = true, resumed = false)
-        )
-    }
-
-    @Test
-    fun noSessionsFromTheStartDoNotFinishTheScreen() {
-        assertEquals(
-            StartupTabRule.Action.NONE,
-            StartupTabRule.onSessionsChanged(0, hadSessions = false, resumed = true)
+            StartupTabRule.onSessionsChanged(0, hadSessions = true)
         )
     }
 
@@ -45,7 +38,7 @@ class StartupTabRuleTest {
     fun remainingSessionsNeverFinishTheScreen() {
         assertEquals(
             StartupTabRule.Action.NONE,
-            StartupTabRule.onSessionsChanged(1, hadSessions = true, resumed = true)
+            StartupTabRule.onSessionsChanged(1, hadSessions = true)
         )
     }
 }

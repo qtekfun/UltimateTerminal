@@ -62,7 +62,8 @@ private class FakeService : ServiceControl {
 class SessionControllerTest {
     private val factory = FakeFactory()
     private val service = FakeService()
-    private val controller = SessionController(factory, service)
+    private var emptied = 0
+    private val controller = SessionController(factory, service, onEmpty = { emptied++ })
     private lateinit var racing: SessionController
     private val big = TerminalLayout(GridSize(200, 50), 9, 18)
 
@@ -151,6 +152,38 @@ class SessionControllerTest {
         assertTrue(controller.state.value.items.isEmpty())
         assertEquals(1, factory.handles.getValue(first).stopped)
         assertEquals(listOf(true, false, false), service.calls)
+    }
+
+    @Test
+    fun theLastTabClosedStopsTheServiceAndRequestsTheTaskToClose() {
+        val first = controller.newSession()
+        val second = controller.newSession()
+
+        controller.close(first)
+        assertEquals(0, emptied)
+        controller.close(second)
+
+        assertEquals(1, emptied)
+        assertEquals(listOf(true, false), service.calls)
+    }
+
+    @Test
+    fun anEndedShellStaysListedSoTheAppStaysOpen() {
+        val id = controller.newSession()
+
+        factory.shellEnds(id, 0)
+
+        assertEquals(0, emptied)
+    }
+
+    @Test
+    fun shutdownAllRequestsTheTaskToCloseOnce() {
+        controller.newSession()
+        controller.newSession()
+
+        controller.shutdownAll()
+
+        assertEquals(1, emptied)
     }
 
     @Test

@@ -4,25 +4,18 @@
 package com.qtekfun.ultimateterminal.domain.session
 
 /**
- * What the screen does when there are no sessions (SPEC RF-13b): a terminal screen with zero tabs
- * must never be reachable, whichever way the last session went away.
+ * What the screen does when there are no sessions (SPEC RF-13b): the app closes when the last
+ * session goes, so a screen with zero tabs is never left open. A cold start (no session yet, none
+ * ever seen by this screen) is not that case: the first layout opens the first tab (RF-13).
  */
 object StartupTabRule {
-    enum class Action { NONE, OPEN_DEFAULT_TAB, FINISH }
+    enum class Action { NONE, FINISH }
 
-    /**
-     * The screen came to the foreground (also a cold start). With no session, a tab of the default
-     * distro opens by itself; this covers an activity kept in recents after the sessions were closed
-     * from the notification, while it was stopped and could not react.
-     */
-    fun onResume(sessionCount: Int): Action =
-        if (sessionCount == 0) Action.OPEN_DEFAULT_TAB else Action.NONE
+    /** The screen came back: one that saw sessions and now finds none is stale and finishes. */
+    fun onResume(sessionCount: Int, hadSessions: Boolean): Action =
+        if (sessionCount == 0 && hadSessions) Action.FINISH else Action.NONE
 
-    /**
-     * The number of sessions changed. The user closing the last tab while looking at the screen
-     * closes the app, as before (the task is removed, so the next launch is a cold start). Anything
-     * seen while the screen is not resumed does not finish it: the next resume opens a fresh tab.
-     */
-    fun onSessionsChanged(sessionCount: Int, hadSessions: Boolean, resumed: Boolean): Action =
-        if (sessionCount == 0 && hadSessions && resumed) Action.FINISH else Action.NONE
+    /** The number of sessions changed: reaching zero after having had some finishes the screen. */
+    fun onSessionsChanged(sessionCount: Int, hadSessions: Boolean): Action =
+        if (sessionCount == 0 && hadSessions) Action.FINISH else Action.NONE
 }

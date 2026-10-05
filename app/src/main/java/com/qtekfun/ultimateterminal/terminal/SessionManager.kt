@@ -52,7 +52,11 @@ class SessionManager @Inject constructor(
         // Read when a shell starts, so a change in Settings reaches the tabs opened afterwards.
         { ScrollbackChoices.forEmulator(settings.observe().first().defaultScrollbackLines) }
     )
-    private val controller: SessionController = SessionController(factory, ServiceLauncher(context))
+    private val controller: SessionController = SessionController(
+        factory,
+        ServiceLauncher(context),
+        onEmpty = { AppTaskFinisher(context).finishAll() }
+    )
 
     val state: StateFlow<Sessions> get() = controller.state
 
@@ -102,7 +106,7 @@ class SessionManager @Inject constructor(
 
     fun close(id: SessionId) = controller.close(id)
 
-    /** Ends every shell and stops the foreground service: the one shutdown path (D-NOTIF-1). */
+    /** Ends every shell, stops the service and removes the task: the one shutdown path (D-NOTIF-1). */
     fun shutdownAll() = controller.shutdownAll()
 
     fun onLayout(layout: TerminalLayout) = controller.onLayout(layout)
@@ -118,7 +122,8 @@ class SessionManager @Inject constructor(
      */
     fun restartActive() {
         val ended = controller.state.value.active ?: return
-        controller.close(ended.id)
+        // The new shell first: closing the only tab would close the app (RF-13b).
         controller.newSession(ended.distroId)
+        controller.close(ended.id)
     }
 }
