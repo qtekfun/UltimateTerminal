@@ -9,7 +9,8 @@ set -euo pipefail
 
 REPO="${UT_REPO:-qtekfun/UltimateTerminal}"
 ALIAS="ultimateterminal"
-KEYSTORE="${1:-$HOME/ultimateterminal-release.jks}"
+KEYSTORE="${1:-$HOME/keys/ultimateterminal-release.jks}"
+mkdir -p "$(dirname "$KEYSTORE")"
 
 for tool in keytool gh base64; do
   command -v "$tool" >/dev/null || { echo "Missing tool: $tool" >&2; exit 1; }
@@ -28,6 +29,7 @@ keytool -genkeypair -keystore "$KEYSTORE" -alias "$ALIAS" -keyalg RSA -keysize 4
   -validity 10000 -dname "CN=UltimateTerminal, O=qtekfun" \
   -storepass:env UT_STOREPASS -keypass:env UT_STOREPASS
 
+chmod 600 "$KEYSTORE"
 base64 -w0 "$KEYSTORE" | gh secret set UT_KEYSTORE_BASE64 --repo "$REPO"
 printf '%s' "$UT_STOREPASS" | gh secret set UT_KEYSTORE_PASSWORD --repo "$REPO"
 printf '%s' "$ALIAS" | gh secret set UT_KEY_ALIAS --repo "$REPO"
