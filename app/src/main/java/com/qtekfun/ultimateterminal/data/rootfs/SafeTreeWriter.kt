@@ -3,6 +3,7 @@
 
 package com.qtekfun.ultimateterminal.data.rootfs
 
+import com.qtekfun.ultimateterminal.data.storage.OwnerAccess
 import com.qtekfun.ultimateterminal.domain.distro.ExtractionError
 import java.io.IOException
 import java.io.InputStream
@@ -11,7 +12,6 @@ import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
-import java.nio.file.attribute.PosixFilePermission
 
 /** Thrown for an archive that must be refused; the extractor turns it into an [ExtractionError]. */
 internal class ExtractionFailure(val error: ExtractionError) :
@@ -128,45 +128,26 @@ internal class SafeTreeWriter(private val root: Path, private val maxPathLength:
                     out.write(buffer, 0, read)
                 }
             }
-        Files.setPosixFilePermissions(path, FileModes.permissionsOf(mode))
+        // The nine rwx bits as the archive has them (setuid, setgid and sticky are dropped, D-T07-4).
+        // Even a mode 000 file stays as it is: the app's own reads go through OwnerAccess.
+        OwnerAccess.setMode(path, mode and RWX_BITS)
     }
 
-    /** Directories keep their modes only at the end, so a read-only one cannot block its children. */
+    /**
+     * Directories get their modes only at the end, so a read-only one cannot block its children,
+     * and always with the owner's rwx added: the app must be able to move, list and delete them.
+     */
     fun finish() {
         directoryModes.asReversed().forEach { (path, mode) ->
-            Files.setPosixFilePermissions(path, FileModes.permissionsOf(mode) + FileModes.OWNER_ALL)
+            OwnerAccess.setMode(path, (mode and RWX_BITS) or OWNER_RWX)
         }
     }
 
     private companion object {
         const val COPY_BUFFER = 64 * 1024
+        const val OWNER_RWX = 0b111_000_000
+        const val RWX_BITS = 0b111_111_111
     }
-}
-
-/** Turns the mode of a tar entry into permissions the app can apply without being root. */
-internal object FileModes {
-    val OWNER_ALL = setOf(
-        PosixFilePermission.OWNER_READ,
-        PosixFilePermission.OWNER_WRITE,
-        PosixFilePermission.OWNER_EXECUTE
-    )
-
-    /** From the lowest bit up: others x, w, r, then group, then owner. */
-    private val BITS = listOf(
-        PosixFilePermission.OTHERS_EXECUTE,
-        PosixFilePermission.OTHERS_WRITE,
-        PosixFilePermission.OTHERS_READ,
-        PosixFilePermission.GROUP_EXECUTE,
-        PosixFilePermission.GROUP_WRITE,
-        PosixFilePermission.GROUP_READ,
-        PosixFilePermission.OWNER_EXECUTE,
-        PosixFilePermission.OWNER_WRITE,
-        PosixFilePermission.OWNER_READ
-    )
-
-    /** The nine rwx bits of a tar mode; the setuid, setgid and sticky bits are dropped. */
-    fun permissionsOf(mode: Int): Set<PosixFilePermission> =
-        BITS.filterIndexed { bit, _ -> mode and (1 shl bit) != 0 }.toSet()
 }
 
 /** Stateless checks shared by the writer's entry types. */

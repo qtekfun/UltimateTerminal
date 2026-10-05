@@ -6,14 +6,9 @@ package com.qtekfun.ultimateterminal.data.storage
 import com.qtekfun.ultimateterminal.domain.DomainError
 import com.qtekfun.ultimateterminal.domain.Outcome
 import com.qtekfun.ultimateterminal.domain.model.FsPath
-import java.io.IOException
-import java.nio.file.FileVisitResult
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.SimpleFileVisitor
-import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.attribute.PosixFilePermission
 
 /**
  * Path resolution and walks of whole trees. None of them follows a symbolic link: a link is copied,
@@ -21,11 +16,6 @@ import java.nio.file.attribute.PosixFilePermission
  */
 internal object FileTrees {
     private const val SEPARATOR = '/'
-    private val ownerAll = setOf(
-        PosixFilePermission.OWNER_READ,
-        PosixFilePermission.OWNER_WRITE,
-        PosixFilePermission.OWNER_EXECUTE
-    )
 
     /** The location of [path] under [root], refusing it if a symbolic link lies on the way. */
     fun resolveInside(root: Path, path: FsPath): Outcome<Path> {
@@ -45,82 +35,79 @@ internal object FileTrees {
      * Special files (sockets, pipes, devices) are skipped.
      */
     fun copy(source: Path, destination: Path) {
-        Files.walkFileTree(
+        val modes = HashMap<Path, Int>()
+        TreeWalker.walk(
             source,
-            object : SimpleFileVisitor<Path>() {
-                override fun preVisitDirectory(
-                    dir: Path,
-                    attrs: BasicFileAttributes
-                ): FileVisitResult {
+            object : TreeVisitor {
+                override fun enterDirectory(dir: Path, attrs: BasicFileAttributes) {
                     Files.createDirectory(destination.resolve(source.relativize(dir).toString()))
-                    return FileVisitResult.CONTINUE
+                    modes[dir] = OwnerAccess.modeOf(dir)
                 }
 
-                override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+                override fun visitFile(file: Path, attrs: BasicFileAttributes) {
                     val copy = destination.resolve(source.relativize(file).toString())
                     when {
                         attrs.isSymbolicLink ->
                             Files.createSymbolicLink(copy, Files.readSymbolicLink(file))
 
-                        attrs.isRegularFile ->
-                            Files.copy(file, copy, StandardCopyOption.COPY_ATTRIBUTES)
+                        attrs.isRegularFile -> copyRegular(file, copy)
                     }
-                    return FileVisitResult.CONTINUE
                 }
 
                 // Attributes go on last: a read-only directory must stay writable while it is filled.
-                override fun postVisitDirectory(dir: Path, exc: IOException?): FileVisitResult {
-                    if (exc != null) throw exc
+                override fun leaveDirectory(dir: Path) {
                     val copy = destination.resolve(source.relativize(dir).toString())
-                    runCatching {
-                        Files.setPosixFilePermissions(copy, Files.getPosixFilePermissions(dir))
-                    }
+                    // The time first: the mode may leave nobody able to open the directory.
                     Files.setLastModifiedTime(copy, Files.getLastModifiedTime(dir))
-                    return FileVisitResult.CONTINUE
+                    runCatching { OwnerAccess.setMode(copy, modes.getValue(dir)) }
                 }
             }
         )
     }
 
-    /** Deletes [target] and everything under it, even inside read-only directories. */
+    /**
+     * Copies one regular file with its mode, also when the app cannot read it (a mode 000 file):
+     * the source is opened for its owner just while it is copied, and the copy gets the original.
+     */
+    private fun copyRegular(file: Path, copy: Path) {
+        val mode = OwnerAccess.modeOf(file)
+        OwnerAccess.reading(file) { input -> Files.copy(input, copy) }
+        Files.setLastModifiedTime(copy, Files.getLastModifiedTime(file))
+        OwnerAccess.setMode(copy, mode)
+    }
+
+    /** Deletes [target] and everything under it, even inside read-only or closed directories. */
     fun delete(target: Path) {
-        Files.walkFileTree(
+        // Walked in order, so a directory is emptied before it is removed.
+        TreeWalker.walk(
             target,
-            object : SimpleFileVisitor<Path>() {
-                // A root filesystem has read-only directories; deleting inside one needs write access.
-                override fun preVisitDirectory(
-                    dir: Path,
-                    attrs: BasicFileAttributes
-                ): FileVisitResult {
-                    runCatching { Files.setPosixFilePermissions(dir, ownerAll) }
-                    return FileVisitResult.CONTINUE
-                }
-
-                override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+            object : TreeVisitor {
+                override fun visitFile(file: Path, attrs: BasicFileAttributes) {
                     Files.delete(file)
-                    return FileVisitResult.CONTINUE
                 }
 
-                override fun postVisitDirectory(dir: Path, exc: IOException?): FileVisitResult {
-                    if (exc != null) throw exc
+                override fun leaveDirectory(dir: Path) {
                     Files.delete(dir)
-                    return FileVisitResult.CONTINUE
                 }
-            }
+            },
+            TreeWalker.Purpose.DELETE
         )
     }
 
-    /** Total size in bytes of the regular files under [target]. */
+    /**
+     * Total size in bytes of the regular files under [target]. What cannot be listed (a directory
+     * without permissions) is left out: a size is an estimate, not a reason to fail.
+     */
     fun size(target: Path): Long {
         var total = 0L
-        Files.walkFileTree(
+        TreeWalker.walk(
             target,
-            object : SimpleFileVisitor<Path>() {
-                override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+            object : TreeVisitor {
+                override fun visitFile(file: Path, attrs: BasicFileAttributes) {
                     if (attrs.isRegularFile) total += attrs.size()
-                    return FileVisitResult.CONTINUE
                 }
-            }
+            },
+            skipUnreadable = true
         )
         return total
     }
