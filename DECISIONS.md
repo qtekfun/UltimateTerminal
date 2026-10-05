@@ -2785,3 +2785,7 @@ Con tests en el anfitrión (JVM): modos, enlaces (absolutos, relativos, rotos), 
 
 ### D-REL-5 · 2026-10-05 · 0.1.1
 - A petición del usuario ("tan pronto tengas todo saca una release y vemos de probarla en el móvil real") se publica la `0.1.1` (versionCode 10199) con la barra lateral dinámica (T26) y sus correcciones, el tipo de teclado, el teclado que no tapa los campos y las copias de seguridad con archivos que solo lee root. Varias correcciones están probadas en el ordenador y **sin verificar aún en un móvil real**; el registro dice cuáles. La receta de F-Droid se actualiza a `0.1.1`/10199 (la huella no cambia).
+
+### Decimotercera ronda (móvil real del usuario, 2026-10-05, `0.1.1`): exportación verificada
+- El usuario confirma que **la exportación de la copia de seguridad ya funciona** en su móvil con la `0.1.1` (antes fallaba con "no se puede leer /data/user/0/…" por archivos que solo lee root: D-BAK-1..3). Sin detalles de la distro ni del tamaño.
+- **Pendiente de verificar (D-BAK-6):** copiar el archivo a un PC o USB, instalar en un móvil nuevo (o desinstalar/instalar), restaurar desde el asistente inicial y comprobar que distros, usuario, perfiles, layouts, atajos y ajustes vuelven y que la distro predeterminada se abre sola.
