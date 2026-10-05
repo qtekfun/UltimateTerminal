@@ -50,6 +50,13 @@ class TerminalInputView(context: Context) : View(context) {
         context.getSystemService(InputMethodManager::class.java)?.showSoftInput(this, 0)
     }
 
+    /** Drops the keyboard focus and hides the soft keyboard, for when another screen covers the terminal. */
+    fun hideKeyboard() {
+        clearFocus()
+        context.getSystemService(InputMethodManager::class.java)
+            ?.hideSoftInputFromWindow(windowToken, 0)
+    }
+
     override fun onCheckIsTextEditor(): Boolean = true
 
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection {
@@ -63,8 +70,10 @@ class TerminalInputView(context: Context) : View(context) {
         return TerminalInputConnection()
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean =
-        sink?.onKey(keyInputOf(event)) ?: super.onKeyDown(keyCode, event)
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (SystemKeys.isSystemKey(keyCode)) return super.onKeyDown(keyCode, event)
+        return sink?.onKey(keyInputOf(event)) ?: super.onKeyDown(keyCode, event)
+    }
 
     private inner class TerminalInputConnection : BaseInputConnection(this, false) {
         override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean {
@@ -91,9 +100,10 @@ class TerminalInputView(context: Context) : View(context) {
             return true
         }
 
-        override fun sendKeyEvent(event: KeyEvent): Boolean {
-            if (event.action != KeyEvent.ACTION_DOWN) return true
-            return sink?.onKey(keyInputOf(event)) ?: false
+        override fun sendKeyEvent(event: KeyEvent): Boolean = when {
+            SystemKeys.isSystemKey(event.keyCode) -> false
+            event.action != KeyEvent.ACTION_DOWN -> true
+            else -> sink?.onKey(keyInputOf(event)) ?: false
         }
     }
 
