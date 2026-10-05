@@ -15,12 +15,14 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Drives the real MainActivity with UI Automator: Back from Settings returns to the terminal, and
+ * Drives the real MainActivity with UI Automator (skipped when the first-run setup shows
+ * instead): Back from Settings returns to the terminal, and
  * the Profiles and Keyboard shortcuts screens (and the sheets they open) do not crash. Labels come
  * from the app's own string resources, so the tests run in any language. Nothing here changes
  * data: it only opens and closes screens (the profile editor is never saved).
@@ -37,6 +39,12 @@ class MainActivityLaunchTest {
     fun launch() {
         device.wakeUp()
         scenario = ActivityScenario.launch(MainActivity::class.java)
+        // On a device with no distro the first-run setup (RF-15) is shown instead of a terminal:
+        // these tests need the terminal, so they are skipped there, not failed.
+        Assume.assumeFalse(
+            "the first-run setup is showing: this device has no distro",
+            device.wait(Until.hasObject(text(R.string.setup_skip)), SETUP_WAIT_MS)
+        )
         // Android 13+ may ask for the notification permission when the first session starts.
         device.wait(Until.findObject(By.res(Pattern.compile(".*permission_deny_button"))), 2_000)
             ?.click()
@@ -124,6 +132,7 @@ class MainActivityLaunchTest {
     private companion object {
         const val WAIT_MS = 10_000L
         const val PROMPT_WAIT_MS = 3_000L
+        const val SETUP_WAIT_MS = 2_000L
         const val MAX_BACKS = 6
         const val BACK_PAUSE_MS = 400L
     }

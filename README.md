@@ -20,6 +20,9 @@ been checked.
   download checked by SHA-256, and open it in a tab (proot emulates root). List, rename, duplicate and
   delete them; pick a default one, which opens when the app starts, and change a distro's default user
   from its action sheet. Fedora comes as a `tar.xz` image and has no 32-bit ARM build.
+- **First-run setup:** with no distro installed, the app opens a welcome screen instead of an Android
+  shell: pick a distribution (Alpine, the smallest, is preselected), install it or restore a backup,
+  and the first tab opens it. A small "skip" keeps the Android shell for that session only.
 - **Non-root users:** a user you choose that does not exist in the distro is created automatically
   (no `su` needed), and the shell runs as that user.
 - **Terminal:** a real PTY, 256-colour and true-colour emulation (Termux's emulator), scrollback,
@@ -63,6 +66,7 @@ tablet** (Android 12, 2800x1840). Nothing was run on any other device.
 | `apk add` over the network; `ssh`, `python3` and `nmap` in that tab; `free` and `uptime` | yes (Pixel 8) | |
 | Install **Fedora** from the app (63 MB download, 195 MB extracted) and `dnf install` under proot | yes (Pixel 8) | |
 | Starting the app opens the default distribution | yes (Pixel 8) | |
+| First-run setup screen when there is no distro (install, restore, skip) | | yes (host tests only) |
 | Non-root user created automatically (Alpine: `ops`, uid 1000, `/home/ops`; Fedora: prompt `[ops@localhost ~]$`) | yes (Pixel 8) | |
 | New tab drawn at once and named after its distro | yes (Pixel 8) | |
 | Split panes (right), focus border, the pane menu button in its own strip | yes (Pixel 8) | |

@@ -223,7 +223,7 @@ private fun DeleteAlert(name: String, onConfirm: () -> Unit, onDismiss: () -> Un
 }
 
 @Composable
-private fun InstallProgress(install: InstallUiState, onCancel: () -> Unit) {
+internal fun InstallProgress(install: InstallUiState, onCancel: () -> Unit) {
     IosSection {
         IosListRow(
             title = stringResource(R.string.install_progress_for, install.name),
@@ -242,7 +242,7 @@ private fun InstallProgress(install: InstallUiState, onCancel: () -> Unit) {
 private val PROGRESS_INSET = 16.dp
 
 @Composable
-private fun MessageRow(message: DistroMessage, onDismiss: () -> Unit) {
+internal fun MessageRow(message: DistroMessage, onDismiss: () -> Unit) {
     IosSection {
         IosListRow(
             title = messageText(message),
