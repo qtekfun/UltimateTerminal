@@ -1,0 +1,1 @@
+Third pre-release (0.1.0-rc.3). Adds a first-run setup: with no distro installed the app now opens a welcome screen to install one or restore a backup. Early software: tried on a Pixel 8 and, for resizing, on one tablet; the README says what is verified.
