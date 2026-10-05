@@ -21,6 +21,9 @@ been checked.
 - **Terminal:** a real PTY, 256-colour and true-colour emulation (Termux's emulator), scrollback,
   selection, pinch zoom, and a terminal that resizes with the window, the keyboard and rotation.
 - **Tabs and panes:** several tabs, and split panes inside a tab.
+- **Profiles, layouts and broadcast (Terminator-style):** named profiles (distro, user, scrollback,
+  start-up command), saved pane layouts that reopen as a tab, typing in several panes at once with a
+  red indicator, and shortcuts you can change. Only tested on a computer so far.
 - **Input:** an extra-keys row (Esc, Tab, Ctrl, Alt, arrows and more) that shows only while the on-screen
   keyboard is up, sticky Ctrl/Alt, hardware-keyboard shortcuts.
 - **SSH:** saved hosts that open a tab already running `ssh`, and SSH keys you can generate, import and
@@ -50,6 +53,7 @@ on a Pixel 8.
 | Starting the app opens the default distribution | yes | |
 | Install Debian or Ubuntu | | yes (index and download logic; never run on a device) |
 | Split panes, tab reordering, shortcuts, pinch zoom, selection gestures | | yes |
+| Profiles, saved layouts, typing in several panes, editing shortcuts | | yes |
 | Theme, OLED mode, schemes, custom fonts | | yes |
 | SSH hosts and keys with the real Keystore, running `ssh` to a real server | | yes (OpenSSH key format checked against the real `ssh-keygen` on a computer) |
 | Backups: export and restore with the system file picker | | yes |
@@ -66,8 +70,7 @@ Every decision, and everything still to be validated, is written in [`DECISIONS.
 
 ## What is not there yet
 
-Saved layouts and profiles (the Terminator-style part), an app-wide settings screen (the settings that
-exist live in their own screens), the iOS-style redesign, accessibility and performance work, UI
+The iOS-style redesign, accessibility and performance work, UI
 tests on devices, and publication on F-Droid. Backups are gzip-compressed rather than `.tar.zst` as
 the spec first asked, because the Zstandard libraries for Java ship precompiled binaries that F-Droid
 does not accept. The full list and the order are in [`PLAN.md`](PLAN.md) and [`SPEC.md`](SPEC.md).

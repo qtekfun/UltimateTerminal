@@ -4,7 +4,7 @@ UltimateTerminal es una terminal para Android pensada para quien mantiene servid
 
 <b>Qué hace</b>
 • Instala Debian, Ubuntu o Alpine Linux desde sus mirrors oficiales, comprobando la descarga con SHA-256, y la abre en una pestaña con un shell de root. Dentro funcionan apt o apk, ssh, nmap y python. Alpine es la que se ha probado en un dispositivo; Debian y Ubuntu, solo en un ordenador
-• Varias pestañas y paneles divididos
+• Varias pestañas y paneles divididos, perfiles, layouts de paneles guardados, escribir en varios paneles a la vez y atajos que puedes cambiar
 • Una fila de teclas extra (Esc, Tab, Ctrl, Alt, flechas) que se muestra mientras el teclado está abierto, atajos de teclado físico y zoom con pellizco
 • Un terminal que se redimensiona con la ventana, el teclado, la pantalla dividida y la rotación
 • Hosts SSH guardados y claves SSH que puedes generar, importar y exportar; las claves se cifran con el Keystore de Android
@@ -13,7 +13,7 @@ UltimateTerminal es una terminal para Android pensada para quien mantiene servid
 • Apariencia: esquemas de color, un modo OLED de negro puro, una fuente monoespaciada incluida o tu propio archivo de fuente
 
 <b>Todavía no</b>
-Layouts y perfiles guardados, una pantalla de ajustes general, el rediseño al estilo iOS, y el trabajo de accesibilidad y rendimiento.
+El rediseño al estilo iOS, y el trabajo de accesibilidad y rendimiento.
 
 <b>Por qué no está en Google Play</b>
 Para ejecutar programas desde su propio almacenamiento la app apunta a Android 9 (API 28), que Google Play ya no acepta. Eso es lo que permite ejecutar distribuciones sin root.

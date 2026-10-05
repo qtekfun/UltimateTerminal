@@ -100,6 +100,7 @@ Terminal para Android pensada para **mantenedores de servidores** y sucesora esp
 - Dividir un panel en horizontal o vertical, redimensionar arrastrando los separadores y reordenar paneles.
 - **Atajos totalmente configurables** (dividir, cerrar, cambiar de panel, pantalla completa de un panel, etc.).
 - **Emitir a varios paneles** (**(DEFECTO)**): lo escrito en un panel se envía a todos los del grupo, útil para administrar varios servidores.
+- *Estado (T12b):* del perfil, hoy se aplican por panel la distro, el usuario, el scrollback y el comando inicial; el esquema, la fuente y el tamaño se guardan pero aún no se aplican por panel (D-T12b-9). Los números de pestaña (`Alt+1` a `9`) no se pueden reasignar todavía.
 - **Criterios:** un layout guardado se restaura idéntico (estructura, perfiles y comandos); los atajos y perfiles se incluyen en la copia de configuración (RF-06).
 
 ### RF-11 Ajustes e internacionalización

@@ -21,6 +21,9 @@ What is verified on a device and what is only tested on a computer is in the REA
 - Linux distributions through proot (built from source for arm64, armv7 and x86_64): install Debian,
   Ubuntu or Alpine from their official mirrors with SHA-256 checks, open them in a tab, list, rename,
   duplicate and delete them, choose a default one that opens when the app starts.
+- Profiles (distro, user, scrollback, start-up command), saved pane layouts that reopen as a tab, typing in
+  several panes at once with a visible indicator, and keyboard shortcuts you can change; the shortcuts travel
+  in the configuration backup.
 - Tabs and split panes; a foreground service that keeps the sessions alive in the background.
 - An extra-keys row (Esc, Tab, Ctrl, Alt, arrows and more) with sticky modifiers, hardware-keyboard
   shortcuts, copy and paste with bracketed paste.

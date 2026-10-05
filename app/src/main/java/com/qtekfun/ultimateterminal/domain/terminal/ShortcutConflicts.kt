@@ -102,10 +102,3 @@ object ShortcutText {
         return ShortcutAnalysis(parsed.map, parsed.rejected, duplicates)
     }
 }
-
-/** Where the shortcuts are kept. The implementation (settings, Room) is not here. */
-interface ShortcutStore {
-    suspend fun load(): ShortcutMap
-
-    suspend fun save(map: ShortcutMap)
-}
