@@ -8,6 +8,7 @@ import com.qtekfun.ultimateterminal.domain.appearance.TerminalAppearance
 import com.qtekfun.ultimateterminal.domain.launch.ResolvConf
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.FontZoom
+import com.qtekfun.ultimateterminal.domain.terminal.ShortcutMap
 import com.qtekfun.ultimateterminal.domain.theme.BuiltInSchemes
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
 
@@ -42,5 +43,7 @@ data class AppSettings(
     /** The keys of the extra-keys row and whether it follows the keyboard (SPEC RF-08). */
     val extraKeys: ExtraKeysConfig = ExtraKeysConfig.default(),
     /** DNS servers used only when the device reports none (SPEC RF-11, Network). */
-    val dnsFallbackServers: List<String> = ResolvConf.FALLBACK_SERVERS
+    val dnsFallbackServers: List<String> = ResolvConf.FALLBACK_SERVERS,
+    /** The application shortcuts: which key combination does what (SPEC RF-12). */
+    val shortcuts: ShortcutMap = ShortcutMap.defaults()
 )

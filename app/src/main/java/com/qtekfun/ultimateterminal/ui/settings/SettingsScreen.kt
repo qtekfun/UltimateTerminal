@@ -27,7 +27,12 @@ import com.qtekfun.ultimateterminal.settings.SettingsViewModel
 import com.qtekfun.ultimateterminal.ui.ios.IosTheme
 
 /** The screens that Settings opens on top of itself instead of showing inside it. */
-class SettingsLinks(val openAppearance: () -> Unit, val openDistros: () -> Unit)
+class SettingsLinks(
+    val openAppearance: () -> Unit,
+    val openDistros: () -> Unit,
+    val openProfiles: () -> Unit,
+    val openLayouts: () -> Unit
+)
 
 /** What a page needs to move around: where its back button goes and how to open another page. */
 internal class PageNav(
@@ -87,7 +92,7 @@ private fun PageContent(
         SettingsPage.TERMINAL -> TerminalPage(stored, viewModel, nav)
         SettingsPage.KEYBOARD -> KeyboardPage(stored, viewModel, nav)
         SettingsPage.KEYBOARD_KEYS -> KeyboardKeysPage(stored, viewModel, nav)
-        SettingsPage.SHORTCUTS -> ShortcutsPage(nav)
+        SettingsPage.SHORTCUTS -> ShortcutsPage(stored, viewModel, nav)
         SettingsPage.SESSIONS -> SessionsPage(stored, viewModel, nav)
         SettingsPage.DISTROS -> DistrosPage(links, nav)
         SettingsPage.STORAGE -> StoragePage(nav)

@@ -3,6 +3,7 @@
 
 package com.qtekfun.ultimateterminal.data.backup
 
+import android.view.KeyEvent
 import com.qtekfun.ultimateterminal.domain.Outcome
 import com.qtekfun.ultimateterminal.domain.appearance.CursorShape
 import com.qtekfun.ultimateterminal.domain.appearance.ExtraKeyStyle
@@ -16,8 +17,11 @@ import com.qtekfun.ultimateterminal.domain.model.SshHost
 import com.qtekfun.ultimateterminal.domain.model.ThemeMode
 import com.qtekfun.ultimateterminal.domain.ssh.SshKeyInfo
 import com.qtekfun.ultimateterminal.domain.ssh.SshKeyType
+import com.qtekfun.ultimateterminal.domain.terminal.AppShortcut
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.FontZoom
+import com.qtekfun.ultimateterminal.domain.terminal.KeyChord
+import com.qtekfun.ultimateterminal.domain.terminal.ShortcutMap
 import com.qtekfun.ultimateterminal.domain.theme.BuiltInSchemes
 import com.qtekfun.ultimateterminal.domain.theme.SchemeCodec
 import java.io.File
@@ -61,6 +65,10 @@ class ConfigRestoreTest {
         builtIn = false
     )
 
+    private val customShortcuts = ShortcutMap.defaults()
+        .unbind(KeyChord(KeyEvent.KEYCODE_T, ctrl = true, shift = true))
+        .bind(KeyChord(KeyEvent.KEYCODE_K, ctrl = true, alt = true), AppShortcut.NewTab)
+
     private suspend fun fill(device: Device) {
         val alpine = device.addDistro("Alpine")
         device.distros.setDefault(alpine.id)
@@ -82,6 +90,7 @@ class ConfigRestoreTest {
                 customSchemes = listOf(custom),
                 prootCompatibilityMode = true,
                 dnsFallbackServers = listOf("9.9.9.9", "149.112.112.112"),
+                shortcuts = customShortcuts,
                 extraKeys = ExtraKeysConfig(
                     listOf(listOf("esc", "ctrl"), listOf("up")),
                     onlyWithKeyboard = false
@@ -174,6 +183,7 @@ class ConfigRestoreTest {
         assertEquals(listOf("9.9.9.9", "149.112.112.112"), settings.dnsFallbackServers)
         assertEquals(listOf(listOf("esc", "ctrl"), listOf("up")), settings.extraKeys.rows)
         assertFalse(settings.extraKeys.onlyWithKeyboard)
+        assertEquals(customShortcuts, settings.shortcuts)
         assertEquals(12, settings.appearance.marginDp)
         assertEquals(CursorShape.BAR, settings.appearance.cursorShape)
         assertTrue(settings.appearance.cursorBlink)

@@ -68,6 +68,7 @@ import com.qtekfun.ultimateterminal.ui.ios.IosContextMenu
 import com.qtekfun.ultimateterminal.ui.ios.IosGlyph
 import com.qtekfun.ultimateterminal.ui.ios.IosIcon
 import com.qtekfun.ultimateterminal.ui.ios.IosMenuItem
+import com.qtekfun.ultimateterminal.ui.ios.IosTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /** The thin bar between two panes, and the touch target around it (the 48 dp of accessibility). */
@@ -79,10 +80,6 @@ private val DividerTouchTarget = 48.dp
  * covers a line of text; the pty is told the pane less this strip ([belowHeader]).
  */
 private val PaneHeaderHeight = 40.dp
-private val PaneMenuButtonSize = 48.dp
-private val PaneMenuCapsuleSize = 30.dp
-private val PaneMenuIconSize = 18.dp
-private const val MENU_ALPHA = 0.85f
 private val FocusBorder = 2.dp
 private val NoFrames = MutableStateFlow(0)
 
@@ -97,6 +94,7 @@ fun TerminalPanes(
     viewModel: TerminalViewModel,
     painter: TerminalPainter,
     inputView: Array<TerminalInputView?>,
+    screens: ScreenLinks,
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
@@ -112,6 +110,7 @@ fun TerminalPanes(
     val focused by viewModel.panes.focused.collectAsStateWithLifecycle()
     // A pane's host is created after the scene names the pane: read again when one appears.
     val hostChanges by viewModel.hostChanges.collectAsStateWithLifecycle()
+    val broadcast by viewModel.broadcastView.collectAsStateWithLifecycle()
     Box(modifier.onSizeChangedTo { areaSize = it }) {
         val current = scene ?: return@Box
         current.panes.forEachIndexed { index, box ->
@@ -124,7 +123,11 @@ fun TerminalPanes(
                         index + 1,
                         current.panes.size
                     ),
-                    outlined = isSplit && hasKeyboard,
+                    outline = when {
+                        broadcast.emitting && box.id in broadcast.targets -> PaneOutline.Broadcast
+                        isSplit && hasKeyboard -> PaneOutline.Focus
+                        else -> PaneOutline.None
+                    },
                     header = if (isSplit) PaneHeaderHeight else 0.dp
                 ) {
                     if (hasKeyboard) {
@@ -144,7 +147,14 @@ fun TerminalPanes(
                 DividerHandle(divider) { pointer -> viewModel.panes.dragDivider(divider, pointer) }
             }
         }
-        FocusedControls(viewModel, inputView, current, focused)
+        FocusedControls(viewModel, inputView, current, focused, screens)
+        if (broadcast.emitting) {
+            BroadcastIndicator(
+                paneCount = broadcast.targets.size,
+                onStop = viewModel.broadcast::stop,
+                modifier = Modifier.align(Alignment.TopStart)
+            )
+        }
     }
 }
 
@@ -154,16 +164,17 @@ private fun FocusedControls(
     viewModel: TerminalViewModel,
     inputView: Array<TerminalInputView?>,
     scene: PaneScene,
-    focused: SessionId?
+    focused: SessionId?,
+    screens: ScreenLinks
 ) {
     val rect = focused?.let { scene.rectOf(it) } ?: return
     val isSplit by viewModel.panes.isSplit.collectAsStateWithLifecycle()
     // A lone pane has nothing to swap, zoom or close, and its split lives in the tab bar's "+"
     // menu. In a split the button sits in the header strip, above the text and not over it.
     val header = if (isSplit) PaneHeaderHeight else 0.dp
-    PanePlacement(rect, description = null, outlined = false, header = 0.dp) {
+    PanePlacement(rect, description = null, outline = PaneOutline.None, header = 0.dp) {
         Box(Modifier.padding(top = header)) { TerminalOverlays(viewModel, inputView) }
-        if (isSplit) PaneMenu(viewModel, scene, focused, Modifier.align(Alignment.TopEnd))
+        if (isSplit) PaneMenu(viewModel, scene, focused, screens, Modifier.align(Alignment.TopEnd))
     }
 }
 
@@ -171,12 +182,15 @@ private fun FocusedControls(
 private fun Modifier.onSizeChangedTo(onSize: (IntSize) -> Unit): Modifier =
     this.onSizeChanged(onSize)
 
+/** The outline of a pane: the one that has the keyboard, or one that what is typed also reaches. */
+private enum class PaneOutline { None, Focus, Broadcast }
+
 /** A box over [rect], clipped to it, with the outline of the pane that has the keyboard. */
 @Composable
 private fun PanePlacement(
     rect: PaneRect,
     description: String?,
-    outlined: Boolean,
+    outline: PaneOutline,
     header: Dp,
     content: @Composable BoxScope.() -> Unit
 ) {
@@ -187,7 +201,11 @@ private fun PanePlacement(
         .size(size.width, size.height)
         .clipToBounds()
     if (description != null) box = box.semantics { contentDescription = description }
-    if (outlined) box = box.border(FocusBorder, currentChrome().accent)
+    when (outline) {
+        PaneOutline.Focus -> box = box.border(FocusBorder, currentChrome().accent)
+        PaneOutline.Broadcast -> box = box.border(FocusBorder, IosTheme.colors.destructive)
+        PaneOutline.None -> Unit
+    }
     Box(box) {
         Box(Modifier.fillMaxSize().padding(top = header), content = content)
     }
@@ -271,121 +289,6 @@ private fun DividerHandle(divider: Divider, onDrag: (pointerPx: Float) -> Unit) 
         )
     }
 }
-
-/** One entry of the pane menu. */
-private class PaneAction(
-    val label: Int,
-    val glyph: IosGlyph?,
-    val destructive: Boolean = false,
-    val run: () -> Unit
-)
-
-/**
- * The "⋯" button of the pane that has the keyboard: split, zoom, swap and close. It is only on
- * screen when the tab is split, in the header strip of the pane ([PaneHeaderHeight]) that no text
- * uses. The touch target is 48 dp, 8 dp taller than the strip, and the capsule inside is smaller.
- */
-@Composable
-private fun PaneMenu(
-    viewModel: TerminalViewModel,
-    scene: PaneScene,
-    focused: SessionId?,
-    modifier: Modifier
-) {
-    val isSplit by viewModel.panes.isSplit.collectAsStateWithLifecycle()
-    val isZoomed by viewModel.panes.isZoomed.collectAsStateWithLifecycle()
-    var open by remember { mutableStateOf(false) }
-    val chrome = currentChrome()
-    val description = stringResource(R.string.pane_menu)
-    Box(modifier) {
-        Box(
-            Modifier
-                .size(PaneMenuButtonSize)
-                .semantics {
-                    contentDescription = description
-                    role = Role.Button
-                    onClick {
-                        open = true
-                        true
-                    }
-                }
-                .pointerInput(Unit) { detectTapGestures { open = true } },
-            contentAlignment = Alignment.Center
-        ) {
-            Box(
-                Modifier
-                    .size(PaneMenuCapsuleSize)
-                    .background(chrome.surface.copy(alpha = MENU_ALPHA), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                IosIcon(IosGlyph.ELLIPSIS, null, tint = chrome.onSurface, size = PaneMenuIconSize)
-            }
-        }
-        val close = { open = false }
-        val entries = paneActions(viewModel, scene, focused, isSplit, isZoomed)
-        IosContextMenu(expanded = open, onDismiss = close) {
-            entries.forEachIndexed { index, entry ->
-                IosMenuItem(
-                    label = stringResource(entry.label),
-                    onClick = {
-                        close()
-                        entry.run()
-                    },
-                    glyph = entry.glyph,
-                    destructive = entry.destructive,
-                    showSeparator = index < entries.lastIndex
-                )
-            }
-        }
-    }
-}
-
-private fun paneActions(
-    viewModel: TerminalViewModel,
-    scene: PaneScene,
-    focused: SessionId?,
-    isSplit: Boolean,
-    isZoomed: Boolean
-): List<PaneAction> = buildList {
-    add(
-        PaneAction(
-            R.string.pane_split_right,
-            IosGlyph.CHEVRON_RIGHT,
-            run = viewModel.panes::splitVertical
-        )
-    )
-    add(
-        PaneAction(
-            R.string.pane_split_down,
-            IosGlyph.CHEVRON_DOWN,
-            run = viewModel.panes::splitHorizontal
-        )
-    )
-    if (isSplit) {
-        val zoom = if (isZoomed) R.string.pane_unzoom else R.string.pane_zoom
-        add(PaneAction(zoom, null, run = viewModel.panes::toggleZoom))
-        for ((direction, label) in SwapLabels) {
-            if (focused != null && scene.neighbour(focused, direction) != null) {
-                add(PaneAction(label, null) { viewModel.panes.swap(direction) })
-            }
-        }
-        add(
-            PaneAction(
-                R.string.pane_close,
-                IosGlyph.CLOSE,
-                destructive = true,
-                run = viewModel.panes::closePane
-            )
-        )
-    }
-}
-
-private val SwapLabels = listOf(
-    FocusDirection.Left to R.string.pane_swap_left,
-    FocusDirection.Right to R.string.pane_swap_right,
-    FocusDirection.Up to R.string.pane_swap_up,
-    FocusDirection.Down to R.string.pane_swap_down
-)
 
 /** A split that does not fit says so instead of doing nothing. */
 @Composable

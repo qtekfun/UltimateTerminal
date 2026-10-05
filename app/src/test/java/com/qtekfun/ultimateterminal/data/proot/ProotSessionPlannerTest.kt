@@ -131,6 +131,27 @@ class ProotSessionPlannerTest {
     }
 
     @Test
+    fun `a profile's user replaces the default user of the distro`() = runTest {
+        val distro = install(user = "dev")
+
+        val asRoot = inDistro(planner.plan(distro.id, user = "root")).launch.command
+        val asOps = inDistro(planner.plan(distro.id, user = "ops")).launch.command
+
+        assertTrue("-0" in asRoot)
+        assertEquals(listOf("su", "-l", "ops"), asOps.takeLast(3))
+        assertTrue("HOME=/home/ops" in asOps)
+    }
+
+    @Test
+    fun `a profile's user that could be an option is refused like any other`() = runTest {
+        val distro = install()
+
+        val plan = planner.plan(distro.id, user = "-l")
+
+        assertEquals(LaunchPlan.Failed(LaunchProblem.InvalidUser("-l")), plan)
+    }
+
+    @Test
     fun `the resolv conf of the app is bound over the one of the distro`() = runTest {
         val distro = install()
 

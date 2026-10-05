@@ -3,19 +3,24 @@
 
 package com.qtekfun.ultimateterminal.terminal
 
+import com.qtekfun.ultimateterminal.domain.profile.ProfileCommands
 import com.qtekfun.ultimateterminal.domain.session.FocusDirection
 import com.qtekfun.ultimateterminal.domain.session.PaneCommands
 import com.qtekfun.ultimateterminal.domain.session.TabCommands
 import com.qtekfun.ultimateterminal.domain.session.TabSwitch
 import com.qtekfun.ultimateterminal.domain.terminal.AppShortcut
 
-/** Carries out the application shortcuts: copy, paste, the font zoom, the tabs and the panes. */
+/**
+ * Carries out the application shortcuts: copy, paste, the font zoom, the tabs, the panes, and the
+ * broadcast and the saved layouts.
+ */
 class ShortcutHandler(
     private val copy: () -> Unit,
     private val paste: () -> Unit,
     private val fontSize: FontSizeController,
     private val tabs: TabCommands,
-    private val panes: PaneCommands
+    private val panes: PaneCommands,
+    private val profiles: ProfileCommands
 ) {
     fun handle(shortcut: AppShortcut) {
         when (shortcut) {
@@ -41,6 +46,15 @@ class ShortcutHandler(
         return true
     }
 
+    private fun handleProfile(shortcut: AppShortcut) {
+        when (shortcut) {
+            AppShortcut.ToggleBroadcast -> profiles.toggleBroadcast()
+            AppShortcut.SaveLayout -> profiles.saveLayout()
+            AppShortcut.OpenLayouts -> profiles.openLayouts()
+            else -> Unit
+        }
+    }
+
     private fun handlePane(shortcut: AppShortcut) {
         when (shortcut) {
             AppShortcut.SplitHorizontal -> panes.splitHorizontal()
@@ -51,7 +65,7 @@ class ShortcutHandler(
             AppShortcut.FocusRight -> panes.focus(FocusDirection.Right)
             AppShortcut.FocusUp -> panes.focus(FocusDirection.Up)
             AppShortcut.FocusDown -> panes.focus(FocusDirection.Down)
-            else -> Unit
+            else -> handleProfile(shortcut)
         }
     }
 }

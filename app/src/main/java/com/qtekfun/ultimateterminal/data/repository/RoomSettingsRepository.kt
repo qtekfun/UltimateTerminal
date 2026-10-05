@@ -17,6 +17,7 @@ import com.qtekfun.ultimateterminal.domain.repository.SettingsRepository
 import com.qtekfun.ultimateterminal.domain.settings.DnsServers
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.FontZoom
+import com.qtekfun.ultimateterminal.domain.terminal.ShortcutMap
 import com.qtekfun.ultimateterminal.domain.theme.SchemeCatalog
 import com.qtekfun.ultimateterminal.domain.theme.SchemeCodec
 import javax.inject.Inject
@@ -48,6 +49,7 @@ internal object SettingKeys {
     const val EXTRA_KEY_STYLE = "appearance_extra_key_style"
     const val EXTRA_KEYS = "extra_keys"
     const val DNS_FALLBACK = "dns_fallback"
+    const val SHORTCUTS = "shortcuts"
 }
 
 class RoomSettingsRepository @Inject constructor(private val dao: SettingDao) : SettingsRepository {
@@ -101,14 +103,18 @@ class RoomSettingsRepository @Inject constructor(private val dao: SettingDao) : 
         ).withKeysAndDns(values)
     }
 
-    /** The extra keys and the DNS servers; a missing or unreadable value keeps its default. */
+    /**
+     * The extra keys, the DNS servers and the shortcuts; a missing value keeps its default. The
+     * shortcuts are read leniently: a line that makes no sense is skipped, the rest is kept.
+     */
     private fun AppSettings.withKeysAndDns(values: Map<String, String>): AppSettings = copy(
         extraKeys = values[SettingKeys.EXTRA_KEYS]
             ?.let { ExtraKeysConfig.parse(it).first }
             ?: extraKeys,
         dnsFallbackServers = values[SettingKeys.DNS_FALLBACK]
             ?.let { DnsServers.parse(it).servers }
-            ?: dnsFallbackServers
+            ?: dnsFallbackServers,
+        shortcuts = values[SettingKeys.SHORTCUTS]?.let { ShortcutMap.parse(it).map } ?: shortcuts
     )
 
     /** Each value that is missing or unreadable keeps its default; numbers are clamped into range. */
@@ -157,7 +163,8 @@ class RoomSettingsRepository @Inject constructor(private val dao: SettingDao) : 
         SettingEntity(SettingKeys.CUSTOM_SCHEMES, SchemeCodec.encodeList(settings.customSchemes)),
         SettingEntity(SettingKeys.CUSTOM_FONTS, FontCatalog.encodeList(settings.customFonts)),
         SettingEntity(SettingKeys.EXTRA_KEYS, settings.extraKeys.serialize()),
-        SettingEntity(SettingKeys.DNS_FALLBACK, DnsServers.format(settings.dnsFallbackServers))
+        SettingEntity(SettingKeys.DNS_FALLBACK, DnsServers.format(settings.dnsFallbackServers)),
+        SettingEntity(SettingKeys.SHORTCUTS, settings.shortcuts.serialize())
     ) + serializeAppearance(settings.appearance.sanitized())
 
     private fun serializeAppearance(appearance: TerminalAppearance) = listOf(

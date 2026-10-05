@@ -94,3 +94,22 @@ class LayoutSavingTest {
         assertEquals(Outcome.Failure(DomainError.InvalidValue("command")), result)
     }
 }
+
+class LayoutSaveProblemTest {
+    @Test
+    fun eachErrorMapsToTheProblemThePromptExplains() {
+        assertEquals(LayoutSaveProblem.NAME, DomainError.InvalidName(" ").asLayoutSaveProblem())
+        assertEquals(LayoutSaveProblem.NAME_TAKEN, DomainError.NameTaken("a").asLayoutSaveProblem())
+        assertEquals(LayoutSaveProblem.NO_TAB, DomainError.NotFound.asLayoutSaveProblem())
+        assertEquals(
+            LayoutSaveProblem.COMMAND,
+            DomainError.InvalidValue("command").asLayoutSaveProblem()
+        )
+        assertEquals(
+            LayoutSaveProblem.LIMIT,
+            DomainError.InvalidValue("layouts").asLayoutSaveProblem()
+        )
+        assertEquals(LayoutSaveProblem.OTHER, DomainError.Io("disk").asLayoutSaveProblem())
+        assertEquals(LayoutSaveProblem.OTHER, DomainError.InvalidPath("x").asLayoutSaveProblem())
+    }
+}

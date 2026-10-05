@@ -2025,6 +2025,8 @@ dispositivo: no hay nada que ejecutar todavía, falta la interfaz.
 - **Decisión:** no tocar `data.backup`. Su cobertura crítica exige el 100 % de ramas y no existe aún un almacén de
   atajos, así que añadirlo allí sin almacén sería código muerto o sin probar. Queda definida la interfaz `ShortcutStore`
   (como `ExtraKeysStore`) y el formato de texto ya existente (`ShortcutMap.serialize/parse`).
+- **Actualización (2026-10-05):** hecho, ver D-T12b-8. La lista "Lo que debe hacer la interfaz posterior" de abajo está
+  hecha, salvo lo que D-T12b-9 y D-T12b-16 dejan fuera.
 - **Para completarlo:** una clave en el repositorio de ajustes con el texto de `ShortcutMap.serialize()`; añadirla a
   `SettingsDto` o a un campo nuevo de `ConfigSnapshot` (la lectura es indulgente: un campo que falta no rompe una copia
   antigua); `ConfigCollector` la lee y `ConfigApplier` la aplica con `ShortcutText.analyze` para no perder las líneas
@@ -2049,6 +2051,93 @@ dispositivo: no hay nada que ejecutar todavía, falta la interfaz.
    `bindChecked` y muestre los `ShortcutConflict`; persistirlos y llevarlos a la copia (D-T12b-7).
 6. **Sin validar:** tecleado del comando de arranque tras el primer prompt en un shell real, rendimiento de la emisión con
    varios paneles y la restauración de un layout de 16 paneles con proot en un dispositivo.
+
+### D-T12b-8 · 2026-10-05 · Atajos: persistidos como un ajuste más y en la copia con un campo versionado
+- **Decisión:** `AppSettings.shortcuts` (un `ShortcutMap`, ahora con igualdad por valor) se guarda en la tabla `setting` con la clave
+  `shortcuts` y el texto de `ShortcutMap.serialize()`; sin clave, los atajos por defecto; al leer, una línea ilegible se
+  salta y el resto se conserva. `TerminalViewModel` aplica el mapa al `InputRouter` en cuanto cambia.
+- **Copia de seguridad:** `SettingsDto.shortcuts: ShortcutsDto?` (`version = 1`, `bindings` en el mismo texto). Es opcional y
+  `ConfigCodec.VERSION` no cambia, como hizo D-T16-6. Al restaurar (`ConfigApplier`) se **conservan los atajos del
+  dispositivo** si la copia no los trae, si su `version` no es la que esta app sabe leer (no se adivina un formato de una
+  versión posterior) o si ninguna línea es utilizable; si trae algunas válidas, `ShortcutText.analyze` descarta las
+  malas y se aplican las buenas. Todas esas ramas tienen test, y `data.backup` sigue al 100 % de línea y de rama.
+- **`ShortcutStore`** (la interfaz que dejó D-T12b-7) se elimina: los atajos van por `SettingsRepository`, como las teclas extra.
+
+### D-T12b-9 · 2026-10-05 · El esquema, la fuente y el tamaño de un perfil se guardan pero no se aplican por panel
+- **Hallazgo:** los colores iniciales de un emulador se leen de `TerminalColors.COLOR_SCHEME`, un objeto **compartido por toda la
+  librería** (`TerminalSessionHost.applyScheme` escribe ahí), y el pintor (`TerminalPainter`) es único para todos los paneles
+  y toma la fuente y el tamaño globales. Un esquema por panel exige cambios en el emulador de Termux y un pintor por panel.
+- **Decisión:** el formulario de perfil edita nombre, distro, usuario, historial y comando inicial, que sí se aplican
+  por panel. El esquema, la fuente y el tamaño siguen en el modelo, se conservan al editar y viajan en la copia, pero no se
+  editan ni se aplican; el formulario lo dice en una nota. Cuando el pintor admita un `PaneLook`, bastará con añadir los campos.
+- **Por qué no fingirlo:** una lista de ajustes que no hacen nada sería engañosa (misma razón que D-T16-7).
+
+### D-T12b-10 · 2026-10-05 · Cada panel recuerda con qué se abrió; el comando se teclea 0,8 s después de lanzar el shell
+- **Decisión:** `SessionController` guarda un `PaneOpening` (el `PaneSpec` y el comando que le dio su layout) por sesión, hasta que se
+  cierra. `PaneEditor` gana `openTab(PlannedNode)` (una pestaña con todos sus paneles, `Sessions.openedTab`),
+  `splitActive(orientación, opening)` y `openingOf(id)`. `AndroidSessionFactory` lo lee al empezar: el historial del panel,
+  el usuario (`ProotSessionPlanner.plan(distro, user)`, que revalida el nombre) y el comando.
+- **Comando inicial:** `AndroidSessionFactory` escribe `startupInput` 800 ms después de lanzar el shell, solo si hubo lanzamiento
+  (no con un fallo). La pty guarda lo escrito hasta que el shell lo lee, así que un proot lento no lo pierde; la pausa evita que caiga
+  en medio de la salida de arranque. **Sin validar con un shell real.**
+- **Guardar:** un panel se describe con su perfil y su comando propio, no con el del perfil (`PlannedNode.Pane.command`), de modo que
+  guardar de nuevo un layout restaurado lo deja igual. Un panel sin perfil se guarda sin distro (`LayoutNode.Pane` solo tiene
+  perfil y comando): al reabrirlo usa la distro predeterminada, aunque se hubiera abierto en otra. Se anota como límite.
+- **Dividir con un perfil** abre el panel nuevo en la distro del perfil, no en la del panel dividido; sin perfil sigue siendo la del origen.
+
+### D-T12b-11 · 2026-10-05 · Abrir un layout siempre abre una pestaña nueva y avisa de lo que cambió
+- **Decisión:** `PaneOpener.restore` planifica con `LayoutRestorePlanner` y abre **una pestaña nueva** (nunca reemplaza la actual ni sus
+  paneles); la pantalla de layouts se cierra sola si no hubo cambios y, si los hubo (perfil borrado, distro no lista, división
+  corregida), los lista en una alerta antes de cerrar (`LayoutNotice`, panel y división contados desde 1). Un layout rechazado
+  (`TOO_MANY_PANES`, `TOO_DEEP`) no abre nada y lo dice.
+- **Perfiles:** abrir un perfil (en pestaña, o en una división a la derecha o debajo) usa `PaneSpecResolver.resolve`; si lo rechaza
+  (distro borrada o no lista, usuario o comando no válidos) se explica y no se abre nada.
+
+### D-T12b-12 · 2026-10-05 · Guardar un layout: nombre único, reemplazo con confirmación, siempre el árbol completo
+- **Decisión:** `LayoutSaver.save(nombre, reemplazar)` guarda el árbol de la pestaña activa (entero, aunque un panel esté ampliado) con
+  `LayoutSaving.build`. Un nombre en uso (sin distinguir mayúsculas) falla con `NameTaken` y la hoja pregunta "¿Reemplazar?"; solo
+  entonces se llama con `reemplazar = true`. Desde la lista, "Reemplazar con los paneles de esta pestaña" sobrescribe sin hoja.
+  `asLayoutSaveProblem` traduce el error al mensaje (nombre, en uso, sin pestaña, comando, límite de 100, otro).
+
+### D-T12b-13 · 2026-10-05 · Emisión: interruptor en el menú del panel, indicador rojo y qué teclas se emiten
+- **Decisión:** `BroadcastController` (uno por proceso, estado por pestaña, solo en memoria) decide a qué paneles va lo tecleado.
+  `TerminalOutput` gana `write(texto, InputKind)` y `writeCodePoint(…, InputKind)` (con implementación por defecto que ignora el
+  tipo); `ActiveSessionOutput` reparte a `targets(tipo)` y el pegado va por `pasteFromClipboard`.
+- **Qué teclas:** `KeyInput.inputKind()`: Ctrl o Alt, Esc, flechas, Inicio, Fin, Re/Av Pág, Insertar, Suprimir y F1 a F12 son `CONTROL`
+  (solo al panel activo); letras, Enter, Tab, Retroceso y texto son `TEXT` (a todos). Así Enter, Tab y Retroceso, que se necesitan para
+  escribir una orden en varios servidores, sí llegan, y Ctrl+C no.
+- **Frenos añadidos:** con un solo panel no se puede activar (`toggle` no hace nada) y una pestaña que se queda con un panel olvida su
+  emisión, para que dividir de nuevo más tarde no teclee en el panel nuevo sin que el usuario lo pida.
+- **Indicador (obligatorio):** una cápsula roja arriba a la izquierda, "Lo que escribes llega a N paneles", mientras `isEmitting`; tocarla
+  detiene la emisión (48 dp, con descripción para TalkBack). Los paneles que reciben llevan un borde rojo.
+- **Grupos:** tres nombres fijos (Grupo A, B, C) desde "Grupo de este panel…" y "Escribir en el grupo de este panel"; no se expone
+  `textOnly` (queda en `true`). El menú del panel solo aparece con la pestaña dividida (T10), que es cuando la emisión tiene sentido;
+  el atajo `Ctrl+Shift+B` funciona siempre (sin efecto con un panel).
+
+### D-T12b-14 · 2026-10-05 · Atajos editables: una hoja por acción, con vista previa de lo que cuesta
+- **Decisión:** Ajustes > Teclado > Atajos lista todas las acciones (también las que se quedaron sin combinación); tocar una abre una
+  hoja con sus combinaciones (tocar una pide quitarla) y un campo donde se **pulsan las teclas** en un teclado físico
+  (`onPreviewKeyEvent`, solo con Ctrl o Alt) o se **escribe** (`ctrl+shift+t`). Antes de añadir, `ShortcutEditing.preview` dice si es
+  ilegible, si falta Ctrl o Alt, si ya la tiene la acción, qué otra acción la pierde y si roba una tecla de control o la Meta de
+  readline (avisos, no rechazos, D-T12b-6). "Restaurar los atajos por defecto" pide confirmación.
+- **Los números de pestaña** (Alt+1 a 9) siguen siendo una fila de solo lectura; hacerlos configurables exige un modelo de "prefijo +
+  1 a 9" que no está. `ShortcutDisplay.allRows` lista todas las filas; `rows` solo las que tienen combinación.
+- **Sin validar:** la captura con un teclado físico real y con el IME (una combinación que el sistema se queda no llega a la app).
+
+### D-T12b-15 · 2026-10-05 · Dónde se llega a cada pantalla
+- **Perfiles y layouts:** filas en la raíz de Ajustes, entradas en el menú "+" de la barra de pestañas (con "Guardar el layout…") y en el
+  menú del panel; `Ctrl+Shift+S` pide el nombre y `Ctrl+Shift+L` abre los layouts (`TerminalRequest`, que el `TerminalViewModel`
+  emite y la pantalla convierte en abrir una hoja de la actividad). `ScreenLinks` agrupa estos tres enlaces en `ProfileLinks`, y
+  `TabBarLinks` lleva el `ScreenLinks` entero, por el límite de parámetros de detekt.
+- **Pantallas** con los componentes de `ui/ios` (T22a/c) y cadenas en `values/` y `values-es/`; las alertas y hojas siguen la
+  convención de que la hoja de acciones se cierra sola tras la acción (`closeActions` mira el estado actual).
+
+### D-T12b-16 · 2026-10-05 · Qué queda por validar en un dispositivo
+- Comando inicial tecleado tras arrancar el shell (incluido con proot lento); emisión con varios paneles de proot y el rendimiento;
+  restaurar un layout de 16 paneles; el aspecto de las hojas (perfil, layouts, atajos) y de la cápsula roja, y que no tape texto;
+  la captura de teclas en un teclado físico; y TalkBack en las pantallas nuevas.
+- **Cobertura:** la lógica nueva está en `domain` (`PaneOpener`, `LayoutSaver`, `ProfileForm`, `BroadcastController`, `ShortcutEditing`,
+  `Sessions.openedTab`) con tests de host; los ViewModels y las pantallas Compose no entran en la cobertura, como el resto de la UI.
 
 ## T23 — Limpieza pendiente
 

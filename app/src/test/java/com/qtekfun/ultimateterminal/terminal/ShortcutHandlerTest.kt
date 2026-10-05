@@ -3,6 +3,7 @@
 
 package com.qtekfun.ultimateterminal.terminal
 
+import com.qtekfun.ultimateterminal.domain.profile.ProfileCommands
 import com.qtekfun.ultimateterminal.domain.session.FocusDirection
 import com.qtekfun.ultimateterminal.domain.session.PaneCommands
 import com.qtekfun.ultimateterminal.domain.session.TabCommands
@@ -51,9 +52,26 @@ private class RecordingPanes : PaneCommands {
     }
 }
 
+private class RecordingProfiles : ProfileCommands {
+    val calls = mutableListOf<String>()
+
+    override fun toggleBroadcast() {
+        calls += "broadcast"
+    }
+
+    override fun saveLayout() {
+        calls += "save-layout"
+    }
+
+    override fun openLayouts() {
+        calls += "open-layouts"
+    }
+}
+
 class ShortcutHandlerTest {
     private val tabs = RecordingTabs()
     private val panes = RecordingPanes()
+    private val profiles = RecordingProfiles()
     private val clipboard = mutableListOf<String>()
     private val fontSize = FontSizeController()
     private val handler = ShortcutHandler(
@@ -61,7 +79,8 @@ class ShortcutHandlerTest {
         paste = { clipboard += "paste" },
         fontSize = fontSize,
         tabs = tabs,
-        panes = panes
+        panes = panes,
+        profiles = profiles
     )
 
     @Test
@@ -88,6 +107,17 @@ class ShortcutHandlerTest {
             ),
             panes.calls
         )
+        assertEquals(emptyList<String>(), tabs.calls)
+    }
+
+    @Test
+    fun theBroadcastAndLayoutShortcutsAskForTheirScreens() {
+        handler.handle(AppShortcut.ToggleBroadcast)
+        handler.handle(AppShortcut.SaveLayout)
+        handler.handle(AppShortcut.OpenLayouts)
+
+        assertEquals(listOf("broadcast", "save-layout", "open-layouts"), profiles.calls)
+        assertEquals(emptyList<String>(), panes.calls)
         assertEquals(emptyList<String>(), tabs.calls)
     }
 

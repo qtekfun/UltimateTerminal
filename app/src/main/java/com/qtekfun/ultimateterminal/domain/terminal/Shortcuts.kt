@@ -212,6 +212,10 @@ class ShortcutMap private constructor(private val bindings: Map<KeyChord, AppSho
 
     fun unbind(chord: KeyChord): ShortcutMap = ShortcutMap(bindings - chord)
 
+    override fun equals(other: Any?): Boolean = other is ShortcutMap && other.bindings == bindings
+
+    override fun hashCode(): Int = bindings.hashCode()
+
     fun serialize(): String = bindings.entries
         .mapNotNull { (chord, shortcut) -> chord.format()?.let { "$it=${shortcut.id}" } }
         .sorted()

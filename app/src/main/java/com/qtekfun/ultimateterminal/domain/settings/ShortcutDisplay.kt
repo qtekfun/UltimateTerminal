@@ -30,17 +30,21 @@ object ShortcutDisplay {
     )
 
     /** The shortcuts of [map] that have a binding, in the fixed order, each with its chords sorted. */
-    fun rows(map: ShortcutMap): List<ShortcutRow> {
+    fun rows(map: ShortcutMap): List<ShortcutRow> = allRows(map).filter { it.chords.isNotEmpty() }
+
+    /**
+     * Every shortcut in the fixed order, also those with no combination left, so the user can give
+     * one back to an action they emptied. The tab numbers are one row, which stands for the nine.
+     */
+    fun allRows(map: ShortcutMap): List<ShortcutRow> {
         val byShortcut = map.all.entries.groupBy({ it.value }, { it.key })
-        return order.mapNotNull { shortcut ->
+        return order.map { shortcut ->
             if (shortcut is AppShortcut.SelectTab) {
-                tabRow(byShortcut)
+                tabRow(byShortcut) ?: ShortcutRow(shortcut, emptyList())
             } else {
-                byShortcut[shortcut]?.let {
-                    ShortcutRow(shortcut, it.mapNotNull(::pretty).sorted())
-                }
+                ShortcutRow(shortcut, byShortcut[shortcut].orEmpty().mapNotNull(::pretty).sorted())
             }
-        }.filter { it.chords.isNotEmpty() }
+        }
     }
 
     /** Alt+1…9 as one line when the nine share their modifiers, otherwise each one. */

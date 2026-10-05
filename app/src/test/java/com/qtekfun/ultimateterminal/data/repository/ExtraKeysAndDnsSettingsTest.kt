@@ -3,11 +3,15 @@
 
 package com.qtekfun.ultimateterminal.data.repository
 
+import android.view.KeyEvent
 import com.qtekfun.ultimateterminal.data.local.UltimateTerminalDatabase
 import com.qtekfun.ultimateterminal.data.local.entity.SettingEntity
 import com.qtekfun.ultimateterminal.data.local.inMemoryDatabase
 import com.qtekfun.ultimateterminal.domain.launch.ResolvConf
+import com.qtekfun.ultimateterminal.domain.terminal.AppShortcut
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
+import com.qtekfun.ultimateterminal.domain.terminal.KeyChord
+import com.qtekfun.ultimateterminal.domain.terminal.ShortcutMap
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
@@ -76,4 +80,35 @@ class ExtraKeysAndDnsSettingsTest {
         assertEquals(ExtraKeysConfig.default().rows, settings.observe().first().extraKeys.rows)
         assertFalse(settings.observe().first().extraKeys.rows.isEmpty())
     }
+
+    @Test
+    fun `a fresh install has the default shortcuts`() = runTest {
+        assertEquals(ShortcutMap.defaults(), settings.observe().first().shortcuts)
+    }
+
+    @Test
+    fun `the shortcuts are stored and read back`() = runTest {
+        val mine = ShortcutMap.defaults()
+            .unbind(KeyChord(KeyEvent.KEYCODE_T, ctrl = true, shift = true))
+            .bind(KeyChord(KeyEvent.KEYCODE_K, ctrl = true, alt = true), AppShortcut.NewTab)
+
+        settings.update { it.copy(shortcuts = mine) }
+
+        assertEquals(mine, settings.observe().first().shortcuts)
+    }
+
+    @Test
+    fun `a stored shortcut line that makes no sense is skipped and the others are kept`() =
+        runTest {
+            db.settingDao().upsert(
+                listOf(
+                    SettingEntity(SettingKeys.SHORTCUTS, "ctrl+alt+k=new_tab\nnot a line\nq=copy\n")
+                )
+            )
+
+            assertEquals(
+                mapOf(KeyChord(KeyEvent.KEYCODE_K, ctrl = true, alt = true) to AppShortcut.NewTab),
+                settings.observe().first().shortcuts.all
+            )
+        }
 }

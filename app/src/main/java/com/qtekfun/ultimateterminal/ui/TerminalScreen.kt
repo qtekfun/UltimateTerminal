@@ -74,6 +74,7 @@ import com.qtekfun.ultimateterminal.domain.theme.ThemeDecision
 import com.qtekfun.ultimateterminal.terminal.PainterStyle
 import com.qtekfun.ultimateterminal.terminal.TerminalInputView
 import com.qtekfun.ultimateterminal.terminal.TerminalPainter
+import com.qtekfun.ultimateterminal.terminal.TerminalRequest
 import com.qtekfun.ultimateterminal.terminal.TerminalTypefaces
 import com.qtekfun.ultimateterminal.terminal.TerminalViewModel
 import com.qtekfun.ultimateterminal.ui.ios.IosButton
@@ -163,6 +164,15 @@ private fun TerminalContent(
     val look = parts.look
     val (placement, insets, density) = layout
     val (scheme, appearance) = look
+    // A shortcut asks for a screen the activity owns (Ctrl+Shift+S, Ctrl+Shift+L).
+    LaunchedEffect(viewModel) {
+        viewModel.requests.collect { request ->
+            when (request) {
+                TerminalRequest.SAVE_LAYOUT -> screens.profiles.saveLayout()
+                TerminalRequest.OPEN_LAYOUTS -> screens.profiles.openLayouts()
+            }
+        }
+    }
     Box(
         modifier.fillMaxSize().background(Color(scheme.background)).onSizeChanged {
             onWindowSize(it)
@@ -170,10 +180,7 @@ private fun TerminalContent(
     ) {
         val padded = Modifier.fillMaxSize().padding(insets.toPadding(density))
         val links = TabBarLinks(
-            openDistros = screens.openDistros,
-            openSsh = screens.openSsh,
-            openAppearance = screens.openAppearance,
-            openSettings = screens.openSettings,
+            screens = screens,
             splitRight = viewModel.panes::splitVertical,
             splitDown = viewModel.panes::splitHorizontal
         )
@@ -183,7 +190,7 @@ private fun TerminalContent(
                 painter,
                 inputView,
                 appearance.marginDp.dp,
-                screens.openDistros,
+                screens,
                 paneModifier
             )
         }
@@ -220,7 +227,15 @@ class ScreenLinks(
     val openDistros: () -> Unit,
     val openSsh: () -> Unit,
     val openAppearance: () -> Unit,
-    val openSettings: () -> Unit
+    val openSettings: () -> Unit,
+    val profiles: ProfileLinks
+)
+
+/** The screens of profiles and saved layouts (SPEC RF-12), which the menus and shortcuts open. */
+class ProfileLinks(
+    val openProfiles: () -> Unit,
+    val openLayouts: () -> Unit,
+    val saveLayout: () -> Unit
 )
 
 /** The tab bar at the size its placement reserves, which the grid of the terminal leaves out. */
@@ -241,7 +256,7 @@ private fun TerminalPane(
     painter: TerminalPainter,
     inputView: Array<TerminalInputView?>,
     margin: Dp,
-    onOpenDistros: () -> Unit,
+    screens: ScreenLinks,
     modifier: Modifier = Modifier
 ) {
     val extraKeys = rememberShownExtraKeys(viewModel)
@@ -255,6 +270,7 @@ private fun TerminalPane(
                 viewModel,
                 painter,
                 inputView,
+                screens,
                 Modifier.weight(1f).fillMaxWidth().padding(margin)
             )
             if (extraKeys.visible) {
@@ -262,7 +278,7 @@ private fun TerminalPane(
             }
         }
         // Over the first rows, so the pty's size does not change when it appears.
-        LaunchMessageBanner(launchMessage, onOpenDistros, Modifier.align(Alignment.TopCenter))
+        LaunchMessageBanner(launchMessage, screens.openDistros, Modifier.align(Alignment.TopCenter))
     }
 }
 
