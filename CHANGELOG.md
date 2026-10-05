@@ -10,6 +10,11 @@ and the project uses [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- An "Exit" entry, last in the "..." / "+" menu, closes the whole app: it ends every session, stops the
+  background service and its notification, and closes the app's task. It asks first if a session is still
+  running.
+
 ## [0.1.2] - 2026-10-05
 
 More fixes and small improvements from using the app on a phone. Most are tested on a computer and still

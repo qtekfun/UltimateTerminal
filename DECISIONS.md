@@ -2831,3 +2831,13 @@ Con tests en el anfitrión (JVM): modos, enlaces (absolutos, relativos, rotos), 
 ### D-T20-9 · 2026-10-05 · Capturas renovadas (0.1.2)
 - Las capturas de F-Droid se repiten con la `0.1.2` en el Pixel 8 (inglés y español, barra de estado fija con el modo demo del sistema, restaurado después): terminal con Fedora y el prompt de starship con Nerd Font, panel dividido, el menú del botón de tres puntos, Ajustes, Apariencia y Distribuciones. No salen hosts SSH ni IPs; sí el nombre de usuario `qtekfun` del prompt (el mismo del GitHub del proyecto). El README muestra tres (`docs/images/`, copias de las de `fastlane` en inglés).
 - Pendiente: captura de tablet y la del asistente de bienvenida (necesita una instalación limpia).
+
+### D-EXIT-1 · 2026-10-05 · Entrada «Salir» en el menú «⋯»/«+» (RF-16)
+- **Petición:** «una entrada Salir en el menú para cerrar la app por completo». Es la última del menú (tinta destructiva, glifo `POWER` de Lucide, mismo conjunto ISC), así que sale igual en la barra superior, la lateral y el raíl (comparten `NewTabMenu`).
+- **Pregunta o no (`exitStep`, lógica pura probada):** con alguna sesión en ejecución, alerta `IosAlert` normal (TalkBack la lee como alerta) «¿Salir de UltimateTerminal?» con el número («Se cerrarán N sesiones…», plural) y Cancelar/Salir; las sesiones ya terminadas no cuentan. Sin ninguna en ejecución se sale sin preguntar.
+
+### D-EXIT-2 · 2026-10-05 · Cómo se sale: parar el servicio y `finishAndRemoveTask`, sin matar el proceso
+- Salir llama a `SessionManager.closeAll()` (mata los procesos de todas las sesiones; al quedar sin shells en ejecución el `SessionController` pide parar el servicio, lo que quita la notificación y libera el wakelock en `onDestroy`) y después `finishAndRemoveTask()` en la actividad. No se añade una función de apagado propia: otra rama extrae un apagado común y Salir se apoya en `closeAll()`, que ya hace lo necesario.
+- **No** se usa `Process.killProcess`: es el último recurso (salta los ciclos de vida y no deja a Hilt/Room cerrar). Android puede dejar el proceso vacío en caché un rato, pero sin servicio, hilos de sesión ni wakelock no ejecuta nada; abrir la app después crea una actividad nueva y, al no haber sesiones, `TerminalViewModel` abre la pestaña predeterminada, como un arranque en frío.
+- **Pendiente de verificar en dispositivo:** Pixel 8, Salir con y sin sesiones vivas, con la pantalla apagada y reabriendo; que no queda notificación ni proceso activo.
+

@@ -59,6 +59,7 @@ been checked.
   cursor shape, margins and tab bar style, and three styles for the extra keys (flat, capsule, classic).
 - **Interface:** an iOS-style look (large titles, grouped lists, sheets, alerts) on the terminal chrome,
   Distros, Settings, SSH and Appearance, and a Settings screen with nine sections.
+- **Exit:** the last entry of the "..." / "+" menu closes every session, stops the background service and its notification and closes the app (it asks first if something is still running).
 - **Accessibility:** roles, actions for every gesture (select, move tab, move pane divider), 48 dp
   touch targets and large-font layouts were audited in the code; see below for what is not checked yet.
 - **Languages:** English and Spanish.
