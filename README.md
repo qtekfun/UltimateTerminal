@@ -11,6 +11,12 @@ environment. Free software ([GPL-3.0-or-later](LICENSE)), no Google services, no
 > The tablet has only been used for the window-resize checks. Read [What is verified](#what-is-verified)
 > before relying on anything.
 
+<p align="center">
+  <img src="docs/images/screenshot-1.png" alt="Fedora in a tab, with a starship prompt" width="30%">
+  <img src="docs/images/screenshot-2.png" alt="Two split panes" width="30%">
+  <img src="docs/images/screenshot-3.png" alt="The menu of the three-dots button" width="30%">
+</p>
+
 ## What it does
 
 Everything in this list is in the code and merged; see the next section for how far each part has
@@ -86,7 +92,7 @@ tablet** (Android 12, 2800x1840). Nothing was run on any other device.
 | Back button: leaves Settings pages, hides the keyboard in the terminal without typing anything | yes (Pixel 8) | Android 12 tablet: not verified |
 | Resizing on a **tablet**: landscape and portrait, keyboard, a freeform window resized (PTY size matches what is drawn each time) | yes (tablet) | |
 | Performance, debug build, Pixel 8, Fedora: cold start to prompt **1.63 s** median (1.48 to 1.65 s over five runs); `seq 1 200000` in **1.07 s** with a smooth interface | yes (Pixel 8) | |
-| Performance, **release build** (`0.1.0-rc.2`, signed), Pixel 8, Alpine: cold start to prompt **about 1.2 s** median (1.17 to 1.24 s, measured by screenshots, so about ±0.25 s); first frame 0.12 to 0.23 s; `seq 1 200000` in **1.09 s**, 0 to 0.8 % janky frames | yes (Pixel 8) | Fedora not timed in release (heavier than Alpine) |
+| Performance, **release build** (`0.1.0-rc.2`, signed; the later releases were not timed again), Pixel 8, Alpine: cold start to prompt **about 1.2 s** median (1.17 to 1.24 s, measured by screenshots, so about ±0.25 s); first frame 0.12 to 0.23 s; `seq 1 200000` in **1.09 s**, 0 to 0.8 % janky frames | yes (Pixel 8) | Fedora not timed in release (heavier than Alpine) |
 | Install Debian or Ubuntu | | yes (index and download logic; never run on a device) |
 | Pinch zoom, selection gestures, tab reordering, hardware-keyboard shortcuts | | yes |
 | Fonts of your own, OLED mode, schemes you edit | | yes (the preview and picking a built-in scheme were seen on the Pixel 8) |
@@ -113,8 +119,7 @@ Still pending, in this order of importance:
 - TalkBack and the layouts at font scale 2.0 (and a release timing with Fedora: the release timing above is Alpine).
 - Split-screen on the tablet, split panes and an installed distro on the tablet.
 - Backup export and restore with the system file picker, and the SSH and `~/storage` flows, on a device.
-- F-Droid publication: real screenshots, the signing-key fingerprint of the recipe and the checks
-  listed in `DECISIONS.md` (D-T20-3 to 6).
+- F-Droid publication: sending the recipe to fdroiddata (it is ready and passes `fdroid lint`; the screenshots are in `fastlane`, taken on a Pixel 8 with `0.1.2`).
 
 Backups are gzip-compressed rather than `.tar.zst` as the spec first asked, because the Zstandard
 libraries for Java ship precompiled binaries that F-Droid does not accept. The full list and the order
