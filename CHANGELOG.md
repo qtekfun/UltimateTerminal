@@ -16,6 +16,20 @@ and the project uses [SemVer](https://semver.org/).
   you tap the rail. Settings > Terminal > "Collapse the sidebar when you use the terminal" (on by default;
   off keeps it always expanded) is included in configuration backups.
 
+### Fixed
+- Exporting a backup of a distro that has files only root can read (Fedora's `/etc/shadow` and `sudo`, for
+  example) no longer fails with "cannot read ...". The app owns those files, so it opens them for itself
+  while it reads them and puts their mode back; the backup keeps the original modes. Duplicating, measuring
+  and deleting such a distro work too.
+- Restoring a backup in the first-run setup no longer closes the setup, or opens a tab, as soon as the first
+  distro is back: it waits for the whole restore, so the default distro and its user are the right ones.
+- If a file really cannot be read, the export says which one and why, in your language, and writes nothing.
+
+### Changed
+- The file picker suggests `UltimateTerminal-<date>.utbackup` (and `-settings-` or the distro's name for a
+  smaller backup), and the finished message gives the file name and size. Settings > Backups says where
+  the file goes.
+
 ## [0.1.0] - 2026-10-05
 
 First release. A free (GPL-3.0-or-later) terminal for Android with Linux distributions through proot, no

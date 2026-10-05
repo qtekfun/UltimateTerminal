@@ -35,7 +35,12 @@ internal fun backupMessageText(message: BackupMessage): String = when (message) 
         } else {
             R.string.backup_exported
         }
-        stringResource(format, size, summary.distros)
+        stringResource(
+            format,
+            message.fileName ?: stringResource(R.string.backup_file_unnamed),
+            size,
+            summary.distros
+        )
     }
 
     is BackupMessage.Restored -> with(message.summary) {

@@ -33,8 +33,9 @@ class FirstRunSetupTest {
         loaded: Boolean = true,
         distros: List<Distro> = emptyList(),
         hasSessions: Boolean = false,
-        skipped: Boolean = false
-    ) = SetupInputs(loaded, distros, hasSessions, skipped)
+        skipped: Boolean = false,
+        restoring: Boolean = false
+    ) = SetupInputs(loaded, distros, hasSessions, skipped, restoring)
 
     @Test
     fun nothingIsDecidedBeforeTheDistrosAreRead() {
@@ -138,5 +139,23 @@ class FirstRunSetupTest {
         assertFalse(FirstRunSetup.canInstall("  ", "root"))
         assertFalse(FirstRunSetup.canInstall("Alpine", ""))
         assertFalse(FirstRunSetup.canInstall("Alpine", "-rf"))
+    }
+
+    @Test
+    fun theSetupStaysWhileABackupIsBeingRestoredEvenWithADistroAlreadyReady() {
+        val ready = listOf(distro(1, DistroState.READY))
+
+        assertEquals(
+            SetupGate.SHOWING,
+            FirstRunSetup.next(SetupGate.SHOWING, inputs(distros = ready, restoring = true))
+        )
+        assertEquals(
+            SetupGate.CLOSED,
+            FirstRunSetup.next(SetupGate.SHOWING, inputs(distros = ready, restoring = false))
+        )
+        assertEquals(
+            SetupGate.CLOSED,
+            FirstRunSetup.next(SetupGate.SHOWING, inputs(skipped = true, restoring = true))
+        )
     }
 }

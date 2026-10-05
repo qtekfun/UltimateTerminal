@@ -20,6 +20,7 @@ import com.qtekfun.ultimateterminal.domain.model.DistroState
 import com.qtekfun.ultimateterminal.domain.repository.DistroRepository
 import com.qtekfun.ultimateterminal.platform.ContentResolverBackupSink
 import com.qtekfun.ultimateterminal.platform.ContentResolverBackupSource
+import com.qtekfun.ultimateterminal.platform.documentName
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Job
@@ -31,7 +32,7 @@ import kotlinx.coroutines.launch
 
 /** What the user is told after a backup action; the screen turns it into text. */
 sealed interface BackupMessage {
-    data class Exported(val summary: ExportSummary) : BackupMessage
+    data class Exported(val summary: ExportSummary, val fileName: String?) : BackupMessage
 
     data class Restored(val summary: RestoreSummary) : BackupMessage
 
@@ -53,6 +54,7 @@ class BackupViewModel @Inject constructor(
     application: Application,
     private val exporter: BackupExporter,
     private val restorer: BackupRestorer,
+    private val restoreActivity: RestoreActivity,
     distros: DistroRepository
 ) : AndroidViewModel(application) {
     private val state = MutableStateFlow(BackupUiState())
@@ -71,9 +73,11 @@ class BackupViewModel @Inject constructor(
     }
 
     fun export(target: Uri, request: ExportRequest) = run {
-        val sink = ContentResolverBackupSink(getApplication<Application>().contentResolver, target)
+        val resolver = getApplication<Application>().contentResolver
+        val sink = ContentResolverBackupSink(resolver, target)
         when (val result = exporter.export(request, sink, ::onProgress)) {
-            is BackupResult.Success -> BackupMessage.Exported(result.value)
+            is BackupResult.Success ->
+                BackupMessage.Exported(result.value, documentName(resolver, target))
             is BackupResult.Failure -> BackupMessage.Failed(result.error)
         }
     }
@@ -115,9 +119,17 @@ class BackupViewModel @Inject constructor(
     private suspend fun restore(
         source: ContentResolverBackupSource,
         password: String?
-    ): BackupMessage = when (val result = restorer.restore(source, password, ::onProgress)) {
-        is BackupResult.Success -> BackupMessage.Restored(result.value)
-        is BackupResult.Failure -> BackupMessage.Failed(result.error)
+    ): BackupMessage {
+        restoreActivity.set(true)
+        val result = try {
+            restorer.restore(source, password, ::onProgress)
+        } finally {
+            restoreActivity.set(false)
+        }
+        return when (result) {
+            is BackupResult.Success -> BackupMessage.Restored(result.value)
+            is BackupResult.Failure -> BackupMessage.Failed(result.error)
+        }
     }
 
     private fun onProgress(progress: BackupProgress) = state.update { it.copy(progress = progress) }
