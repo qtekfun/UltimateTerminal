@@ -79,7 +79,6 @@ fun IosButton(
                 text = text,
                 style = IosTheme.typography.headline,
                 color = foreground,
-                maxLines = 1,
                 textAlign = TextAlign.Center
             )
         }

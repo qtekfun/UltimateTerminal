@@ -23,6 +23,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.Dp
@@ -48,11 +49,9 @@ fun IosSection(
         if (header != null) {
             IosText(
                 text = header.uppercase(),
-                modifier = Modifier.padding(
-                    start = IosSpacing.md,
-                    bottom =
-                        IosSpacing.sm - IosSpacing.xxs
-                ),
+                modifier = Modifier
+                    .padding(start = IosSpacing.md, bottom = IosSpacing.sm - IosSpacing.xxs)
+                    .semantics { heading() },
                 style = IosTheme.typography.footnote,
                 color = colors.secondaryLabel
             )
@@ -111,7 +110,10 @@ fun IosListRow(
         )
     }
     if (action == null) {
-        Box(modifier) { content() }
+        // Title, subtitle and value are one item for a screen reader, not three.
+        Box(modifier.semantics(mergeDescendants = true) { state?.let { stateDescription = it } }) {
+            content()
+        }
     } else {
         IosPressable(
             onClick = action,

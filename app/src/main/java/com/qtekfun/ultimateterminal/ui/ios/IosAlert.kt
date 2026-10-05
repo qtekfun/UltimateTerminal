@@ -14,11 +14,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Dialog
@@ -61,10 +65,20 @@ fun IosAlert(
                 .background(colors.cell)
         ) {
             Column(
-                Modifier.fillMaxWidth().padding(IosSpacing.md),
+                // Scrolls when a large font makes the message taller than the screen.
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState())
+                    .padding(IosSpacing.md),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                IosText(title, style = IosTheme.typography.headline, textAlign = TextAlign.Center)
+                IosText(
+                    title,
+                    modifier = Modifier.semantics { heading() },
+                    style = IosTheme.typography.headline,
+                    textAlign = TextAlign.Center
+                )
                 if (message != null) {
                     IosText(
                         text = message,
@@ -131,7 +145,6 @@ internal fun ActionButton(action: IosAction, onDismiss: () -> Unit, modifier: Mo
                 } else {
                     colors.tint
                 },
-                maxLines = 1,
                 textAlign = TextAlign.Center
             )
         }

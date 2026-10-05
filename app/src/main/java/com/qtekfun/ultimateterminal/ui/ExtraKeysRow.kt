@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -22,12 +23,14 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.qtekfun.ultimateterminal.R
@@ -36,6 +39,7 @@ import com.qtekfun.ultimateterminal.domain.appearance.KeyLook
 import com.qtekfun.ultimateterminal.domain.appearance.look
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKey
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeyAction
+import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeyFit
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.LatchState
 import com.qtekfun.ultimateterminal.domain.terminal.StickyState
@@ -70,6 +74,22 @@ fun ExtraKeysRow(
     modifier: Modifier = Modifier
 ) {
     val chrome = currentChrome()
+    // The rows keep their 48 dp, so the drawn labels stop following the system font at a cap.
+    val density = LocalDensity.current
+    val capped = Density(density.density, ExtraKeyFit.labelFontScale(density.fontScale))
+    CompositionLocalProvider(LocalDensity provides capped) {
+        ExtraKeysColumn(config, sticky, onKey, modifier, chrome)
+    }
+}
+
+@Composable
+private fun ExtraKeysColumn(
+    config: ExtraKeysConfig,
+    sticky: StickyState,
+    onKey: (ExtraKey) -> Unit,
+    modifier: Modifier,
+    chrome: ChromePalette
+) {
     val palette = chrome.keys
     val hairline = IosSize.hairline
     Column(

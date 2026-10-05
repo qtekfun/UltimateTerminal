@@ -46,6 +46,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
@@ -351,9 +354,20 @@ internal fun TerminalCanvas(
         row = (offset.y / painter.cellHeight).toInt().coerceAtLeast(0) + topRow
     )
 
+    // The screen is drawn, so a screen reader gets a name and a way to raise the keyboard, not the
+    // text: reading every redraw aloud would be noise, and the content must not leak into any log.
+    val description = stringResource(R.string.terminal_description)
+    val showKeyboard = stringResource(R.string.terminal_show_keyboard)
     Canvas(
         Modifier
             .fillMaxSize()
+            .semantics {
+                contentDescription = description
+                onClick(label = showKeyboard) {
+                    onTap()
+                    true
+                }
+            }
             .pointerInput(painter) {
                 detectTapGestures(onTap = {
                     viewModel.selection.clear()

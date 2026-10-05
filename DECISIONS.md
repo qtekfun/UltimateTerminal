@@ -2164,6 +2164,43 @@ Hecha en un clon aparte, sin dispositivos. Lo que solo puede decir el dispositiv
 - TalkBack: orden de lectura, rol y estado de los interruptores, y las filas de teclas.
 - El efecto real del historial, las teclas extra y el DNS en una sesión.
 
+## T17 — Accesibilidad y rendimiento
+
+### D-T17-1 · 2026-10-05 · Método: auditoría de código y lógica pura, sin pruebas de Compose en la JVM
+- **Contexto:** el repositorio no tiene `ui-test` ni Robolectric (y añadir dependencias exige licencia y `THIRD_PARTY_NOTICES.md`). Las pruebas de diseño con `fontScale` 2,0 no se pueden hacer en el host sin ellas.
+- **Decisión:** se auditaron a mano todos los composables (cromo del terminal, pestañas, teclas extra, menú de paneles, Ajustes, Apariencia, Distros, copias, SSH, `ui/ios`) buscando roles, estados, encabezados, semántica fusionada, acciones personalizadas, objetivos < 48 dp y texto con `maxLines = 1` o filas fijas que se cortan con fuente grande; lo que se pudo expresar como lógica va a `domain` con test. El contraste ya estaba cubierto (`IosPaletteTest`, `ChromeColorsTest`, `BuiltInSchemesTest` en todos los temas y esquemas).
+- **Pendiente en dispositivo:** TalkBack de verdad y fuente 2,0 (Ajustes > Accesibilidad > Tamaño de fuente) en cada pantalla; ver D-T17-8.
+
+### D-T17-2 · 2026-10-05 · Componentes `ui/ios`: semántica y fuente grande
+- `IosSection`: la cabecera es un encabezado (`heading`). `IosListRow` sin acción fusiona título, subtítulo y valor en un solo elemento. El título pequeño de la barra de navegación se oculta a TalkBack (el grande ya es el encabezado y se leía dos veces).
+- `IosBarButton` e `IosBarIconButton`: mínimo 48 × 48 dp (antes solo 48 de alto: "OK" medía menos de ancho).
+- `IosAlert`: título como encabezado y cuerpo desplazable. `IosButton`, `ActionButton` e `IosMenuItem` dejan de forzar `maxLines = 1`: con fuente 2,0 el texto pasa a otra línea en vez de cortarse con puntos suspensivos.
+- `IosSegmentedControl`: alto mínimo de 48 dp que crece si una etiqueta se parte; la pista dibujada sigue siendo de 32 dp. `IosSheetHeader`: con escala de fuente > 1,3 los botones toman el ancho que necesitan y el título se parte en lo que queda (el reparto fijo 1:2:1 cortaba "Cancelar").
+
+### D-T17-3 · 2026-10-05 · Pestañas: todo gesto tiene una acción de accesibilidad
+- Tocar una pestaña era un gesto de puntero sin acción de clic: se añade `onClick` ("Seleccionar"). Reordenar por arrastre era el único camino: se añaden las acciones "Mover antes" y "Mover después" (solo si hay hueco). Los botones "+" y "⋯" declaran `Role.Button`.
+
+### D-T17-4 · 2026-10-05 · Terminal y paneles
+- **Vista del terminal:** `contentDescription` "Terminal" y acción de clic "Mostrar el teclado". **Decisión: no se expone el texto de la pantalla** (SPEC: "la terminal en sí expone texto" queda como el contenido que el usuario puede copiar con la selección): leer cada redibujado en voz alta es ruido, un nodo con cientos de caracteres que cambia con cada byte es caro, y el contenido de la terminal no debe llegar a ningún registro. Si hace falta lectura, el diseño correcto es una región en vivo con las líneas nuevas, y es trabajo aparte.
+- El panel sin foco tiene la misma acción de clic. El separador de paneles, que solo se movía arrastrando, ofrece "Mover el separador hacia atrás/adelante" (pasos de 48 dp). El botón del menú de paneles declara rol y clic.
+- Comprobado por búsqueda: ningún `Log.*` ni `println` toca el contenido del terminal.
+
+### D-T17-5 · 2026-10-05 · Fila de teclas extra: la fuente se frena en 1,2
+- La fila mide 48 dp por fila y cada tecla es una fracción del ancho: el rótulo no puede crecer sin límite. `ExtraKeyFit.MAX_FONT_SCALE` = 1,2: los rótulos dibujados siguen la fuente del sistema solo hasta ahí (el nombre hablado de cada tecla no cambia). `ExtraKeyFitTest` comprueba, con una estimación conservadora del ancho (0,65 em por letra), que todas las teclas por defecto caben en 360 dp con los tres estilos a escala 2,0.
+- **Alternativa descartada:** dejar crecer las filas con la fuente. Rompe el cálculo del alto del pty (D de T12/T22b: fila × 48 dp) y comería el terminal.
+
+### D-T17-6 · 2026-10-05 · Pantallas de Material (SSH, Apariencia): filas que se parten y encabezados
+- Las filas de botones de SSH (cabecera, tarjetas de host y de clave) y de esquemas pasan a `FlowRow`: con fuente grande los botones bajan a otra línea en vez de salirse de la pantalla. Los títulos de pantalla y `SectionTitle` son encabezados. `LabeledSlider` anuncia su valor (`stateDescription`) además de la etiqueta. Cambios pequeños a propósito: T22c y T12b editan esas pantallas.
+
+### D-T17-7 · 2026-10-05 · Rendimiento: guarda en el host y procedimiento en el dispositivo
+- `FeedThroughputTest` (módulo `terminal-emulator`) alimenta el emulador con la salida de `seq 1 200000`, con 20 000 líneas de color que se parten y con Unicode ancho/combinante, en trozos de 4 KiB como el lector del pty. Comprueba el resultado (última línea, historial acotado) y un límite de **30 s**, dos órdenes de magnitud sobre lo que tarda un portátil (milisegundos): solo falla con una regresión de complejidad, no por una máquina lenta ni por el reloj. No mide dibujo ni el dispositivo.
+- `docs/PERFORMANCE.md`: procedimiento reproducible para el arranque en frío hasta el prompt (el propio `PS1` escribe la hora del primer prompt; `am start -W` da el primer frame) y para `seq 1 200000` (`time`, `dumpsys gfxinfo`, interfaz viva durante la salida, paneles y fuente grande). Objetivo SPEC: < 1,5 s.
+
+### D-T17-8 · 2026-10-05 · Lo que NO está validado (sin dispositivo)
+1. TalkBack: orden de lectura y anuncios de las pestañas (acciones Seleccionar/Renombrar/Cerrar/Mover), del terminal, del separador de paneles, de los encabezados y de las filas fusionadas de Ajustes.
+2. Fuente 2,0 en: barra de pestañas (48 dp fijos arriba: una pestaña con nombre largo se recorta a una línea), fila de teclas, hoja de formulario (`IosSheetHeader`), alertas, `NamePrompt` (no se tocó: es de T22c), control segmentado de Apariencia y pantallas SSH.
+3. El rendimiento: ninguna cifra del dispositivo; los objetivos de la SPEC siguen sin comprobarse hasta ejecutar `docs/PERFORMANCE.md`.
+
 ## T24 — Fedora como distro
 
 Petición del usuario (Fedora es su distro habitual). Hecho sin dispositivo: probado en host con muestras sintéticas y con las respuestas reales de Fedora (listados y `CHECKSUM`) copiadas a los tests. **Pendiente de la prueba real en el Pixel 8.**

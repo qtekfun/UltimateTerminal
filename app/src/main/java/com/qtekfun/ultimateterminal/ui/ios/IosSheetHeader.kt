@@ -11,12 +11,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 
 private const val DISABLED_ALPHA = 0.4f
+private const val LARGE_FONT_SCALE = 1.3f
 
 /**
  * The top of a form sheet: Cancel at the start, the [title] in the middle and the confirming button
@@ -32,21 +34,30 @@ fun IosSheetHeader(
     modifier: Modifier = Modifier,
     confirmEnabled: Boolean = true
 ) {
+    // With a large font the buttons take the room they need and the title wraps in what is left;
+    // the fixed 1:2:1 split would cut "Cancel" and the title short.
+    val large = LocalDensity.current.fontScale > LARGE_FONT_SCALE
     Row(
         modifier.fillMaxWidth().padding(horizontal = IosSpacing.sm),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+        Box(
+            if (large) Modifier else Modifier.weight(1f),
+            contentAlignment = Alignment.CenterStart
+        ) {
             IosBarButton(cancelLabel, onCancel)
         }
         IosText(
             title,
-            Modifier.weight(2f).semantics { heading() },
+            Modifier.weight(if (large) 1f else 2f).semantics { heading() },
             style = IosTheme.typography.headline,
-            maxLines = 1,
+            maxLines = if (large) Int.MAX_VALUE else 1,
             textAlign = TextAlign.Center
         )
-        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+        Box(
+            if (large) Modifier else Modifier.weight(1f),
+            contentAlignment = Alignment.CenterEnd
+        ) {
             IosBarButton(
                 confirmLabel,
                 onClick = { if (confirmEnabled) onConfirm() },

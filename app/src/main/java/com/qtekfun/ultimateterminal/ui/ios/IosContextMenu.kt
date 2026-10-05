@@ -103,7 +103,7 @@ fun IosMenuItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IosText(label, modifier = Modifier.weight(1f), color = color, maxLines = 1)
+                IosText(label, modifier = Modifier.weight(1f), color = color)
                 if (glyph != null) IosIcon(glyph, null, tint = color, size = 20.dp)
             }
         }
