@@ -1,0 +1,1 @@
+Second pre-release (0.1.0-rc.2). Adds Fedora, users created automatically, profiles, saved layouts and typing in several panes, an iOS-style interface with a Settings screen, three extra-key styles, accessibility fixes, and fixes for Back, new tabs and keyboard input. Early software: tried on a Pixel 8 and, for resizing, on one tablet; the README says what is verified.

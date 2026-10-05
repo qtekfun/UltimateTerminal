@@ -1,19 +1,22 @@
 UltimateTerminal es una terminal para Android pensada para quien mantiene servidores desde un móvil o una tablet. Se inspira en Termux: una interfaz más moderna que busca ocupar toda la pantalla en tablets, y distribuciones Linux completas que se ejecutan con proot, como WSL en Windows. Solo terminal: no hay entorno gráfico.
 
-<b>Versión preliminar temprana.</b> Buena parte de la app solo se ha probado en un ordenador. Se ha comprobado en un móvil (Android 17) y todavía no en tablets. La lista de abajo dice lo que hay en el código; el README dice lo que se ha verificado en un dispositivo.
+<b>Versión preliminar temprana.</b> Buena parte de la app solo se ha probado en un ordenador. Se ha probado a mano en un móvil (Android 17) y, solo el cambio de tamaño de la ventana, en una tablet (Android 12). La lista de abajo dice lo que hay en el código; el README dice lo que se ha verificado en un dispositivo.
 
 <b>Qué hace</b>
-• Instala Debian, Ubuntu o Alpine Linux desde sus mirrors oficiales, comprobando la descarga con SHA-256, y la abre en una pestaña con un shell de root. Dentro funcionan apt o apk, ssh, nmap y python. Alpine es la que se ha probado en un dispositivo; Debian y Ubuntu, solo en un ordenador
-• Varias pestañas y paneles divididos, perfiles, layouts de paneles guardados, escribir en varios paneles a la vez y atajos que puedes cambiar
+• Instala Debian, Ubuntu, Alpine Linux o Fedora desde sus mirrors oficiales, comprobando la descarga con SHA-256, y la abre en una pestaña. Dentro funcionan apk, dnf, ssh, nmap y python. Alpine y Fedora se han probado en un dispositivo; Debian y Ubuntu, solo en un ordenador
+• Funciona como root o como el usuario que elijas, que se crea solo si la distro no lo tiene
+• Varias pestañas y paneles divididos, perfiles (distro, usuario, comando inicial), layouts de paneles guardados, escribir en varios paneles a la vez con un indicador rojo y atajos que puedes cambiar
 • Una fila de teclas extra (Esc, Tab, Ctrl, Alt, flechas) que se muestra mientras el teclado está abierto, atajos de teclado físico y zoom con pellizco
-• Un terminal que se redimensiona con la ventana, el teclado, la pantalla dividida y la rotación
+• Un terminal que se redimensiona con la ventana, el teclado y la rotación (comprobado en un móvil y en una tablet, incluida una ventana redimensionada), y con la pantalla dividida (sin comprobar en un dispositivo)
 • Hosts SSH guardados y claves SSH que puedes generar, importar y exportar; las claves se cifran con el Keystore de Android
 • Acceso opcional al almacenamiento del dispositivo desde la distro, en ~/storage, por ejemplo para copiar logs a Descargas. El permiso solo se pide al activarlo
 • Copias de seguridad de una distro, de los ajustes o de todo, con cifrado opcional con contraseña, para restaurar en otro dispositivo
-• Apariencia: esquemas de color, un modo OLED de negro puro, una fuente monoespaciada incluida o tu propio archivo de fuente
+• Apariencia: esquemas de color, un modo OLED de negro puro, una fuente monoespaciada incluida o tu propio archivo de fuente, y tres estilos para las teclas extra
+• Una interfaz al estilo iOS, en español e inglés
+• Accesibilidad: etiquetas y acciones para cada gesto, zonas táctiles grandes y diseños con fuente grande, a partir de una revisión del código. Aún sin probar con TalkBack
 
 <b>Todavía no</b>
-El rediseño al estilo iOS, y el trabajo de accesibilidad y rendimiento.
+Comprobar TalkBack y la fuente grande en un dispositivo, medir una build de release (el arranque hasta el prompt es de 1,6 s en una build de depuración, algo por encima del objetivo de 1,5 s) y la pantalla dividida en tablets.
 
 <b>Por qué no está en Google Play</b>
 Para ejecutar programas desde su propio almacenamiento la app apunta a Android 9 (API 28), que Google Play ya no acepta. Eso es lo que permite ejecutar distribuciones sin root.
