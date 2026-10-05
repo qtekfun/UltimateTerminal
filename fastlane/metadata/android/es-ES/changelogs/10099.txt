@@ -1,0 +1,1 @@
+Primera versión (0.1.0). Una terminal libre para Android con Debian, Ubuntu, Alpine y Fedora mediante proot, pestañas, paneles divididos, perfiles y layouts guardados, copias de seguridad y una configuración inicial. Software temprano: probado en un Pixel 8 y, el redimensionado y la pantalla dividida, en una tablet; el README dice qué está verificado.

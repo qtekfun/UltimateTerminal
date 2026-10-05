@@ -1,0 +1,1 @@
+First release (0.1.0). A free terminal for Android with Debian, Ubuntu, Alpine and Fedora through proot, tabs, split panes, profiles and saved layouts, backups, and a first-run setup. Early software: tried on a Pixel 8 and, for resizing and split-screen, on one tablet; the README says what is verified.

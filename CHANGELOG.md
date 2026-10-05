@@ -10,6 +10,34 @@ and the project uses [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-05
+
+First release. A free (GPL-3.0-or-later) terminal for Android with Linux distributions through proot, no
+graphical environment, no telemetry. It is early software: the README says, feature by feature, what has
+been tried on a device (a Pixel 8 and, for window resizing, rotation and split-screen, a Huawei tablet) and
+what is only tested on a computer.
+
+### Highlights
+- Terminal with a real PTY, tabs, split panes and profiles, saved layouts, typing in several panes at once,
+  and editable keyboard shortcuts. It resizes with the window, the keyboard, rotation and split-screen
+  (tried on a tablet).
+- Debian, Ubuntu, Alpine and Fedora from their official mirrors with SHA-256 checks, users created
+  automatically, a first-run setup when no distro is installed, and backups of a distro, of the settings or
+  of everything (optionally encrypted).
+- iOS-style interface, three extra-key styles, OLED mode, your own fonts and colour schemes, accessibility
+  fixes, English and Spanish.
+- Measured on a Pixel 8 with the signed release build: about 1.2 s from a cold start to the prompt (Alpine) and
+  `seq 1 200000` in 1.09 s.
+
+### Known limitations
+- TalkBack and the layouts at font scale 2.0 have not been tried on a device.
+- Restoring a backup from the first-run setup, and rotating mid-install, have not been tried on a device.
+- A profile's colour scheme, font and size are stored but not applied per pane.
+- Fedora is offered on a 32-bit ARM device and fails with a message there.
+- Backups use gzip rather than `.tar.zst`.
+
+The detailed notes of the pre-releases are below.
+
 ## [0.1.0-rc.3] - 2026-10-05
 
 Third pre-release. Still early software: the README says what is verified on a device.

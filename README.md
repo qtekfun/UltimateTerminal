@@ -6,7 +6,7 @@ A modern terminal for Android that runs full Linux distributions (Debian, Ubuntu
 tablets and resizes with split screen, rotation and the keyboard. Terminal only: there is no graphical
 environment. Free software ([GPL-3.0-or-later](LICENSE)), no Google services, no tracking.
 
-> **Status: early pre-release (`0.1.0-rc.3`).** Much of the code is tested only on a computer. It has
+> **Status: first release (`0.1.0`), early software.** Much of the code is tested only on a computer. It has
 > been tried by hand on **two devices**: a Pixel 8 (Android 17) and a Huawei MRO-W09 tablet (Android 12).
 > The tablet has only been used for the window-resize checks. Read [What is verified](#what-is-verified)
 > before relying on anything.
