@@ -2587,3 +2587,21 @@ Hecho sin dispositivo: los tests de host corren en `./gradlew check`; los instru
 - **Añadidas** (todas Apache-2.0, solo `androidTestImplementation`, no entran en ningún APK): `androidx.test:runner` 1.7.0, `androidx.test:core` 1.7.0, `androidx.test.ext:junit` 1.3.0 y `androidx.test.uiautomator:uiautomator` 2.4.0, con el runner `androidx.test.runner.AndroidJUnitRunner`.
 - **Verificación de dependencias:** `verification-metadata.xml` regenerado con un `GRADLE_USER_HOME` limpio y `--write-verification-metadata sha256`; solo se añadieron los componentes que faltaban (115 líneas, ninguna eliminada ni reformateada). Acreditadas en `THIRD_PARTY_NOTICES.md` en el mismo cambio.
 - **Por validar en dispositivo:** que las tres clases pasen en el Pixel 8 con red (`ProotGuestTest`, `BackupDeviceRoundTripTest`, `MainActivityLaunchTest`), en especial los selectores de la interfaz y que `stty` exista en el rootfs de Alpine.
+
+## T21 (segunda pasada) — Revisión de la documentación (docs/t21-review)
+
+Solo texto, sin tocar código ni dispositivos. Todo lo que dice estar verificado sale de las rondas de pruebas de este fichero.
+
+### D-T21-4 · 2026-10-05 · Convenciones de la documentación de cara al usuario
+- **Tabla del README:** cada fila dice en qué dispositivo se verificó (Pixel 8 o tablet Huawei) y, si la verificación es parcial, lo dice en la propia fila. Una corrección que está en `master` pero no se ha vuelto a ver en un dispositivo no sube a la tabla: va en el párrafo «Fixed in the code and not looked at on a device yet». Los números de rendimiento se citan con su contexto (build de depuración, Pixel 8, Fedora) y sin redondear a favor.
+- **Tests instrumentados:** se describen como «escritos y compilados, sin ejecución registrada» mientras ninguna ronda anote que se ejecutaron (D-T18-1 a 5).
+- **`CHANGELOG.md`:** se mantiene una sola sección `[Unreleased]`, agrupada en Added/Changed/Fixed/Known limitations; cada arreglo hallado en un dispositivo indica si se volvió a verificar allí.
+- **`PRIVACY.md`:** se revisó contra el manifiesto (sin cambios en los nueve permisos) y contra `OfficialRootfsCatalog` (`dl-cdn.alpinelinux.org`, `cdimage.ubuntu.com`, `raw.githubusercontent.com` y `dl.fedoraproject.org`). Cambios: el dominio de Fedora, y que los DNS de respaldo ya se editan en Ajustes > Red (T16).
+- **`fastlane`:** `changelogs/10002.txt` (en/es) se añade para el siguiente `versionCode` (`0.1.0-rc.2` daría `(0*10000 + 1*100 + 0)*100 + 2 = 10002`), siguiendo el nombre de `10001.txt`. `gradle.properties` sigue en `0.1.0-rc.1`: subir la versión es una decisión de release (`RELEASING.md`) que no se tomó aquí; mientras tanto el fichero 10002 no se usa. Límites comprobados con un script: título 16/30, resumen 72/80 (en y es), descripción 3112 y 3331/4000, changelogs 371 y 426/500.
+- **`CONTRIBUTING.md`:** recoge la inicialización del submódulo, los tests instrumentados (`ANDROID_SERIAL`, `leaveApksInstalledAfterRun`), la regeneración de `verification-metadata.xml` y la convención de añadir al final de `DECISIONS.md` (y cómo se resuelven los conflictos al rebasar).
+
+### D-T21-5 · 2026-10-05 · Lo que no se pudo comprobar
+- **Redirecciones de Fedora:** `PRIVACY.md` nombra solo `dl.fedoraproject.org`, el host de las URLs del catálogo. No se comprobó si ese servidor redirige a otros mirrors al descargar; si lo hace, esos hosts también verían la IP.
+- **El aviso de notificaciones:** se describe como «un aviso propio antes del del sistema» (`SessionPrompts`) sin afirmar cuándo aparece.
+- **Atrás en la tablet Android 12:** el README y el changelog lo dejan como no verificado (D-FIX-1 de «Correcciones tras pruebas»).
+- **Dato desfasado que sigue sin tocarse:** la sección «Pendiente de validar en hardware», al principio de este fichero, aún dice que los agentes no prueban en dispositivos y no recoge las seis rondas; no se edita para no chocar con otras ramas (ver D-T21-1).
