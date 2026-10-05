@@ -23,7 +23,9 @@ data class SessionInfo(
     val id: SessionId,
     val state: SessionState,
     val title: String? = null,
-    val distroId: Long? = null
+    val distroId: Long? = null,
+    /** The profile the tab was opened with, which names it (D-FIX-2); null when none was used. */
+    val profileName: String? = null
 )
 
 /**

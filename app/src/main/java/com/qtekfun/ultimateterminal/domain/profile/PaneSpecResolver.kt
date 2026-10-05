@@ -124,7 +124,8 @@ class PaneSpecResolver(
                 chosen.target,
                 look,
                 command?.let(StartupCommand::inputFor),
-                profile?.id?.takeIf { it != 0L }
+                profile?.id?.takeIf { it != 0L },
+                profile?.takeIf { it.id != 0L }?.name
             ),
             notices
         )

@@ -4,12 +4,14 @@
 package com.qtekfun.ultimateterminal.terminal
 
 import android.content.Context
+import android.os.SystemClock
 import com.qtekfun.ultimateterminal.data.proot.LaunchPlan
 import com.qtekfun.ultimateterminal.data.proot.ProotLaunch
 import com.qtekfun.ultimateterminal.data.proot.ProotSessionPlanner
 import com.qtekfun.ultimateterminal.domain.launch.LaunchProblem
 import com.qtekfun.ultimateterminal.domain.profile.PaneOpening
 import com.qtekfun.ultimateterminal.domain.profile.PaneTarget
+import com.qtekfun.ultimateterminal.domain.profile.StartupInputGate
 import com.qtekfun.ultimateterminal.domain.session.HostRegistry
 import com.qtekfun.ultimateterminal.domain.session.LaunchingSessionFactory
 import com.qtekfun.ultimateterminal.domain.session.SessionController
@@ -139,13 +141,23 @@ class AndroidSessionFactory(
     }
 
     /**
-     * Types the command of a profile (with its Enter) into the shell once it has had a moment to
-     * start. The pty keeps what is typed until the shell reads it, so a slow proot start does not
-     * lose it; the pause only keeps the command from landing in the middle of the start-up output.
+     * Types the command of a profile (with its Enter) into the shell once it has printed its first
+     * prompt and gone quiet, or after a maximum wait ([StartupInputGate], D-FIX-5). Typed earlier the
+     * terminal would echo it twice, once before the prompt exists and once after.
      */
     private suspend fun typeStartupInput(host: TerminalSessionHost, opening: PaneOpening?) {
         val input = opening?.spec?.startupInput ?: return
-        delay(STARTUP_INPUT_DELAY_MILLIS)
+        val gate = StartupInputGate(SystemClock.elapsedRealtime())
+        var seen = host.outputCount
+        while (true) {
+            val now = SystemClock.elapsedRealtime()
+            if (host.outputCount != seen) {
+                seen = host.outputCount
+                gate.onOutput(now)
+            }
+            if (gate.isReady(now)) break
+            delay(STARTUP_POLL_MILLIS)
+        }
         host.write(input)
     }
 
@@ -173,5 +185,5 @@ class AndroidSessionFactory(
     }
 }
 
-/** How long a shell is given to start before the command of a profile is typed into it. */
-private const val STARTUP_INPUT_DELAY_MILLIS = 800L
+/** How often the start-up command checks whether the shell went quiet. */
+private const val STARTUP_POLL_MILLIS = 50L

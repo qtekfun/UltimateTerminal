@@ -20,6 +20,12 @@ import com.qtekfun.ultimateterminal.ui.ios.IosAlert
 internal fun tabNameText(name: TabName): String = when (name) {
     is TabName.Custom -> name.text
 
+    is TabName.InProfile -> if (name.ordinal == 1) {
+        name.profile
+    } else {
+        stringResource(R.string.tab_distro_numbered, name.profile, name.ordinal)
+    }
+
     is TabName.InDistro -> if (name.ordinal == 1) {
         name.distro
     } else {
