@@ -2827,3 +2827,7 @@ Con tests en el anfitrión (JVM): modos, enlaces (absolutos, relativos, rotos), 
 - **Nerd Font:** el arreglo de D-FONT-1 funciona en el dispositivo: `JetBrainsMonoNerdFontMono-Regular.ttf` se importa y, seleccionada, el prompt de starship dibuja sus iconos (Powerline, SO, reloj, flecha). Antes de la corrección la app la rechazaba.
 - **Mejorable:** cuando se importa una fuente, no se selecciona sola (hay que tocarla y elegir "Usar esta fuente"); y la lista de hosts SSH no muestra qué clave tiene cada uno.
 - **Pruebas pendientes de la `0.1.2`:** pulsación larga en una pestaña para cerrar, y que el botón de tres puntos abre el menú en horizontal y en la tablet.
+
+### D-T20-9 · 2026-10-05 · Capturas renovadas (0.1.2)
+- Las capturas de F-Droid se repiten con la `0.1.2` en el Pixel 8 (inglés y español, barra de estado fija con el modo demo del sistema, restaurado después): terminal con Fedora y el prompt de starship con Nerd Font, panel dividido, el menú del botón de tres puntos, Ajustes, Apariencia y Distribuciones. No salen hosts SSH ni IPs; sí el nombre de usuario `qtekfun` del prompt (el mismo del GitHub del proyecto). El README muestra tres (`docs/images/`, copias de las de `fastlane` en inglés).
+- Pendiente: captura de tablet y la del asistente de bienvenida (necesita una instalación limpia).
