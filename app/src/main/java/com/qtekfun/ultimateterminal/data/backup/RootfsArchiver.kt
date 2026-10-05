@@ -3,14 +3,16 @@
 
 package com.qtekfun.ultimateterminal.data.backup
 
+import com.qtekfun.ultimateterminal.data.storage.OwnerAccess
+import com.qtekfun.ultimateterminal.data.storage.TreeVisitor
+import com.qtekfun.ultimateterminal.data.storage.TreeWalker
+import com.qtekfun.ultimateterminal.data.storage.UnreadableFileException
+import com.qtekfun.ultimateterminal.domain.backup.BackupError
+import java.io.InputStream
 import java.io.OutputStream
-import java.nio.file.FileVisitResult
 import java.nio.file.Files
-import java.nio.file.LinkOption
 import java.nio.file.Path
-import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.attribute.PosixFilePermission
 import java.util.zip.GZIPOutputStream
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
@@ -18,12 +20,18 @@ import org.apache.commons.compress.archivers.tar.TarConstants
 
 /**
  * Writes a root filesystem as a gzip-compressed tar, keeping what a distro needs to work again:
- * the nine permission bits (so executables stay executable), symbolic links as links and the
- * modification times. Special files (sockets, pipes, devices) are skipped, as the installer's
+ * the permission bits (so executables stay executable, setuid ones included where the file system
+ * reports them), symbolic links as links and the modification times. A file or directory that the
+ * app cannot read (a distro's `/etc/shadow` is mode 000) is made readable for the owner just while
+ * it is read, and its mode is put back: the archive records the original mode. A link is never
+ * followed. A file that cannot be read at all fails the whole export with
+ * [BackupError.UnreadableFile] naming it, so no incomplete backup is ever written. Special files (sockets, pipes, devices) are skipped, as the installer's
  * extractor would skip them. Every entry is owned by root: the files belong to the app's user on
  * the device, and proot presents ownership itself.
  */
-internal class RootfsArchiver {
+internal class RootfsArchiver(
+    private val open: (Path) -> InputStream = Files::newInputStream
+) {
     /**
      * Archives the tree under [root] into [out], which is closed. [onFile] is told how many bytes
      * of file content went in so far, and may throw to stop (it is how cancellation gets in).
@@ -34,32 +42,36 @@ internal class RootfsArchiver {
             setLongFileMode(TarArchiveOutputStream.LONGFILE_POSIX)
             setAddPaxHeadersForNonAsciiNames(true)
         }
-        tar.use { Files.walkFileTree(root, TreeWriter(root, tar, onFile)) }
+        try {
+            tar.use { TreeWalker.walk(root, TreeWriter(root, tar, open, onFile)) }
+        } catch (e: UnreadableFileException) {
+            val name = root.relativize(e.path).toString().ifEmpty { "./" }
+            throw BackupFailure(BackupError.UnreadableFile(name, e.denied))
+        }
     }
 
     private class TreeWriter(
         private val root: Path,
         private val tar: TarArchiveOutputStream,
+        private val open: (Path) -> InputStream,
         private val onFile: (Long) -> Unit
-    ) : SimpleFileVisitor<Path>() {
+    ) : TreeVisitor {
         private var contentBytes = 0L
 
-        override fun preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult {
+        override fun enterDirectory(dir: Path, attrs: BasicFileAttributes) {
             val entry = TarArchiveEntry(nameOf(dir, directory = true))
-            entry.mode = modeOf(dir)
+            entry.mode = OwnerAccess.modeOf(dir)
             entry.setModTime(attrs.lastModifiedTime())
             tar.putArchiveEntry(entry)
             tar.closeArchiveEntry()
-            return FileVisitResult.CONTINUE
         }
 
-        override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+        override fun visitFile(file: Path, attrs: BasicFileAttributes) {
             when {
                 attrs.isSymbolicLink -> link(file)
                 attrs.isRegularFile -> regular(file, attrs)
                 // else: a socket, a pipe or a device
             }
-            return FileVisitResult.CONTINUE
         }
 
         private fun link(file: Path) {
@@ -73,10 +85,10 @@ internal class RootfsArchiver {
         private fun regular(file: Path, attrs: BasicFileAttributes) {
             val entry = TarArchiveEntry(nameOf(file, directory = false))
             entry.size = attrs.size()
-            entry.mode = modeOf(file)
+            entry.mode = OwnerAccess.modeOf(file)
             entry.setModTime(attrs.lastModifiedTime())
-            tar.putArchiveEntry(entry)
-            Files.newInputStream(file).use { input ->
+            OwnerAccess.reading(file, open) { input ->
+                tar.putArchiveEntry(entry)
                 val buffer = ByteArray(COPY_BUFFER)
                 while (true) {
                     val read = input.read(buffer)
@@ -85,8 +97,8 @@ internal class RootfsArchiver {
                     contentBytes += read
                     onFile(contentBytes)
                 }
+                tar.closeArchiveEntry()
             }
-            tar.closeArchiveEntry()
         }
 
         /** The root is "./", as in the distros' own archives; the rest are relative paths. */
@@ -98,28 +110,10 @@ internal class RootfsArchiver {
                 else -> relative
             }
         }
-
-        private fun modeOf(path: Path): Int =
-            Files.getPosixFilePermissions(path, LinkOption.NOFOLLOW_LINKS).fold(0) { mode, bit ->
-                mode or (1 shl BITS.indexOf(bit))
-            }
     }
 
     private companion object {
         const val COPY_BUFFER = 64 * 1024
         const val SYMLINK_MODE = 0b111_111_111
-
-        /** From the lowest bit up: others x, w, r, then group, then owner. */
-        val BITS = listOf(
-            PosixFilePermission.OTHERS_EXECUTE,
-            PosixFilePermission.OTHERS_WRITE,
-            PosixFilePermission.OTHERS_READ,
-            PosixFilePermission.GROUP_EXECUTE,
-            PosixFilePermission.GROUP_WRITE,
-            PosixFilePermission.GROUP_READ,
-            PosixFilePermission.OWNER_EXECUTE,
-            PosixFilePermission.OWNER_WRITE,
-            PosixFilePermission.OWNER_READ
-        )
     }
 }

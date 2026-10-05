@@ -86,6 +86,11 @@ private fun backupErrorText(context: Context, error: BackupError): String = when
         formatSize(context, error.availableBytes)
     )
 
+    is BackupError.UnreadableFile -> context.getString(
+        if (error.denied) R.string.backup_error_unreadable_denied else R.string.backup_error_unreadable,
+        error.path
+    )
+
     is BackupError.Extraction -> context.getString(
         R.string.backup_error_extraction,
         error.error.describe()

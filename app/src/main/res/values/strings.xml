@@ -374,6 +374,9 @@
     <string name="backup_error_space">Not enough free space: %1$s needed, %2$s available.</string>
     <string name="backup_error_extraction">The distro in the backup could not be unpacked safely: %1$s</string>
     <string name="backup_error_io">Could not read or write the file: %1$s</string>
+    <string name="backup_error_unreadable_denied">Skipped: the backup was not created because the system does not let the app read “%1$s”. Nothing was changed; try again, and if it keeps happening, report that file.</string>
+    <string name="backup_error_unreadable">Skipped: the backup was not created because “%1$s” could not be read (it may have been removed meanwhile). Nothing was changed; try again.</string>
+    <string name="backup_where_it_goes">The file is saved where you choose in the next step, in any folder the system file picker offers (Downloads, for example), so you can copy or share it from there. Your distros themselves stay in the app’s private storage; inside a distro, ~/storage is your device storage.</string>
 
     <!-- iOS-style components (T22a) -->
     <string name="ios_state_on">On</string>
