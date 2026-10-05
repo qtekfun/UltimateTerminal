@@ -2240,3 +2240,22 @@ Petición del usuario (Fedora es su distro habitual). Hecho sin dispositivo: pro
 
 
 **Comprobado en el Pixel 8 con la build de `master` (2026-10-04): "atrás" en el terminal no escribe nada en el shell.** Con el teclado visible y `echo prueba` sin enviar, una pulsación de "atrás" oculta el teclado (y con él la fila de teclas especiales) y la línea queda intacta, sin "Display all … possibilities?". Una pulsación más, sin teclado, deja la app en segundo plano, como se espera. La sospecha de la versión anterior queda cerrada. El diálogo "Mantener las sesiones activas" sigue con aspecto de Material (pendiente).
+
+### Cuarta ronda (2026-10-05, build de `master` en el Pixel 8 y en la tablet Huawei MRO-W09)
+
+**Corrección del usuario:** el requisito original sí era la tablet (el redimensionado de Termux); mi frase de que no lo era fue un error de lectura.
+
+**Tablet Huawei MRO-W09 (Android 12, 2800×1840, arm64): primera validación real de T04/T10.**
+- Con ninguna distro instalada, la app abre una pestaña "Shell 1" con el shell del sistema y la barra lateral de pestañas (pantalla ancha) con "+" y ⚙ abajo.
+- `stty size` coincide con lo visible: apaisado 41 filas × 123 columnas (unas 125 × 42 con márgenes); vertical (rotación 0) 64 × 72 sin teclado y 58 × 72 con la fila de teclas extra, que aparece y desaparece con el teclado (RF-08 también aquí).
+- Multiventana (ventana flotante forzada con `--windowingMode 5` y `am task resize`): ventana pequeña 23 × 45 y ventana grande 49 × 60; cada cambio de tamaño actualiza el PTY y coincide con lo visible.
+- No probado: pantalla dividida (`--windowingMode 3/4` falla en este EMUI con una excepción del sistema), paneles divididos, distro instalada, teclado físico.
+- La captura de esta tablet no incluye el teclado en pantalla (`mInputShown=true` confirma que está abierto).
+- Ajustes del sistema que toqué para probar (rotación fija, `enable_freeform_support`, `force_resizable_activities`) restaurados al terminar.
+
+**Pixel 8.**
+- "Atrás" en el terminal oculta el teclado y no escribe nada en el shell (verificado, sección anterior).
+- Páginas de Ajustes ahora probadas: Terminal (historial, 10.000 líneas marcado), Teclado, Sesiones (batería sin restricciones: "Permitido"; notificaciones: "No permitido"), Almacenamiento, Copias de seguridad, Acerca de (0.1.0-rc.1, GPL-3.0-or-later) y Créditos y licencias.
+- **Fallo 1:** el teclado en pantalla sigue abierto sobre Ajustes y tapa contenido al venir del terminal.
+- **Fallo 2:** "Créditos y licencias" muestra el texto con los saltos de línea duros del `.md` como filas separadas y la tabla como filas sueltas, en inglés. Legible pero feo; no se pierde ningún crédito.
+- Ambos fallos se pasan a un agente (rama `fix/ime-and-credits`).
