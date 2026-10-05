@@ -55,7 +55,7 @@ on a Pixel 8.
 | Backups: export and restore with the system file picker | | yes |
 | `~/storage` mount and its permission on Android 13 and later | | yes (an untested hypothesis, see `DECISIONS.md` D-T13-3) |
 | Behaviour on a **tablet**: resizing, split screen, multi-window | | yes |
-| TalkBack, performance, battery | | yes |
+| TalkBack, performance, battery | | yes (accessibility fixes and an emulator throughput test exist; measure with [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md)) |
 
 Some fixes are in the code but have not been looked at on a device since: the extra-keys row hiding
 with the keyboard, text reaching the shell as it is typed (a soft keyboard used to hold it back until
