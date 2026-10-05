@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.qtekfun.ultimateterminal.R
 import com.qtekfun.ultimateterminal.domain.session.SessionId
@@ -99,4 +100,18 @@ internal fun ClosePrompt(
             onDismiss = tabs::dismissClose
         )
     }
+}
+
+/** Asks before "Exit" kills [sessions] running shells; a normal alert, so TalkBack reads it as one. */
+@Composable
+internal fun ExitConfirm(sessions: Int, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    IosAlert(
+        title = stringResource(R.string.exit_title),
+        message = pluralStringResource(R.plurals.exit_message, sessions, sessions),
+        actions = listOf(
+            IosAction(stringResource(R.string.tab_cancel), IosActionRole.CANCEL),
+            IosAction(stringResource(R.string.exit_confirm), IosActionRole.DESTRUCTIVE, onConfirm)
+        ),
+        onDismiss = onDismiss
+    )
 }

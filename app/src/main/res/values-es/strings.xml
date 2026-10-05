@@ -122,6 +122,13 @@
     <string name="tab_cancel">Cancelar</string>
     <string name="tab_close_title">¿Cerrar %1$s?</string>
     <string name="tab_close_message">Todavía hay un programa en ejecución y se detendrá.</string>
+    <string name="exit_open">Salir</string>
+    <string name="exit_title">¿Salir de UltimateTerminal?</string>
+    <plurals name="exit_message">
+        <item quantity="one">Se cerrará %d sesión y se detendrá su programa.</item>
+        <item quantity="other">Se cerrarán %d sesiones y se detendrán sus programas.</item>
+    </plurals>
+    <string name="exit_confirm">Salir</string>
     <string name="tab_close_confirm">Cerrar</string>
 
     <!-- Servidores y claves SSH (T14) -->

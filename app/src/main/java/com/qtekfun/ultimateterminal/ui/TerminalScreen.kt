@@ -303,6 +303,7 @@ class ScreenLinks(
     val openSsh: () -> Unit,
     val openAppearance: () -> Unit,
     val openSettings: () -> Unit,
+    val requestExit: () -> Unit,
     val profiles: ProfileLinks
 )
 
