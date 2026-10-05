@@ -59,6 +59,7 @@ android {
         targetSdk = 28
         versionCode = versionCodeOf(appVersion)
         versionName = appVersion
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         externalNativeBuild {
             cmake {
@@ -391,4 +392,11 @@ dependencies {
     testImplementation(libs.mockk)
     // Host JVM build of the bundled SQLite, so Room runs in local unit tests.
     testImplementation(libs.sqlite.bundled.jvm)
+
+    // Instrumented tests (T18): they run on a device and are never packaged in the APK. All are
+    // Apache-2.0 (see THIRD_PARTY_NOTICES.md).
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.uiautomator)
 }
