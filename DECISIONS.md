@@ -2868,3 +2868,8 @@ Con tests en el anfitrión (JVM): modos, enlaces (absolutos, relativos, rotos), 
 
 ### D-REL-7 · 2026-10-05 · 0.1.3
 - A petición del usuario ("si todo funciona saca la release") se publica la `0.1.3` (versionCode 10399) con el cierre fiable: "Salir" en el menú y el arreglo de "Salir" en la notificación (verificado en un OPPO PGEM10 con la build de depuración de `master`). La entrada "Salir" del menú no se ha probado todavía en un dispositivo; se prueba con esta release en el Pixel 8.
+
+### Decimosexta ronda (Pixel 8 del usuario, 2026-10-05, `0.1.3` firmada instalada encima de la `0.1.2`)
+- **Entrada "Salir" del menú, con una sesión viva:** aparece la última, en rojo y con el icono de apagado; pide confirmación ("¿Salir de UltimateTerminal? Se cerrará 1 sesión y se detendrá su programa."); al confirmar, el servicio y la notificación desaparecen, la app vuelve al escritorio y reabrirla es un arranque normal con una pestaña (Fedora) y una sola pulsación. El proceso sigue vivo un rato (Android lo recicla; D-EXIT-2, no se mata a mano) pero no queda tarea de la app en recientes.
+- **Sin comprobar:** "Salir" con cero sesiones (sale directo, sin alerta), con la pantalla apagada y con "mantener despierto" activado; "Salir" desde el menú en la barra lateral y la tira de la tablet.
+- Pantalla fija restaurada al terminar.
