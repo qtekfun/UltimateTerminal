@@ -32,15 +32,15 @@ class SidebarFocusGuardTest {
 
     @Test
     fun `the more options button opens the menu without being a focus target`() {
-        val bar = text("ui/TabBar.kt")
-        val button = bar.substringAfter("private fun MoreOptionsButton(")
+        val newTab = text("ui/NewTabButton.kt")
+        val button = newTab.substringAfter("private fun MoreOptionsButton(")
         assertTrue("IosGlyph.ELLIPSIS" in button)
         assertTrue("onClick(label" in button)
         assertTrue("stateDescription" in button)
         assertFalse(".clickable(" in button)
         assertFalse(".combinedClickable(" in button)
         // The long press on "+" stays as a shortcut to the same menu.
-        assertTrue("onLongClick = { menuFrom = NewTabMenuSource.PLUS }" in bar)
+        assertTrue("onLongClick = { menuFrom = NewTabMenuSource.PLUS }" in newTab)
     }
 
     @Test

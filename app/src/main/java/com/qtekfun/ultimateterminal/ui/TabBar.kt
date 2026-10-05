@@ -50,8 +50,8 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -455,98 +455,3 @@ private fun TabMenu(name: String, actions: TabChipActions) {
 }
 
 internal val MenuIconSize = 20.dp
-
-/** Which control the new-tab menu hangs from, so that it opens next to the one that was used. */
-private enum class NewTabMenuSource { PLUS, MORE }
-
-/**
- * The "+" and, next to it, the explicit "more options" button: a tap on "+" opens a tab of the default
- * distro, and the button (or a long press on "+", kept as a shortcut) opens the menu. Stacked in the
- * rail, which is 56 dp wide, and side by side elsewhere. The button is not a focus target (D-T26-7).
- */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun NewTabButton(
-    choices: List<DistroOption>,
-    onNewTab: () -> Unit,
-    onNewTabIn: (Long?) -> Unit,
-    links: TabBarLinks,
-    stacked: Boolean
-) {
-    var menuFrom by remember { mutableStateOf<NewTabMenuSource?>(null) }
-    val label = stringResource(R.string.tab_new)
-    val chooseLabel = stringResource(R.string.tab_new_choose)
-    val plus: @Composable () -> Unit = {
-        Box(
-            Modifier
-                .size(TouchSize)
-                .semantics {
-                    contentDescription = label
-                    role = Role.Button
-                }
-                .combinedClickable(
-                    onClickLabel = label,
-                    onClick = onNewTab,
-                    onLongClickLabel = chooseLabel,
-                    onLongClick = { menuFrom = NewTabMenuSource.PLUS }
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            IosIcon(IosGlyph.PLUS, null, tint = IosTheme.colors.tint)
-            NewTabMenu(menuFrom == NewTabMenuSource.PLUS, { menuFrom = null }, choices, onNewTabIn, links)
-        }
-    }
-    val more: @Composable () -> Unit = {
-        MoreOptionsButton(
-            menuOpen = menuFrom != null,
-            onOpen = { menuFrom = NewTabMenuSource.MORE },
-            chooseLabel = chooseLabel
-        ) {
-            NewTabMenu(menuFrom == NewTabMenuSource.MORE, { menuFrom = null }, choices, onNewTabIn, links)
-        }
-    }
-    if (stacked) {
-        Column {
-            plus()
-            more()
-        }
-    } else {
-        Row {
-            plus()
-            more()
-        }
-    }
-}
-
-/** The "more options" button: the three dots, with the state of the menu for a screen reader. */
-@Composable
-private fun MoreOptionsButton(
-    menuOpen: Boolean,
-    onOpen: () -> Unit,
-    chooseLabel: String,
-    menu: @Composable () -> Unit
-) {
-    val text = stringResource(R.string.tab_new_more)
-    val state = stringResource(
-        if (menuOpen) R.string.tab_new_more_open else R.string.tab_new_more_closed
-    )
-    Box(
-        Modifier
-            .size(TouchSize)
-            .semantics {
-                contentDescription = text
-                stateDescription = state
-                role = Role.Button
-                onClick(label = chooseLabel) {
-                    onOpen()
-                    true
-                }
-            }
-            // A tap gesture and a semantic action, not `clickable`, so it never takes the keyboard.
-            .pointerInput(Unit) { detectTapGestures { onOpen() } },
-        contentAlignment = Alignment.Center
-    ) {
-        IosIcon(IosGlyph.ELLIPSIS, null, tint = IosTheme.colors.tint, size = MenuIconSize)
-        menu()
-    }
-}

@@ -40,6 +40,9 @@ class MenuPlacementTest {
     @Test
     fun `a menu bigger than the window sits at the origin`() {
         val tiny = IntSize(200, 300)
-        assertEquals(IntOffset(0, 0), menuPlacement(IntRect(0, 50, 40, 90), tiny, IntSize(300, 800)))
+        assertEquals(
+            IntOffset(0, 0),
+            menuPlacement(IntRect(0, 50, 40, 90), tiny, IntSize(300, 800))
+        )
     }
 }
