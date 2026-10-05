@@ -16,6 +16,11 @@ and the project uses [SemVer](https://semver.org/).
   you tap the rail. Settings > Terminal > "Collapse the sidebar when you use the terminal" (on by default;
   off keeps it always expanded) is included in configuration backups.
 
+### Fixed
+- Wide layouts: after the sidebar collapsed, typed keys did not reach the terminal, and a space re-opened the
+  sidebar and closed the soft keyboard. The sidebar controls no longer take keyboard focus, and opening or
+  closing the sidebar never hides the keyboard.
+
 ## [0.1.0] - 2026-10-05
 
 First release. A free (GPL-3.0-or-later) terminal for Android with Linux distributions through proot, no
