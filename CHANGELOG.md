@@ -10,19 +10,27 @@ and the project uses [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
-### Added
-- Importing an SSH key from a file suggests the file's name as the key's name (without a `.pem`, `.key` or
-  `.txt` ending; a number is added if the name is taken). You can still change it. Not yet verified on a
-  real device.
+## [0.1.2] - 2026-10-05
 
+More fixes and small improvements from using the app on a phone. Most are tested on a computer and still
+need a real device; the README says what has been tried where.
+
+### Added
 - A visible "More options" button (three dots) next to "+" in the top bar, the side bar and the rail opens the
   menu that used to be reachable only by long-pressing "+" (a long press still works).
+- A long press on a tab asks "Close <name>?" before closing it, in the full bar and in the collapsed rail
+  (it no longer expands the sidebar there; the chevron or a tap on the rail does). A long press followed by
+  a drag still reorders.
+- Importing an SSH key from a file suggests the file's name as the key's name (without a `.pem`, `.key` or
+  `.txt` ending; a number is added if the name is taken). You can still change it.
 
 ### Fixed
-- Importing a font no longer fails with "missing letters" for every font.
+- Importing a font no longer fails with "missing letters" for every font, so a Nerd Font can be used for
+  prompts such as starship. (Verified by tests; not yet on a device.)
 
-### Added
-- A long press on a tab asks "Close <name>?" before closing it, in the full bar and in the collapsed rail (it no longer expands the sidebar there; the chevron or a tap on the rail does). A long press followed by a drag still reorders.
+### Known limitations
+- Same as 0.1.1: the setuid bit is dropped when a distro is installed or restored, and imported fonts are
+  not included in backups.
 
 ## [0.1.1] - 2026-10-05
 
