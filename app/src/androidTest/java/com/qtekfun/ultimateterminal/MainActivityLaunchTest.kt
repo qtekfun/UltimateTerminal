@@ -40,6 +40,10 @@ class MainActivityLaunchTest {
         // Android 13+ may ask for the notification permission when the first session starts.
         device.wait(Until.findObject(By.res(Pattern.compile(".*permission_deny_button"))), 2_000)
             ?.click()
+        // The "keep sessions alive" prompt (notifications or battery) is a modal alert shown over
+        // the terminal on a fresh install; while it is up, the screen below is hidden from UI
+        // Automator. "Not now" changes no setting.
+        device.wait(Until.findObject(text(R.string.prompt_not_now)), PROMPT_WAIT_MS)?.click()
         assertNotNull("the terminal screen did not appear", awaitDesc(R.string.settings_open))
     }
 
@@ -119,6 +123,7 @@ class MainActivityLaunchTest {
 
     private companion object {
         const val WAIT_MS = 10_000L
+        const val PROMPT_WAIT_MS = 3_000L
         const val MAX_BACKS = 6
         const val BACK_PAUSE_MS = 400L
     }
