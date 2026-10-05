@@ -10,6 +10,11 @@ and the project uses [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- Closing the sessions with "Exit" in the notification no longer makes the app reopen empty and close again
+  (needing a second tap): the app now starts with one tab of the default distro, and an app kept in recents
+  with no sessions opens one tab when it comes back.
+
 ## [0.1.2] - 2026-10-05
 
 More fixes and small improvements from using the app on a phone. Most are tested on a computer and still

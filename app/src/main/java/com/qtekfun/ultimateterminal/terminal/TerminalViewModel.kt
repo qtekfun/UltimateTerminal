@@ -193,11 +193,10 @@ class TerminalViewModel @Inject constructor(
 
     private fun applyLayout(newLayout: TerminalLayout) {
         manager.onLayout(newLayout)
-        // The first layout starts the shell, but only if the app has none yet: after "Exit" there
-        // are no sessions and the screen is closing, so nothing may start a new one.
+        // The first layout starts the shell, but only if the app has none yet (RF-13).
         if (!started) {
             started = true
-            if (manager.state.value.items.isEmpty()) manager.newDefaultSession()
+            manager.newDefaultSession(onlyIfEmpty = true)
         }
         topRowState.value = clampTopRow(topRowState.value, transcriptRows)
     }

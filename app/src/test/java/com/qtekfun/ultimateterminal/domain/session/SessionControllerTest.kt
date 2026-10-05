@@ -142,6 +142,25 @@ class SessionControllerTest {
     }
 
     @Test
+    fun shutdownAllEndsEveryShellAndStopsTheServiceOnce() {
+        val first = controller.newSession()
+        controller.newSession()
+
+        controller.shutdownAll()
+
+        assertTrue(controller.state.value.items.isEmpty())
+        assertEquals(1, factory.handles.getValue(first).stopped)
+        assertEquals(listOf(true, false, false), service.calls)
+    }
+
+    @Test
+    fun shutdownAllStopsTheServiceEvenWhenThisProcessNeverStartedIt() {
+        controller.shutdownAll()
+
+        assertEquals(listOf(false), service.calls)
+    }
+
+    @Test
     fun aShellThatCannotStartIsReportedAsFailedAndNeverStartsTheService() {
         factory.failToStart = true
 

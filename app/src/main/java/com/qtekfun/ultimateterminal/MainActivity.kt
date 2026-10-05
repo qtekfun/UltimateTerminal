@@ -27,10 +27,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qtekfun.ultimateterminal.domain.model.AppSettings
 import com.qtekfun.ultimateterminal.domain.repository.SettingsRepository
+import com.qtekfun.ultimateterminal.domain.session.StartupTabRule
 import com.qtekfun.ultimateterminal.domain.setup.SetupGate
 import com.qtekfun.ultimateterminal.domain.theme.SchemeCatalog
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
@@ -140,7 +144,7 @@ class MainActivity : ComponentActivity() {
         val typefaces = remember(settings.appearance.fontId, settings.customFonts) {
             fontLoader.load(settings.appearance.fontId, settings.customFonts)
         }
-        FinishWithSessions(hasSessions = sessions.items.isNotEmpty())
+        FinishWithSessions(count = sessions.items.size)
         val covered = showSettings || showDistros || showSsh || showAppearance || overlay.any
         Box {
             CompositionLocalProvider(LocalTerminalCovered provides covered) {
@@ -227,15 +231,27 @@ class MainActivity : ComponentActivity() {
     private suspend fun saveFontSize(size: Float) =
         settingsRepository.update { it.copy(terminalFontSizeSp = size) }
 
-    /** "Exit" in the notification closes every session: close the screen with them. */
+    /**
+     * Never zero tabs on screen (RF-13b, D-NOTIF-1): the last tab closed while the screen is in
+     * front closes the app; sessions that vanished while it was stopped (the notification's Exit)
+     * are not acted on there, and the next resume opens a fresh tab of the default distro.
+     */
     @Composable
-    private fun FinishWithSessions(hasSessions: Boolean) {
+    private fun FinishWithSessions(count: Int) {
+        val lifecycle = LocalLifecycleOwner.current.lifecycle
         var hadSessions by remember { mutableStateOf(false) }
-        LaunchedEffect(hasSessions) {
-            if (hasSessions) {
-                hadSessions = true
-            } else if (hadSessions) {
-                finishAndRemoveTask()
+        LaunchedEffect(count) {
+            val resumed = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+            when (StartupTabRule.onSessionsChanged(count, hadSessions, resumed)) {
+                StartupTabRule.Action.FINISH -> finishAndRemoveTask()
+                else -> Unit
+            }
+            hadSessions = count > 0
+        }
+        LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+            val action = StartupTabRule.onResume(sessionManager.state.value.items.size)
+            if (action == StartupTabRule.Action.OPEN_DEFAULT_TAB) {
+                sessionManager.newDefaultSession(onlyIfEmpty = true)
             }
         }
     }

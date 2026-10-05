@@ -188,6 +188,17 @@ class SessionController(
         stopped.forEach(SessionHandle::stop)
     }
 
+    /**
+     * The whole shutdown path: every session ends and the service is told to stop even if this
+     * process thought it was not running (a service restarted by a stale notification action).
+     * Used by the notification's Exit action.
+     */
+    fun shutdownAll() {
+        closeAll()
+        serviceWanted = false
+        service.setRunning(false)
+    }
+
     override fun edit(change: Sessions.() -> Sessions) {
         val before = mutableState.value
         val next = before.change()

@@ -82,11 +82,14 @@ class SessionManager @Inject constructor(
 
     /**
      * Opens a tab in the default distro if it is ready, else in Android's shell: what the app does
-     * when it starts and when the notification asks for a new session.
+     * when it starts and when the notification asks for a new session. With [onlyIfEmpty] it opens
+     * nothing if a session exists by then (RF-13b).
      */
-    fun newDefaultSession() {
+    fun newDefaultSession(onlyIfEmpty: Boolean = false) {
         scope.launch {
             val ready = distros.getDefault()?.takeIf { it.state == DistroState.READY }
+            // Checked after the distro is known, so the first layout and a resume open one tab, not two.
+            if (onlyIfEmpty && controller.state.value.items.isNotEmpty()) return@launch
             controller.newSession(ready?.id)
         }
     }
@@ -99,7 +102,8 @@ class SessionManager @Inject constructor(
 
     fun close(id: SessionId) = controller.close(id)
 
-    fun closeAll() = controller.closeAll()
+    /** Ends every shell and stops the foreground service: the one shutdown path (D-NOTIF-1). */
+    fun shutdownAll() = controller.shutdownAll()
 
     fun onLayout(layout: TerminalLayout) = controller.onLayout(layout)
 

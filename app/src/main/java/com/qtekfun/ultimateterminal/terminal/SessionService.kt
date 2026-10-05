@@ -13,6 +13,7 @@ import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.ServiceCompat
 import com.qtekfun.ultimateterminal.domain.repository.SettingsRepository
+import com.qtekfun.ultimateterminal.domain.session.ServiceCommand
 import com.qtekfun.ultimateterminal.domain.session.wakeLockWanted
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -53,9 +54,10 @@ class SessionService : Service() {
         // Promoted at once, whatever the command: Android kills a service started with
         // startForegroundService that does not call startForeground in time.
         promote(manager.state.value.runningCount)
-        when (intent?.action) {
-            ACTION_NEW_SESSION -> manager.newDefaultSession()
-            ACTION_EXIT -> manager.closeAll()
+        when (ServiceCommand.of(intent?.action)) {
+            ServiceCommand.NEW_SESSION -> manager.newDefaultSession()
+            ServiceCommand.EXIT -> manager.shutdownAll()
+            ServiceCommand.NONE -> Unit
         }
         if (!manager.state.value.needsService) {
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -127,8 +129,8 @@ class SessionService : Service() {
     }
 
     companion object {
-        const val ACTION_NEW_SESSION = "com.qtekfun.ultimateterminal.action.NEW_SESSION"
-        const val ACTION_EXIT = "com.qtekfun.ultimateterminal.action.EXIT"
+        const val ACTION_NEW_SESSION = ServiceCommand.ACTION_NEW_SESSION
+        const val ACTION_EXIT = ServiceCommand.ACTION_EXIT
         private const val WAKE_LOCK_TAG = "ultimateterminal:sessions"
     }
 }
