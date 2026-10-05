@@ -2560,3 +2560,30 @@ Seis fallos de uso hallados en el Pixel 8 (ninguno era un cierre). Numeración c
   dividiéndose en la distro de origen, como antes.
 - **Efecto en guardar:** el panel heredado se guarda con el perfil (`LayoutNode.Pane(profileId)`), así que al reabrir ese layout
   correrá el comando del perfil también en él. Mantiene la distro (D-T12b-10 la perdía) a cambio de eso.
+
+## T18 · Tests de integración y de dispositivo (feat/t18-integration-tests)
+
+Hecho sin dispositivo: los tests de host corren en `./gradlew check`; los instrumentados solo se compilan (`assembleDebugAndroidTest`) y los ejecuta el orquestador en un Pixel 8. Guía de uso en `docs/TESTING.md`.
+
+### D-T18-1 · Tests de integración en host: piezas reales, solo los bordes simulados
+- **Decisión:** `app/src/test/.../integration/` une clases reales de `domain` y `data` con los únicos bordes que exigen un dispositivo como fakes (catálogo oficial, proceso, almacenamiento compartido, biblioteca nativa, pty). `InstallAndLaunchIntegrationTest` instala desde un `.tar.gz` servido por MockWebServer (descargador real con SHA-256, extracción transaccional real en un directorio real, Room real) y planifica la sesión con `ProotSessionPlanner`; `BackupRoundTripIntegrationTest` exporta (en claro y cifrado) y restaura en un segundo dispositivo vacío y compara ficheros, distro y usuario por defecto, perfiles, disposiciones, atajos, teclas extra, apariencia y ajustes; `ResizeIntegrationTest` sigue ventana, barras, teclado y margen hasta las llamadas al pty falso, con y sin paneles divididos.
+- **Sin código de producción nuevo:** los umbrales de Kover (85 % en `domain`/`data`, 100 % en `data.rootfs.verify` y `data.backup`) no cambian y siguen en verde. Los tests reutilizan `Device`, `TarBuilder` y los fakes ya existentes; no repiten lo que cubren los tests por piezas, sino la unión entre ellas (p. ej. que el usuario por defecto instalado acabe como `-i uid:gid` en la línea de proot, o que un hash falso no deje ni distro ni ficheros).
+- **Límite:** el catálogo oficial es un `FakeCatalog` (sus parsers ya tienen tests propios, T06); el proceso y el pty reales solo se prueban en dispositivo.
+
+### D-T18-2 · Pruebas instrumentadas: sin rootfs fijado, el instalador de la app con su SHA-256
+- **Decisión:** `ProotGuestTest` y `BackupDeviceRoundTripTest` obtienen Alpine con `DistroInstaller` + `OfficialRootfsCatalog` + `HttpRootfsDownloader`: el índice oficial da URL y hash y la app verifica el archivo. No hay ninguna descarga ni binario fijados en el repositorio. Sin red (índice o descarga inalcanzables) el test se salta con `Assume`; un hash o un HTTP erróneos **fallan**, porque es lo que la verificación debe detectar.
+- **Pty y proot reales:** se usa `TerminalSessionHost` con el `ShellStart.proot` que produce el planificador, o sea el mismo camino que la app; se escribe por el pty y se lee la transcripción del emulador. Las comprobaciones evitan falsos positivos con el eco del comando (la línea `echo ok` tecleada no es igual a `ok`). El redimensionado se comprueba con `stty size` en el invitado (24 80, 30 100, 12 60).
+- **Copia de seguridad en dispositivo:** exporta una distro real cifrada a un fichero del almacenamiento del dispositivo, restaura en un almacenamiento vacío, compara cada fichero (hash de contenido y destino de los enlaces) y arranca la distro restaurada. Las claves SSH no entran (el almacén usa el Keystore): la ronda con claves queda cubierta en host.
+
+### D-T18-3 · Aislamiento: nunca se tocan las distros del usuario
+- **Decisión:** `TestStorage` crea `files/it-t18-<aleatorio>/` con su propio `NioFileSystemRepository` y una base de datos Room **en memoria**, y lo borra en `close()`. No abre `ultimateterminal.db` ni `files/storage`. `MainActivityLaunchTest` es la excepción obligada: lanza la actividad real con los datos reales, pero solo abre y cierra pantallas (el editor de perfil se descarta sin guardar).
+- **Aviso operativo:** por defecto el plugin de Android desinstala la app tras `connectedDebugAndroidTest`, lo que borraría los datos del usuario; por eso `docs/TESTING.md` manda pasar `-Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true`.
+
+### D-T18-4 · UI Automator en vez de Compose Test
+- **Decisión:** la prueba de la actividad usa UI Automator (Apache-2.0) y las cadenas de `strings.xml` (`R.string.*`), así sirve en inglés y en español. Compose Test exigiría `ui-test-manifest` como `debugImplementation`, que entraría en el APK de depuración; UI Automator es solo `androidTestImplementation`.
+- **Qué comprueba:** Atrás desde Ajustes vuelve a la terminal; Perfiles con su hoja de edición, y Atajos de teclado con su hoja, se abren sin cierre inesperado. Los toques por texto/descripción son la parte más frágil y no se han podido ejecutar aquí: si falla un selector tras un cambio de la interfaz, hay que ajustarlo en `MainActivityLaunchTest`.
+
+### D-T18-5 · Dependencias de prueba
+- **Añadidas** (todas Apache-2.0, solo `androidTestImplementation`, no entran en ningún APK): `androidx.test:runner` 1.7.0, `androidx.test:core` 1.7.0, `androidx.test.ext:junit` 1.3.0 y `androidx.test.uiautomator:uiautomator` 2.4.0, con el runner `androidx.test.runner.AndroidJUnitRunner`.
+- **Verificación de dependencias:** `verification-metadata.xml` regenerado con un `GRADLE_USER_HOME` limpio y `--write-verification-metadata sha256`; solo se añadieron los componentes que faltaban (115 líneas, ninguna eliminada ni reformateada). Acreditadas en `THIRD_PARTY_NOTICES.md` en el mismo cambio.
+- **Por validar en dispositivo:** que las tres clases pasen en el Pixel 8 con red (`ProotGuestTest`, `BackupDeviceRoundTripTest`, `MainActivityLaunchTest`), en especial los selectores de la interfaz y que `stty` exista en el rootfs de Alpine.
