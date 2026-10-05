@@ -111,7 +111,7 @@ Terminal para Android pensada para **mantenedores de servidores** y sucesora esp
 
 ### RF-13 Arranque y primera ejecución
 - Al abrir la app, la primera pestaña abre la **distro predeterminada** (proot) si está lista; con la app cerrada del todo y reabierta ocurre lo mismo.
-- Si no hay ninguna distro instalada, abre el shell de Android y muestra un aviso, con un acceso directo a instalar una (hoy "Gestionar distros…").
+- Si no hay ninguna distro instalada, se muestra la **configuración inicial** (RF-15) en lugar del shell de Android.
 - Las pestañas se nombran con su distro (p. ej. "Alpine"), no con "Shell N", salvo que el usuario las renombre.
 - **Criterio:** instalada una distro, cerrar la app y volver a abrirla deja un prompt de esa distro en la primera pestaña. (Comprobado en un Pixel 8; el nombre de la pestaña, pendiente.)
 
@@ -129,6 +129,16 @@ El usuario probó la app en un Pixel 8 y la encontró fea ("hay que rediseñarla
 **Qué NO se hace:** no se usan **SF Pro, SF Symbols ni ningún recurso de Apple** (su licencia no lo permite). La tipografía es **Inter** (SIL OFL-1.1) y los iconos son **Lucide** (ISC); ambos se acreditan en `THIRD_PARTY_NOTICES.md`. Es un diseño inspirado, no una copia con marca, y no se afirma ninguna afiliación con Apple. El área del terminal (texto monoespaciado, colores del esquema) no cambia de aspecto.
 
 **Criterios:** el catálogo de componentes (solo en builds de depuración) enseña cada uno en claro, oscuro y OLED; las pantallas rediseñadas (T22b y T22c) solo usan componentes de `ui/ios`; ningún texto va fijo en un componente.
+
+### RF-15 Configuración inicial (primer arranque)
+Petición del usuario: «si no hay distro, muestra directamente una configuración inicial para instalar una, para que la experiencia sea coherente». Antes, una instalación nueva abría un shell de Android sin distro y el usuario tenía que descubrir Ajustes > Distribuciones > Gestionar > +.
+- Al abrir la app **sin ninguna distro lista y sin pestañas abiertas**, en vez de la pestaña del shell de Android se muestra una pantalla completa de bienvenida, en estilo iOS (`ui/ios`): explicación corta, elección de distribución (Alpine —la descarga más pequeña, preseleccionada y recomendada—, Debian, Ubuntu y Fedora, las del catálogo), nombre y usuario por defecto (`root`), una nota de red y de tamaño, y el botón principal **Instalar**.
+- **Restaurar desde una copia de seguridad** reutiliza el flujo de Ajustes > Copias de seguridad (selector del sistema, contraseña si está cifrada, progreso y cancelación).
+- La instalación es **la misma** que la de Distribuciones (mismo ViewModel e instalador, con progreso, cancelación y errores). Un fallo se muestra con su motivo y el formulario sigue ahí para **reintentar o elegir otra distro**: no hay callejón sin salida.
+- Al terminar, la distro nueva es la **predeterminada**, la configuración se cierra y la primera pestaña la abre (RF-13).
+- «Omitir, usar por ahora el shell de Android» (botón de texto, no es el camino por defecto) abre el shell de Android; solo se recuerda durante la sesión: sin distro, la configuración vuelve a mostrarse en el siguiente arranque.
+- El aviso «Mantener las sesiones activas» no se muestra sobre la configuración: aparece al empezar la primera sesión.
+- **Criterio:** en una instalación nueva se ve la bienvenida, no un shell de Android; instalar Alpine desde ella termina en un prompt de Alpine en la primera pestaña. (Pendiente de comprobar en dispositivo.)
 
 ## 4. Fuera de alcance (MVP)
 - Cualquier entorno gráfico (X11, Wayland, VNC).

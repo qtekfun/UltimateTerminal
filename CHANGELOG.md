@@ -10,6 +10,9 @@ and the project uses [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- First-run setup: with no distro installed, a welcome screen to install one (Alpine preselected) or restore a backup replaces the Android shell tab.
+
 ## [0.1.0-rc.2] - 2026-10-05
 
 First pre-release on the way to `0.1.0` (`0.1.0-rc.1` was only the version in the tree before anything
