@@ -34,6 +34,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -210,6 +211,10 @@ private fun TabStrip(
         // A tap on the rail, anywhere the tabs and buttons do not take it, opens the bar again.
         .pointerInput(rail) { if (rail) detectTapGestures { sidebar.onExpand() } }
         .semantics { contentDescription = description }
+        // Nothing in the bar takes the keyboard focus, which belongs to the terminal: a focused chevron
+        // would get the space and enter keys, and the keyboard would close (D-T26-7). Touch and screen
+        // reader actions are unchanged.
+        .focusProperties { canFocus = false }
     if (vertical) {
         Column(bar.padding(BarPadding)) {
             if (rail) {

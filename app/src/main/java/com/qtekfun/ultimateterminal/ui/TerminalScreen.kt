@@ -180,6 +180,13 @@ private fun TerminalContent(
     val (placement, insets, density) = layout
     val sidebar = layout.sidebar
     val (scheme, appearance) = look
+    // Opening or closing the sidebar must leave the keyboard with the terminal (D-T26-7): if the
+    // focus went elsewhere in the change, it is given back now and again when the bar has settled.
+    LaunchedEffect(sidebar.open) {
+        inputView[0]?.restoreKeyboard()
+        delay(SIDEBAR_SETTLE_MILLIS)
+        inputView[0]?.restoreKeyboard()
+    }
     // A shortcut asks for a screen the activity owns (Ctrl+Shift+S, Ctrl+Shift+L).
     LaunchedEffect(viewModel) {
         viewModel.requests.collect { request ->
@@ -225,8 +232,8 @@ private fun TerminalContent(
  * The side tab bar and the terminal. The terminal is laid out once, at the size it will have when
  * the bar stops moving, so the ptys are resized once per change and not on every frame of the
  * animation (the resize makes the shell redraw); while the bar moves, only the drawing of the
- * terminal slides with it (D-T26-3). The bar is drawn over the terminal and takes no focus: the
- * pane that has the keyboard keeps it.
+ * terminal slides with it (D-T26-3). The bar is drawn over the terminal and takes no keyboard
+ * focus (D-T26-7): the pane that has the keyboard keeps it.
  */
 @Composable
 private fun SideLayout(
@@ -479,6 +486,9 @@ internal fun TerminalCanvas(
         }
     }
 }
+
+/** A little more than the 200 ms of the sidebar's animation. */
+private const val SIDEBAR_SETTLE_MILLIS = 300L
 
 private val OVERLAY_BUTTON_WIDTH = 120.dp
 

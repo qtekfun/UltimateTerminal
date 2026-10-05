@@ -13,6 +13,7 @@ import android.view.inputmethod.BaseInputConnection
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
+import com.qtekfun.ultimateterminal.domain.session.KeyboardIntent
 import com.qtekfun.ultimateterminal.domain.terminal.ComposingText
 import com.qtekfun.ultimateterminal.domain.terminal.CompositionEdit
 import com.qtekfun.ultimateterminal.domain.terminal.KeyInput
@@ -31,6 +32,9 @@ class TerminalInputView(context: Context) : View(context) {
 
     private val composing = ComposingText()
 
+    /** What the user last asked for; losing the focus to a layout change does not change it. */
+    private var keyboardWanted = false
+
     init {
         isFocusable = true
         isFocusableInTouchMode = true
@@ -46,15 +50,27 @@ class TerminalInputView(context: Context) : View(context) {
 
     /** Gives this view the keyboard focus and opens the soft keyboard. */
     fun showKeyboard() {
+        keyboardWanted = KeyboardIntent.wantedAfter(KeyboardIntent.Request.SHOW)
         requestFocus()
         context.getSystemService(InputMethodManager::class.java)?.showSoftInput(this, 0)
     }
 
     /** Drops the keyboard focus and hides the soft keyboard, for when another screen covers the terminal. */
     fun hideKeyboard() {
+        keyboardWanted = KeyboardIntent.wantedAfter(KeyboardIntent.Request.HIDE)
         clearFocus()
         context.getSystemService(InputMethodManager::class.java)
             ?.hideSoftInputFromWindow(windowToken, 0)
+    }
+
+    /**
+     * Gives the focus back, and the keyboard, if the user wanted it and something took the focus
+     * (D-T26-7). Never hides anything.
+     */
+    fun restoreKeyboard() {
+        if (KeyboardIntent.shouldRestore(keyboardWanted, hasFocus(), hasWindowFocus())) {
+            showKeyboard()
+        }
     }
 
     override fun onCheckIsTextEditor(): Boolean = true

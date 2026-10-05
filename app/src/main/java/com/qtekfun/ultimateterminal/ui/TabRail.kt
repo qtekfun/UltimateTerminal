@@ -3,7 +3,6 @@
 
 package com.qtekfun.ultimateterminal.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -15,6 +14,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -36,8 +36,14 @@ internal fun SidebarButton(glyph: IosGlyph, label: Int, onClick: () -> Unit) {
             .semantics {
                 contentDescription = text
                 role = Role.Button
+                onClick(label = text) {
+                    onClick()
+                    true
+                }
             }
-            .clickable(onClickLabel = text, onClick = onClick),
+            // A tap gesture and a semantic action, not `clickable`: that is a focus target which would
+            // take the keyboard from the terminal and answer its space and enter keys (D-T26-7).
+            .pointerInput(onClick) { detectTapGestures { onClick() } },
         contentAlignment = Alignment.Center
     ) {
         IosIcon(glyph, null, tint = currentChrome().onSurface, size = MenuIconSize)
