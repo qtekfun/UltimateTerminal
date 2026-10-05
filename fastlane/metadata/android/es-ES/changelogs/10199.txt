@@ -1,0 +1,1 @@
+Versión 0.1.1. Barra lateral dinámica en pantallas anchas, ajuste del tipo de teclado (teclado normal en lugar del seguro en algunos móviles), el teclado ya no tapa los campos de los formularios y copias de seguridad que manejan archivos que solo root puede leer. Software temprano: el README dice qué está verificado en un dispositivo.

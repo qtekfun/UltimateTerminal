@@ -10,40 +10,49 @@ and the project uses [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
-### Fixed
-- The on-screen keyboard no longer covers the text field you are typing in: sheets (install a distro, rename, profiles,
-  layouts, shortcuts, SSH, backup) rise above the keyboard and the focused field scrolls into view, and the
-  full-screen forms, including the first-run setup, keep the field and the main button reachable.
+## [0.1.1] - 2026-10-05
+
+Fixes and improvements found in the first days of use. The ones marked "not yet verified" are tested on a
+computer and still need a real device; the README says what has been tried where.
 
 ### Added
-- The tab sidebar on wide windows (landscape, tablets, split-screen) is now dynamic: it shrinks to a slim
-  rail of tab initials when you tap the terminal, so the terminal gets more columns, and opens again when
-  you tap the rail. Settings > Terminal > "Collapse the sidebar when you use the terminal" (on by default;
-  off keeps it always expanded) is included in configuration backups.
+- The tab sidebar on wide windows (landscape, tablets, split-screen) is dynamic: it shrinks to a slim rail of
+  tab initials when you tap the terminal, so the terminal gets more columns, and opens again when you tap
+  the rail. Settings > Terminal > "Collapse the sidebar when you use the terminal" (on by default; off keeps
+  it always expanded) is included in configuration backups. (On a Pixel 8 it collapsed and expanded; the
+  keyboard-focus fix below is not yet verified on a device.)
+- Settings > Keyboard > "Keyboard type": Normal (new default), Compatible (the former behaviour) and Raw.
+  It is included in configuration backups.
 
 ### Fixed
-- Wide layouts: after the sidebar collapsed, typed keys did not reach the terminal, and a space re-opened the
-  sidebar and closed the soft keyboard. The sidebar controls no longer take keyboard focus, and opening or
-  closing the sidebar never hides the keyboard.
-- Exporting a backup of a distro that has files only root can read (Fedora's `/etc/shadow` and `sudo`, for
+- Backups: exporting a distro that has files only root can read (Fedora's `/etc/shadow` and `sudo`, for
   example) no longer fails with "cannot read ...". The app owns those files, so it opens them for itself
   while it reads them and puts their mode back; the backup keeps the original modes. Duplicating, measuring
-  and deleting such a distro work too.
-- Restoring a backup in the first-run setup no longer closes the setup, or opens a tab, as soon as the first
+  and deleting such a distro work too. If a file really cannot be read, the export says which one and why,
+  in your language, and writes nothing. (Not yet verified on a device: export, copy to a PC or USB, restore
+  on a new phone.)
+- Restoring a backup from the first-run setup no longer closes the setup, or opens a tab, as soon as the first
   distro is back: it waits for the whole restore, so the default distro and its user are the right ones.
-- If a file really cannot be read, the export says which one and why, in your language, and writes nothing.
+- The on-screen keyboard no longer covers the text field you are typing in: sheets (install a distro, rename,
+  profiles, layouts, shortcuts, SSH, backup) rise above the keyboard and the focused field scrolls into view,
+  and the full-screen forms, including the first-run setup, keep the field and the main button reachable.
+  (Not yet verified on a device.)
+- On some phones (Huawei, Xiaomi, OPPO, vivo and others) the manufacturer's secure password keyboard appeared
+  instead of the normal one, because the terminal presented itself as a visible-password field. The new
+  default keyboard type is a plain text field without suggestions. (Not yet verified on those phones.)
+- Wide layouts: after the sidebar collapsed, typed keys did not reach the terminal, and a space re-opened the
+  sidebar and closed the soft keyboard. The sidebar controls no longer take keyboard focus, and opening or
+  closing the sidebar never hides the keyboard. (Not yet verified on a device.)
 
 ### Changed
 - The file picker suggests `UltimateTerminal-<date>.utbackup` (and `-settings-` or the distro's name for a
-  smaller backup), and the finished message gives the file name and size. Settings > Backups says where
-  the file goes.
+  smaller backup), and the finished message gives the file name and size. Settings > Backups says where the
+  file goes, and the README explains why distros live in private storage and how to get your files out.
 
-- On some phones (Huawei, Xiaomi, OPPO, vivo and others) the manufacturer's secure password keyboard
-  appeared instead of the normal one, because the terminal presented itself as a visible-password field.
-  Settings > Keyboard > "Keyboard type" now offers Normal (the new default: a plain text field without
-  suggestions), Compatible (the former behaviour, for keyboards that autocorrect otherwise) and Raw (no
-  input type, plain key presses). The choice is included in configuration backups. Not yet verified on a
-  device.
+### Known limitations
+- The setuid bit is dropped when a distro is installed or restored (a security rule), so `sudo` inside a
+  distro does not gain root by itself.
+- Fonts you imported are not included in backups.
 
 ## [0.1.0] - 2026-10-05
 

@@ -5,7 +5,7 @@
 
 # Privacy policy / Política de privacidad
 
-Last updated / Última actualización: 2026-10-05 · Version / Versión: 0.1.0
+Last updated / Última actualización: 2026-10-05 · Version / Versión: 0.1.1
 
 [English](#english) · [Español](#español)
 
