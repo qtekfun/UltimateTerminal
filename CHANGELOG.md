@@ -15,6 +15,9 @@ and the project uses [SemVer](https://semver.org/).
   `.txt` ending; a number is added if the name is taken). You can still change it. Not yet verified on a
   real device.
 
+- A visible "More options" button (three dots) next to "+" in the top bar, the side bar and the rail opens the
+  menu that used to be reachable only by long-pressing "+" (a long press still works).
+
 ### Fixed
 - Importing a font no longer fails with "missing letters" for every font.
 
