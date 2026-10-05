@@ -61,10 +61,12 @@ import com.qtekfun.ultimateterminal.domain.session.DistroOption
 import com.qtekfun.ultimateterminal.domain.session.SessionId
 import com.qtekfun.ultimateterminal.domain.session.TabBarPlacement
 import com.qtekfun.ultimateterminal.domain.session.TabItem
+import com.qtekfun.ultimateterminal.domain.session.TabLongPress
 import com.qtekfun.ultimateterminal.domain.session.TabName
 import com.qtekfun.ultimateterminal.domain.session.TabSwitch
 import com.qtekfun.ultimateterminal.domain.session.TabsController
 import com.qtekfun.ultimateterminal.domain.session.dropIndex
+import com.qtekfun.ultimateterminal.domain.session.resolveLongPress
 import com.qtekfun.ultimateterminal.domain.session.tabInitial
 import com.qtekfun.ultimateterminal.domain.session.tabNames
 import com.qtekfun.ultimateterminal.ui.ios.IosAction
@@ -125,6 +127,7 @@ fun TabBar(
                     onSelect = { tabs.switchTo(TabSwitch.ById(item.id)) },
                     onRename = { renaming = item },
                     onClose = { tabs.requestClose(item.id) },
+                    onAskClose = { tabs.askToClose(item.id) },
                     onMove = { step -> tabs.move(item.id, item.position - 1 + step) },
                     onDrop = { offset ->
                         tabs.move(item.id, dropTarget(items, item.id, offset, drag))
@@ -133,7 +136,7 @@ fun TabBar(
                 )
                 val bar = TabChipBar(items.size, vertical, drag)
                 if (vertical && sidebar.collapsed) {
-                    RailTab(item, tabNameText(names[index]), bar, actions, sidebar.onExpand)
+                    RailTab(item, tabNameText(names[index]), bar, actions)
                 } else {
                     TabChip(item, tabNameText(names[index]), bar, actions)
                 }
@@ -161,9 +164,7 @@ fun TabBar(
             onDismiss = { renaming = null }
         )
     }
-    if (closing != null) {
-        CloseConfirm(onConfirm = tabs::confirmClose, onDismiss = tabs::dismissClose)
-    }
+    ClosePrompt(tabs, items, names, closing)
 }
 
 /** The position a tab dragged by [offset] lands on, from the measured size of every tab. */
@@ -239,12 +240,16 @@ internal class TabDrag {
     var id by mutableStateOf<SessionId?>(null)
     var offsetPx by mutableFloatStateOf(0f)
 
+    /** The furthest the finger went from where the long press began; it decides drag or confirm. */
+    var furthestPx = 0f
+
     /** The size of each tab along the bar, measured as they are laid out. */
     val sizes = mutableStateMapOf<SessionId, Float>()
 
     fun reset() {
         id = null
         offsetPx = 0f
+        furthestPx = 0f
     }
 }
 
@@ -256,6 +261,7 @@ internal class TabChipActions(
     val onSelect: () -> Unit,
     val onRename: () -> Unit,
     val onClose: () -> Unit,
+    val onAskClose: () -> Unit,
     val onMove: (step: Int) -> Unit,
     val onDrop: (Float) -> Unit,
     val sidebar: SidebarAction? = null
@@ -385,7 +391,10 @@ internal fun Modifier.capsule(color: Color, inset: Dp): Modifier = drawBehind {
     }
 }
 
-/** Tap selects, double tap renames, and a long press followed by a drag moves the tab. */
+/**
+ * Tap selects, double tap renames. A long press that lifts without moving asks to close the tab; one
+ * followed by a drag moves it and does not ask (D-TAB-2).
+ */
 private fun Modifier.tabGestures(
     id: SessionId,
     vertical: Boolean,
@@ -396,17 +405,23 @@ private fun Modifier.tabGestures(
         detectTapGestures(onTap = { actions.onSelect() }, onDoubleTap = { actions.onRename() })
     }
     .pointerInput(id, vertical) {
+        val slop = viewConfiguration.touchSlop
         detectDragGesturesAfterLongPress(
             onDragStart = {
                 drag.id = id
                 drag.offsetPx = 0f
+                drag.furthestPx = 0f
             },
             onDrag = { change, amount ->
                 change.consume()
                 drag.offsetPx += if (vertical) amount.y else amount.x
+                drag.furthestPx = maxOf(drag.furthestPx, kotlin.math.abs(drag.offsetPx))
             },
             onDragEnd = {
-                actions.onDrop(drag.offsetPx)
+                when (resolveLongPress(drag.furthestPx, slop)) {
+                    TabLongPress.CONFIRM_CLOSE -> actions.onAskClose()
+                    TabLongPress.REORDER -> actions.onDrop(drag.offsetPx)
+                }
                 drag.reset()
             },
             onDragCancel = { drag.reset() }

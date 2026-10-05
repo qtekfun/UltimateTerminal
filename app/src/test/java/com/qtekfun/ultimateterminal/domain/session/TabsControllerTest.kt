@@ -139,6 +139,28 @@ class TabsControllerTest {
     }
 
     @Test
+    fun askingToCloseAlwaysWaitsEvenWhenTheShellEnded() = runTabs { tabs ->
+        val id = controller.newSession()
+        shells.ends(id)
+
+        tabs.askToClose(id)
+
+        assertEquals(id, tabs.closeConfirmation.value)
+        assertEquals(1, controller.state.value.items.size)
+        tabs.confirmClose()
+        assertEquals(emptyList<SessionInfo>(), controller.state.value.items)
+    }
+
+    @Test
+    fun askingToCloseAnUnknownTabDoesNothing() = runTabs { tabs ->
+        controller.newSession()
+
+        tabs.askToClose(SessionId(999))
+
+        assertNull(tabs.closeConfirmation.value)
+    }
+
+    @Test
     fun aTabWhoseShellEndedClosesWithoutAsking() = runTabs { tabs ->
         val id = controller.newSession()
         shells.ends(id)

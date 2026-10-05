@@ -142,4 +142,11 @@ class TabBarTest {
         assertEquals(2, dropIndex(0, 260f, sizes))
         assertFalse(dropIndex(2, -10f, sizes) == 0)
     }
+
+    @Test
+    fun aLongPressThatStaysPutAsksToCloseAndOneThatMovesReorders() {
+        assertEquals(TabLongPress.CONFIRM_CLOSE, resolveLongPress(0f, 8f))
+        assertEquals(TabLongPress.CONFIRM_CLOSE, resolveLongPress(8f, 8f))
+        assertEquals(TabLongPress.REORDER, resolveLongPress(8.1f, 8f))
+    }
 }

@@ -117,7 +117,7 @@
     <string name="tab_rename_hint">Déjalo vacío para usar el nombre por defecto</string>
     <string name="tab_save">Guardar</string>
     <string name="tab_cancel">Cancelar</string>
-    <string name="tab_close_title">¿Cerrar esta pestaña?</string>
+    <string name="tab_close_title">¿Cerrar %1$s?</string>
     <string name="tab_close_message">Todavía hay un programa en ejecución y se detendrá.</string>
     <string name="tab_close_confirm">Cerrar</string>
 

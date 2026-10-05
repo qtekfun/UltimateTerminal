@@ -18,6 +18,9 @@ and the project uses [SemVer](https://semver.org/).
 ### Fixed
 - Importing a font no longer fails with "missing letters" for every font.
 
+### Added
+- A long press on a tab asks "Close <name>?" before closing it, in the full bar and in the collapsed rail (it no longer expands the sidebar there; the chevron or a tap on the rail does). A long press followed by a drag still reorders.
+
 ## [0.1.1] - 2026-10-05
 
 Fixes and improvements found in the first days of use. The ones marked "not yet verified" are tested on a
