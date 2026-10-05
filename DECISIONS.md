@@ -2654,3 +2654,11 @@ Solo texto, sin tocar código ni dispositivos. Todo lo que dice estar verificado
 ### D-T25-6 · Tests
 - Host: `FirstRunSetupTest` (puerta, distro recomendada, distro por defecto, validez del formulario) y `SetupViewModelTest` (con fakes: ver/omitir/relanzar, app con pestañas o con distro, fijar la predeterminada, fallo al fijarla, pasos del flujo). Cobertura de Kover intacta.
 - Instrumentados (solo compilan aquí): `MainActivityLaunchTest` se salta con una suposición si se muestra la configuración (dispositivo sin distros) y `FirstRunSetupScreenTest` comprueba la pantalla y se salta si el dispositivo ya tiene distros. Verificar en el Pixel 8 sin distros (o en un perfil/instalación limpia); ver T25 en `PLAN.md`.
+
+### Novena ronda (Pixel 8, 2026-10-05, `master` en `49842fd`): asistente de primer arranque (T25)
+- **Instalación limpia (desinstalar e instalar la build de depuración):** se muestra "Te damos la bienvenida" con Alpine preseleccionada y recomendada (unos 4 MB), Debian, Ubuntu y Fedora (unos 63 MB), nombre, usuario por defecto `root`, "Instalar", "Restaurar desde una copia de seguridad" y "Omitir, usar por ahora el shell de Android". Ya no hay shell de Android sin distro ni aviso de sesiones encima.
+- **Instalar Alpine:** el asistente se cierra, la primera pestaña se llama "Alpine Linux" y con su prompt, y solo entonces aparece "Mantener las sesiones activas".
+- **Sin red (DNS privado roto a propósito):** "No se pudo contactar con el servidor oficial. Revisa la conexión e inténtalo de nuevo." con "Descartar"; el formulario queda y el botón pasa a "Reintentar". Con la red restaurada, "Reintentar" instala y abre la pestaña.
+- **Omitir:** abre una pestaña "Shell 1" del shell de Android; tras cerrar del todo y relanzar sin distro, el asistente vuelve a mostrarse.
+- **Mejorable:** en un móvil "Instalar" queda al borde inferior y "Restaurar"/"Omitir" hay que desplazarlos para verlos; un botón de instalar fijo abajo lo arreglaría. Sin probar: restaurar una copia desde el asistente, girar la pantalla a mitad de instalación, TalkBack.
+- **Lección de método:** para simular "sin red" **no se apaga el Wi-Fi** (el Pixel va por depuración inalámbrica y se pierde la conexión de adb; además el puerto de adb cambia al reconectar). Se rompió solo el DNS privado (`private_dns_mode=hostname` con un host inexistente) y se borró después.
