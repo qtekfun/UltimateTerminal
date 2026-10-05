@@ -33,7 +33,7 @@ class SidebarFocusGuardTest {
     @Test
     fun `the more options button opens the menu without being a focus target`() {
         val bar = text("ui/TabBar.kt")
-        val button = bar.substringAfter("val more: @Composable").substringBefore("if (stacked)")
+        val button = bar.substringAfter("private fun MoreOptionsButton(")
         assertTrue("IosGlyph.ELLIPSIS" in button)
         assertTrue("onClick(label" in button)
         assertTrue("stateDescription" in button)

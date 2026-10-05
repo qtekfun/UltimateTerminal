@@ -497,28 +497,11 @@ private fun NewTabButton(
         }
     }
     val more: @Composable () -> Unit = {
-        val text = stringResource(R.string.tab_new_more)
-        val state = stringResource(
-            if (menuFrom != null) R.string.tab_new_more_open else R.string.tab_new_more_closed
-        )
-        val open = { menuFrom = NewTabMenuSource.MORE }
-        Box(
-            Modifier
-                .size(TouchSize)
-                .semantics {
-                    contentDescription = text
-                    stateDescription = state
-                    role = Role.Button
-                    onClick(label = chooseLabel) {
-                        open()
-                        true
-                    }
-                }
-                // A tap gesture and a semantic action, not `clickable`, so it never takes the keyboard.
-                .pointerInput(Unit) { detectTapGestures { open() } },
-            contentAlignment = Alignment.Center
+        MoreOptionsButton(
+            menuOpen = menuFrom != null,
+            onOpen = { menuFrom = NewTabMenuSource.MORE },
+            chooseLabel = chooseLabel
         ) {
-            IosIcon(IosGlyph.ELLIPSIS, null, tint = IosTheme.colors.tint, size = MenuIconSize)
             NewTabMenu(menuFrom == NewTabMenuSource.MORE, { menuFrom = null }, choices, onNewTabIn, links)
         }
     }
@@ -532,5 +515,38 @@ private fun NewTabButton(
             plus()
             more()
         }
+    }
+}
+
+/** The "more options" button: the three dots, with the state of the menu for a screen reader. */
+@Composable
+private fun MoreOptionsButton(
+    menuOpen: Boolean,
+    onOpen: () -> Unit,
+    chooseLabel: String,
+    menu: @Composable () -> Unit
+) {
+    val text = stringResource(R.string.tab_new_more)
+    val state = stringResource(
+        if (menuOpen) R.string.tab_new_more_open else R.string.tab_new_more_closed
+    )
+    Box(
+        Modifier
+            .size(TouchSize)
+            .semantics {
+                contentDescription = text
+                stateDescription = state
+                role = Role.Button
+                onClick(label = chooseLabel) {
+                    onOpen()
+                    true
+                }
+            }
+            // A tap gesture and a semantic action, not `clickable`, so it never takes the keyboard.
+            .pointerInput(Unit) { detectTapGestures { onOpen() } },
+        contentAlignment = Alignment.Center
+    ) {
+        IosIcon(IosGlyph.ELLIPSIS, null, tint = IosTheme.colors.tint, size = MenuIconSize)
+        menu()
     }
 }
