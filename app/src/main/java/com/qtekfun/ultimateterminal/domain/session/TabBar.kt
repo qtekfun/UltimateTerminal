@@ -76,3 +76,14 @@ fun dropIndex(from: Int, dragOffsetPx: Float, sizesPx: List<Float>): Int {
     val ends = sizesPx.runningFold(0f) { total, size -> total + size }.drop(1)
     return ends.indexOfFirst { middle < it }.takeIf { it >= 0 } ?: sizesPx.lastIndex
 }
+
+/** What a long press on a tab turns into once the finger lifts. */
+enum class TabLongPress { CONFIRM_CLOSE, REORDER }
+
+/**
+ * A long press that did not move (up to [slopPx], the touch slop) asks to close the tab; one that
+ * moved further is the drag to reorder, which never also asks (D-TAB-2). [furthestPx] is the
+ * largest distance the finger went from where the long press began, in either direction.
+ */
+fun resolveLongPress(furthestPx: Float, slopPx: Float): TabLongPress =
+    if (furthestPx <= slopPx) TabLongPress.CONFIRM_CLOSE else TabLongPress.REORDER

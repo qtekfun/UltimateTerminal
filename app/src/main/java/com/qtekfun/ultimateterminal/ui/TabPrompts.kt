@@ -10,7 +10,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import com.qtekfun.ultimateterminal.R
+import com.qtekfun.ultimateterminal.domain.session.SessionId
+import com.qtekfun.ultimateterminal.domain.session.TabItem
 import com.qtekfun.ultimateterminal.domain.session.TabName
+import com.qtekfun.ultimateterminal.domain.session.TabsController
 import com.qtekfun.ultimateterminal.ui.ios.IosAction
 import com.qtekfun.ultimateterminal.ui.ios.IosActionRole
 import com.qtekfun.ultimateterminal.ui.ios.IosAlert
@@ -58,10 +61,15 @@ internal fun RenamePrompt(current: String, onSave: (String) -> Unit, onDismiss: 
 }
 
 @Composable
-internal fun CloseConfirm(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+internal fun CloseConfirm(
+    name: String,
+    running: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
     IosAlert(
-        title = stringResource(R.string.tab_close_title),
-        message = stringResource(R.string.tab_close_message),
+        title = stringResource(R.string.tab_close_title, name),
+        message = if (running) stringResource(R.string.tab_close_message) else null,
         actions = listOf(
             IosAction(stringResource(R.string.tab_cancel), IosActionRole.CANCEL),
             IosAction(
@@ -72,4 +80,23 @@ internal fun CloseConfirm(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         ),
         onDismiss = onDismiss
     )
+}
+
+/** The close confirmation, naming the tab that is waiting for the answer. */
+@Composable
+internal fun ClosePrompt(
+    tabs: TabsController,
+    items: List<TabItem>,
+    names: List<TabName>,
+    id: SessionId?
+) {
+    val index = items.indexOfFirst { it.id == id }
+    if (index >= 0) {
+        CloseConfirm(
+            name = tabNameText(names[index]),
+            running = items[index].running,
+            onConfirm = tabs::confirmClose,
+            onDismiss = tabs::dismissClose
+        )
+    }
 }
