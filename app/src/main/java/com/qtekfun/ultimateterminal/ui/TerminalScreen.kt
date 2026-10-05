@@ -34,9 +34,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -59,9 +61,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qtekfun.ultimateterminal.R
 import com.qtekfun.ultimateterminal.domain.appearance.TerminalAppearance
 import com.qtekfun.ultimateterminal.domain.launch.ExitHint
+import com.qtekfun.ultimateterminal.domain.session.SidebarEvent
+import com.qtekfun.ultimateterminal.domain.session.SidebarMode
 import com.qtekfun.ultimateterminal.domain.session.TabBarPlacement
 import com.qtekfun.ultimateterminal.domain.session.TabsController
 import com.qtekfun.ultimateterminal.domain.session.reserveForTabBar
+import com.qtekfun.ultimateterminal.domain.session.slideOffsetPx
 import com.qtekfun.ultimateterminal.domain.session.tabBarPlacement
 import com.qtekfun.ultimateterminal.domain.terminal.CellPosition
 import com.qtekfun.ultimateterminal.domain.terminal.EdgeInsets
@@ -101,6 +106,7 @@ fun TerminalScreen(
     onFontSizeChanged: (Float) -> Unit,
     screens: ScreenLinks,
     modifier: Modifier = Modifier,
+    sidebarMode: SidebarMode = SidebarMode.DEFAULT,
     viewModel: TerminalViewModel = viewModel()
 ) {
     val (scheme, appearance, typefaces) = look
@@ -114,7 +120,14 @@ fun TerminalScreen(
     var windowSize by remember { mutableStateOf(IntSize.Zero) }
     val insets = coveredEdges()
     val placement = tabBarPlacementOf(windowSize, density)
-    LayoutEffect(viewModel, painter, windowSize, insets, appearance.marginDp)
+    val sidebar = rememberSidebar(sidebarMode)
+    LayoutEffect(
+        viewModel,
+        painter,
+        windowSize,
+        insets,
+        GridReserve(appearance.marginDp, sidebar.open)
+    )
 
     // The scheme's background fills the whole window, bars included; the content is padded by the
     // same insets the layout was computed with, so what is drawn is exactly what the pty is told.
@@ -129,7 +142,7 @@ fun TerminalScreen(
             TerminalContent(
                 modifier,
                 TerminalParts(viewModel, painter, inputView, look, screens),
-                ContentLayout(placement, insets, density)
+                ContentLayout(placement, insets, density, sidebar)
             ) { windowSize = it }
         }
     }
@@ -148,7 +161,8 @@ private data class TerminalParts(
 private data class ContentLayout(
     val placement: TabBarPlacement,
     val insets: EdgeInsets,
-    val density: Density
+    val density: Density,
+    val sidebar: SidebarHandle
 )
 
 @Composable
@@ -164,6 +178,7 @@ private fun TerminalContent(
     val screens = parts.screens
     val look = parts.look
     val (placement, insets, density) = layout
+    val sidebar = layout.sidebar
     val (scheme, appearance) = look
     // A shortcut asks for a screen the activity owns (Ctrl+Shift+S, Ctrl+Shift+L).
     LaunchedEffect(viewModel) {
@@ -186,26 +201,70 @@ private fun TerminalContent(
             splitDown = viewModel.panes::splitHorizontal
         )
         val pane = @Composable { paneModifier: Modifier ->
-            TerminalPane(
-                viewModel,
-                painter,
-                inputView,
-                appearance.marginDp.dp,
-                screens,
-                paneModifier
-            )
+            TerminalPane(parts, paneModifier) {
+                if (placement == TabBarPlacement.Side) sidebar.send(SidebarEvent.TERMINAL_USED)
+            }
         }
         if (placement == TabBarPlacement.Top) {
             Column(padded) {
-                TabBarSlot(viewModel.tabs, placement, links)
+                TabBar(
+                    viewModel.tabs,
+                    placement,
+                    links,
+                    Modifier.fillMaxWidth().height(TabBarHeight)
+                )
                 pane(Modifier.weight(1f).fillMaxWidth())
             }
         } else {
-            Row(padded) {
-                TabBarSlot(viewModel.tabs, placement, links)
-                pane(Modifier.weight(1f).fillMaxHeight())
-            }
+            SideLayout(padded, sidebar, viewModel.tabs, links, pane)
         }
+    }
+}
+
+/**
+ * The side tab bar and the terminal. The terminal is laid out once, at the size it will have when
+ * the bar stops moving, so the ptys are resized once per change and not on every frame of the
+ * animation (the resize makes the shell redraw); while the bar moves, only the drawing of the
+ * terminal slides with it (D-T26-3). The bar is drawn over the terminal and takes no focus: the
+ * pane that has the keyboard keeps it.
+ */
+@Composable
+private fun SideLayout(
+    modifier: Modifier,
+    sidebar: SidebarHandle,
+    tabs: TabsController,
+    links: TabBarLinks,
+    pane: @Composable (Modifier) -> Unit
+) {
+    val width = animatedSidebarWidth(sidebar.open)
+    val settled = sidebarWidth(sidebar.open)
+    // The rail layout while the bar is closer to the rail than to the open bar.
+    val railLook = width < (sidebarWidth(true) + sidebarWidth(false)) / 2
+    val control = SidebarControl(
+        collapsed = railLook,
+        onExpand = { sidebar.send(SidebarEvent.EXPAND) },
+        onCollapse = if (sidebar.collapsible) {
+            { sidebar.send(SidebarEvent.COLLAPSE) }
+        } else {
+            null
+        }
+    )
+    Box(modifier) {
+        pane(
+            Modifier
+                .fillMaxSize()
+                .padding(start = settled)
+                .graphicsLayer {
+                    translationX = slideOffsetPx(width.toPx(), settled.roundToPx())
+                }
+        )
+        TabBar(
+            tabs,
+            TabBarPlacement.Side,
+            links,
+            Modifier.fillMaxHeight().width(width).clipToBounds(),
+            control
+        )
     }
 }
 
@@ -239,27 +298,12 @@ class ProfileLinks(
     val saveLayout: () -> Unit
 )
 
-/** The tab bar at the size its placement reserves, which the grid of the terminal leaves out. */
-@Composable
-private fun TabBarSlot(tabs: TabsController, placement: TabBarPlacement, links: TabBarLinks) {
-    val size = if (placement == TabBarPlacement.Top) {
-        Modifier.fillMaxWidth().height(TabBarHeight)
-    } else {
-        Modifier.fillMaxHeight().width(TabBarSideWidth)
-    }
-    TabBar(tabs, placement, links, size)
-}
-
 /** The terminal, the extra-keys row under it and, over the first rows, what the tab could not start. */
 @Composable
-private fun TerminalPane(
-    viewModel: TerminalViewModel,
-    painter: TerminalPainter,
-    inputView: Array<TerminalInputView?>,
-    margin: Dp,
-    screens: ScreenLinks,
-    modifier: Modifier = Modifier
-) {
+private fun TerminalPane(parts: TerminalParts, modifier: Modifier, onTerminalUsed: () -> Unit) {
+    val viewModel = parts.viewModel
+    val screens = parts.screens
+    val margin = parts.look.appearance.marginDp.dp
     val extraKeys = rememberShownExtraKeys(viewModel)
     val sticky by viewModel.stickyModifiers.collectAsStateWithLifecycle()
     val launchMessage by viewModel.launchMessage.collectAsStateWithLifecycle()
@@ -269,10 +313,11 @@ private fun TerminalPane(
             // pty is the padded one, and `withTextMargin` makes the first layout agree with it.
             TerminalPanes(
                 viewModel,
-                painter,
-                inputView,
+                parts.painter,
+                parts.inputView,
                 screens,
-                Modifier.weight(1f).fillMaxWidth().padding(margin)
+                Modifier.weight(1f).fillMaxWidth().padding(margin),
+                onTerminalUsed
             )
             if (extraKeys.visible) {
                 ExtraKeysRow(extraKeys, sticky, viewModel.keyboard::onExtraKey)

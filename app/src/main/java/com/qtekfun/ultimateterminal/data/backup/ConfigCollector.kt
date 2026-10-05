@@ -107,6 +107,7 @@ private fun AppSettings.toDto() = SettingsDto(
     dnsFallbackServers = dnsFallbackServers,
     extraKeys = extraKeys.serialize(),
     shortcuts = ShortcutsDto(bindings = shortcuts.serialize()),
+    sidebar = SidebarDto(mode = sidebarMode.name),
     appearance = AppearanceDto(
         fontId = appearance.fontId,
         lineSpacing = appearance.lineSpacing,

@@ -10,6 +10,12 @@ and the project uses [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- The tab sidebar on wide windows (landscape, tablets, split-screen) is now dynamic: it shrinks to a slim
+  rail of tab initials when you tap the terminal, so the terminal gets more columns, and opens again when
+  you tap the rail. Settings > Terminal > "Collapse the sidebar when you use the terminal" (on by default;
+  off keeps it always expanded) is included in configuration backups.
+
 ## [0.1.0] - 2026-10-05
 
 First release. A free (GPL-3.0-or-later) terminal for Android with Linux distributions through proot, no

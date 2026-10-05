@@ -48,6 +48,9 @@ internal fun rememberShownExtraKeys(viewModel: TerminalViewModel): ExtraKeysConf
     return configured.shownWith(keyboardVisible)
 }
 
+/** What the layout leaves out besides the system's: the text margin and the width of the sidebar. */
+internal class GridReserve(val marginDp: Int, val sidebarOpen: Boolean)
+
 /**
  * Tells the terminal how big its grid is: the window, minus what the system bars, the keyboard, the
  * extra-keys row, the tab bar and the text margin take (T04), whenever any of them changes.
@@ -58,15 +61,19 @@ internal fun LayoutEffect(
     painter: TerminalPainter,
     windowSize: IntSize,
     insets: EdgeInsets,
-    marginDp: Int
+    reserve: GridReserve
 ) {
+    val marginDp = reserve.marginDp
+    val sidebarOpen = reserve.sidebarOpen
     val density = LocalDensity.current
     val extraKeys = rememberShownExtraKeys(viewModel)
     // The extra-keys row sits above the keyboard, so its height is not terminal area.
     val extraKeysPx = extraKeysHeightPx(extraKeys, with(density) { ExtraKeyRowHeight.roundToPx() })
     val placement = tabBarPlacementOf(windowSize, density)
     val tabBarPx = with(density) {
-        (if (placement == TabBarPlacement.Top) TabBarHeight else TabBarSideWidth).roundToPx()
+        // The width the sidebar will have once it stops moving: the grid is told that one, once.
+        (if (placement == TabBarPlacement.Top) TabBarHeight else sidebarWidth(sidebarOpen))
+            .roundToPx()
     }
     val textMarginPx = with(density) { marginDp.dp.roundToPx() }
     LaunchedEffect(windowSize, insets, extraKeysPx, placement, tabBarPx, painter, textMarginPx) {

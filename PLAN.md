@@ -93,6 +93,10 @@ Reglas: una tarea cada vez, en su rama `feat/<tarea>`, con `./gradlew check` en 
   - *Hecho (2026-10-05):* lógica pura en `domain/setup` (`FirstRunSetup`: cuándo se muestra, distro recomendada, distro por defecto) y `setup/` (`SetupViewModel`, `SetupStep`) con tests; pantalla `ui/SetupScreen.kt`; los tests instrumentados (`MainActivityLaunchTest`, `FirstRunSetupScreenTest`) se saltan si el dispositivo ya tiene distros o si se muestra la configuración. Ver D-T25-1 a 6.
   - *Pendiente (se deja `[~]`):* verificar en el Pixel 8 con una instalación nueva (o sin distros): bienvenida en lugar del shell, instalar Alpine, primera pestaña con su prompt, fallo sin red y reintento, restaurar una copia, omitir y volver a abrir, y que el aviso de sesiones activas sale después.
 
+- [~] **T26 Barra lateral de pestañas dinámica** (RF-16; petición del usuario para 0.1.1): la columna de pestañas de las ventanas anchas se contrae a una franja de 56 dp al tocar el terminal y se despliega al tocar la franja; ajuste «Contraer la barra lateral al usar el terminal» en Ajustes > Terminal (con la copia de configuración).
+  - *Hecho (2026-10-05), probado solo en host:* máquina de estados y geometría en `domain/session/Sidebar.kt` (con tests), ajuste `sidebarMode` (Room y copia, campo versionado, `data.backup` sigue al 100 %), `ui/Sidebar.kt` y `ui/TabRail.kt`, textos en inglés y español. Decisiones en D-T26-1..6.
+  - *Pendiente (se deja `[~]`):* verificar en el Pixel 8 en horizontal y en la tablet (horizontal y pantalla dividida): contraer al tocar, desplegar al tocar la franja, `stty size` antes y después, el teclado no se cierra, TalkBack y «Quitar animaciones».
+
 ## Después del MVP (backlog, no implementar aún)
 - Proveedor SAF: la distro visible en la app Archivos.
 - Copias de seguridad automáticas a SAF/SFTP.

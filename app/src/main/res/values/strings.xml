@@ -107,6 +107,9 @@
     <string name="tab_menu">Options for %1$s</string>
     <string name="tab_rename">Rename</string>
     <string name="tab_close">Close tab</string>
+    <string name="sidebar_rail_description">Tabs, collapsed</string>
+    <string name="sidebar_expand">Expand the sidebar</string>
+    <string name="sidebar_collapse">Collapse the sidebar</string>
     <string name="tab_select">Select</string>
     <string name="tab_move_earlier">Move earlier</string>
     <string name="tab_move_later">Move later</string>
@@ -392,6 +395,9 @@
     <string name="settings_section_network">Network</string>
     <string name="settings_section_backup">Backups</string>
     <string name="settings_section_about">About</string>
+    <string name="settings_sidebar_header">Tab sidebar</string>
+    <string name="settings_sidebar_collapse">Collapse the sidebar when you use the terminal</string>
+    <string name="settings_sidebar_footer">On wide windows the tabs sit in a column beside the terminal. When this is on, the column shrinks to a slim rail as soon as you tap the terminal, and opens again when you tap the rail. Turn it off to keep the sidebar always expanded.</string>
     <string name="settings_scrollback_header">History</string>
     <string name="settings_scrollback_option">%1$s lines</string>
     <string name="settings_scrollback_footer">How many lines each terminal keeps to scroll back through. It applies to the tabs you open from now on.</string>

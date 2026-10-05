@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.qtekfun.ultimateterminal.domain.launch.ResolvConf
 import com.qtekfun.ultimateterminal.domain.model.AppSettings
 import com.qtekfun.ultimateterminal.domain.repository.SettingsRepository
+import com.qtekfun.ultimateterminal.domain.session.SidebarMode
 import com.qtekfun.ultimateterminal.domain.settings.ScrollbackChoices
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.ShortcutMap
@@ -37,6 +38,8 @@ class SettingsViewModel @Inject constructor(private val repository: SettingsRepo
 
     fun setScrollback(lines: Int) =
         edit { it.copy(defaultScrollbackLines = ScrollbackChoices.forEmulator(lines)) }
+
+    fun setSidebarMode(mode: SidebarMode) = edit { it.copy(sidebarMode = mode) }
 
     fun editExtraKeys(transform: (ExtraKeysConfig) -> ExtraKeysConfig) =
         edit { it.copy(extraKeys = transform(it.extraKeys)) }

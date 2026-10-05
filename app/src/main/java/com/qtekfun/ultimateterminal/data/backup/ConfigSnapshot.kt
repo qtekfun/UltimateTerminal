@@ -52,8 +52,21 @@ internal data class SettingsDto(
     val extraKeys: String? = null,
     val appearance: AppearanceDto? = null,
     /** The application shortcuts (T12b); null in a backup that predates them. */
-    val shortcuts: ShortcutsDto? = null
+    val shortcuts: ShortcutsDto? = null,
+    /** The sidebar mode (T26); null in a backup that predates it. */
+    val sidebar: SidebarDto? = null
 )
+
+/**
+ * How the side tab bar behaves, with a [version] so a later app can change what [mode] means: a
+ * version this app does not know is left alone (the device keeps its own mode), see `ConfigApplier`.
+ */
+@Serializable
+internal data class SidebarDto(val version: Int = VERSION, val mode: String) {
+    companion object {
+        const val VERSION = 1
+    }
+}
 
 /**
  * The application shortcuts in their stored text form (`chord=action`, one per line). [version]

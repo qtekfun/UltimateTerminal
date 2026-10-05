@@ -103,6 +103,9 @@
     <string name="tab_menu">Opciones de %1$s</string>
     <string name="tab_rename">Renombrar</string>
     <string name="tab_close">Cerrar pestaña</string>
+    <string name="sidebar_rail_description">Pestañas, contraídas</string>
+    <string name="sidebar_expand">Desplegar la barra lateral</string>
+    <string name="sidebar_collapse">Contraer la barra lateral</string>
     <string name="tab_select">Seleccionar</string>
     <string name="tab_move_earlier">Mover antes</string>
     <string name="tab_move_later">Mover después</string>
@@ -388,6 +391,9 @@
     <string name="settings_section_network">Red</string>
     <string name="settings_section_backup">Copias de seguridad</string>
     <string name="settings_section_about">Acerca de</string>
+    <string name="settings_sidebar_header">Barra lateral de pestañas</string>
+    <string name="settings_sidebar_collapse">Contraer la barra lateral al usar el terminal</string>
+    <string name="settings_sidebar_footer">En ventanas anchas las pestañas van en una columna junto al terminal. Con esto activado, la columna se reduce a una franja estrecha en cuanto tocas el terminal y se abre de nuevo al tocar la franja. Desactívalo para que la barra lateral esté siempre desplegada.</string>
     <string name="settings_scrollback_header">Historial</string>
     <string name="settings_scrollback_option">%1$s líneas</string>
     <string name="settings_scrollback_footer">Cuántas líneas guarda cada terminal para volver atrás. Se aplica a las pestañas que abras desde ahora.</string>

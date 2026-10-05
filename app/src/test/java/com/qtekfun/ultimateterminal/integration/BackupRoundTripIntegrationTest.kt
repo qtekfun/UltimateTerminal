@@ -23,6 +23,7 @@ import com.qtekfun.ultimateterminal.domain.model.Profile
 import com.qtekfun.ultimateterminal.domain.model.SplitOrientation
 import com.qtekfun.ultimateterminal.domain.model.ThemeMode
 import com.qtekfun.ultimateterminal.domain.rootfs.DistroFamily
+import com.qtekfun.ultimateterminal.domain.session.SidebarMode
 import com.qtekfun.ultimateterminal.domain.terminal.AppShortcut
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.KeyChord
@@ -97,6 +98,7 @@ class BackupRoundTripIntegrationTest {
                 defaultScrollbackLines = 5_000,
                 terminalFontSizeSp = 16f,
                 prootCompatibilityMode = true,
+                sidebarMode = SidebarMode.ALWAYS_EXPANDED,
                 dnsFallbackServers = listOf("9.9.9.9"),
                 shortcuts = shortcuts,
                 extraKeys = ExtraKeysConfig(listOf(listOf("esc", "tab"), listOf("up")), false),

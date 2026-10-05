@@ -147,6 +147,7 @@ class MainActivity : ComponentActivity() {
                 TerminalScreen(
                     look = TerminalLook(scheme, settings.appearance, typefaces),
                     initialFontSizeSp = settings.terminalFontSizeSp,
+                    sidebarMode = settings.sidebarMode,
                     onFontSizeChanged = { size -> scope.launch { saveFontSize(size) } },
                     screens = ScreenLinks(
                         openDistros = { showDistros = true },
