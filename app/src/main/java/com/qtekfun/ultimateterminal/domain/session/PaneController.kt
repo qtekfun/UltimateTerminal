@@ -39,7 +39,9 @@ data class PaneArea(
     val heightPx: Int,
     val cellWidthPx: Float,
     val cellHeightPx: Int,
-    val dividerPx: Int
+    val dividerPx: Int,
+    /** The strip at the top of each pane of a split tab, for its menu button. */
+    val headerPx: Int = 0
 )
 
 /** Why a split did not happen. */
@@ -115,7 +117,8 @@ class PaneController(
                 orientation,
                 current.cellWidthPx,
                 current.cellHeightPx,
-                current.dividerPx
+                current.dividerPx,
+                current.headerPx
             )
         if (fits) editor.splitActive(orientation) else refused.tryEmit(SplitRefusal.TooSmall)
     }
@@ -138,7 +141,7 @@ class PaneController(
         val minPane = if (divider.orientation == SplitOrientation.VERTICAL) {
             (MIN_PANE_COLUMNS * current.cellWidthPx).toInt()
         } else {
-            MIN_PANE_ROWS * current.cellHeightPx
+            MIN_PANE_ROWS * current.cellHeightPx + current.headerPx
         }
         val ratio = ratioForPointer(divider, pointerPx, current.dividerPx, minPane)
         editor.edit { ratioSet(divider.path, ratio) }
@@ -171,5 +174,7 @@ internal fun sceneOf(sessions: Sessions, area: PaneArea?): PaneScene? =
 internal fun splitLayouts(sessions: Sessions, area: PaneArea): Map<SessionId, TerminalLayout> {
     val split = sessions.activeId?.let { sessions.paneIdsOf(sessions.tabOf(it)).size > 1 } == true
     val scene = if (split) sceneOf(sessions, area) else null
-    return scene?.let { paneLayouts(it, area.cellWidthPx, area.cellHeightPx) }.orEmpty()
+    return scene?.let {
+        paneLayouts(it, area.cellWidthPx, area.cellHeightPx, area.headerPx)
+    }.orEmpty()
 }

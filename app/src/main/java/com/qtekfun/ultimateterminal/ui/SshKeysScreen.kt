@@ -6,25 +6,9 @@ package com.qtekfun.ultimateterminal.ui
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,22 +17,32 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qtekfun.ultimateterminal.R
 import com.qtekfun.ultimateterminal.domain.ssh.SshKeyInfo
 import com.qtekfun.ultimateterminal.ssh.SshKeysUiState
 import com.qtekfun.ultimateterminal.ssh.SshKeysViewModel
-
-private val MIN_TOUCH = 48.dp
+import com.qtekfun.ultimateterminal.ui.ios.IosAccessory
+import com.qtekfun.ultimateterminal.ui.ios.IosAction
+import com.qtekfun.ultimateterminal.ui.ios.IosActionRole
+import com.qtekfun.ultimateterminal.ui.ios.IosActionSheet
+import com.qtekfun.ultimateterminal.ui.ios.IosBarButton
+import com.qtekfun.ultimateterminal.ui.ios.IosBarIconButton
+import com.qtekfun.ultimateterminal.ui.ios.IosGlyph
+import com.qtekfun.ultimateterminal.ui.ios.IosLargeTitleScreen
+import com.qtekfun.ultimateterminal.ui.ios.IosListRow
+import com.qtekfun.ultimateterminal.ui.ios.IosSection
 
 private sealed interface KeyDialog {
     data object Generate : KeyDialog
 
     data object Import : KeyDialog
+
+    /** Generate or import: the sheet the "+" button opens. */
+    data object Add : KeyDialog
+
+    data class Actions(val key: SshKeyInfo) : KeyDialog
 
     data class Delete(val key: SshKeyInfo) : KeyDialog
 
@@ -72,20 +66,22 @@ internal fun SshKeysScreen(onBack: () -> Unit, viewModel: SshKeysViewModel = vie
         }
         exporting = null
     }
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(modifier = Modifier.safeDrawingPadding().padding(16.dp)) {
-            KeysHeader(
-                onGenerate = { dialog = KeyDialog.Generate },
-                onImport = { dialog = KeyDialog.Import },
-                onBack = onBack
-            )
-            if (state.busy) BusyBar()
-            state.message?.let { SshMessageBar(it, viewModel::dismissMessage) }
+    BackHandler(onBack = onBack)
+    val addLabel = stringResource(R.string.ssh_key_add)
+    IosLargeTitleScreen(
+        title = stringResource(R.string.ssh_keys_title),
+        leading = { IosBarButton(stringResource(R.string.ssh_close), onBack) },
+        trailing = { IosBarIconButton(IosGlyph.PLUS, addLabel, { dialog = KeyDialog.Add }) }
+    ) {
+        if (state.busy) item { BusyBar() }
+        state.message?.let { message ->
+            item { SshMessageBar(message, viewModel::dismissMessage) }
+        }
+        item {
             KeyList(
-                keys = state.keys,
-                onCopy = { key -> viewModel.publicKey(key.alias) { copyToClipboard(context, it) } },
-                onExport = { dialog = KeyDialog.ExportWarning(it) },
-                onDelete = { dialog = KeyDialog.Delete(it) }
+                state.keys,
+                onAdd = { dialog = KeyDialog.Add },
+                onOpen = { dialog = KeyDialog.Actions(it) }
             )
         }
     }
@@ -93,24 +89,48 @@ internal fun SshKeysScreen(onBack: () -> Unit, viewModel: SshKeysViewModel = vie
         dialog = dialog,
         state = state,
         viewModel = viewModel,
-        onChooseExportFile = { key ->
-            exporting = key
-            saveFile.launch(exportFileName(key))
-        },
-        dismiss = { dialog = null }
+        targets = KeyTargets(
+            show = { dialog = it },
+            // The action sheet closes itself after an action ran, and the action may have opened
+            // the next dialog: only close what is still a sheet, reading the state as it is now.
+            closeSheet = {
+                if (dialog is KeyDialog.Actions ||
+                    dialog == KeyDialog.Add
+                ) {
+                    dialog = null
+                }
+            },
+            copy = { key -> viewModel.publicKey(key.alias) { copyToClipboard(context, it) } },
+            chooseExportFile = { key ->
+                exporting = key
+                saveFile.launch(exportFileName(key))
+            }
+        )
     )
 }
+
+/** What the dialogs of the key manager can ask the screen to do. */
+private class KeyTargets(
+    val show: (KeyDialog?) -> Unit,
+    val closeSheet: () -> Unit,
+    val copy: (SshKeyInfo) -> Unit,
+    val chooseExportFile: (SshKeyInfo) -> Unit
+)
 
 @Composable
 private fun KeyDialogHost(
     dialog: KeyDialog?,
     state: SshKeysUiState,
     viewModel: SshKeysViewModel,
-    onChooseExportFile: (SshKeyInfo) -> Unit,
-    dismiss: () -> Unit
+    targets: KeyTargets
 ) {
+    val dismiss = { targets.show(null) }
     when (dialog) {
         null -> Unit
+
+        KeyDialog.Add -> AddActions(targets)
+
+        is KeyDialog.Actions -> KeyActions(dialog.key, targets)
 
         KeyDialog.Generate -> GenerateKeyDialog(
             types = state.keyTypes,
@@ -146,90 +166,74 @@ private fun KeyDialogHost(
             body = stringResource(R.string.ssh_export_body),
             confirm = stringResource(R.string.ssh_export_confirm),
             onConfirm = {
-                onChooseExportFile(dialog.key)
+                targets.chooseExportFile(dialog.key)
                 dismiss()
             },
-            onDismiss = dismiss
+            onDismiss = dismiss,
+            destructive = false
         )
     }
 }
 
+/** The sheet of the "+" button: a new key, or one brought from elsewhere. */
 @Composable
-private fun KeysHeader(onGenerate: () -> Unit, onImport: () -> Unit, onBack: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            stringResource(R.string.ssh_keys_title),
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.semantics { heading() }
-        )
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onGenerate, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                Text(stringResource(R.string.ssh_key_generate))
+private fun AddActions(targets: KeyTargets) {
+    IosActionSheet(
+        actions = listOf(
+            IosAction(stringResource(R.string.ssh_key_generate)) {
+                targets.show(KeyDialog.Generate)
+            },
+            IosAction(stringResource(R.string.ssh_key_import)) { targets.show(KeyDialog.Import) }
+        ),
+        cancelLabel = stringResource(R.string.dialog_cancel),
+        onDismiss = targets.closeSheet,
+        title = stringResource(R.string.ssh_key_add)
+    )
+}
+
+/** What can be done with one key: the sheet that slides up when its row is tapped. */
+@Composable
+private fun KeyActions(key: SshKeyInfo, targets: KeyTargets) {
+    IosActionSheet(
+        actions = listOf(
+            IosAction(stringResource(R.string.ssh_key_copy_public)) { targets.copy(key) },
+            IosAction(stringResource(R.string.ssh_key_export_private)) {
+                targets.show(KeyDialog.ExportWarning(key))
+            },
+            IosAction(stringResource(R.string.ssh_delete), IosActionRole.DESTRUCTIVE) {
+                targets.show(KeyDialog.Delete(key))
             }
-            TextButton(onClick = onImport, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                Text(stringResource(R.string.ssh_key_import))
-            }
-            TextButton(onClick = onBack, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                Text(stringResource(R.string.ssh_close))
-            }
-        }
-    }
+        ),
+        cancelLabel = stringResource(R.string.dialog_cancel),
+        onDismiss = targets.closeSheet,
+        title = key.name
+    )
 }
 
 @Composable
-private fun KeyList(
-    keys: List<SshKeyInfo>,
-    onCopy: (SshKeyInfo) -> Unit,
-    onExport: (SshKeyInfo) -> Unit,
-    onDelete: (SshKeyInfo) -> Unit
-) {
+private fun KeyList(keys: List<SshKeyInfo>, onAdd: () -> Unit, onOpen: (SshKeyInfo) -> Unit) {
     if (keys.isEmpty()) {
-        Text(
-            stringResource(R.string.ssh_keys_empty),
-            modifier = Modifier.padding(vertical = 24.dp),
-            style = MaterialTheme.typography.bodyLarge
-        )
-    } else {
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(keys, key = { it.alias }) { key -> KeyCard(key, onCopy, onExport, onDelete) }
-        }
-    }
-}
-
-@Composable
-private fun KeyCard(
-    key: SshKeyInfo,
-    onCopy: (SshKeyInfo) -> Unit,
-    onExport: (SshKeyInfo) -> Unit,
-    onDelete: (SshKeyInfo) -> Unit
-) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(key.name, style = MaterialTheme.typography.titleMedium)
-            Text(key.type.sshName, style = MaterialTheme.typography.bodyMedium)
-            Text(
-                stringResource(R.string.ssh_key_fingerprint, key.fingerprint),
-                style = MaterialTheme.typography.bodySmall
+        IosSection(footer = stringResource(R.string.ssh_keys_empty)) {
+            IosListRow(
+                title = stringResource(R.string.ssh_key_add),
+                glyph = IosGlyph.PLUS,
+                accessory = IosAccessory.Chevron,
+                showSeparator = false,
+                onClick = onAdd
             )
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                TextButton(onClick = {
-                    onCopy(key)
-                }, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                    Text(stringResource(R.string.ssh_key_copy_public))
-                }
-                TextButton(onClick = {
-                    onExport(key)
-                }, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                    Text(stringResource(R.string.ssh_key_export_private))
-                }
-                TextButton(onClick = {
-                    onDelete(key)
-                }, modifier = Modifier.heightIn(min = MIN_TOUCH)) {
-                    Text(stringResource(R.string.ssh_delete))
-                }
+        }
+    } else {
+        IosSection {
+            keys.forEachIndexed { index, key ->
+                IosListRow(
+                    title = key.name,
+                    subtitle = key.type.sshName + "\n" +
+                        stringResource(R.string.ssh_key_fingerprint, key.fingerprint),
+                    glyph = IosGlyph.KEY,
+                    accessory = IosAccessory.Chevron,
+                    showSeparator = index != keys.lastIndex,
+                    onClick = { onOpen(key) }
+                )
             }
         }
     }

@@ -12,9 +12,6 @@ import android.os.Build
 import android.os.PowerManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -33,6 +30,9 @@ import com.qtekfun.ultimateterminal.domain.session.BatteryExemption
 import com.qtekfun.ultimateterminal.domain.session.PromptInputs
 import com.qtekfun.ultimateterminal.domain.session.SessionPrompt
 import com.qtekfun.ultimateterminal.domain.session.nextPrompt
+import com.qtekfun.ultimateterminal.ui.ios.IosAction
+import com.qtekfun.ultimateterminal.ui.ios.IosActionRole
+import com.qtekfun.ultimateterminal.ui.ios.IosAlert
 
 /**
  * Asks, once and in context, for what keeps the shells alive in the background: the notification
@@ -121,14 +121,14 @@ private fun PromptDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(title)) },
-        text = { Text(stringResource(message)) },
-        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(confirm)) } },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.prompt_not_now)) }
-        }
+    IosAlert(
+        title = stringResource(title),
+        message = stringResource(message),
+        actions = listOf(
+            IosAction(stringResource(R.string.prompt_not_now), IosActionRole.CANCEL, onDismiss),
+            IosAction(stringResource(confirm), onClick = onConfirm)
+        ),
+        onDismiss = onDismiss
     )
 }
 

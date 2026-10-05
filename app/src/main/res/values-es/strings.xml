@@ -120,7 +120,6 @@
     <string name="ssh_keys_open">Claves</string>
     <string name="ssh_no_hosts">Aún no hay servidores guardados. Añade uno para conectarte con un solo toque.</string>
     <string name="ssh_connect">Conectar</string>
-    <string name="ssh_connect_to">Conectar a %1$s</string>
     <string name="ssh_host_summary">%1$s@%2$s:%3$d</string>
     <string name="ssh_edit">Editar</string>
     <string name="ssh_delete">Eliminar</string>
@@ -141,6 +140,7 @@
     <string name="ssh_keys_title">Claves SSH</string>
     <string name="ssh_keys_empty">Aún no hay claves. Genera una o importa una existente.</string>
     <string name="ssh_key_generate">Generar</string>
+    <string name="ssh_key_add">Añadir una clave</string>
     <string name="ssh_key_import">Importar</string>
     <string name="ssh_generate_title">Generar una clave</string>
     <string name="ssh_key_type_ed25519">Ed25519 (recomendada)</string>
@@ -235,7 +235,7 @@
     <string name="appearance_dynamic">Colores dinámicos</string>
     <string name="appearance_dynamic_hint">Toma los colores de los menús y diálogos del fondo de pantalla (Android 12 o posterior).</string>
     <string name="appearance_section_schemes">Esquema de colores</string>
-    <string name="appearance_scheme_menu">Opciones del esquema %1$s</string>
+    <string name="appearance_scheme_use">Usar este esquema</string>
     <string name="appearance_scheme_edit">Editar</string>
     <string name="appearance_scheme_duplicate">Duplicar</string>
     <string name="appearance_scheme_export">Exportar…</string>
@@ -249,8 +249,8 @@
     <string name="appearance_section_font">Fuente</string>
     <string name="appearance_font_hint">La fuente debe ser monoespaciada. Una fuente que importes se queda en este dispositivo y no se comparte ni se sube; su licencia es responsabilidad tuya.</string>
     <string name="appearance_font_bundled">JetBrains Mono (incluida)</string>
+    <string name="appearance_font_use">Usar esta fuente</string>
     <string name="appearance_font_import">Importar una fuente…</string>
-    <string name="appearance_font_delete">Quitar la fuente %1$s</string>
     <string name="appearance_font_size">Tamaño de la fuente</string>
     <string name="appearance_line_spacing">Interlineado</string>
     <string name="appearance_letter_spacing">Espaciado entre letras</string>
@@ -278,7 +278,6 @@
     <string name="appearance_slot_background">Fondo</string>
     <string name="appearance_slot_cursor">Cursor</string>
     <string name="appearance_slot_selection">Selección</string>
-    <string name="appearance_color_row">%1$s, %2$s. Toca para cambiarlo.</string>
     <string name="appearance_contrast_title">Se lee mal sobre este fondo</string>
     <string name="appearance_contrast_item">%1$s: contraste %2$s a 1 (se recomienda al menos %3$s a 1)</string>
     <string name="appearance_picker_title">Color: %1$s</string>

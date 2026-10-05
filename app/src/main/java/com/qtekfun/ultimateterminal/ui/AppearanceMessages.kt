@@ -3,29 +3,27 @@
 
 package com.qtekfun.ultimateterminal.ui
 
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Card
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.qtekfun.ultimateterminal.R
 import com.qtekfun.ultimateterminal.appearance.AppearanceMessage
 import com.qtekfun.ultimateterminal.domain.DomainError
+import com.qtekfun.ultimateterminal.ui.ios.IosAccessory
+import com.qtekfun.ultimateterminal.ui.ios.IosGlyph
+import com.qtekfun.ultimateterminal.ui.ios.IosListRow
+import com.qtekfun.ultimateterminal.ui.ios.IosSection
 
-/** The result of the last import or export, with a way to dismiss it. */
+/** The result of the last import or export, as a row that dismisses itself when tapped. */
 @Composable
 internal fun AppearanceMessageBar(message: AppearanceMessage, onDismiss: () -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(messageText(message), modifier = Modifier.weight(1f))
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.appearance_ok)) }
-        }
+    IosSection {
+        IosListRow(
+            title = messageText(message),
+            glyph = IosGlyph.INFO,
+            accessory = IosAccessory.Value(stringResource(R.string.appearance_ok)),
+            showSeparator = false,
+            onClick = onDismiss
+        )
     }
 }
 
