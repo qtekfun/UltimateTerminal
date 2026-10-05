@@ -105,8 +105,8 @@ Found on a device and fixed, not looked at again on one:
 - Not verified on a device: SSH keys with the real Keystore, backup export and restore with the file
   picker, the `~/storage` permission on Android 13 and later, fonts of your own, Debian and Ubuntu.
 - On the tablet only window resizing was checked; split-screen mode, split panes and a distro were not.
-- TalkBack and font scale 2.0 have not been tried on a device. Cold start to prompt is 1.63 s median on a
-  debug build, above the 1.5 s goal; a release build has not been timed.
+- TalkBack and font scale 2.0 have not been tried on a device. Cold start to prompt is about 1.2 s median on the
+  signed release build with Alpine (1.63 s on a debug build with Fedora), within the 1.5 s goal.
 - Fedora is offered on a 32-bit ARM device and fails with a message there.
 - A profile's colour scheme, font and size are stored but not applied per pane.
 - The text of the initial command can be echoed twice if the shell prints slowly at start-up.
