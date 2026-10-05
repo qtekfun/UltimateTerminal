@@ -108,6 +108,7 @@ private fun AppSettings.toDto() = SettingsDto(
     extraKeys = extraKeys.serialize(),
     shortcuts = ShortcutsDto(bindings = shortcuts.serialize()),
     sidebar = SidebarDto(mode = sidebarMode.name),
+    keyboard = KeyboardDto(type = keyboardType.name),
     appearance = AppearanceDto(
         fontId = appearance.fontId,
         lineSpacing = appearance.lineSpacing,

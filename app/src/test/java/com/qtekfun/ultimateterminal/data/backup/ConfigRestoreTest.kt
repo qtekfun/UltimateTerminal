@@ -22,6 +22,7 @@ import com.qtekfun.ultimateterminal.domain.terminal.AppShortcut
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.FontZoom
 import com.qtekfun.ultimateterminal.domain.terminal.KeyChord
+import com.qtekfun.ultimateterminal.domain.terminal.KeyboardType
 import com.qtekfun.ultimateterminal.domain.terminal.ShortcutMap
 import com.qtekfun.ultimateterminal.domain.theme.BuiltInSchemes
 import com.qtekfun.ultimateterminal.domain.theme.SchemeCodec
@@ -91,6 +92,7 @@ class ConfigRestoreTest {
                 customSchemes = listOf(custom),
                 prootCompatibilityMode = true,
                 sidebarMode = SidebarMode.ALWAYS_EXPANDED,
+                keyboardType = KeyboardType.COMPATIBLE,
                 dnsFallbackServers = listOf("9.9.9.9", "149.112.112.112"),
                 shortcuts = customShortcuts,
                 extraKeys = ExtraKeysConfig(
@@ -183,6 +185,7 @@ class ConfigRestoreTest {
         assertEquals(ExtraKeyStyle.CLASSIC, settings.appearance.extraKeyStyle)
         assertTrue(settings.prootCompatibilityMode)
         assertEquals(SidebarMode.ALWAYS_EXPANDED, settings.sidebarMode)
+        assertEquals(KeyboardType.COMPATIBLE, settings.keyboardType)
         assertEquals(listOf("9.9.9.9", "149.112.112.112"), settings.dnsFallbackServers)
         assertEquals(listOf(listOf("esc", "ctrl"), listOf("up")), settings.extraKeys.rows)
         assertFalse(settings.extraKeys.onlyWithKeyboard)
