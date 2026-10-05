@@ -28,6 +28,7 @@ import com.qtekfun.ultimateterminal.domain.ssh.SshKeyType
 import com.qtekfun.ultimateterminal.domain.ssh.SshResult
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.FontZoom
+import com.qtekfun.ultimateterminal.domain.terminal.KeyboardType
 import com.qtekfun.ultimateterminal.domain.terminal.ShortcutMap
 import com.qtekfun.ultimateterminal.domain.terminal.ShortcutText
 import com.qtekfun.ultimateterminal.domain.theme.BuiltInSchemes
@@ -197,6 +198,7 @@ private fun AppSettings.withLaterSettings(dto: SettingsDto): AppSettings {
     return copy(
         shortcuts = restoredShortcuts(dto.shortcuts, shortcuts),
         sidebarMode = restoredSidebar(dto.sidebar, sidebarMode),
+        keyboardType = restoredKeyboard(dto.keyboard, keyboardType),
         dnsFallbackServers = if (servers == null) {
             dnsFallbackServers
         } else {
@@ -226,6 +228,13 @@ private fun restoredShortcuts(dto: ShortcutsDto?, current: ShortcutMap): Shortcu
  */
 private fun restoredSidebar(dto: SidebarDto?, current: SidebarMode): SidebarMode =
     if (dto != null && dto.version == SidebarDto.VERSION) SidebarMode.parse(dto.mode) else current
+
+/**
+ * The keyboard type of a backup, or [current] when it has none or was written in a format this app
+ * does not know; a type name it does not know is the default.
+ */
+private fun restoredKeyboard(dto: KeyboardDto?, current: KeyboardType): KeyboardType =
+    if (dto != null && dto.version == KeyboardDto.VERSION) KeyboardType.parse(dto.type) else current
 
 private fun ProfileDto.toProfile(distroIds: Map<String, Long>) = Profile(
     name = name,

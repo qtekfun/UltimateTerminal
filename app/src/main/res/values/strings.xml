@@ -401,6 +401,11 @@
     <string name="settings_scrollback_header">History</string>
     <string name="settings_scrollback_option">%1$s lines</string>
     <string name="settings_scrollback_footer">How many lines each terminal keeps to scroll back through. It applies to the tabs you open from now on.</string>
+    <string name="settings_keyboard_type_header">Keyboard type</string>
+    <string name="settings_keyboard_type_normal">Normal</string>
+    <string name="settings_keyboard_type_compatible">Compatible (avoid autocorrect)</string>
+    <string name="settings_keyboard_type_raw">Raw</string>
+    <string name="settings_keyboard_type_footer">Normal: your keyboard as usual, without suggestions. Compatible: asks for a password-style field so some keyboards stop autocorrecting; the secure keyboard of some manufacturers may appear with this. Raw: no text field at all, the keyboard sends plain key presses.</string>
     <string name="settings_keys_header">Extra keys row</string>
     <string name="settings_keys_show">Show the row</string>
     <string name="settings_keys_follow">Only with the keyboard</string>

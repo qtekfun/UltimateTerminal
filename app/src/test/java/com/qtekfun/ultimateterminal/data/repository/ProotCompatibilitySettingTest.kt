@@ -8,6 +8,7 @@ import com.qtekfun.ultimateterminal.data.local.entity.SettingEntity
 import com.qtekfun.ultimateterminal.data.local.inMemoryDatabase
 import com.qtekfun.ultimateterminal.data.local.runDatabaseTest
 import com.qtekfun.ultimateterminal.domain.session.SidebarMode
+import com.qtekfun.ultimateterminal.domain.terminal.KeyboardType
 import kotlinx.coroutines.flow.first
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -57,6 +58,23 @@ class ProotCompatibilitySettingTest {
 
             assertEquals(SidebarMode.ALWAYS_EXPANDED, settings.observe().first().sidebarMode)
         }
+
+    @Test
+    fun `the keyboard is normal by default and the type is stored and read back`() =
+        runDatabaseTest {
+            assertEquals(KeyboardType.NORMAL, settings.observe().first().keyboardType)
+
+            settings.update { it.copy(keyboardType = KeyboardType.RAW) }
+
+            assertEquals(KeyboardType.RAW, settings.observe().first().keyboardType)
+        }
+
+    @Test
+    fun `an unreadable keyboard type falls back to the default`() = runDatabaseTest {
+        db.settingDao().upsert(listOf(SettingEntity("keyboard_type", "secure")))
+
+        assertEquals(KeyboardType.DEFAULT, settings.observe().first().keyboardType)
+    }
 
     @Test
     fun `an unreadable sidebar mode falls back to the default`() = runDatabaseTest {
