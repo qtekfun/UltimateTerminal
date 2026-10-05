@@ -2665,3 +2665,8 @@ Solo texto, sin tocar código ni dispositivos. Todo lo que dice estar verificado
 
 ### D-REL-3 · 2026-10-05 · 0.1.0-rc.3
 - A petición del usuario se publica otra pre-release (`0.1.0-rc.3`, versionCode 10003) con el asistente de primer arranque (T25) y las notas de rendimiento; **no** se hace aún la final `0.1.0`. GitGuardian: los últimos 15 PRs tienen el check en SUCCESS; los incidentes del panel los gestionó el usuario.
+
+### Décima ronda (tablet Huawei MRO-W09, 2026-10-05, `master` en `cc39941`): paneles divididos
+- Instalada la build de depuración de `master` encima de la anterior (misma firma de depuración, sin perder datos). Con la distro del propio usuario (Fedora), en horizontal: barra lateral con "+" y ⚙; "Dividir a la derecha" (pulsación larga en "+") abre un segundo panel con su prompt y su marco de foco; el panel de la izquierda mide 38 filas × 61 columnas según `stty size` y coincide con el ancho visible. Solo se escribió `stty size`; no se tocó nada de las distros del usuario.
+- **Sin comprobar:** `stty size` del panel derecho tras la división, pantalla dividida del sistema (`--windowingMode 3/4` falla en este EMUI), rotación con paneles, y la captura de tablet para F-Droid (la pantalla muestra el nombre de usuario real del usuario y "MyFedora"; se evita publicarla tal cual).
+- Ajustes del sistema que se tocaron (rotación fija, pantalla encendida) restaurados.
