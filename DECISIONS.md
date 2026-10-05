@@ -2618,5 +2618,5 @@ Solo texto, sin tocar código ni dispositivos. Todo lo que dice estar verificado
 
 ### D-REL-1 · 2026-10-05 · Primera versión publicada: 0.1.0-rc.2
 - **Decisión:** el usuario pidió subir a rc.2 (la 0.1.0-rc.1 nunca se publicó: es solo la versión que había en el árbol). `appVersion=0.1.0-rc.2` (versionCode 10002, ya con su changelog de fastlane), notas en `## [0.1.0-rc.2]`. F-Droid no ofrece las `-rc.N` (`UpdateCheckMode: Tags` solo finales), así que de momento solo sale por GitHub Releases.
-- **Clave de firma:** `scripts/create-signing-key.sh` crea el almacén fuera del repositorio, sube los cuatro secretos `UT_*` con `gh` y muestra la huella para `AllowedAPKSigningKeys`; las contraseñas se teclean en el script y no pasan por ningún agente ni log. Una clave propia por app y los mismos nombres de secretos que en las otras apps (con prefijo `UT_`).
+- **Clave de firma:** el usuario prefiere hacer los pasos a mano (sin script): `keytool` en `~/keys/ultimateterminal-release.jks` y `gh secret set` de los cuatro `UT_*` (RELEASING.md, "Signing"). Una clave propia por app, como en las otras apps.
 - **Licencia de Termux:** el usuario decide no pedir confirmación a los mantenedores de Termux (D-T03-2 queda abierto y aceptado). **GitGuardian:** los dos incidentes los descarta el usuario en su panel.

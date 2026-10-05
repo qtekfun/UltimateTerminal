@@ -17,18 +17,17 @@ Releases are signed with the project's own key, and the builds are reproducible:
 
 **Never commit the key, its passwords or the base64 of the key.** `*.jks` and `*.keystore` are in `.gitignore`.
 
-0. Shortcut: `scripts/create-signing-key.sh` does steps 1-2 below in one go (it asks for the password, creates the key outside the repository, uploads the four secrets with `gh` and prints the fingerprint of step 3).
 1. Create the key, and keep the file and passwords somewhere safe and **backed up**: if the key is lost, users would have to uninstall to update.
    ```sh
-   keytool -genkeypair -v -keystore ultimateterminal-release.jks -alias ultimateterminal \
+   keytool -genkeypair -v -keystore ~/keys/ultimateterminal-release.jks -alias ultimateterminal \
      -keyalg RSA -keysize 4096 -validity 10000
    ```
 2. Add these secrets to the GitHub repository (Settings → Secrets and variables → Actions):
-   - `UT_KEYSTORE_BASE64`: `base64 -w0 ultimateterminal-release.jks`
+   - `UT_KEYSTORE_BASE64`: `base64 -w0 ~/keys/ultimateterminal-release.jks`
    - `UT_KEYSTORE_PASSWORD`, `UT_KEY_ALIAS` (`ultimateterminal`), `UT_KEY_PASSWORD`
 3. For F-Droid, take the certificate fingerprint and put it in `AllowedAPKSigningKeys` of `fdroid/com.qtekfun.ultimateterminal.yml` (it holds a placeholder until then):
    ```sh
-   keytool -list -v -keystore ultimateterminal-release.jks -alias ultimateterminal | grep SHA256
+   keytool -list -v -keystore ~/keys/ultimateterminal-release.jks -alias ultimateterminal | grep SHA256
    ```
 
 Locally, the same variables sign a release build: `UT_KEYSTORE_FILE` (path to the `.jks`), `UT_KEYSTORE_PASSWORD`, `UT_KEY_ALIAS` and `UT_KEY_PASSWORD`. Without them `./gradlew assembleRelease` builds an unsigned APK, which is what F-Droid does before comparing. The Release workflow refuses to publish if the key secret is missing, so a tag can never produce an unsigned release.
