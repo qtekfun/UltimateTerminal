@@ -9,6 +9,7 @@ import com.qtekfun.ultimateterminal.domain.appearance.CustomFont
 import com.qtekfun.ultimateterminal.domain.appearance.FontCatalog
 import com.qtekfun.ultimateterminal.domain.appearance.TerminalAppearance
 import com.qtekfun.ultimateterminal.domain.launch.ResolvConf
+import com.qtekfun.ultimateterminal.domain.session.SidebarMode
 import com.qtekfun.ultimateterminal.domain.terminal.AppShortcut
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.KeyChord
@@ -150,6 +151,42 @@ class ConfigRestoreSettingsTest {
         )
 
         assertEquals(mine, now.shortcuts)
+    }
+
+    @Test
+    fun theSidebarModeOfABackupReplacesTheOneOfTheDevice() = runBlocking {
+        val now = restore(
+            sampleSettings().copy(sidebar = SidebarDto(mode = SidebarMode.ALWAYS_EXPANDED.name))
+        )
+
+        assertEquals(SidebarMode.ALWAYS_EXPANDED, now.sidebarMode)
+    }
+
+    @Test
+    fun aBackupFromBeforeTheSidebarKeepsTheModeOfTheDevice() = runBlocking {
+        device.settings.update { it.copy(sidebarMode = SidebarMode.ALWAYS_EXPANDED) }
+
+        assertEquals(SidebarMode.ALWAYS_EXPANDED, restore(sampleSettings()).sidebarMode)
+    }
+
+    @Test
+    fun aSidebarModeInAFormatFromALaterAppIsLeftAlone() = runBlocking {
+        device.settings.update { it.copy(sidebarMode = SidebarMode.ALWAYS_EXPANDED) }
+        val later = SidebarDto(version = SidebarDto.VERSION + 1, mode = "AUTO_COLLAPSE")
+
+        assertEquals(
+            SidebarMode.ALWAYS_EXPANDED,
+            restore(sampleSettings().copy(sidebar = later)).sidebarMode
+        )
+    }
+
+    @Test
+    fun aSidebarModeThisAppDoesNotKnowBecomesTheDefault() = runBlocking {
+        device.settings.update { it.copy(sidebarMode = SidebarMode.ALWAYS_EXPANDED) }
+
+        val now = restore(sampleSettings().copy(sidebar = SidebarDto(mode = "from_the_future")))
+
+        assertEquals(SidebarMode.DEFAULT, now.sidebarMode)
     }
 
     @Test

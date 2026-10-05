@@ -20,6 +20,7 @@ import com.qtekfun.ultimateterminal.domain.repository.LayoutRepository
 import com.qtekfun.ultimateterminal.domain.repository.ProfileRepository
 import com.qtekfun.ultimateterminal.domain.repository.SettingsRepository
 import com.qtekfun.ultimateterminal.domain.repository.SshHostRepository
+import com.qtekfun.ultimateterminal.domain.session.SidebarMode
 import com.qtekfun.ultimateterminal.domain.settings.DnsServers
 import com.qtekfun.ultimateterminal.domain.ssh.SshKeyInfo
 import com.qtekfun.ultimateterminal.domain.ssh.SshKeyStore
@@ -195,6 +196,8 @@ private fun AppSettings.withLaterSettings(dto: SettingsDto): AppSettings {
     val look = dto.appearance
     return copy(
         shortcuts = restoredShortcuts(dto.shortcuts, shortcuts),
+        sidebarMode = dto.sidebar?.takeIf { it.version == SidebarDto.VERSION }
+            ?.let { SidebarMode.parse(it.mode) } ?: sidebarMode,
         dnsFallbackServers = if (servers == null) {
             dnsFallbackServers
         } else {

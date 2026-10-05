@@ -6,6 +6,7 @@ package com.qtekfun.ultimateterminal.domain.model
 import com.qtekfun.ultimateterminal.domain.appearance.CustomFont
 import com.qtekfun.ultimateterminal.domain.appearance.TerminalAppearance
 import com.qtekfun.ultimateterminal.domain.launch.ResolvConf
+import com.qtekfun.ultimateterminal.domain.session.SidebarMode
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.FontZoom
 import com.qtekfun.ultimateterminal.domain.terminal.ShortcutMap
@@ -45,5 +46,7 @@ data class AppSettings(
     /** DNS servers used only when the device reports none (SPEC RF-11, Network). */
     val dnsFallbackServers: List<String> = ResolvConf.FALLBACK_SERVERS,
     /** The application shortcuts: which key combination does what (SPEC RF-12). */
-    val shortcuts: ShortcutMap = ShortcutMap.defaults()
+    val shortcuts: ShortcutMap = ShortcutMap.defaults(),
+    /** Whether the side tab bar collapses to a rail when the terminal is used (SPEC RF-16). */
+    val sidebarMode: SidebarMode = SidebarMode.DEFAULT
 )
