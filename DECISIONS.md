@@ -2865,3 +2865,6 @@ Con tests en el anfitrión (JVM): modos, enlaces (absolutos, relativos, rotos), 
 - **No** se usa `Process.killProcess`: es el último recurso (salta los ciclos de vida y no deja a Hilt/Room cerrar). Android puede dejar el proceso vacío en caché un rato, pero sin servicio, hilos de sesión ni wakelock no ejecuta nada; abrir la app después crea una actividad nueva y, al no haber sesiones, `TerminalViewModel` abre la pestaña predeterminada, como un arranque en frío.
 - **Pendiente de verificar en dispositivo:** Pixel 8, Salir con y sin sesiones vivas, con la pantalla apagada y reabriendo; que no queda notificación ni proceso activo.
 
+
+### D-REL-7 · 2026-10-05 · 0.1.3
+- A petición del usuario ("si todo funciona saca la release") se publica la `0.1.3` (versionCode 10399) con el cierre fiable: "Salir" en el menú y el arreglo de "Salir" en la notificación (verificado en un OPPO PGEM10 con la build de depuración de `master`). La entrada "Salir" del menú no se ha probado todavía en un dispositivo; se prueba con esta release en el Pixel 8.

@@ -1,0 +1,1 @@
+Versión 0.1.3. Cerrar la app es fiable: una entrada Salir en el menú, y Salir en la notificación ya no deja una notificación de "0 sesiones" ni la app vacía. Al acabar la última sesión, la app se cierra. Software temprano: el README dice qué está verificado en un dispositivo.

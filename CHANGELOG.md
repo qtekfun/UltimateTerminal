@@ -10,18 +10,25 @@ and the project uses [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
-### Fixed
-- "Exit" in the notification now stops the service and removes the notification for good (it could be re-posted
-  as "0 sessions"), and no longer makes the app reopen empty and need a second tap.
+## [0.1.3] - 2026-10-05
 
-### Changed
-- When the last session goes away, by any path (notification "Exit", the last tab closed), the app closes
-  completely, also from recents. Opening it again is a normal start with one tab.
+Closing the app is now reliable. The notification fix was tried on a real phone (an OPPO PGEM10); the
+README says what has been tried where.
 
 ### Added
 - An "Exit" entry, last in the "..." / "+" menu, closes the whole app: it ends every session, stops the
   background service and its notification, and closes the app's task. It asks first if a session is still
-  running.
+  running. (Not yet tried on a real device.)
+
+### Fixed
+- "Exit" in the notification now stops the service and removes the notification for good: it could be
+  re-posted as "0 sessions" and then the app reopened empty and needed a second tap. Tried with the app in
+  the foreground and in the background: the notification and the task go away, and opening the app again
+  starts normally with one tab.
+
+### Changed
+- When the last session goes away, by any path (notification "Exit", the last tab closed), the app closes
+  completely, also from recents. Opening it again is a normal start with one tab.
 
 ## [0.1.2] - 2026-10-05
 
