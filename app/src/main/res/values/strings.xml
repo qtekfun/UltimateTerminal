@@ -124,7 +124,6 @@
     <string name="ssh_keys_open">Keys</string>
     <string name="ssh_no_hosts">No saved hosts yet. Add one to connect with a single tap.</string>
     <string name="ssh_connect">Connect</string>
-    <string name="ssh_connect_to">Connect to %1$s</string>
     <string name="ssh_host_summary">%1$s@%2$s:%3$d</string>
     <string name="ssh_edit">Edit</string>
     <string name="ssh_delete">Delete</string>
@@ -145,6 +144,7 @@
     <string name="ssh_keys_title">SSH keys</string>
     <string name="ssh_keys_empty">No keys yet. Generate one or import an existing key.</string>
     <string name="ssh_key_generate">Generate</string>
+    <string name="ssh_key_add">Add a key</string>
     <string name="ssh_key_import">Import</string>
     <string name="ssh_generate_title">Generate a key</string>
     <string name="ssh_key_type_ed25519">Ed25519 (recommended)</string>
@@ -239,7 +239,7 @@
     <string name="appearance_dynamic">Dynamic colors</string>
     <string name="appearance_dynamic_hint">Take the colors of menus and dialogs from the wallpaper (Android 12 and later).</string>
     <string name="appearance_section_schemes">Color scheme</string>
-    <string name="appearance_scheme_menu">Options for the scheme %1$s</string>
+    <string name="appearance_scheme_use">Use this scheme</string>
     <string name="appearance_scheme_edit">Edit</string>
     <string name="appearance_scheme_duplicate">Duplicate</string>
     <string name="appearance_scheme_export">Export…</string>
@@ -253,8 +253,8 @@
     <string name="appearance_section_font">Font</string>
     <string name="appearance_font_hint">The font must be monospaced. A font you import stays on this device and is never shared or uploaded; its license is your responsibility.</string>
     <string name="appearance_font_bundled">JetBrains Mono (included)</string>
+    <string name="appearance_font_use">Use this font</string>
     <string name="appearance_font_import">Import a font…</string>
-    <string name="appearance_font_delete">Remove the font %1$s</string>
     <string name="appearance_font_size">Font size</string>
     <string name="appearance_line_spacing">Line spacing</string>
     <string name="appearance_letter_spacing">Letter spacing</string>
@@ -282,7 +282,6 @@
     <string name="appearance_slot_background">Background</string>
     <string name="appearance_slot_cursor">Cursor</string>
     <string name="appearance_slot_selection">Selection</string>
-    <string name="appearance_color_row">%1$s, %2$s. Tap to change.</string>
     <string name="appearance_contrast_title">Hard to read on this background</string>
     <string name="appearance_contrast_item">%1$s: contrast %2$s to 1 (at least %3$s to 1 recommended)</string>
     <string name="appearance_picker_title">Color: %1$s</string>
