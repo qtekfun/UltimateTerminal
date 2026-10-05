@@ -15,9 +15,12 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -32,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import com.qtekfun.ultimateterminal.domain.ios.BarStyle
@@ -133,7 +137,10 @@ fun IosNavBar(
             Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) { leading() }
             IosText(
                 text = title,
-                modifier = Modifier.alpha(LargeTitle.smallTitleAlpha(collapseFraction)),
+                // The large title is the heading; this one only repeats it for the eye.
+                modifier = Modifier
+                    .alpha(LargeTitle.smallTitleAlpha(collapseFraction))
+                    .clearAndSetSemantics {},
                 style = IosTheme.typography.headline,
                 maxLines = 1
             )
@@ -158,9 +165,12 @@ fun IosBarButton(
     modifier: Modifier = Modifier,
     bold: Boolean = false
 ) {
-    IosPressable(onClick, modifier.height(IosSize.minTouch)) { pressed ->
+    IosPressable(onClick, modifier.heightIn(min = IosSize.minTouch)) { pressed ->
         Box(
-            Modifier.height(IosSize.minTouch).padding(horizontal = IosSpacing.sm),
+            Modifier
+                .heightIn(min = IosSize.minTouch)
+                .widthIn(min = IosSize.minTouch)
+                .padding(horizontal = IosSpacing.sm),
             contentAlignment = Alignment.Center
         ) {
             IosText(
@@ -183,7 +193,9 @@ fun IosBarIconButton(
 ) {
     IosPressable(onClick, modifier.height(IosSize.minTouch)) { pressed ->
         Box(
-            Modifier.height(IosSize.minTouch).padding(horizontal = IosSpacing.sm + IosSpacing.xs),
+            Modifier
+                .size(IosSize.minTouch, IosSize.minTouch)
+                .padding(horizontal = IosSpacing.sm + IosSpacing.xs),
             contentAlignment = Alignment.Center
         ) {
             IosIcon(glyph, contentDescription, Modifier.alpha(if (pressed) PRESSED_ALPHA else 1f))

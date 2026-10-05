@@ -9,11 +9,13 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -46,9 +48,13 @@ fun IosSegmentedControl(
     modifier: Modifier = Modifier
 ) {
     require(options.size >= 2) { "A segmented control needs at least two options" }
-    Box(modifier.fillMaxWidth().height(IosSize.minTouch), contentAlignment = Alignment.Center) {
-        Track(options.size, selectedIndex)
-        Row(Modifier.fillMaxSize()) {
+    // At least 48 dp, and taller when a large font wraps a label onto a second line.
+    Box(
+        modifier.fillMaxWidth().heightIn(min = IosSize.minTouch),
+        contentAlignment = Alignment.Center
+    ) {
+        Track(options.size, selectedIndex, Modifier.matchParentSize())
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
             options.forEachIndexed { index, label ->
                 Segment(label, selected = index == selectedIndex, onClick = {
                     onSelect(index)
@@ -65,13 +71,18 @@ private fun Segment(label: String, selected: Boolean, onClick: () -> Unit, modif
         modifier = modifier.fillMaxHeight().semantics { this.selected = selected },
         role = Role.Tab
     ) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .heightIn(min = IosSize.minTouch)
+                .padding(horizontal = IosSpacing.xs),
+            contentAlignment = Alignment.Center
+        ) {
             IosText(
                 text = label,
                 style = IosTheme.typography.footnote.copy(
                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
                 ),
-                maxLines = 1,
                 textAlign = TextAlign.Center
             )
         }
@@ -80,11 +91,11 @@ private fun Segment(label: String, selected: Boolean, onClick: () -> Unit, modif
 
 /** The grey track, with the white thumb under the chosen segment springing to it. */
 @Composable
-private fun Track(count: Int, selectedIndex: Int) {
+private fun Track(count: Int, selectedIndex: Int, modifier: Modifier) {
     val colors = IosTheme.colors
-    val track = Modifier
-        .fillMaxWidth()
-        .height(IosSize.segmentedHeight)
+    // The drawn track is 32 dp tall in a 48 dp (or taller) touch area.
+    val track = modifier
+        .padding(vertical = (IosSize.minTouch - IosSize.segmentedHeight) / 2)
         .clip(RoundedCornerShape(IosRadius.control))
         .background(colors.fill)
     BoxWithConstraints(track) {
