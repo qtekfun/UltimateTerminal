@@ -106,6 +106,8 @@ class DistroViewModel @Inject constructor(
 
     fun setDefault(id: Long) = act { manager.setDefault(id) }
 
+    fun setUser(id: Long, user: String) = act { manager.setDefaultUser(id, user) }
+
     fun duplicate(id: Long, name: String) = act { manager.duplicate(id, name.trim()) }
 
     fun delete(id: Long) = act { manager.delete(id) }

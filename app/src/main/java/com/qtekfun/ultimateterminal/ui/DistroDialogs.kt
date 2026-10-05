@@ -15,6 +15,7 @@ import androidx.compose.ui.res.stringResource
 import com.qtekfun.ultimateterminal.R
 import com.qtekfun.ultimateterminal.domain.distro.DistroNames
 import com.qtekfun.ultimateterminal.domain.ios.SheetDetent
+import com.qtekfun.ultimateterminal.domain.launch.GuestUser
 import com.qtekfun.ultimateterminal.domain.model.NewDistro
 import com.qtekfun.ultimateterminal.domain.rootfs.DistroFamily
 import com.qtekfun.ultimateterminal.ui.ios.IosAccessory
@@ -98,6 +99,41 @@ internal fun NameSheet(
                     value = text,
                     onValueChange = { text = it },
                     label = stringResource(R.string.install_name_label),
+                    showSeparator = false
+                )
+            }
+        }
+    }
+}
+
+/** A sheet to change the user a distro opens as; a missing user is created at the next session. */
+@Composable
+internal fun UserSheet(initial: String, onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
+    var text by rememberSaveable { mutableStateOf(initial) }
+    val valid = GuestUser.isValid(text.trim())
+    IosBottomSheet(onDismiss = onDismiss, detents = listOf(SheetDetent.LARGE)) {
+        Column(Modifier.imePadding()) {
+            IosSheetHeader(
+                title = stringResource(R.string.distro_change_user_title),
+                cancelLabel = stringResource(R.string.dialog_cancel),
+                confirmLabel = stringResource(R.string.dialog_ok),
+                onCancel = onDismiss,
+                onConfirm = { onConfirm(text) },
+                confirmEnabled = valid
+            )
+            IosSection(
+                footer = stringResource(
+                    if (text.isBlank() || valid) {
+                        R.string.distro_change_user_note
+                    } else {
+                        R.string.distro_change_user_invalid
+                    }
+                )
+            ) {
+                IosTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    label = stringResource(R.string.install_user_label),
                     showSeparator = false
                 )
             }

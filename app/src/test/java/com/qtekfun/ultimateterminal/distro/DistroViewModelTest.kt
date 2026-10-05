@@ -215,4 +215,24 @@ class DistroViewModelTest {
         advanceUntilIdle()
         assertEquals(listOf("Copy"), model.uiState.value.distros.map { it.name })
     }
+
+    @Test
+    fun theUserOfADistroCanBeChangedAndABadNameIsReported() = runTest(dispatcher) {
+        val model = started()
+        model.install(DistroFamily.ALPINE, "Alpine", "root")
+        advanceUntilIdle()
+        model.dismissMessage()
+        val alpine = model.uiState.value.distros.single()
+
+        model.setUser(alpine.id, " bob ")
+        advanceUntilIdle()
+        assertEquals("bob", model.uiState.value.distros.single().defaultUser)
+        assertNull(model.uiState.value.message)
+
+        model.setUser(alpine.id, "-rf")
+        advanceUntilIdle()
+        assertEquals("bob", model.uiState.value.distros.single().defaultUser)
+        val failed = model.uiState.value.message as DistroMessage.ActionFailed
+        assertEquals(DomainError.InvalidValue("user"), failed.error)
+    }
 }

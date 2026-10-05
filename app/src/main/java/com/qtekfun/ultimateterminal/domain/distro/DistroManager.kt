@@ -6,6 +6,7 @@ package com.qtekfun.ultimateterminal.domain.distro
 import com.qtekfun.ultimateterminal.domain.DomainError
 import com.qtekfun.ultimateterminal.domain.Outcome
 import com.qtekfun.ultimateterminal.domain.flatMap
+import com.qtekfun.ultimateterminal.domain.launch.GuestUser
 import com.qtekfun.ultimateterminal.domain.model.Distro
 import com.qtekfun.ultimateterminal.domain.model.DistroState
 import com.qtekfun.ultimateterminal.domain.model.NewDistro
@@ -31,8 +32,18 @@ class DistroManager(
 
     suspend fun rename(id: Long, name: String): Outcome<Unit> = distros.rename(id, name)
 
-    suspend fun setDefaultUser(id: Long, user: String): Outcome<Unit> =
-        distros.setDefaultUser(id, user)
+    /**
+     * Changes the user new sessions open as. The name must be one `useradd` accepts
+     * ([GuestUser.isValid]); a user that does not exist yet is created when the next session starts.
+     */
+    suspend fun setDefaultUser(id: Long, user: String): Outcome<Unit> {
+        val name = user.trim()
+        return if (GuestUser.isValid(name)) {
+            distros.setDefaultUser(id, name)
+        } else {
+            Outcome.Failure(DomainError.InvalidValue("user"))
+        }
+    }
 
     /** Only a finished distro can be the default: a new tab has to be able to open it. */
     suspend fun setDefault(id: Long): Outcome<Unit> =

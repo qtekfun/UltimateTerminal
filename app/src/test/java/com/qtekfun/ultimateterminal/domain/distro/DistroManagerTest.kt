@@ -75,6 +75,25 @@ class DistroManagerTest {
     }
 
     @Test
+    fun theDefaultUserMustBeAValidGuestUserAndRootIsAllowed() = runTest {
+        val alpine = readyDistro("Alpine", "distros/a")
+
+        assertEquals(Outcome.Success(Unit), manager.setDefaultUser(alpine.id, " root "))
+        assertEquals("root", repository.get(alpine.id)?.defaultUser)
+        listOf("", "Bob", "-x", "a b", "1abc", "a".repeat(33)).forEach {
+            assertEquals(
+                Outcome.Failure(DomainError.InvalidValue("user")),
+                manager.setDefaultUser(alpine.id, it)
+            )
+        }
+        assertEquals("root", repository.get(alpine.id)?.defaultUser)
+        assertEquals(
+            Outcome.Failure(DomainError.NotFound),
+            manager.setDefaultUser(999L, "bob")
+        )
+    }
+
+    @Test
     fun onlyAFinishedDistroCanBeTheDefault() = runTest {
         readyDistro("Alpine", "distros/a")
         val debian = readyDistro("Debian", "distros/d")

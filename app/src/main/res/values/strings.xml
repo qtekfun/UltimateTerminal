@@ -40,7 +40,11 @@
     <string name="distros_empty">No distros yet. Install one to get a Linux shell.</string>
     <string name="distros_preparing">Preparing…</string>
     <string name="distro_default">Default</string>
-    <string name="distro_set_default">Use as default</string>
+    <string name="distro_set_default">Set as default</string>
+    <string name="distro_change_user">Change user…</string>
+    <string name="distro_change_user_title">Default user</string>
+    <string name="distro_change_user_note">New sessions open as this user. If it does not exist in the distro, it is created the next time a session starts. Use root to avoid creating anything.</string>
+    <string name="distro_change_user_invalid">Use lowercase letters, digits, _ and -, starting with a letter or _ (up to 32 characters).</string>
     <string name="distro_rename">Rename</string>
     <string name="distro_duplicate">Duplicate</string>
     <string name="distro_delete">Delete</string>
