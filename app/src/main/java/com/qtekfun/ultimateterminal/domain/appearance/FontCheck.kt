@@ -10,7 +10,11 @@ interface FontProbe {
     /** Whether the font can be loaded at all. */
     fun loads(): Boolean
 
-    /** Whether the font has a glyph for [text] (every code point of it). */
+    /**
+     * Whether the font has a glyph for every code point of [text]. Callers pass one code point at a
+     * time: the platform's `Paint.hasGlyph` only accepts a longer string if it forms a single glyph
+     * (a ligature or a grapheme cluster), so it is not a "does it cover all these letters" test.
+     */
     fun hasGlyphs(text: String): Boolean
 
     /** The advance width of [text] at some fixed size; only ratios are used. */
@@ -44,11 +48,15 @@ object FontChecker {
 
     fun check(probe: FontProbe): FontCheck = when {
         !probe.loads() -> FontCheck.Unreadable
-        !probe.hasGlyphs(REQUIRED_GLYPHS) -> FontCheck.MissingGlyphs
+        !coversRequiredGlyphs(probe) -> FontCheck.MissingGlyphs
         probe.advance("X") <= 0f -> FontCheck.Unreadable
         isMonospaced(probe) -> FontCheck.Usable
         else -> FontCheck.NotMonospaced
     }
+
+    /** Asks about each code point on its own, as the platform cannot answer for a whole string. */
+    private fun coversRequiredGlyphs(probe: FontProbe): Boolean =
+        REQUIRED_GLYPHS.codePoints().allMatch { probe.hasGlyphs(String(Character.toChars(it))) }
 
     private fun isMonospaced(probe: FontProbe): Boolean {
         val reference = probe.advance("X")

@@ -69,7 +69,10 @@ internal class AndroidFontProbe(file: File) : FontProbe {
 
     override fun loads(): Boolean = typeface != null
 
-    override fun hasGlyphs(text: String): Boolean = paint.hasGlyph(text)
+    // Paint.hasGlyph(String) is true for a multi-character string only if it maps to ONE glyph (a
+    // ligature or grapheme cluster), so ask about each code point (surrogate pairs stay together).
+    override fun hasGlyphs(text: String): Boolean = text.isNotEmpty() &&
+        text.codePoints().allMatch { paint.hasGlyph(String(Character.toChars(it))) }
 
     override fun advance(text: String): Float = paint.measureText(text)
 
