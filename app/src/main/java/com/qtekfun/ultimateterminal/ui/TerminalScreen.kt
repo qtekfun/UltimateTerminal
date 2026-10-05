@@ -71,6 +71,7 @@ import com.qtekfun.ultimateterminal.domain.session.tabBarPlacement
 import com.qtekfun.ultimateterminal.domain.terminal.CellPosition
 import com.qtekfun.ultimateterminal.domain.terminal.EdgeInsets
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
+import com.qtekfun.ultimateterminal.domain.terminal.KeyboardType
 import com.qtekfun.ultimateterminal.domain.terminal.extraKeysHeightPx
 import com.qtekfun.ultimateterminal.domain.terminal.reserveBottom
 import com.qtekfun.ultimateterminal.domain.terminal.terminalLayoutFor
@@ -107,6 +108,7 @@ fun TerminalScreen(
     screens: ScreenLinks,
     modifier: Modifier = Modifier,
     sidebarMode: SidebarMode = SidebarMode.DEFAULT,
+    keyboardType: KeyboardType = KeyboardType.DEFAULT,
     viewModel: TerminalViewModel = viewModel()
 ) {
     val (scheme, appearance, typefaces) = look
@@ -138,7 +140,10 @@ fun TerminalScreen(
         ThemeDecision(dark = scheme.isDark, oled = scheme.background == TerminalColorScheme.BLACK)
     }
     IosTheme(decision, scheme) {
-        CompositionLocalProvider(LocalChromePalette provides chrome) {
+        CompositionLocalProvider(
+            LocalChromePalette provides chrome,
+            LocalKeyboardType provides keyboardType
+        ) {
             TerminalContent(
                 modifier,
                 TerminalParts(viewModel, painter, inputView, look, screens),
@@ -282,6 +287,9 @@ data class TerminalLook(
  */
 val LocalTerminalCovered = compositionLocalOf { false }
 
+/** The keyboard type the terminal's input view asks the soft keyboard for (SPEC RF-08). */
+val LocalKeyboardType = compositionLocalOf { KeyboardType.DEFAULT }
+
 /** The other screens the terminal opens from its menus. */
 class ScreenLinks(
     val openDistros: () -> Unit,
@@ -372,10 +380,14 @@ private fun SchemeAndFontEffects(
 internal fun TerminalOverlays(viewModel: TerminalViewModel, inputView: Array<TerminalInputView?>) {
     val selection by viewModel.selection.selection.collectAsStateWithLifecycle()
     val exitStatus by viewModel.exitStatus.collectAsStateWithLifecycle()
+    val keyboardType = LocalKeyboardType.current
     Box(Modifier.fillMaxSize()) {
         AndroidView(
             factory = { context -> TerminalInputView(context).also { inputView[0] = it } },
-            update = { it.sink = viewModel.keyboard },
+            update = {
+                it.sink = viewModel.keyboard
+                it.keyboardType = keyboardType
+            },
             modifier = Modifier.size(1.dp)
         )
         // Opens once when the terminal first shows (not when it starts already covered); after a
