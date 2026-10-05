@@ -37,8 +37,25 @@ interface FileSystemRepository {
     suspend fun freeSpaceBytes(): Long
 
     /**
+     * The UTF-8 text of a regular file of at most [MAX_TEXT_BYTES], or a failure (not found, not a
+     * regular file or a link, too large, not text). For small config files such as `/etc/passwd`.
+     */
+    suspend fun readText(path: FsPath): Outcome<String>
+
+    /**
+     * Replaces (or creates) a regular file with [text]. The new content is written next to it and
+     * renamed into place, so a failure leaves the old file untouched and never half of the new one.
+     * The parent directory must already exist.
+     */
+    suspend fun writeText(path: FsPath, text: String): Outcome<Unit>
+
+    /**
      * The absolute location of [path] on the device, to build command lines (proot's `-r`). It is a
      * string on purpose; do not turn it back into a file outside the data layer.
      */
     fun absolutePathOf(path: FsPath): String
+
+    companion object {
+        const val MAX_TEXT_BYTES = 1L shl 20
+    }
 }

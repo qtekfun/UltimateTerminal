@@ -126,4 +126,43 @@ abstract class FileSystemRepositoryContract {
     fun `absolutePathOf puts the relative path under the root`() {
         assertTrue(fs.absolutePathOf(path("distros/a")).endsWith("/distros/a"))
     }
+
+    @Test
+    fun `readText returns the content and fails for a missing file or a directory`() = runTest {
+        put("etc/passwd", "root:x:0:0::/root:/bin/sh\n")
+
+        assertEquals(
+            Outcome.Success("root:x:0:0::/root:/bin/sh\n"),
+            fs.readText(path("etc/passwd"))
+        )
+        assertEquals(DomainError.NotFound, failure(fs.readText(path("etc/none"))))
+        assertTrue(failure(fs.readText(path("etc"))) is DomainError.Io)
+    }
+
+    @Test
+    fun `readText refuses a file that is too large`() = runTest {
+        put("big", "a".repeat(FileSystemRepository.MAX_TEXT_BYTES.toInt() + 1))
+
+        assertTrue(failure(fs.readText(path("big"))) is DomainError.Io)
+    }
+
+    @Test
+    fun `writeText replaces a file whole and creates a missing one`() = runTest {
+        put("etc/group", "old")
+
+        assertEquals(Outcome.Success(Unit), fs.writeText(path("etc/group"), "new"))
+        assertEquals(Outcome.Success(Unit), fs.writeText(path("etc/other"), "o"))
+
+        assertEquals("new", read("etc/group"))
+        assertEquals("o", read("etc/other"))
+        assertFalse(fs.exists(path("etc/group.partial")))
+    }
+
+    @Test
+    fun `writeText fails without a parent directory or over a directory`() = runTest {
+        put("d/x", "1")
+
+        assertTrue(failure(fs.writeText(path("nope/file"), "a")) is DomainError.Io)
+        assertTrue(failure(fs.writeText(path("d"), "a")) is DomainError.Io)
+    }
 }
