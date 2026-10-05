@@ -28,7 +28,7 @@ Builds:
       - yes
     ndk: 28.2.13676358
 
-AllowedAPKSigningKeys: REPLACE_WITH_THE_SHA256_OF_THE_RELEASE_CERTIFICATE
+AllowedAPKSigningKeys: 19730045282446333b45f872b0395cd531b4a8816871be6e09b78d6419cd212b
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v[0-9]+\.[0-9]+\.[0-9]+$
