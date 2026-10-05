@@ -182,13 +182,15 @@ class ProotSessionPlannerTest {
 
     @Test
     fun `a profile's user replaces the default user of the distro`() = runTest {
+        putAccounts("root:x:0:0:r:/root:/bin/sh\nops:x:1200:1200::/home/ops:/bin/sh\n")
         val distro = install(user = "dev")
 
         val asRoot = inDistro(planner.plan(distro.id, user = "root")).launch.command
         val asOps = inDistro(planner.plan(distro.id, user = "ops")).launch.command
 
         assertTrue("-0" in asRoot)
-        assertEquals(listOf("su", "-l", "ops"), asOps.takeLast(3))
+        assertEquals("1200:1200", asOps[asOps.indexOf("-i") + 1])
+        assertFalse("su" in asOps)
         assertTrue("HOME=/home/ops" in asOps)
     }
 
