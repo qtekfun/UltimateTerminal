@@ -1,6 +1,6 @@
 Categories:
-  - System
   - Development
+  - System
 License: GPL-3.0-or-later
 AuthorName: qtekfun
 SourceCode: https://github.com/qtekfun/UltimateTerminal
@@ -11,8 +11,7 @@ AutoName: UltimateTerminal
 
 RepoType: git
 Repo: https://github.com/qtekfun/UltimateTerminal.git
-Binaries: 
-  https://github.com/qtekfun/UltimateTerminal/releases/download/v%v/UltimateTerminal-%v.apk
+Binaries: https://github.com/qtekfun/UltimateTerminal/releases/download/v%v/UltimateTerminal-%v.apk
 
 Builds:
   - versionName: 0.1.0
