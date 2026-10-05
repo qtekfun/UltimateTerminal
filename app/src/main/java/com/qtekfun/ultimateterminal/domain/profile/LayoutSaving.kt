@@ -67,3 +67,20 @@ object LayoutSaving {
             StartupCommand.check(describe(it).command) is StartupCommand.Check.Invalid
         }
 }
+
+/** Why saving a layout failed, in the terms the save prompt explains. */
+enum class LayoutSaveProblem { NAME, NAME_TAKEN, NO_TAB, COMMAND, LIMIT, OTHER }
+
+/** The reason a save failed with [this] error, as the prompt shows it. */
+fun DomainError.asLayoutSaveProblem(): LayoutSaveProblem = when (this) {
+    is DomainError.InvalidName -> LayoutSaveProblem.NAME
+
+    is DomainError.NameTaken -> LayoutSaveProblem.NAME_TAKEN
+
+    DomainError.NotFound -> LayoutSaveProblem.NO_TAB
+
+    is DomainError.InvalidValue ->
+        if (field == "command") LayoutSaveProblem.COMMAND else LayoutSaveProblem.LIMIT
+
+    else -> LayoutSaveProblem.OTHER
+}

@@ -44,7 +44,8 @@ class PaneOpenerTest {
     private val alpine = distro(1, "Alpine", isDefault = true)
     private val debian = distro(2, "Debian")
     private val busy = distro(3, "Busy", state = DistroState.INSTALLING)
-    private val work = Profile(id = 7, name = "Work", distroId = 2, user = "dev", startupCommand = "tmux")
+    private val work =
+        Profile(id = 7, name = "Work", distroId = 2, user = "dev", startupCommand = "tmux")
     private val profiles = FakeProfileRepository(listOf(work))
     private val opener = PaneOpener(
         sessions,
@@ -137,9 +138,15 @@ class PaneOpenerTest {
         assertEquals(2, ids.size)
         assertEquals(started, ids)
         assertEquals("htop\r", sessions.openingOf(ids[0])!!.spec.startupInput)
-        assertEquals(PaneTarget.InDistro(2, "Debian", "dev"), sessions.openingOf(ids[0])!!.spec.target)
+        assertEquals(
+            PaneTarget.InDistro(2, "Debian", "dev"),
+            sessions.openingOf(ids[0])!!.spec.target
+        )
         assertEquals(0.3f, (state.treeOf(tab) as PaneNode.Branch).ratio)
-        assertEquals(PaneTarget.InDistro(1, "Alpine", null), sessions.openingOf(ids[1])!!.spec.target)
+        assertEquals(
+            PaneTarget.InDistro(1, "Alpine", null),
+            sessions.openingOf(ids[1])!!.spec.target
+        )
     }
 
     @Test

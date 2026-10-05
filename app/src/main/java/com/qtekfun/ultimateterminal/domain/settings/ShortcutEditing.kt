@@ -81,9 +81,13 @@ object ShortcutEditing {
         if (keyCode in MODIFIER_KEYS) null else KeyChord(keyCode, ctrl, alt, shift).format()
 
     private val MODIFIER_KEYS = setOf(
-        KeyEvent.KEYCODE_SHIFT_LEFT, KeyEvent.KEYCODE_SHIFT_RIGHT,
-        KeyEvent.KEYCODE_CTRL_LEFT, KeyEvent.KEYCODE_CTRL_RIGHT,
-        KeyEvent.KEYCODE_ALT_LEFT, KeyEvent.KEYCODE_ALT_RIGHT,
-        KeyEvent.KEYCODE_META_LEFT, KeyEvent.KEYCODE_META_RIGHT
+        KeyEvent.KEYCODE_SHIFT_LEFT,
+        KeyEvent.KEYCODE_SHIFT_RIGHT,
+        KeyEvent.KEYCODE_CTRL_LEFT,
+        KeyEvent.KEYCODE_CTRL_RIGHT,
+        KeyEvent.KEYCODE_ALT_LEFT,
+        KeyEvent.KEYCODE_ALT_RIGHT,
+        KeyEvent.KEYCODE_META_LEFT,
+        KeyEvent.KEYCODE_META_RIGHT
     )
 }

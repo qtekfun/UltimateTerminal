@@ -18,7 +18,13 @@ import org.junit.jupiter.api.Test
 class OpenedTabTest {
     private fun pane(distro: Long?, command: String? = null) = PlannedNode.Pane(
         PaneSpec(
-            if (distro == null) PaneTarget.AndroidShell else PaneTarget.InDistro(distro, "d$distro", null),
+            if (distro ==
+                null
+            ) {
+                PaneTarget.AndroidShell
+            } else {
+                PaneTarget.InDistro(distro, "d$distro", null)
+            },
             PaneLook(scrollbackLines = 1000),
             command?.let { "$it\r" }
         ),

@@ -10,6 +10,7 @@ import com.qtekfun.ultimateterminal.domain.model.AppSettings
 import com.qtekfun.ultimateterminal.domain.repository.SettingsRepository
 import com.qtekfun.ultimateterminal.domain.settings.ScrollbackChoices
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
+import com.qtekfun.ultimateterminal.domain.terminal.ShortcutMap
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -39,6 +40,11 @@ class SettingsViewModel @Inject constructor(private val repository: SettingsRepo
 
     fun editExtraKeys(transform: (ExtraKeysConfig) -> ExtraKeysConfig) =
         edit { it.copy(extraKeys = transform(it.extraKeys)) }
+
+    fun editShortcuts(transform: (ShortcutMap) -> ShortcutMap) =
+        edit { it.copy(shortcuts = transform(it.shortcuts)) }
+
+    fun resetShortcuts() = edit { it.copy(shortcuts = ShortcutMap.defaults()) }
 
     fun resetExtraKeys() = edit { it.copy(extraKeys = ExtraKeysConfig.default()) }
 

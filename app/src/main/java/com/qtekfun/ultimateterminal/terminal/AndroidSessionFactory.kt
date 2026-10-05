@@ -8,6 +8,8 @@ import com.qtekfun.ultimateterminal.data.proot.LaunchPlan
 import com.qtekfun.ultimateterminal.data.proot.ProotLaunch
 import com.qtekfun.ultimateterminal.data.proot.ProotSessionPlanner
 import com.qtekfun.ultimateterminal.domain.launch.LaunchProblem
+import com.qtekfun.ultimateterminal.domain.profile.PaneOpening
+import com.qtekfun.ultimateterminal.domain.profile.PaneTarget
 import com.qtekfun.ultimateterminal.domain.session.HostRegistry
 import com.qtekfun.ultimateterminal.domain.session.LaunchingSessionFactory
 import com.qtekfun.ultimateterminal.domain.session.SessionController
@@ -20,6 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -29,7 +32,8 @@ import kotlinx.coroutines.launch
  *  - a [SessionLaunch] given by the caller (the SSH hosts screen passes proot running `ssh`), used
  *    as it is; or
  *  - none, and then the [planner] decides from the distro the tab was opened in: proot with that
- *    distro, or Android's shell.
+ *    distro, or Android's shell. A pane opened with a profile also brings its user, its scrollback
+ *    and the command to type once the shell runs (D-T12b-2).
  *
  * The plan arrives a moment after the host exists, so [start] returns at once and the shell begins
  * when the plan and the screen's size are both known. What a launch put on disk (a key file) goes
@@ -41,6 +45,8 @@ class AndroidSessionFactory(
     private val context: Context,
     private val planner: ProotSessionPlanner,
     private val distroOf: (SessionId) -> Long?,
+    /** What a pane was opened with (a profile, T12b), read when its shell begins. */
+    private val openingOf: (SessionId) -> PaneOpening?,
     private val scope: CoroutineScope,
     private val scrollbackLines: suspend () -> Int
 ) : LaunchingSessionFactory {
@@ -91,7 +97,8 @@ class AndroidSessionFactory(
         onExit: (Int) -> Unit
     ) {
         try {
-            host.transcriptRows = scrollbackLines()
+            val opening = openingOf(id)
+            host.transcriptRows = opening?.spec?.look?.scrollbackLines ?: scrollbackLines()
             val home = context.filesDir.absolutePath
             val tmp = context.cacheDir.absolutePath
             val inherited = System.getenv()
@@ -104,7 +111,9 @@ class AndroidSessionFactory(
                 )
                 host.launch(start)
             } else {
-                when (val plan = planner.plan(distroOf(id))) {
+                val user = (opening?.spec?.target as? PaneTarget.InDistro)?.user
+                val plan = planner.plan(distroOf(id), user)
+                when (plan) {
                     LaunchPlan.AndroidShell ->
                         host.launch(ShellStart.androidShell(home, tmp, inherited))
 
@@ -119,6 +128,7 @@ class AndroidSessionFactory(
 
                     is LaunchPlan.Failed -> failed(host, plan.problem, onExit)
                 }
+                if (plan !is LaunchPlan.Failed) typeStartupInput(host, opening)
             }
         } catch (cancelled: CancellationException) {
             throw cancelled
@@ -126,6 +136,17 @@ class AndroidSessionFactory(
             host.stop()
             failed(host, LaunchProblem.Unexpected, onExit)
         }
+    }
+
+    /**
+     * Types the command of a profile (with its Enter) into the shell once it has had a moment to
+     * start. The pty keeps what is typed until the shell reads it, so a slow proot start does not
+     * lose it; the pause only keeps the command from landing in the middle of the start-up output.
+     */
+    private suspend fun typeStartupInput(host: TerminalSessionHost, opening: PaneOpening?) {
+        val input = opening?.spec?.startupInput ?: return
+        delay(STARTUP_INPUT_DELAY_MILLIS)
+        host.write(input)
     }
 
     private fun failed(host: TerminalSessionHost, problem: LaunchProblem, onExit: (Int) -> Unit) {
@@ -151,3 +172,6 @@ class AndroidSessionFactory(
         }
     }
 }
+
+/** How long a shell is given to start before the command of a profile is typed into it. */
+private const val STARTUP_INPUT_DELAY_MILLIS = 800L

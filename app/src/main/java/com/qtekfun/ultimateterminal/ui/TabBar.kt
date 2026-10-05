@@ -139,7 +139,7 @@ fun TabBar(
                 onNewTabIn = { tabs.newTabIn(it) },
                 links = links
             )
-            SettingsButton(links.openSettings)
+            SettingsButton(links.screens.openSettings)
         }
     )
 
@@ -225,14 +225,7 @@ private class TabDrag {
 }
 
 /** What the "+" menu opens besides new tabs: other screens, and the split of the focused pane. */
-class TabBarLinks(
-    val openDistros: () -> Unit,
-    val openSsh: () -> Unit,
-    val openAppearance: () -> Unit,
-    val openSettings: () -> Unit,
-    val splitRight: () -> Unit,
-    val splitDown: () -> Unit
-)
+class TabBarLinks(val screens: ScreenLinks, val splitRight: () -> Unit, val splitDown: () -> Unit)
 
 /** What touching one tab does. */
 private class TabChipActions(

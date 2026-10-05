@@ -114,7 +114,13 @@ class LayoutRestorePlanner(
             }
             ready.notices.forEach { notices += LayoutNotice.ForPane(index, it) }
             // A pane that fell back to plain opens without its command, and is saved that way.
-            return PlannedNode.Pane(ready.spec, node.command?.takeIf { ready.spec.startupInput != null })
+            return PlannedNode.Pane(
+                ready.spec,
+                node.command?.takeIf {
+                    ready.spec.startupInput !=
+                        null
+                }
+            )
         }
     }
 

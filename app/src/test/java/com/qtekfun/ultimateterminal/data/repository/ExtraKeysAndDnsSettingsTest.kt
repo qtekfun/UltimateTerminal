@@ -98,16 +98,17 @@ class ExtraKeysAndDnsSettingsTest {
     }
 
     @Test
-    fun `a stored shortcut line that makes no sense is skipped and the others are kept`() = runTest {
-        db.settingDao().upsert(
-            listOf(
-                SettingEntity(SettingKeys.SHORTCUTS, "ctrl+alt+k=new_tab\nnot a line\nq=copy\n")
+    fun `a stored shortcut line that makes no sense is skipped and the others are kept`() =
+        runTest {
+            db.settingDao().upsert(
+                listOf(
+                    SettingEntity(SettingKeys.SHORTCUTS, "ctrl+alt+k=new_tab\nnot a line\nq=copy\n")
+                )
             )
-        )
 
-        assertEquals(
-            mapOf(KeyChord(KeyEvent.KEYCODE_K, ctrl = true, alt = true) to AppShortcut.NewTab),
-            settings.observe().first().shortcuts.all
-        )
-    }
+            assertEquals(
+                mapOf(KeyChord(KeyEvent.KEYCODE_K, ctrl = true, alt = true) to AppShortcut.NewTab),
+                settings.observe().first().shortcuts.all
+            )
+        }
 }

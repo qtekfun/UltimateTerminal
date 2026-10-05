@@ -3,6 +3,8 @@
 
 package com.qtekfun.ultimateterminal.terminal
 
+import com.qtekfun.ultimateterminal.domain.broadcast.InputKind
+import com.qtekfun.ultimateterminal.domain.broadcast.inputKind
 import com.qtekfun.ultimateterminal.domain.terminal.AppShortcut
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKey
 import com.qtekfun.ultimateterminal.domain.terminal.InputRouter
@@ -19,6 +21,15 @@ interface TerminalOutput {
     fun write(text: String)
 
     fun writeCodePoint(escapePrefix: Boolean, codePoint: Int)
+
+    /**
+     * Like [write], saying what [kind] of input it is. A shell alone ignores the difference; the
+     * output that broadcasts to several panes (T12b) uses it to keep control keys in one pane.
+     */
+    fun write(text: String, kind: InputKind) = write(text)
+
+    fun writeCodePoint(escapePrefix: Boolean, codePoint: Int, kind: InputKind) =
+        writeCodePoint(escapePrefix, codePoint)
 }
 
 /** Where the keyboard (soft or hardware) sends what the user types. */
@@ -49,7 +60,7 @@ class TerminalKeyboard(
     }
 
     override fun onDeleteBefore(count: Int) {
-        host.write(DEL.toString().repeat(count))
+        host.write(DEL.toString().repeat(count), InputKind.TEXT)
         onInput()
     }
 
@@ -68,7 +79,7 @@ class TerminalKeyboard(
 
         is RoutedInput.Text -> {
             // A terminal expects carriage return for Enter.
-            host.write(routed.text.replace('\n', '\r'))
+            host.write(routed.text.replace('\n', '\r'), InputKind.TEXT)
             onInput()
             true
         }
@@ -88,8 +99,11 @@ class TerminalKeyboard(
             )
         }
         when (output) {
-            is KeyOutput.Sequence -> host.write(output.text)
-            is KeyOutput.CodePoint -> host.writeCodePoint(output.escapePrefix, output.value)
+            is KeyOutput.Sequence -> host.write(output.text, input.inputKind())
+
+            is KeyOutput.CodePoint ->
+                host.writeCodePoint(output.escapePrefix, output.value, input.inputKind())
+
             KeyOutput.None -> Unit
         }
         val sent = output != KeyOutput.None

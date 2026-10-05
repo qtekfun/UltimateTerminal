@@ -47,11 +47,12 @@ class SessionManager @Inject constructor(
         context,
         planner,
         { distroOf(it) },
+        { controller.openingOf(it) },
         scope,
         // Read when a shell starts, so a change in Settings reaches the tabs opened afterwards.
         { ScrollbackChoices.forEmulator(settings.observe().first().defaultScrollbackLines) }
     )
-    private val controller = SessionController(factory, ServiceLauncher(context))
+    private val controller: SessionController = SessionController(factory, ServiceLauncher(context))
 
     val state: StateFlow<Sessions> get() = controller.state
 

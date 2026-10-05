@@ -5,7 +5,10 @@ package com.qtekfun.ultimateterminal.terminal
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.qtekfun.ultimateterminal.domain.broadcast.BroadcastController
+import com.qtekfun.ultimateterminal.domain.broadcast.BroadcastView
 import com.qtekfun.ultimateterminal.domain.launch.LaunchMessage
+import com.qtekfun.ultimateterminal.domain.profile.ProfileCommands
 import com.qtekfun.ultimateterminal.domain.repository.DistroRepository
 import com.qtekfun.ultimateterminal.domain.repository.SettingsRepository
 import com.qtekfun.ultimateterminal.domain.session.PaneController
@@ -26,8 +29,10 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -36,6 +41,9 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+/** What a shortcut asks the activity to open. */
+enum class TerminalRequest { SAVE_LAYOUT, OPEN_LAYOUTS }
 
 /**
  * State of the terminal screen. The shells do not belong to it: the [SessionManager] owns them, so
@@ -46,7 +54,9 @@ import kotlinx.coroutines.launch
 class TerminalViewModel @Inject constructor(
     private val manager: SessionManager,
     distros: DistroRepository,
-    settings: SettingsRepository
+    settings: SettingsRepository,
+    /** The broadcast of each tab; the pane menu turns it on and off and sets the groups. */
+    val broadcast: BroadcastController
 ) : ViewModel() {
     private val requestedLayouts = MutableSharedFlow<TerminalLayout>(
         replay = 1,
@@ -93,14 +103,40 @@ class TerminalViewModel @Inject constructor(
     /** The panes of the active tab: split, close, focus and size (T10). */
     val panes = PaneController(manager.editor, viewModelScope)
 
-    private val shortcuts =
-        ShortcutHandler(selection::copy, ::pasteFromClipboard, fontSize, tabs, panes)
+    private val output = ActiveSessionOutput(manager, broadcast)
+    private val requestsFlow = MutableSharedFlow<TerminalRequest>(extraBufferCapacity = 1)
+
+    /** Screens that a shortcut asks the activity to open (the layouts and the save prompt). */
+    val requests: SharedFlow<TerminalRequest> = requestsFlow.asSharedFlow()
+
+    private val shortcuts = ShortcutHandler(
+        selection::copy,
+        ::pasteFromClipboard,
+        fontSize,
+        tabs,
+        panes,
+        object : ProfileCommands {
+            override fun toggleBroadcast() = broadcast.toggle()
+
+            override fun saveLayout() {
+                requestsFlow.tryEmit(TerminalRequest.SAVE_LAYOUT)
+            }
+
+            override fun openLayouts() {
+                requestsFlow.tryEmit(TerminalRequest.OPEN_LAYOUTS)
+            }
+        }
+    )
     val keyboard = TerminalKeyboard(
-        ActiveSessionOutput(manager),
+        output,
         router,
         ::scrollToLiveScreen,
         shortcuts::handle
     )
+
+    /** What is typed here also reaching other panes (SPEC RF-12): the indicator and the menu read it. */
+    val broadcastView: StateFlow<BroadcastView> = broadcast.views
+        .stateIn(viewModelScope, SharingStarted.Eagerly, BroadcastView())
 
     val extraKeys: StateFlow<ExtraKeysConfig> = extraKeysState.asStateFlow()
     val stickyModifiers: StateFlow<StickyState> = stickyState.asStateFlow()
@@ -119,6 +155,10 @@ class TerminalViewModel @Inject constructor(
         viewModelScope.launch {
             settings.observe().map { it.extraKeys }.distinctUntilChanged()
                 .collect { extraKeysState.value = it }
+        }
+        viewModelScope.launch {
+            settings.observe().map { it.shortcuts }.distinctUntilChanged()
+                .collect { router.shortcuts = it }
         }
         viewModelScope.launch {
             requestedLayouts.settled(RESIZE_DEBOUNCE_MILLIS).collect(::applyLayout)
@@ -175,9 +215,7 @@ class TerminalViewModel @Inject constructor(
         manager.restartActive()
     }
 
-    private fun pasteFromClipboard() {
-        manager.currentHost()?.pasteFromClipboard()
-    }
+    private fun pasteFromClipboard() = output.pasteFromClipboard()
 
     fun scrollBy(deltaPx: Float, lineHeightPx: Float) {
         val lines = scroll.consume(deltaPx, lineHeightPx)

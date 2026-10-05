@@ -11,10 +11,10 @@ import com.qtekfun.ultimateterminal.domain.model.Profile
 import com.qtekfun.ultimateterminal.domain.model.SplitOrientation
 import com.qtekfun.ultimateterminal.domain.session.DividerPath
 import com.qtekfun.ultimateterminal.domain.session.SessionController
-import com.qtekfun.ultimateterminal.domain.session.ratioSet
 import com.qtekfun.ultimateterminal.domain.session.SessionFactory
 import com.qtekfun.ultimateterminal.domain.session.SessionHandle
 import com.qtekfun.ultimateterminal.domain.session.distro
+import com.qtekfun.ultimateterminal.domain.session.ratioSet
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalLayout
 import com.qtekfun.ultimateterminal.fakes.FakeLayoutRepository
 import com.qtekfun.ultimateterminal.fakes.FakeProfileRepository

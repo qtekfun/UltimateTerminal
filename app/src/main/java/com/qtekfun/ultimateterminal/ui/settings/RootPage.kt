@@ -27,6 +27,10 @@ internal fun RootPage(links: SettingsLinks, nav: PageNav) {
             }
         }
         section {
+            Link(R.string.settings_profiles, onClick = links.openProfiles)
+            Link(R.string.settings_layouts, last = true, onClick = links.openLayouts)
+        }
+        section {
             Link(R.string.settings_section_sessions) { nav.open(SettingsPage.SESSIONS) }
             Link(R.string.settings_section_distros) { nav.open(SettingsPage.DISTROS) }
             Link(R.string.settings_section_storage) { nav.open(SettingsPage.STORAGE) }

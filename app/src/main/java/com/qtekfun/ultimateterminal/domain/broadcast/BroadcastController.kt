@@ -86,7 +86,13 @@ class BroadcastController(private val editor: SessionEditor) {
         val active = sessions.activeId ?: return BroadcastState()
         val tab = sessions.tabOf(active)
         val panes = sessions.paneIdsOf(tab)
-        return if (panes.size < 2) BroadcastState() else (all[tab] ?: BroadcastState()).pruned(panes)
+        return if (panes.size <
+            2
+        ) {
+            BroadcastState()
+        } else {
+            (all[tab] ?: BroadcastState()).pruned(panes)
+        }
     }
 
     private fun viewOf(sessions: Sessions, all: Map<SessionId, BroadcastState>): BroadcastView {

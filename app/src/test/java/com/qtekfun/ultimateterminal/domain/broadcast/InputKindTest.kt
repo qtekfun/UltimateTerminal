@@ -12,12 +12,18 @@ class InputKindTest {
     @Test
     fun charactersEnterTabAndBackspaceAreTyping() {
         for (code in listOf(
-            KeyEvent.KEYCODE_A, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_TAB,
-            KeyEvent.KEYCODE_DEL, KeyEvent.KEYCODE_SPACE
+            KeyEvent.KEYCODE_A,
+            KeyEvent.KEYCODE_ENTER,
+            KeyEvent.KEYCODE_TAB,
+            KeyEvent.KEYCODE_DEL,
+            KeyEvent.KEYCODE_SPACE
         )) {
             assertEquals(InputKind.TEXT, KeyInput(code, 0).inputKind(), "key $code")
         }
-        assertEquals(InputKind.TEXT, KeyInput(KeyEvent.KEYCODE_A, 'A'.code, shift = true).inputKind())
+        assertEquals(
+            InputKind.TEXT,
+            KeyInput(KeyEvent.KEYCODE_A, 'A'.code, shift = true).inputKind()
+        )
     }
 
     @Test

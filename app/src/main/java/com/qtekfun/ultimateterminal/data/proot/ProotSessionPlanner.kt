@@ -35,19 +35,21 @@ class ProotSessionPlanner @Inject constructor(
     private val dns: ResolvConfSource,
     private val fakeProc: FakeProcSource = FakeProcSource.None
 ) {
-    /** [distroId] is the distro the tab was opened in, null for the Android shell. */
-    suspend fun plan(distroId: Long?): LaunchPlan {
+    /**
+     * [distroId] is the distro the tab was opened in, null for the Android shell. [user] is the
+     * user a profile asks for (T12b); null means the distro's own default user.
+     */
+    suspend fun plan(distroId: Long?, user: String? = null): LaunchPlan {
         if (distroId == null) return LaunchPlan.AndroidShell
         val distro = distros.get(distroId)
         return if (distro == null || distro.state != DistroState.READY) {
             LaunchPlan.FallbackToAndroid(LaunchNotice.DistroUnavailable(distro?.name))
         } else {
-            launchIn(distro)
+            launchIn(distro, user ?: distro.defaultUser)
         }
     }
 
-    private suspend fun launchIn(distro: Distro): LaunchPlan {
-        val user = distro.defaultUser
+    private suspend fun launchIn(distro: Distro, user: String): LaunchPlan {
         // The distro's directory is the root filesystem itself: the installer moves what it unpacked
         // there (see DistroInstaller), so there is no `rootfs` folder inside it.
         val problem = when {
@@ -60,12 +62,12 @@ class ProotSessionPlanner @Inject constructor(
         return when {
             problem != null -> LaunchPlan.Failed(problem)
             tmpDir == null -> LaunchPlan.Failed(LaunchProblem.TempDirUnavailable)
-            else -> buildLaunch(distro, tmpDir)
+            else -> buildLaunch(distro, user, tmpDir)
         }
     }
 
-    private suspend fun buildLaunch(distro: Distro, tmpDir: String): LaunchPlan {
-        val user = distro.defaultUser.takeUnless(GuestUser::isRoot)
+    private suspend fun buildLaunch(distro: Distro, userName: String, tmpDir: String): LaunchPlan {
+        val user = userName.takeUnless(GuestUser::isRoot)
         val home = GuestUser.homeOf(user)
         val app = settings.observe().first()
         val storage = mounts.prepare(distro, app.sharedStorage, home)

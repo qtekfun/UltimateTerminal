@@ -102,6 +102,8 @@ interface PaneEditor : SessionEditor {
  * service has to run. It holds no Android types. Call it from one thread (the main thread): the
  * emulator library delivers its callbacks there.
  */
+// The one owner of the sessions: the interfaces it implements are the operations of the screen.
+@Suppress("TooManyFunctions")
 class SessionController(
     private val factory: SessionFactory,
     private val service: ServiceControl,
@@ -124,13 +126,16 @@ class SessionController(
     /** Like [newSession], running [launch] instead of the Android shell when it is not null. */
     fun newSession(distroId: Long?, launch: SessionLaunch?): SessionId {
         val (next, id) = mutableState.value.created(distroId)
-        return startPublished(next, id, launch)
+        // Published first: a shell that ends at once reports to a session that exists.
+        publish(next)
+        return startShell(id, launch)
     }
 
     override fun splitActive(orientation: SplitOrientation, opening: PaneOpening?): SessionId? {
         val (next, id) = mutableState.value.split(orientation, opening) ?: return null
         opening?.let { openings[id] = it }
-        return startPublished(next, id, null)
+        publish(next)
+        return startShell(id, null)
     }
 
     override fun openTab(root: PlannedNode): SessionId {
@@ -143,12 +148,6 @@ class SessionController(
     }
 
     override fun openingOf(id: SessionId): PaneOpening? = openings[id]
-
-    private fun startPublished(next: Sessions, id: SessionId, launch: SessionLaunch?): SessionId {
-        // Published first: a shell that ends at once reports to a session that exists.
-        publish(next)
-        return startShell(id, launch)
-    }
 
     private fun startShell(id: SessionId, launch: SessionLaunch?): SessionId {
         val onExit = { status: Int -> onExited(id, status) }

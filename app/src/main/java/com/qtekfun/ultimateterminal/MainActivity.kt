@@ -33,7 +33,11 @@ import com.qtekfun.ultimateterminal.terminal.SessionManager
 import com.qtekfun.ultimateterminal.terminal.TerminalFontLoader
 import com.qtekfun.ultimateterminal.ui.AppearanceScreen
 import com.qtekfun.ultimateterminal.ui.DistroScreen
+import com.qtekfun.ultimateterminal.ui.LayoutsScreen
 import com.qtekfun.ultimateterminal.ui.LocalTerminalCovered
+import com.qtekfun.ultimateterminal.ui.ProfileLinks
+import com.qtekfun.ultimateterminal.ui.ProfilesScreen
+import com.qtekfun.ultimateterminal.ui.SaveLayoutSheet
 import com.qtekfun.ultimateterminal.ui.ScreenLinks
 import com.qtekfun.ultimateterminal.ui.SessionPrompts
 import com.qtekfun.ultimateterminal.ui.SshScreen
@@ -94,23 +98,19 @@ class MainActivity : ComponentActivity() {
     ) {
         val scope = rememberCoroutineScope()
         val sessions by sessionManager.state.collectAsStateWithLifecycle()
-        var hadSessions by remember { mutableStateOf(false) }
         var showSettings by rememberSaveable { mutableStateOf(false) }
         var showDistros by rememberSaveable { mutableStateOf(false) }
         var showSsh by rememberSaveable { mutableStateOf(false) }
         var showAppearance by rememberSaveable { mutableStateOf(false) }
+        var showProfiles by rememberSaveable { mutableStateOf(false) }
+        var showLayouts by rememberSaveable { mutableStateOf(false) }
+        var showSaveLayout by rememberSaveable { mutableStateOf(false) }
         val typefaces = remember(settings.appearance.fontId, settings.customFonts) {
             fontLoader.load(settings.appearance.fontId, settings.customFonts)
         }
-        // "Exit" in the notification closes every session: close the screen with them.
-        LaunchedEffect(sessions.items.isEmpty()) {
-            if (sessions.items.isNotEmpty()) {
-                hadSessions = true
-            } else if (hadSessions) {
-                finishAndRemoveTask()
-            }
-        }
-        val covered = showSettings || showDistros || showSsh || showAppearance
+        FinishWithSessions(hasSessions = sessions.items.isNotEmpty())
+        val covered = showSettings || showDistros || showSsh || showAppearance ||
+            showProfiles || showLayouts || showSaveLayout
         Box {
             CompositionLocalProvider(LocalTerminalCovered provides covered) {
                 TerminalScreen(
@@ -125,7 +125,12 @@ class MainActivity : ComponentActivity() {
                         openDistros = { showDistros = true },
                         openSsh = { showSsh = true },
                         openAppearance = { showAppearance = true },
-                        openSettings = { showSettings = true }
+                        openSettings = { showSettings = true },
+                        profiles = ProfileLinks(
+                            openProfiles = { showProfiles = true },
+                            openLayouts = { showLayouts = true },
+                            saveLayout = { showSaveLayout = true }
+                        )
                     )
                 )
             }
@@ -136,15 +141,35 @@ class MainActivity : ComponentActivity() {
                         onClose = { showSettings = false },
                         links = SettingsLinks(
                             openAppearance = { showAppearance = true },
-                            openDistros = { showDistros = true }
+                            openDistros = { showDistros = true },
+                            openProfiles = { showProfiles = true },
+                            openLayouts = { showLayouts = true }
                         )
                     )
                 }
                 if (showDistros) DistroScreen(onClose = { showDistros = false })
                 if (showSsh) SshScreen(onClose = { showSsh = false })
                 if (showAppearance) AppearanceScreen(onClose = { showAppearance = false })
+                if (showProfiles) ProfilesScreen(onClose = { showProfiles = false })
+                if (showLayouts) LayoutsScreen(onClose = { showLayouts = false })
+                if (showSaveLayout) {
+                    SaveLayoutSheet({ showSaveLayout = false }, { showSaveLayout = false })
+                }
             }
         }
         IosTheme(decision, scheme) { SessionPrompts(hasRunningSession = sessions.needsService) }
+    }
+
+    /** "Exit" in the notification closes every session: close the screen with them. */
+    @Composable
+    private fun FinishWithSessions(hasSessions: Boolean) {
+        var hadSessions by remember { mutableStateOf(false) }
+        LaunchedEffect(hasSessions) {
+            if (hasSessions) {
+                hadSessions = true
+            } else if (hadSessions) {
+                finishAndRemoveTask()
+            }
+        }
     }
 }

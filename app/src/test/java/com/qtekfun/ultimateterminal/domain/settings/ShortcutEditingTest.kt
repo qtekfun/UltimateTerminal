@@ -68,7 +68,10 @@ class ShortcutEditingTest {
 
     @Test
     fun nothingTypedUnknownKeysAndPlainTypingAreNotReady() {
-        assertEquals(ShortcutPreview.Empty, ShortcutEditing.preview(defaults, AppShortcut.Copy, "  "))
+        assertEquals(
+            ShortcutPreview.Empty,
+            ShortcutEditing.preview(defaults, AppShortcut.Copy, "  ")
+        )
         assertEquals(
             ShortcutPreview.Unreadable,
             ShortcutEditing.preview(defaults, AppShortcut.Copy, "ctrl+banana")
@@ -125,13 +128,25 @@ class ShortcutEditingTest {
     @Test
     fun aModifierAloneOrAKeyWithoutANameIsNotACombinationYet() {
         for (modifier in listOf(
-            KeyEvent.KEYCODE_SHIFT_LEFT, KeyEvent.KEYCODE_SHIFT_RIGHT, KeyEvent.KEYCODE_CTRL_LEFT,
-            KeyEvent.KEYCODE_CTRL_RIGHT, KeyEvent.KEYCODE_ALT_LEFT, KeyEvent.KEYCODE_ALT_RIGHT,
-            KeyEvent.KEYCODE_META_LEFT, KeyEvent.KEYCODE_META_RIGHT
+            KeyEvent.KEYCODE_SHIFT_LEFT,
+            KeyEvent.KEYCODE_SHIFT_RIGHT,
+            KeyEvent.KEYCODE_CTRL_LEFT,
+            KeyEvent.KEYCODE_CTRL_RIGHT,
+            KeyEvent.KEYCODE_ALT_LEFT,
+            KeyEvent.KEYCODE_ALT_RIGHT,
+            KeyEvent.KEYCODE_META_LEFT,
+            KeyEvent.KEYCODE_META_RIGHT
         )) {
             assertNull(ShortcutEditing.captured(modifier, ctrl = true, alt = false, shift = false))
         }
-        assertNull(ShortcutEditing.captured(KeyEvent.KEYCODE_VOLUME_UP, ctrl = true, alt = false, shift = false))
+        assertNull(
+            ShortcutEditing.captured(
+                KeyEvent.KEYCODE_VOLUME_UP,
+                ctrl = true,
+                alt = false,
+                shift = false
+            )
+        )
     }
 
     @Test
@@ -142,7 +157,12 @@ class ShortcutEditingTest {
         val rows = ShortcutDisplay.allRows(emptied)
 
         assertEquals(ShortcutDisplay.rows(defaults).size, rows.size)
-        assertEquals(emptyList<String>(), rows.first { it.shortcut == AppShortcut.ToggleZoom }.chords)
+        assertEquals(
+            emptyList<String>(),
+            rows.first {
+                it.shortcut == AppShortcut.ToggleZoom
+            }.chords
+        )
         assertFalse(ShortcutDisplay.rows(emptied).any { it.shortcut == AppShortcut.ToggleZoom })
     }
 

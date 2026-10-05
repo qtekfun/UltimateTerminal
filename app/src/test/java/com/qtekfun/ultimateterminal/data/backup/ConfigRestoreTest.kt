@@ -19,10 +19,9 @@ import com.qtekfun.ultimateterminal.domain.ssh.SshKeyInfo
 import com.qtekfun.ultimateterminal.domain.ssh.SshKeyType
 import com.qtekfun.ultimateterminal.domain.terminal.AppShortcut
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
-import com.qtekfun.ultimateterminal.domain.terminal.KeyChord
-
-import com.qtekfun.ultimateterminal.domain.terminal.ShortcutMap
 import com.qtekfun.ultimateterminal.domain.terminal.FontZoom
+import com.qtekfun.ultimateterminal.domain.terminal.KeyChord
+import com.qtekfun.ultimateterminal.domain.terminal.ShortcutMap
 import com.qtekfun.ultimateterminal.domain.theme.BuiltInSchemes
 import com.qtekfun.ultimateterminal.domain.theme.SchemeCodec
 import java.io.File
