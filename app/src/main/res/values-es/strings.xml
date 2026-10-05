@@ -573,4 +573,14 @@
     <string name="shortcuts_reset">Restaurar los atajos por defecto</string>
     <string name="shortcuts_reset_title">¿Restaurar los atajos por defecto?</string>
     <string name="shortcuts_reset_body">Se perderán tus cambios en los atajos.</string>
+    <string name="setup_title">Te damos la bienvenida</string>
+    <string name="setup_intro">Configura una distribución de Linux para empezar a trabajar. Funciona en su propio espacio dentro de este dispositivo y se abre en cada pestaña nueva. Elige una abajo; después puedes añadir más o cambiarlo en Ajustes.</string>
+    <string name="setup_note_alpine">La descarga más pequeña (unos 4 MB). Recomendada.</string>
+    <string name="setup_note_debian">Estable y muy extendida.</string>
+    <string name="setup_note_ubuntu">Conocida y popular.</string>
+    <string name="setup_note_fedora">Paquetes recientes (unos 63 MB de descarga).</string>
+    <string name="setup_network_note">Necesita conexión a internet: se descarga la imagen oficial y se verifica su suma de comprobación antes de descomprimirla. El sistema descomprimido ocupa más que la descarga.</string>
+    <string name="setup_retry">Reintentar</string>
+    <string name="setup_restore">Restaurar desde una copia de seguridad</string>
+    <string name="setup_skip">Omitir, usar por ahora el shell de Android</string>
 </resources>

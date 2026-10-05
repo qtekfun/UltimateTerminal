@@ -36,6 +36,15 @@ internal fun DistroFamily.nameRes(): Int = when (this) {
     DistroFamily.FEDORA -> R.string.family_fedora
 }
 
+/** The one-line note under a distribution on the first-run screen. */
+@StringRes
+internal fun DistroFamily.setupNoteRes(): Int = when (this) {
+    DistroFamily.DEBIAN -> R.string.setup_note_debian
+    DistroFamily.UBUNTU -> R.string.setup_note_ubuntu
+    DistroFamily.ALPINE -> R.string.setup_note_alpine
+    DistroFamily.FEDORA -> R.string.setup_note_fedora
+}
+
 @StringRes
 internal fun DistroType.nameRes(): Int = when (this) {
     DistroType.DEBIAN -> R.string.family_debian

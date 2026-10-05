@@ -577,4 +577,14 @@
     <string name="shortcuts_reset">Restore the default shortcuts</string>
     <string name="shortcuts_reset_title">Restore the default shortcuts?</string>
     <string name="shortcuts_reset_body">Your changes to the shortcuts will be lost.</string>
+    <string name="setup_title">Welcome</string>
+    <string name="setup_intro">Set up a Linux distribution to start working. It runs in its own space on this device and opens in every new tab. Choose one below; you can add more or change this later in Settings.</string>
+    <string name="setup_note_alpine">Smallest download (about 4 MB). Recommended.</string>
+    <string name="setup_note_debian">Stable and widely used.</string>
+    <string name="setup_note_ubuntu">Familiar and popular.</string>
+    <string name="setup_note_fedora">Recent packages (about 63 MB download).</string>
+    <string name="setup_network_note">Needs an internet connection: the official image is downloaded and its checksum is verified before it is unpacked. The unpacked system takes more space than the download.</string>
+    <string name="setup_retry">Try again</string>
+    <string name="setup_restore">Restore from a backup</string>
+    <string name="setup_skip">Skip, use the Android shell for now</string>
 </resources>

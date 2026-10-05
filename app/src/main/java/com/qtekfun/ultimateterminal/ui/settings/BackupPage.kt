@@ -124,7 +124,7 @@ private fun hint(state: BackupUiState): String =
 
 /** The progress of what is running, with a way to stop it. */
 @Composable
-private fun Working(state: BackupUiState, onCancel: () -> Unit) {
+internal fun Working(state: BackupUiState, onCancel: () -> Unit) {
     IosListRow(
         title = state.progress?.let { stringResource(it.phase.labelRes()) }.orEmpty(),
         showSeparator = true

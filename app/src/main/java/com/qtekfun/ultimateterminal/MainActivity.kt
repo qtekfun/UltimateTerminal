@@ -9,8 +9,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -23,13 +25,18 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qtekfun.ultimateterminal.domain.model.AppSettings
 import com.qtekfun.ultimateterminal.domain.repository.SettingsRepository
+import com.qtekfun.ultimateterminal.domain.setup.SetupGate
 import com.qtekfun.ultimateterminal.domain.theme.SchemeCatalog
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
 import com.qtekfun.ultimateterminal.domain.theme.ThemeDecision
 import com.qtekfun.ultimateterminal.domain.theme.resolveTheme
+import com.qtekfun.ultimateterminal.setup.SetupViewModel
 import com.qtekfun.ultimateterminal.terminal.SessionManager
 import com.qtekfun.ultimateterminal.terminal.TerminalFontLoader
 import com.qtekfun.ultimateterminal.ui.AppearanceScreen
@@ -41,6 +48,7 @@ import com.qtekfun.ultimateterminal.ui.ProfilesScreen
 import com.qtekfun.ultimateterminal.ui.SaveLayoutSheet
 import com.qtekfun.ultimateterminal.ui.ScreenLinks
 import com.qtekfun.ultimateterminal.ui.SessionPrompts
+import com.qtekfun.ultimateterminal.ui.SetupScreen
 import com.qtekfun.ultimateterminal.ui.SshScreen
 import com.qtekfun.ultimateterminal.ui.TerminalLook
 import com.qtekfun.ultimateterminal.ui.TerminalScreen
@@ -91,8 +99,31 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * No terminal exists until the first-run gate is decided and closed: the first tab (RF-13) opens
+     * the default distro, so with no distro the setup (RF-15) comes first. Nothing asks for
+     * background permissions on top of it: that prompt needs a running session.
+     */
     @Composable
     private fun Screens(
+        scheme: TerminalColorScheme,
+        settings: AppSettings,
+        decision: ThemeDecision
+    ) {
+        val setup: SetupViewModel = viewModel()
+        val gate by setup.gate.collectAsStateWithLifecycle()
+        when (gate) {
+            SetupGate.UNDECIDED ->
+                Box(Modifier.fillMaxSize().background(ComposeColor(scheme.background)))
+
+            SetupGate.SHOWING -> IosTheme(decision, scheme) { SetupScreen(onSkip = setup::skip) }
+
+            SetupGate.CLOSED -> TerminalWithScreens(scheme, settings, decision)
+        }
+    }
+
+    @Composable
+    private fun TerminalWithScreens(
         scheme: TerminalColorScheme,
         settings: AppSettings,
         decision: ThemeDecision
