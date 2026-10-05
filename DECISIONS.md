@@ -2611,3 +2611,7 @@ Solo texto, sin tocar código ni dispositivos. Todo lo que dice estar verificado
 - **El aviso de notificaciones:** se describe como «un aviso propio antes del del sistema» (`SessionPrompts`) sin afirmar cuándo aparece.
 - **Atrás en la tablet Android 12:** el README y el changelog lo dejan como no verificado (D-FIX-1 de «Correcciones tras pruebas»).
 - **Dato desfasado que sigue sin tocarse:** la sección «Pendiente de validar en hardware», al principio de este fichero, aún dice que los agentes no prueban en dispositivos y no recoge las seis rondas; no se edita para no chocar con otras ramas (ver D-T21-1).
+
+### D-T20-7 · 2026-10-05 · Capturas de F-Droid
+- **Decisión:** seis capturas de teléfono por idioma (`fastlane/metadata/android/{en-US,es-ES}/images/phoneScreenshots/1..6.png`), tomadas en el Pixel 8 con la app en cada idioma (`cmd locale set-app-locales`) y la barra de estado fija (modo demo del sistema, restaurado al acabar): terminal con Fedora, panel dividido, Ajustes, Apariencia, Distribuciones y Perfiles. Salen la distro de prueba "AlpineOps" y el perfil "dev" de las pruebas; se pueden retomar sin ellas más adelante.
+- **Pendiente:** una captura de tablet (`tenInchScreenshots`/`sevenInchScreenshots`) cuando la tablet esté disponible; la huella `AllowedAPKSigningKeys` y `fdroid lint` (D-T20-1..6).
