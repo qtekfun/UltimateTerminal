@@ -2662,3 +2662,6 @@ Solo texto, sin tocar código ni dispositivos. Todo lo que dice estar verificado
 - **Omitir:** abre una pestaña "Shell 1" del shell de Android; tras cerrar del todo y relanzar sin distro, el asistente vuelve a mostrarse.
 - **Mejorable:** en un móvil "Instalar" queda al borde inferior y "Restaurar"/"Omitir" hay que desplazarlos para verlos; un botón de instalar fijo abajo lo arreglaría. Sin probar: restaurar una copia desde el asistente, girar la pantalla a mitad de instalación, TalkBack.
 - **Lección de método:** para simular "sin red" **no se apaga el Wi-Fi** (el Pixel va por depuración inalámbrica y se pierde la conexión de adb; además el puerto de adb cambia al reconectar). Se rompió solo el DNS privado (`private_dns_mode=hostname` con un host inexistente) y se borró después.
+
+### D-REL-3 · 2026-10-05 · 0.1.0-rc.3
+- A petición del usuario se publica otra pre-release (`0.1.0-rc.3`, versionCode 10003) con el asistente de primer arranque (T25) y las notas de rendimiento; **no** se hace aún la final `0.1.0`. GitGuardian: los últimos 15 PRs tienen el check en SUCCESS; los incidentes del panel los gestionó el usuario.

@@ -10,8 +10,18 @@ and the project uses [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.0-rc.3] - 2026-10-05
+
+Third pre-release. Still early software: the README says what is verified on a device.
+
 ### Added
-- First-run setup: with no distro installed, a welcome screen to install one (Alpine preselected) or restore a backup replaces the Android shell tab.
+- First-run setup: with no distro installed, a welcome screen to install one (Alpine preselected) or restore a backup replaces the Android shell tab. Tried on a Pixel 8: install, an error without network with "Try again", and skipping.
+
+### Changed
+- The "keep sessions alive" prompt now appears after the first session starts, not over the welcome screen.
+
+### Notes
+- Measured on a Pixel 8 with the signed release build of 0.1.0-rc.2: about 1.2 s from a cold start to the prompt (Alpine) and `seq 1 200000` in 1.09 s.
 
 ## [0.1.0-rc.2] - 2026-10-05
 
