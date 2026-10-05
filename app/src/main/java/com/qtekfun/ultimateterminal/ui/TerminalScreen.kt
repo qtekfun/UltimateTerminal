@@ -58,6 +58,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qtekfun.ultimateterminal.R
 import com.qtekfun.ultimateterminal.domain.appearance.TerminalAppearance
+import com.qtekfun.ultimateterminal.domain.launch.ExitHint
 import com.qtekfun.ultimateterminal.domain.session.TabBarPlacement
 import com.qtekfun.ultimateterminal.domain.session.TabsController
 import com.qtekfun.ultimateterminal.domain.session.reserveForTabBar
@@ -350,7 +351,14 @@ internal fun TerminalOverlays(viewModel: TerminalViewModel, inputView: Array<Ter
         }
         exitStatus?.let { status ->
             IosButton(
-                text = stringResource(R.string.terminal_session_ended, status),
+                text = stringResource(
+                    when (ExitHint.of(status)) {
+                        ExitHint.COMMAND_NOT_FOUND -> R.string.terminal_session_ended_not_found
+                        ExitHint.NOT_EXECUTABLE -> R.string.terminal_session_ended_not_executable
+                        null -> R.string.terminal_session_ended
+                    },
+                    status
+                ),
                 onClick = viewModel::restart,
                 modifier = Modifier.align(Alignment.Center).padding(horizontal = 16.dp)
             )

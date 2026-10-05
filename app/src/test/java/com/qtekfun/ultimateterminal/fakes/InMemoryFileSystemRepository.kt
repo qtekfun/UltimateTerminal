@@ -74,6 +74,42 @@ class InMemoryFileSystemRepository(
         Outcome.Failure(DomainError.NotFound)
     }
 
+    override suspend fun readText(path: FsPath): Outcome<String> {
+        val content = files[path.value]
+            ?: return Outcome.Failure(
+                if (existsRaw(
+                        path.value
+                    )
+                ) {
+                    DomainError.Io("not a regular file")
+                } else {
+                    DomainError.NotFound
+                }
+            )
+        return if (content.size > FileSystemRepository.MAX_TEXT_BYTES) {
+            Outcome.Failure(DomainError.Io("file too large"))
+        } else {
+            Outcome.Success(content.toString(Charsets.UTF_8))
+        }
+    }
+
+    override suspend fun writeText(path: FsPath, text: String): Outcome<Unit> {
+        val parent = path.value.substringBeforeLast('/', "")
+        return when {
+            path.value in directories -> Outcome.Failure(
+                DomainError.Io("a directory is in the way")
+            )
+
+            parent.isNotEmpty() && parent !in directories ->
+                Outcome.Failure(DomainError.Io("no parent directory"))
+
+            else -> {
+                files[path.value] = text.toByteArray(Charsets.UTF_8)
+                Outcome.Success(Unit)
+            }
+        }
+    }
+
     override suspend fun freeSpaceBytes(): Long = freeSpace
 
     override fun absolutePathOf(path: FsPath): String = "$rootPath/${path.value}"

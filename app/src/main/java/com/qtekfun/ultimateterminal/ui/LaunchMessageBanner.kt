@@ -97,6 +97,9 @@ private fun problemText(problem: LaunchProblem): String = when (problem) {
     is LaunchProblem.InvalidUser ->
         stringResource(R.string.launch_problem_invalid_user, problem.user)
 
+    is LaunchProblem.UserUnavailable ->
+        stringResource(R.string.launch_problem_user_unavailable, problem.user)
+
     LaunchProblem.TempDirUnavailable -> stringResource(R.string.launch_problem_tmp)
 
     LaunchProblem.Unexpected -> stringResource(R.string.launch_problem_unexpected)

@@ -16,6 +16,12 @@ sealed interface LaunchProblem {
     /** The distro's default user is not a valid user name. */
     data class InvalidUser(val user: String) : LaunchProblem
 
+    /**
+     * The distro's default user is not in its `/etc/passwd` and could not be created (or the file
+     * could not be read), so there is nobody to run the shell as.
+     */
+    data class UserUnavailable(val user: String) : LaunchProblem
+
     /** proot has nowhere private to put its temporary files. */
     data object TempDirUnavailable : LaunchProblem
 
