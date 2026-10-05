@@ -188,4 +188,39 @@ class PaneGeometryTest {
         assertTrue(canSplit(PaneRect(0, 0, 404, 164), HORIZONTAL, 10f, 20, dividerPx = 4))
         assertFalse(canSplit(PaneRect(0, 0, 404, 163), HORIZONTAL, 10f, 20, dividerPx = 4))
     }
+
+    @Test
+    fun theHeaderStripIsTakenFromThePtyAndNeverFromTheWidth() {
+        val scene = paneScene(sideBySide, PaneRect(0, 0, 1001, 600), dividerPx = 1)
+
+        // 600 px less a 40 px strip leaves 560 px: 28 rows of 20 px instead of 30.
+        val layouts = paneLayouts(scene, cellWidthPx = 10f, cellHeightPx = 20, headerPx = 40)
+
+        assertEquals(28, layouts.getValue(a).grid.rows)
+        assertEquals(50, layouts.getValue(a).grid.columns)
+    }
+
+    @Test
+    fun theTextAreaStartsUnderTheHeaderAndKeepsTheBottomEdge() {
+        val text = belowHeader(PaneRect(10, 100, 500, 300), headerPx = 40)
+
+        assertEquals(PaneRect(10, 140, 500, 260), text)
+        assertEquals(400, text.bottom)
+    }
+
+    @Test
+    fun aHeaderTallerThanThePaneLeavesNothingNotANegativeHeight() {
+        assertEquals(0, belowHeader(PaneRect(0, 0, 100, 30), headerPx = 40).height)
+        assertEquals(PaneRect(0, 0, 100, 30), belowHeader(PaneRect(0, 0, 100, 30), headerPx = -5))
+    }
+
+    @Test
+    fun theHeaderCountsAgainstTheRoomForASplit() {
+        // Each half needs 4 rows of 20 px plus a 40 px strip: 2 * 120 + 4 px of divider.
+        assertTrue(canSplit(PaneRect(0, 0, 404, 244), HORIZONTAL, 10f, 20, 4, headerPx = 40))
+        assertFalse(canSplit(PaneRect(0, 0, 404, 243), HORIZONTAL, 10f, 20, 4, headerPx = 40))
+        // Side by side the halves keep the height, which must hold the strip and 4 rows.
+        assertTrue(canSplit(PaneRect(0, 0, 404, 120), VERTICAL, 10f, 20, 4, headerPx = 40))
+        assertFalse(canSplit(PaneRect(0, 0, 404, 119), VERTICAL, 10f, 20, 4, headerPx = 40))
+    }
 }
