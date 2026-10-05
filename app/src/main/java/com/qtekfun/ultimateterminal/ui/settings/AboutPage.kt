@@ -71,8 +71,12 @@ internal fun NoticesPage(nav: PageNav) {
         }
         sections.orEmpty().forEach { block ->
             section(header = block.title.ifEmpty { null }) {
-                block.lines.forEachIndexed { index, line ->
-                    IosListRow(title = line, showSeparator = index != block.lines.lastIndex)
+                block.items.forEachIndexed { index, item ->
+                    IosListRow(
+                        title = item.title,
+                        subtitle = item.detail,
+                        showSeparator = index != block.items.lastIndex
+                    )
                 }
             }
         }
