@@ -2296,3 +2296,36 @@ Petición del usuario (Fedora es su distro habitual). Hecho sin dispositivo: pro
 - **Fallo 1:** el teclado en pantalla sigue abierto sobre Ajustes y tapa contenido al venir del terminal.
 - **Fallo 2:** "Créditos y licencias" muestra el texto con los saltos de línea duros del `.md` como filas separadas y la tabla como filas sueltas, en inglés. Legible pero feo; no se pierde ningún crédito.
 - Ambos fallos se pasan a un agente (rama `fix/ime-and-credits`).
+
+## T22c (resto) — Diálogos de sesiones, SSH y Apariencia en estilo iOS
+
+Hecha en un clon aparte, sin tocar ningún dispositivo. Todo probado solo en host.
+
+### D-T22c-1 · 2026-10-05 · «Mantener las sesiones activas»: `IosAlert`, y «Permitir» ya pedía el diálogo del sistema
+- **Decisión:** los dos avisos de `SessionPrompts` (notificaciones y batería) son un `IosAlert` de dos botones: «Ahora no» (cancelar, en negrita) y «Permitir». El comportamiento no cambia.
+- **Ruta de «Permitir» (comprobada en el código):** el aviso de batería llama a `requestBatteryExemption`, que prueba en orden `BatteryExemption.intentsFor` (`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` con `package:<app>` y, solo si falta o se rechaza, la lista general). No abre la lista salvo como respaldo, así que no había nada que corregir; solo se abre la lista general desde Ajustes cuando la app ya está exenta (para poder revocarla). Eso sigue como en D-T08c-1.
+- **Tema:** estos avisos y las pantallas de SSH y Apariencia estaban fuera de `IosTheme` en `MainActivity`; ahora están dentro (sin ello `IosAlert` usaba la paleta clara por defecto).
+- **Sin validar en dispositivo:** que el diálogo del sistema aparezca tras «Permitir» en Android 17 con `targetSdk` 28 (ya pendiente en D-T08c-1).
+
+### D-T22c-2 · 2026-10-05 · SSH (T14): lista de anfitriones y claves como listas agrupadas, formularios en hojas
+- **Decisión:** `SshScreen` y `SshKeysScreen` son `IosLargeTitleScreen`. Un anfitrión o una clave se pulsa y abre una `IosActionSheet` (conectar/editar/borrar; copiar pública/guardar privada/borrar). Añadir un anfitrión es el «+» de la barra; añadir una clave abre una hoja de acciones (generar/importar). Los formularios (anfitrión, generar, importar) son `IosBottomSheet` con `IosSheetHeader` y `IosTextField`; la clave y la distro del anfitrión son listas con marca (`IosAccessory.Check`). Borrar y la advertencia de guardar la clave privada son `IosAlert` (la advertencia no va en rojo). Mensajes y «Trabajando…» son filas, como en Distros.
+- **Componentes nuevos en `ui/ios`:** `IosTextArea` (texto de varias líneas, para pegar una clave), el hueco `detail` de `IosListRow` y `IosAccessory.Swatch` (recuadro de color con su código).
+- **Cadenas:** `ssh_key_add` (EN/ES); se quitan `ssh_connect_to` (no se usa ya).
+
+### D-T22c-3 · 2026-10-05 · Apariencia (T12c): pantalla con título grande, controles iOS y `IosSlider`
+- **Decisión:** la pantalla, el editor de esquemas y el selector de color dejan Material. Tema, cursor y estilo de barras son `IosSegmentedControl`; los interruptores, filas con `IosAccessory.Toggle`; fuentes y esquemas, listas con marca y una `IosActionSheet` por elemento (usar, editar, duplicar, exportar, borrar; borrar un esquema pide confirmación con `IosAlert`). Las fuentes propias se quitan desde su hoja. El editor y el selector son `IosBottomSheet` grandes (Cancelar/Guardar y Cancelar/OK).
+- **`IosSlider`:** no existía y Material no era una opción. Es de `foundation` (pista, relleno y pulgar con gestos de toque y arrastre, 48 dp de alto, `setProgress` para TalkBack). La aritmética (posición del dedo, valor, pasos de TalkBack) es pura y está probada (`SliderMath`, `SliderMathTest`). Se guarda al soltar, como antes.
+- **Cadenas:** nuevas `appearance_scheme_use` y `appearance_font_use`; se quitan `appearance_scheme_menu`, `appearance_font_delete` y `appearance_color_row` (ya sin uso; Lint falla con recursos sin usar). TalkBack lee ahora título + código hex de cada fila de color por la fila agrupada.
+- **No cambia:** la vista previa del terminal sigue con `Text` de Material, porque es una muestra de texto con fuente propia, no un diálogo; `ChromePalette` sigue leyendo `MaterialTheme` (D-T12c). El texto de «Colores dinámicos» habla de menús y diálogos: ahora afecta sobre todo a las barras y teclas en modo «del sistema» (a revisar con el usuario).
+
+### D-T22c-4 · 2026-10-05 · El botón «⋯» de paneles va en una franja propia, no encima del texto
+- **Qué se vio:** con la pestaña dividida, el botón (en la esquina superior derecha del panel enfocado) tapaba el final de la primera línea.
+- **Decisión:** en una pestaña dividida **cada** panel reserva una franja de 40 dp arriba (`PaneHeaderHeight`), enfocado o no, para que mover el foco no cambie el tamaño de ningún pty. El PTY de cada panel se dimensiona con el rectángulo menos esa franja (`paneLayouts(..., headerPx)` y `belowHeader`, puros y probados), el texto se dibuja debajo, y el botón está en la franja. Su zona táctil sigue siendo de 48 dp: sobresale 8 dp por debajo de la franja, solo en la esquina derecha, donde no hay texto visible que se tape. `canSplit` y el mínimo al arrastrar un divisor cuentan la franja (cada mitad necesita la franja más 4 filas). Una pestaña de un solo panel no cambia (sin franja, sin botón). El botón «Copiar» de la selección baja por debajo de la franja.
+- **Alternativa descartada:** encoger solo la primera fila del panel enfocado: cambia el tamaño del pty al mover el foco y provoca un `SIGWINCH` en cada toque.
+- **Coste:** 40 dp menos de alto por panel en una división. Sin validar en dispositivo: que 40 dp se vean bien, que la zona de 48 dp no moleste y la tablet.
+
+### D-T22c-5 · 2026-10-05 · Los botones de Material que quedaban en el terminal
+- «Copiar» (selección) y «Sesión terminada, toca para reiniciar» eran `TextButton`/`Button` de Material sobre el terminal; ahora son `IosButton` (tintado y relleno). No quedan `AlertDialog`, `ModalBottomSheet` ni `DropdownMenu` fuera de `ui/ios`, ni imports sin usar de ellos en `PaneViews`.
+
+### D-T22c-6 · 2026-10-05 · Qué NO está validado (sin dispositivo)
+- Aspecto real de las pantallas de SSH y Apariencia y de las hojas de formulario (teclado, desplazamiento dentro de la hoja con el deslizador), el arrastre del `IosSlider` dentro de una hoja que también se desplaza en vertical, TalkBack en filas de color y deslizadores, y la franja de los paneles en móvil y tablet (D-T22c-4).
