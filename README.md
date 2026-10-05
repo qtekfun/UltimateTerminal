@@ -34,7 +34,10 @@ been checked.
   red indicator, and shortcuts you can change. A profile's colour scheme, font and size are stored but not
   applied per pane yet.
 - **Input:** an extra-keys row (Esc, Tab, Ctrl, Alt, arrows and more) that shows only while the on-screen
-  keyboard is up, sticky Ctrl/Alt, hardware-keyboard shortcuts.
+  keyboard is up, sticky Ctrl/Alt, hardware-keyboard shortcuts. Settings > Keyboard > "Keyboard type" picks
+  what the soft keyboard is told the terminal is: Normal (default), Compatible (avoid autocorrect) or Raw.
+  Normal is meant to stop some phones (Huawei, Xiaomi, OPPO and others) from showing their secure
+  password keyboard in the terminal; this is addressed but not yet verified on such a phone.
 - **SSH:** saved hosts that open a tab already running `ssh`, and SSH keys you can generate, import and
   export. Private keys are encrypted at rest with the Android Keystore.
 - **Device files:** optional access to the shared storage from the distribution, under `~/storage`,

@@ -13,6 +13,7 @@ import com.qtekfun.ultimateterminal.domain.session.SidebarMode
 import com.qtekfun.ultimateterminal.domain.terminal.AppShortcut
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.KeyChord
+import com.qtekfun.ultimateterminal.domain.terminal.KeyboardType
 import com.qtekfun.ultimateterminal.domain.terminal.ShortcutMap
 import java.io.File
 import kotlinx.coroutines.flow.first
@@ -187,6 +188,42 @@ class ConfigRestoreSettingsTest {
         val now = restore(sampleSettings().copy(sidebar = SidebarDto(mode = "from_the_future")))
 
         assertEquals(SidebarMode.DEFAULT, now.sidebarMode)
+    }
+
+    @Test
+    fun theKeyboardTypeOfABackupReplacesTheOneOfTheDevice() = runBlocking {
+        val now = restore(
+            sampleSettings().copy(keyboard = KeyboardDto(type = KeyboardType.RAW.name))
+        )
+
+        assertEquals(KeyboardType.RAW, now.keyboardType)
+    }
+
+    @Test
+    fun aBackupFromBeforeTheKeyboardTypeKeepsTheTypeOfTheDevice() = runBlocking {
+        device.settings.update { it.copy(keyboardType = KeyboardType.COMPATIBLE) }
+
+        assertEquals(KeyboardType.COMPATIBLE, restore(sampleSettings()).keyboardType)
+    }
+
+    @Test
+    fun aKeyboardTypeInAFormatFromALaterAppIsLeftAlone() = runBlocking {
+        device.settings.update { it.copy(keyboardType = KeyboardType.COMPATIBLE) }
+        val later = KeyboardDto(version = KeyboardDto.VERSION + 1, type = "RAW")
+
+        assertEquals(
+            KeyboardType.COMPATIBLE,
+            restore(sampleSettings().copy(keyboard = later)).keyboardType
+        )
+    }
+
+    @Test
+    fun aKeyboardTypeThisAppDoesNotKnowBecomesTheDefault() = runBlocking {
+        device.settings.update { it.copy(keyboardType = KeyboardType.COMPATIBLE) }
+
+        val now = restore(sampleSettings().copy(keyboard = KeyboardDto(type = "from_the_future")))
+
+        assertEquals(KeyboardType.DEFAULT, now.keyboardType)
     }
 
     @Test
