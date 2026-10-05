@@ -109,6 +109,12 @@ class MainActivity : ComponentActivity() {
             fontLoader.load(settings.appearance.fontId, settings.customFonts)
         }
         FinishWithSessions(hasSessions = sessions.items.isNotEmpty())
+        // Opening a profile or a layout shows the new tab: nothing stays over the terminal.
+        val closeToTerminal = {
+            showProfiles = false
+            showLayouts = false
+            showSettings = false
+        }
         val covered = showSettings || showDistros || showSsh || showAppearance ||
             showProfiles || showLayouts || showSaveLayout
         Box {
@@ -146,8 +152,18 @@ class MainActivity : ComponentActivity() {
                 if (showDistros) DistroScreen(onClose = { showDistros = false })
                 if (showSsh) SshScreen(onClose = { showSsh = false })
                 if (showAppearance) AppearanceScreen(onClose = { showAppearance = false })
-                if (showProfiles) ProfilesScreen(onClose = { showProfiles = false })
-                if (showLayouts) LayoutsScreen(onClose = { showLayouts = false })
+                if (showProfiles) {
+                    ProfilesScreen(
+                        onClose = { showProfiles = false },
+                        onOpened = { closeToTerminal() }
+                    )
+                }
+                if (showLayouts) {
+                    LayoutsScreen(
+                        onClose = { showLayouts = false },
+                        onOpened = { closeToTerminal() }
+                    )
+                }
                 if (showSaveLayout) {
                     SaveLayoutSheet({ showSaveLayout = false }, { showSaveLayout = false })
                 }

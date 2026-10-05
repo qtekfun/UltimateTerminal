@@ -56,11 +56,15 @@ private sealed interface ProfileDialog {
 
 /**
  * The profiles screen (SPEC RF-12): list, create, edit and delete; tapping one offers to open it in a
- * new tab or in a split of the active tab. [onClose] leaves the screen, which is also what opening a
- * profile does once it has opened.
+ * new tab or in a split of the active tab. [onClose] leaves the screen; [onOpened] is what opening a
+ * profile does once it has opened (D-FIX-1): the caller closes whatever is under it too.
  */
 @Composable
-fun ProfilesScreen(onClose: () -> Unit, viewModel: ProfilesViewModel = viewModel()) {
+fun ProfilesScreen(
+    onClose: () -> Unit,
+    onOpened: () -> Unit = onClose,
+    viewModel: ProfilesViewModel = viewModel()
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var dialog by remember { mutableStateOf<ProfileDialog?>(null) }
     BackHandler(onBack = onClose)
@@ -78,7 +82,7 @@ fun ProfilesScreen(onClose: () -> Unit, viewModel: ProfilesViewModel = viewModel
         item { ProfileList(state) { dialog = ProfileDialog.Actions(it) } }
     }
     val control = DialogControl(
-        onClose = onClose,
+        onClose = onOpened,
         show = { dialog = it },
         // The action sheet closes itself after an action ran, and the action may have opened the
         // next dialog: only close what is still the sheet, reading the state as it is now.
