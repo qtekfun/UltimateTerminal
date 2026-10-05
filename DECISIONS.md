@@ -2453,3 +2453,20 @@ Evidencia (tablet Huawei): Fedora 44 mínima no trae `su` y el usuario elegido n
 
 ### D-USER-3 · 2026-10-05 · Códigos 127 y 126
 - La tarjeta «Sesión terminada» muestra un texto distinto para 127 («no se encontró un programa») y 126 («no se pudo ejecutar»), vía `ExitHint` (puro, probado). Otros códigos como antes.
+
+### Quinta ronda (Pixel 8, 2026-10-05, build de `master` en `ec4bb2c`: T17, T12b, T22c, usuario sin `su`)
+
+**Rendimiento (SPEC §6; build de depuración, Fedora 44 bajo proot, `docs/PERFORMANCE.md`).**
+- **Arranque en frío hasta el prompt:** seis arranques con `am start -W` y un `PROMPT_COMMAND` que escribe la hora (reloj del dispositivo): 1.471, 1.653, 1.478, 1.585, 1.650 y 1.628 ms; mediana de las cinco últimas **1.628 ms** (rango 1.478–1.653). Primer fotograma (`TotalTime`): 467–508 ms. **El objetivo de 1,5 s se supera por unos 130 ms en una build de depuración**; falta medir una build de release.
+- **`seq 1 200000`:** `time` da `real 1,073 s` (`sys 0,352 s`); `gfxinfo` en tres pasadas: 98/126/127 fotogramas, 0–2,04 % con jank, p50 5 ms, p90 5–6 ms, p99 9–150 ms (el 150 ms sale en la primera pasada). La interfaz sigue fluida.
+- La primera tanda de medidas (mismo día) no vale: el Pixel estaba bloqueado con la pantalla apagada y el shell no arrancó; se repitió con la pantalla encendida. Una medida con la distro Alpine apuntaba en realidad a Fedora (la predeterminada); el gancho en `.profile` de Fedora funciona porque `/bin/sh -l` es bash en modo POSIX y no lee `.bash_profile`.
+
+**Usuario no root (D-USER-1..3).** En Alpine, instalar una distro con usuario por defecto `ops` (que no existía) crea el usuario: `id` da `uid=1000(ops) gid=1000(ops) groups=3003,9997,20399,50399` y `pwd` es `/home/ops`. Los grupos 3003, 9997 y los de aplicación vienen de Android (proot los hereda); no son un fallo, pero un usuario "no root" los conserva. Pendiente de repetir en Fedora (la causa del código 127 era la falta de `su`, que ya no se usa).
+
+**Fallos hallados.**
+1. **Cierre de la app (T12b):** "Perfiles" > "+" y Ajustes > Teclado > Atajos > una fila cierran la app con `IllegalStateException: Vertically scrollable component was measured with an infinity maximum height constraints` (scroll vertical anidado en una hoja). Las listas de Perfiles y de Layouts se abren bien. En manos de un agente (`fix/profile-form-crash`).
+2. **Distros ya instaladas:** la hoja de acciones solo ofrece Renombrar, Duplicar y Eliminar. No hay forma de cambiar el usuario por defecto ni de elegir la distro predeterminada (SPEC §5 y RF-13); el usuario solo se fija al instalar.
+3. **Barra de pestañas:** con tres pestañas el botón "⋯" de la pestaña activa queda recortado por el borde del "+".
+4. **Pendiente de probar:** guardar y abrir un layout (la hoja de "Guardar los paneles"), el formulario de perfil y la difusión; dependen del arreglo 1.
+
+**Bien en el dispositivo:** el diálogo "Mantener las sesiones activas" ya es una alerta iOS; "+" abre una pestaña de la distro predeterminada y la pulsación larga muestra el menú (distros, dividir, perfiles, layouts, ajustes, SSH, gestionar distros, apariencia); Ajustes tiene "Perfiles" y "Layouts".
