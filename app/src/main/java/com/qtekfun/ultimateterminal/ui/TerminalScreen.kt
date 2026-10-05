@@ -23,9 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -78,6 +75,8 @@ import com.qtekfun.ultimateterminal.terminal.TerminalInputView
 import com.qtekfun.ultimateterminal.terminal.TerminalPainter
 import com.qtekfun.ultimateterminal.terminal.TerminalTypefaces
 import com.qtekfun.ultimateterminal.terminal.TerminalViewModel
+import com.qtekfun.ultimateterminal.ui.ios.IosButton
+import com.qtekfun.ultimateterminal.ui.ios.IosButtonStyle
 import com.qtekfun.ultimateterminal.ui.ios.IosTheme
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
@@ -312,17 +311,21 @@ internal fun TerminalOverlays(viewModel: TerminalViewModel, inputView: Array<Ter
         LaunchedEffect(Unit) { inputView[0]?.showKeyboard() }
 
         if (selection != null) {
-            TextButton(
+            IosButton(
+                text = stringResource(R.string.terminal_copy),
                 onClick = viewModel.selection::copy,
-                modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
-            ) {
-                Text(stringResource(R.string.terminal_copy))
-            }
+                modifier = Modifier.align(
+                    Alignment.TopEnd
+                ).padding(8.dp).width(OVERLAY_BUTTON_WIDTH),
+                style = IosButtonStyle.TINTED
+            )
         }
         exitStatus?.let { status ->
-            Button(onClick = viewModel::restart, modifier = Modifier.align(Alignment.Center)) {
-                Text(stringResource(R.string.terminal_session_ended, status))
-            }
+            IosButton(
+                text = stringResource(R.string.terminal_session_ended, status),
+                onClick = viewModel::restart,
+                modifier = Modifier.align(Alignment.Center).padding(horizontal = 16.dp)
+            )
         }
     }
 }
@@ -395,6 +398,8 @@ internal fun TerminalCanvas(
         }
     }
 }
+
+private val OVERLAY_BUTTON_WIDTH = 120.dp
 
 /** Half a period of the blinking cursor. */
 private const val CURSOR_BLINK_MILLIS = 530L

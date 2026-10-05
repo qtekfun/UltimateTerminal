@@ -136,10 +136,10 @@ class MainActivity : ComponentActivity() {
                     )
                 }
                 if (showDistros) DistroScreen(onClose = { showDistros = false })
+                if (showSsh) SshScreen(onClose = { showSsh = false })
+                if (showAppearance) AppearanceScreen(onClose = { showAppearance = false })
             }
-            if (showSsh) SshScreen(onClose = { showSsh = false })
-            if (showAppearance) AppearanceScreen(onClose = { showAppearance = false })
         }
-        SessionPrompts(hasRunningSession = sessions.needsService)
+        IosTheme(decision, scheme) { SessionPrompts(hasRunningSession = sessions.needsService) }
     }
 }
