@@ -38,7 +38,9 @@ data class PaneSpec(
     val look: PaneLook,
     val startupInput: String?,
     /** The profile this came from, null when no profile was used. */
-    val profileId: Long? = null
+    val profileId: Long? = null,
+    /** The name of that profile, which names the tab it opens (D-FIX-4). */
+    val profileName: String? = null
 )
 
 /**
@@ -49,6 +51,12 @@ data class PaneSpec(
 data class PaneOpening(val spec: PaneSpec, val command: String? = null) {
     /** The distro to open in; null for Android's own shell. */
     val distroId: Long? get() = (spec.target as? PaneTarget.InDistro)?.distroId
+
+    /**
+     * What a pane made by splitting this one starts with (D-FIX-8): the same target, user and look,
+     * but not the start-up command, which would run a second time.
+     */
+    fun forSplit(): PaneOpening = PaneOpening(spec.copy(startupInput = null))
 }
 
 /** Why a pane could not be opened as asked. A notice, by contrast, only says what was changed. */

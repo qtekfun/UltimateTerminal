@@ -7,13 +7,19 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class TabNamesTest {
-    private fun tab(id: Int, title: String? = null, distro: String? = null) = TabItem(
+    private fun tab(
+        id: Int,
+        title: String? = null,
+        distro: String? = null,
+        profile: String? = null
+    ) = TabItem(
         id = SessionId(id),
         title = title,
         position = id,
         running = true,
         distroName = distro,
-        active = false
+        active = false,
+        profileName = profile
     )
 
     @Test
@@ -76,6 +82,36 @@ class TabNamesTest {
                 TabName.InDistro("Alpine", 1),
                 TabName.InDistro("Debian", 1),
                 TabName.InDistro("Alpine", 2)
+            ),
+            names
+        )
+    }
+
+    @Test
+    fun aTabOpenedWithAProfileIsCalledAfterTheProfileNotItsDistro() {
+        assertEquals(
+            listOf<TabName>(TabName.InProfile("dev", 1)),
+            tabNames(listOf(tab(1, distro = "Fedora", profile = "dev")))
+        )
+    }
+
+    @Test
+    fun theNameTheUserTypedBeatsTheProfileAndTabsOfOneProfileAreNumbered() {
+        val names = tabNames(
+            listOf(
+                tab(1, title = "mine", profile = "dev"),
+                tab(2, distro = "Fedora", profile = "dev"),
+                tab(3, distro = "Fedora", profile = "dev"),
+                tab(4, distro = "Fedora")
+            )
+        )
+
+        assertEquals(
+            listOf<TabName>(
+                TabName.Custom("mine"),
+                TabName.InProfile("dev", 1),
+                TabName.InProfile("dev", 2),
+                TabName.InDistro("Fedora", 1)
             ),
             names
         )

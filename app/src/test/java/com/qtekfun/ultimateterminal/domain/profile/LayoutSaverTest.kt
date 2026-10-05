@@ -57,6 +57,7 @@ class LayoutSaverTest {
     @Test
     fun theTabIsSavedWithItsShapeItsProfilesAndItsCommands() = runTest {
         opener.open(work, OpenAs.NEW_TAB)
+        // A plain split of a pane opened with a profile inherits the profile (D-FIX-8).
         sessions.splitActive(SplitOrientation.VERTICAL)
         sessions.edit { ratioSet(DividerPath(emptyList()), 0.3f) }
 
@@ -66,7 +67,7 @@ class LayoutSaverTest {
             SplitOrientation.VERTICAL,
             0.3f,
             LayoutNode.Pane(profileId = 7),
-            LayoutNode.Pane()
+            LayoutNode.Pane(profileId = 7)
         )
         assertEquals(Layout(1, "dev", expected), (result as Outcome.Success).value)
         assertEquals(listOf(Layout(1, "dev", expected)), saved())

@@ -17,7 +17,9 @@ data class TabItem(
     val running: Boolean,
     /** Name of the distro the tab was opened in; null for the Android shell. */
     val distroName: String?,
-    val active: Boolean
+    val active: Boolean,
+    /** Name of the profile the tab was opened with; null when none was used. */
+    val profileName: String? = null
 )
 
 fun tabItems(sessions: Sessions, distros: List<Distro>): List<TabItem> {
@@ -28,6 +30,7 @@ fun tabItems(sessions: Sessions, distros: List<Distro>): List<TabItem> {
             title = session.title,
             position = index + 1,
             running = sessions.isTabRunning(session.id),
+            profileName = session.profileName,
             distroName = distros.firstOrNull { it.id == session.distroId }?.name,
             active = session.id == activeTab
         )

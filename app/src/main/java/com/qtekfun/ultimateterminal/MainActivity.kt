@@ -20,6 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -102,15 +103,14 @@ class MainActivity : ComponentActivity() {
         var showDistros by rememberSaveable { mutableStateOf(false) }
         var showSsh by rememberSaveable { mutableStateOf(false) }
         var showAppearance by rememberSaveable { mutableStateOf(false) }
-        var showProfiles by rememberSaveable { mutableStateOf(false) }
-        var showLayouts by rememberSaveable { mutableStateOf(false) }
-        var showSaveLayout by rememberSaveable { mutableStateOf(false) }
+        var overlay by rememberSaveable(stateSaver = ProfileOverlay.Saver) {
+            mutableStateOf(ProfileOverlay())
+        }
         val typefaces = remember(settings.appearance.fontId, settings.customFonts) {
             fontLoader.load(settings.appearance.fontId, settings.customFonts)
         }
         FinishWithSessions(hasSessions = sessions.items.isNotEmpty())
-        val covered = showSettings || showDistros || showSsh || showAppearance ||
-            showProfiles || showLayouts || showSaveLayout
+        val covered = showSettings || showDistros || showSsh || showAppearance || overlay.any
         Box {
             CompositionLocalProvider(LocalTerminalCovered provides covered) {
                 TerminalScreen(
@@ -123,9 +123,9 @@ class MainActivity : ComponentActivity() {
                         openAppearance = { showAppearance = true },
                         openSettings = { showSettings = true },
                         profiles = ProfileLinks(
-                            openProfiles = { showProfiles = true },
-                            openLayouts = { showLayouts = true },
-                            saveLayout = { showSaveLayout = true }
+                            openProfiles = { overlay = overlay.copy(profiles = true) },
+                            openLayouts = { overlay = overlay.copy(layouts = true) },
+                            saveLayout = { overlay = overlay.copy(saveLayout = true) }
                         )
                     )
                 )
@@ -138,22 +138,57 @@ class MainActivity : ComponentActivity() {
                         links = SettingsLinks(
                             openAppearance = { showAppearance = true },
                             openDistros = { showDistros = true },
-                            openProfiles = { showProfiles = true },
-                            openLayouts = { showLayouts = true }
+                            openProfiles = { overlay = overlay.copy(profiles = true) },
+                            openLayouts = { overlay = overlay.copy(layouts = true) }
                         )
                     )
                 }
                 if (showDistros) DistroScreen(onClose = { showDistros = false })
                 if (showSsh) SshScreen(onClose = { showSsh = false })
                 if (showAppearance) AppearanceScreen(onClose = { showAppearance = false })
-                if (showProfiles) ProfilesScreen(onClose = { showProfiles = false })
-                if (showLayouts) LayoutsScreen(onClose = { showLayouts = false })
-                if (showSaveLayout) {
-                    SaveLayoutSheet({ showSaveLayout = false }, { showSaveLayout = false })
+                ProfileOverlays(overlay, { overlay = it }) {
+                    // Opening a profile or a layout shows the new tab: nothing stays over it.
+                    overlay = ProfileOverlay()
+                    showSettings = false
                 }
             }
         }
         IosTheme(decision, scheme) { SessionPrompts(hasRunningSession = sessions.needsService) }
+    }
+
+    /** Which of the profile screens are open. */
+    private data class ProfileOverlay(
+        val profiles: Boolean = false,
+        val layouts: Boolean = false,
+        val saveLayout: Boolean = false
+    ) {
+        val any: Boolean get() = profiles || layouts || saveLayout
+
+        companion object {
+            val Saver = listSaver<ProfileOverlay, Boolean>(
+                save = { listOf(it.profiles, it.layouts, it.saveLayout) },
+                restore = { ProfileOverlay(it[0], it[1], it[2]) }
+            )
+        }
+    }
+
+    /** Profiles, layouts and the save-layout sheet; opening a profile or layout closes it all. */
+    @Composable
+    private fun ProfileOverlays(
+        shown: ProfileOverlay,
+        onShown: (ProfileOverlay) -> Unit,
+        onOpened: () -> Unit
+    ) {
+        if (shown.profiles) {
+            ProfilesScreen(onClose = { onShown(shown.copy(profiles = false)) }, onOpened = onOpened)
+        }
+        if (shown.layouts) {
+            LayoutsScreen(onClose = { onShown(shown.copy(layouts = false)) }, onOpened = onOpened)
+        }
+        if (shown.saveLayout) {
+            val close = { onShown(shown.copy(saveLayout = false)) }
+            SaveLayoutSheet(close, close)
+        }
     }
 
     private suspend fun saveFontSize(size: Float) =
