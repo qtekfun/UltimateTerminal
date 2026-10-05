@@ -2514,3 +2514,4 @@ Evidencia (Pixel 8): la hoja de acciones de una distro instalada no permitía ca
 6. El panel nuevo de una división no lleva el perfil del panel original (usa la distro predeterminada).
 
 **Pendiente de verificar con la build siguiente:** "Cambiar usuario…" (#59) y el recorte del `⋯` con tres pestañas, que ya están en `master` pero no en la build probada.
+

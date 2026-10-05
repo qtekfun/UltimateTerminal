@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -76,10 +77,13 @@ private val DividerThickness = 4.dp
 private val DividerTouchTarget = 48.dp
 
 /**
- * The strip at the top of every pane of a split tab. The "⋯" button lives in it, so the menu never
- * covers a line of text; the pty is told the pane less this strip ([belowHeader]).
+ * The strip at the top of every pane of a split tab. The "⋯" button and the broadcast pill live in
+ * it, so they never cover a line of text; the pty is told the pane less this strip ([belowHeader]).
  */
-private val PaneHeaderHeight = 40.dp
+private val PaneHeaderHeight = 48.dp
+
+/** The width the pane menu button takes at the end of the header strip. */
+private val PaneMenuWidth = 48.dp
 private val FocusBorder = 2.dp
 private val NoFrames = MutableStateFlow(0)
 
@@ -148,14 +152,25 @@ fun TerminalPanes(
             }
         }
         FocusedControls(viewModel, inputView, current, focused, screens)
-        if (broadcast.emitting) {
-            BroadcastIndicator(
-                paneCount = broadcast.targets.size,
-                onStop = viewModel.broadcast::stop,
-                modifier = Modifier.align(Alignment.TopStart)
-            )
-        }
+        if (broadcast.emitting) BroadcastPill(current, broadcast.targets.size, viewModel)
     }
+}
+
+/**
+ * The red broadcast pill, in the header strip of the first pane (D-FIX-4), left of its menu button:
+ * over no terminal text, and the strip is as tall as its 48 dp touch target.
+ */
+@Composable
+private fun BroadcastPill(scene: PaneScene, paneCount: Int, viewModel: TerminalViewModel) {
+    val first = scene.panes.firstOrNull()?.rect ?: return
+    val width = with(LocalDensity.current) { first.width.toDp() } - PaneMenuWidth
+    BroadcastIndicator(
+        paneCount = paneCount,
+        onStop = viewModel.broadcast::stop,
+        modifier = Modifier
+            .offset { IntOffset(first.left, first.top) }
+            .width(width.coerceAtLeast(0.dp))
+    )
 }
 
 /** What sits over the pane that has the keyboard: the keyboard view, its buttons and its menu. */

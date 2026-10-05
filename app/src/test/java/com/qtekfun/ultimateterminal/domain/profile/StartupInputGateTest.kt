@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class StartupInputGateTest {
-    private fun gate() = StartupInputGate(startMillis = 1_000, quietMillis = 300, maxWaitMillis = 5_000)
+    private fun gate() = StartupInputGate(1_000, quietMillis = 300, maxWaitMillis = 5_000)
 
     @Test
     fun itWaitsWhileTheShellHasWrittenNothing() {

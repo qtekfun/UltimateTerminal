@@ -30,8 +30,9 @@ private val IndicatorTouchHeight = 48.dp
 private val IndicatorCorner = 14.dp
 
 /**
- * The warning that what is typed reaches several panes (SPEC RF-12): it is red, always over the
- * terminal while the broadcast lasts, and a tap on it stops the broadcast. Typing into servers by
+ * The warning that what is typed reaches several panes (SPEC RF-12): it is red, always visible
+ * while the broadcast lasts (in the header strip of the first pane, never over terminal text), and a
+ * tap on it stops the broadcast. Typing into servers by
  * surprise is the risk of this feature, so the indicator is not optional (D-T12b-5).
  */
 @Composable

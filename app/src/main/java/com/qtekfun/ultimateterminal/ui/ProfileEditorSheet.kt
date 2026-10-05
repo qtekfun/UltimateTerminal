@@ -112,7 +112,8 @@ private fun NameAndDistro(
     onChange: (ProfileDraft) -> Unit,
     onChooseDistro: () -> Unit
 ) {
-    IosSection(footer = nameError) {
+    // Never null: the line stays, so the hint appearing or going does not move the rows below.
+    IosSection(footer = nameError ?: RESERVED_FOOTER) {
         IosTextField(
             value = draft.name,
             onValueChange = { onChange(draft.copy(name = it)) },
@@ -155,7 +156,7 @@ private fun UserAndCommand(
     val scrollbackNote = if (ProfileField.SCROLLBACK in wrong) {
         stringResource(R.string.profiles_error_scrollback)
     } else {
-        null
+        RESERVED_FOOTER
     }
     IosSection(footer = scrollbackNote) {
         IosTextField(
@@ -198,3 +199,6 @@ private fun DistroChoice(distros: List<Distro>, onChoose: (Long?) -> Unit, onDis
         title = stringResource(R.string.profiles_field_distro)
     )
 }
+
+/** A footer of one blank line: it takes the height of a hint so the form does not shift. */
+private const val RESERVED_FOOTER = "\u00A0"
