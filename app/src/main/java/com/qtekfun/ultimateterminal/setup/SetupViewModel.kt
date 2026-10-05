@@ -5,6 +5,7 @@ package com.qtekfun.ultimateterminal.setup
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.qtekfun.ultimateterminal.backup.RestoreActivity
 import com.qtekfun.ultimateterminal.domain.Outcome
 import com.qtekfun.ultimateterminal.domain.distro.DistroManager
 import com.qtekfun.ultimateterminal.domain.model.Distro
@@ -34,12 +35,18 @@ import kotlinx.coroutines.launch
 class SetupViewModel internal constructor(
     distros: Flow<List<Distro>>,
     hasSessions: Flow<Boolean>,
+    restoring: Flow<Boolean>,
     private val makeDefault: suspend (Long) -> Boolean
 ) : ViewModel() {
     @Inject
-    constructor(manager: DistroManager, sessions: SessionManager) : this(
+    constructor(
+        manager: DistroManager,
+        sessions: SessionManager,
+        restore: RestoreActivity
+    ) : this(
         manager.observe(),
         sessions.state.map { it.items.isNotEmpty() },
+        restore.active,
         { id -> manager.setDefault(id) is Outcome.Success }
     )
 
@@ -50,11 +57,11 @@ class SetupViewModel internal constructor(
 
     init {
         viewModelScope.launch {
-            combine(distros, hasSessions, skipped) { list, open, skip ->
-                SetupInputs(loaded = true, distros = list, hasSessions = open, skipped = skip)
+            combine(distros, hasSessions, skipped, restoring) { list, open, skip, restore ->
+                SetupInputs(loaded = true, list, open, skip, restore)
             }.collect { inputs ->
                 val pending = FirstRunSetup.distroToMakeDefault(inputs.distros)
-                if (gateState.value == SetupGate.SHOWING && pending != null) {
+                if (gateState.value == SetupGate.SHOWING && pending != null && !inputs.restoring) {
                     // The new distro must be the default before the terminal opens its first tab;
                     // the change comes back as the next emission, which closes the gate (if it failed, close now).
                     if (!makeDefault(pending.id)) advance(inputs)

@@ -33,6 +33,7 @@ class SetupViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val distros = MutableStateFlow<List<Distro>>(emptyList())
     private val sessions = MutableStateFlow(false)
+    private val restoring = MutableStateFlow(false)
     private val madeDefault = mutableListOf<Long>()
     private var defaultSucceeds = true
 
@@ -55,7 +56,7 @@ class SetupViewModelTest {
         isDefault = isDefault
     )
 
-    private fun viewModel() = SetupViewModel(distros, sessions) { id ->
+    private fun viewModel() = SetupViewModel(distros, sessions, restoring) { id ->
         madeDefault += id
         if (defaultSucceeds) {
             distros.value = distros.value.map { it.copy(isDefault = it.id == id) }
@@ -145,4 +146,30 @@ class SetupViewModelTest {
         assertEquals(SetupStep.Choose(null), setupStepOf(installed))
         assertEquals(SetupStep.Choose(null), setupStepOf(DistroUiState()))
     }
+
+    @Test
+    fun aRestoreKeepsTheSetupOpenAndTheDefaultItAppliesWinsOverTheFirstDistro() =
+        runTest(dispatcher) {
+            val model = viewModel()
+            advanceUntilIdle()
+            restoring.value = true
+            advanceUntilIdle()
+
+            // The first distro lands while the restore goes on: no default is forced, no close.
+            distros.value = listOf(distro(1, DistroState.READY))
+            advanceUntilIdle()
+            assertEquals(SetupGate.SHOWING, model.gate.value)
+            assertEquals(emptyList<Long>(), madeDefault)
+
+            // The restore applies the configuration last: the default is the second distro.
+            distros.value = listOf(
+                distro(1, DistroState.READY),
+                distro(2, DistroState.READY, isDefault = true)
+            )
+            restoring.value = false
+            advanceUntilIdle()
+
+            assertEquals(emptyList<Long>(), madeDefault)
+            assertEquals(SetupGate.CLOSED, model.gate.value)
+        }
 }
