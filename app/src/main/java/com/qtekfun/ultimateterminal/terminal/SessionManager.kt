@@ -52,7 +52,11 @@ class SessionManager @Inject constructor(
         // Read when a shell starts, so a change in Settings reaches the tabs opened afterwards.
         { ScrollbackChoices.forEmulator(settings.observe().first().defaultScrollbackLines) }
     )
-    private val controller: SessionController = SessionController(factory, ServiceLauncher(context))
+    private val controller: SessionController = SessionController(
+        factory,
+        ServiceLauncher(context),
+        onEmpty = { AppTaskFinisher(context).finishAll() }
+    )
 
     val state: StateFlow<Sessions> get() = controller.state
 
@@ -82,11 +86,14 @@ class SessionManager @Inject constructor(
 
     /**
      * Opens a tab in the default distro if it is ready, else in Android's shell: what the app does
-     * when it starts and when the notification asks for a new session.
+     * when it starts and when the notification asks for a new session. With [onlyIfEmpty] it opens
+     * nothing if a session exists by then (RF-13b).
      */
-    fun newDefaultSession() {
+    fun newDefaultSession(onlyIfEmpty: Boolean = false) {
         scope.launch {
             val ready = distros.getDefault()?.takeIf { it.state == DistroState.READY }
+            // Checked after the distro is known, so the first layout and a resume open one tab, not two.
+            if (onlyIfEmpty && controller.state.value.items.isNotEmpty()) return@launch
             controller.newSession(ready?.id)
         }
     }
@@ -99,7 +106,8 @@ class SessionManager @Inject constructor(
 
     fun close(id: SessionId) = controller.close(id)
 
-    fun closeAll() = controller.closeAll()
+    /** Ends every shell, stops the service and removes the task: the one shutdown path (D-NOTIF-1). */
+    fun shutdownAll() = controller.shutdownAll()
 
     fun onLayout(layout: TerminalLayout) = controller.onLayout(layout)
 
@@ -114,7 +122,8 @@ class SessionManager @Inject constructor(
      */
     fun restartActive() {
         val ended = controller.state.value.active ?: return
-        controller.close(ended.id)
+        // The new shell first: closing the only tab would close the app (RF-13b).
         controller.newSession(ended.distroId)
+        controller.close(ended.id)
     }
 }

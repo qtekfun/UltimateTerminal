@@ -107,7 +107,9 @@ interface PaneEditor : SessionEditor {
 class SessionController(
     private val factory: SessionFactory,
     private val service: ServiceControl,
-    initialLayout: TerminalLayout = DEFAULT_LAYOUT
+    initialLayout: TerminalLayout = DEFAULT_LAYOUT,
+    /** Called when the last session goes away, by any path: the app closes (RF-13b). */
+    private val onEmpty: () -> Unit = {}
 ) : PaneEditor {
     private val handles = mutableMapOf<SessionId, SessionHandle>()
     private val openings = mutableMapOf<SessionId, PaneOpening>()
@@ -188,6 +190,17 @@ class SessionController(
         stopped.forEach(SessionHandle::stop)
     }
 
+    /**
+     * The whole shutdown path: every session ends and the service is told to stop even if this
+     * process thought it was not running (a service restarted by a stale notification action).
+     * Used by the notification's Exit action.
+     */
+    fun shutdownAll() {
+        closeAll()
+        serviceWanted = false
+        service.setRunning(false)
+    }
+
     override fun edit(change: Sessions.() -> Sessions) {
         val before = mutableState.value
         val next = before.change()
@@ -215,11 +228,13 @@ class SessionController(
     }
 
     private fun publish(next: Sessions) {
+        val wasEmpty = mutableState.value.items.isEmpty()
         mutableState.value = next
         if (next.needsService != serviceWanted) {
             serviceWanted = next.needsService
             service.setRunning(serviceWanted)
         }
+        if (next.items.isEmpty() && !wasEmpty) onEmpty()
     }
 
     companion object {

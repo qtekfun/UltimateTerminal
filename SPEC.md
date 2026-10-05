@@ -116,6 +116,10 @@ Terminal para Android pensada para **mantenedores de servidores** y sucesora esp
 - Las pestañas se nombran con su distro (p. ej. "Alpine"), no con "Shell N", salvo que el usuario las renombre.
 - **Criterio:** instalada una distro, cerrar la app y volver a abrirla deja un prompt de esa distro en la primera pestaña. (Comprobado en un Pixel 8; el nombre de la pestaña, pendiente.)
 
+### RF-13b Sin sesiones, la app se cierra
+- Cuando el número de sesiones llega a **cero por cualquier vía** (la acción «Salir» de la notificación, la última pestaña cerrada con su X, el menú de salir), la app se cierra del todo: se detiene el servicio y desaparece la notificación, y se cierra y quita la tarea aunque la actividad esté parada o en recientes. Una sesión cuyo proceso terminó sigue listada hasta que se cierra, y no cuenta como cero.
+- Abrir la app (icono, recientes, notificación) es siempre un arranque normal: una pestaña de la distro predeterminada (RF-13) o la configuración inicial (RF-15). Nunca hay una app abierta con cero pestañas, y una pantalla antigua que vuelve sin sesiones se cierra sola sin abrir pestañas.
+
 ### RF-14 Diseño estilo iOS
 El usuario probó la app en un Pixel 8 y la encontró fea ("hay que rediseñarla al estilo iOS"). La interfaz propia (todo menos el área del terminal) pasa a un diseño **inspirado en iOS**, sobre un sistema de componentes común (`ui/ios`):
 - **Títulos grandes que colapsan** al desplazar, con una barra de navegación pequeña que los recoge.

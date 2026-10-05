@@ -13,6 +13,8 @@ import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.ServiceCompat
 import com.qtekfun.ultimateterminal.domain.repository.SettingsRepository
+import com.qtekfun.ultimateterminal.domain.session.ForegroundPolicy
+import com.qtekfun.ultimateterminal.domain.session.ServiceCommand
 import com.qtekfun.ultimateterminal.domain.session.wakeLockWanted
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -29,8 +31,8 @@ import kotlinx.coroutines.launch
  * itself: the sessions belong to [SessionManager]. It shows the persistent notification, holds the
  * optional wake lock, and stops itself when no shell runs.
  *
- * The notification and wake lock are updated from a background dispatcher: both are thread-safe
- * system calls. The sessions are only ever touched on the main thread, where the commands arrive.
+ * The notification updater runs on the main thread, like the commands, so it can never post the
+ * notification after the service stopped it (D-NOTIF-2).
  */
 @AndroidEntryPoint
 class SessionService : Service() {
@@ -38,7 +40,7 @@ class SessionService : Service() {
 
     @Inject lateinit var settings: SettingsRepository
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var observer: Job? = null
     private var wakeLock: PowerManager.WakeLock? = null
 
@@ -53,13 +55,13 @@ class SessionService : Service() {
         // Promoted at once, whatever the command: Android kills a service started with
         // startForegroundService that does not call startForeground in time.
         promote(manager.state.value.runningCount)
-        when (intent?.action) {
-            ACTION_NEW_SESSION -> manager.newDefaultSession()
-            ACTION_EXIT -> manager.closeAll()
+        when (ServiceCommand.of(intent?.action)) {
+            ServiceCommand.NEW_SESSION -> manager.newDefaultSession()
+            ServiceCommand.EXIT -> manager.shutdownAll()
+            ServiceCommand.NONE -> Unit
         }
-        if (!manager.state.value.needsService) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
+        if (ForegroundPolicy.step(manager.state.value) == ForegroundPolicy.Step.STOP_AND_REMOVE) {
+            shutDown()
             return START_NOT_STICKY
         }
         observe()
@@ -67,9 +69,28 @@ class SessionService : Service() {
         return START_NOT_STICKY
     }
 
+    /**
+     * The collector is cancelled first: on the main thread nothing can post the notification after
+     * this, which is what left "0 sessions" behind (D-NOTIF-2).
+     */
+    private fun shutDown() {
+        observer?.cancel()
+        observer = null
+        releaseWakeLock()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        cancelNotification()
+        stopSelf()
+    }
+
+    private fun cancelNotification() {
+        getSystemService(NotificationManager::class.java)
+            ?.cancel(SessionNotification.NOTIFICATION_ID)
+    }
+
     override fun onDestroy() {
         scope.cancel()
         releaseWakeLock()
+        cancelNotification()
         super.onDestroy()
     }
 
@@ -94,9 +115,14 @@ class SessionService : Service() {
             combine(manager.state, settings.observe()) { sessions, appSettings ->
                 sessions to appSettings
             }.collect { (sessions, appSettings) ->
+                val count = ForegroundPolicy.notificationCount(sessions)
+                if (count == null) {
+                    shutDown()
+                    return@collect
+                }
                 getSystemService(NotificationManager::class.java)?.notify(
                     SessionNotification.NOTIFICATION_ID,
-                    SessionNotification.build(this@SessionService, sessions.runningCount)
+                    SessionNotification.build(this@SessionService, count)
                 )
                 if (wakeLockWanted(
                         appSettings.keepAwake,
@@ -127,8 +153,8 @@ class SessionService : Service() {
     }
 
     companion object {
-        const val ACTION_NEW_SESSION = "com.qtekfun.ultimateterminal.action.NEW_SESSION"
-        const val ACTION_EXIT = "com.qtekfun.ultimateterminal.action.EXIT"
+        const val ACTION_NEW_SESSION = ServiceCommand.ACTION_NEW_SESSION
+        const val ACTION_EXIT = ServiceCommand.ACTION_EXIT
         private const val WAKE_LOCK_TAG = "ultimateterminal:sessions"
     }
 }
