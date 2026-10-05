@@ -2496,3 +2496,5 @@ Evidencia (Pixel 8): la hoja de acciones de una distro instalada no permitía ca
 ### D-DISTRO-3 · 2026-10-05 · La pestaña activa siempre se ve entera
 - **Decisión:** el «⋯» solo existe en la pestaña activa, que crece al activarse y podía quedar bajo el «+» al final de la barra. Cada pestaña lleva un `BringIntoViewRequester` y, cuando pasa a activa (o cambia el número de pestañas), espera un fotograma (ya con el nuevo tamaño) y se desplaza a la vista. Sin cálculo propio, así que no hay lógica pura que probar.
 - **Por validar en dispositivo:** con 3 o más pestañas en móvil, el «⋯» de la activa queda completo y tocable.
+- **Efecto en guardar:** el panel heredado se guarda con el perfil (`LayoutNode.Pane(profileId)`), así que al reabrir ese layout
+  correrá el comando del perfil también en él, y no solo en el primero. Mantiene la distro (D-T12b-10 la perdía) a cambio de eso.

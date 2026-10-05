@@ -8,7 +8,7 @@ sealed interface TabName {
     /** The name the user gave it. */
     data class Custom(val text: String) : TabName
 
-    /** The profile it was opened with; [ordinal] says which of the tabs of that profile it is, from 1. */
+    /** The profile it was opened with; [ordinal] says which tab of that profile it is, from 1. */
     data class InProfile(val profile: String, val ordinal: Int) : TabName
 
     /** The distro it runs in; [ordinal] says which of the tabs of that distro it is, from 1. */
@@ -20,8 +20,8 @@ sealed interface TabName {
 
 /**
  * The name of each tab, in bar order. A name the user typed always wins. Otherwise a tab takes the
- * name of its profile ("dev"), else of its distro ("Alpine"), numbered when several tabs of one distro have no name of their own
- * ("Alpine", "Alpine 2"), and a tab in no distro keeps the plain "Shell N".
+ * name of its profile ("dev"), else of its distro ("Alpine"), numbered when several tabs share
+ * one and have no name of their own ("Alpine", "Alpine 2"), and a tab in no distro keeps the plain "Shell N".
  */
 fun tabNames(items: List<TabItem>): List<TabName> {
     val seen = mutableMapOf<String, Int>()
