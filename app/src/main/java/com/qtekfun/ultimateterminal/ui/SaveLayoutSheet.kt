@@ -5,7 +5,6 @@ package com.qtekfun.ultimateterminal.ui
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,7 +60,7 @@ fun SaveLayoutSheet(
         }
     }
     IosBottomSheet(onDismiss = onDismiss, detents = listOf(SheetDetent.LARGE)) {
-        Column(Modifier.imePadding()) {
+        Column {
             IosSheetHeader(
                 title = stringResource(R.string.layouts_save_title),
                 cancelLabel = stringResource(R.string.dialog_cancel),
