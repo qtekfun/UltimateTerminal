@@ -2620,3 +2620,7 @@ Solo texto, sin tocar código ni dispositivos. Todo lo que dice estar verificado
 - **Decisión:** el usuario pidió subir a rc.2 (la 0.1.0-rc.1 nunca se publicó: es solo la versión que había en el árbol). `appVersion=0.1.0-rc.2` (versionCode 10002, ya con su changelog de fastlane), notas en `## [0.1.0-rc.2]`. F-Droid no ofrece las `-rc.N` (`UpdateCheckMode: Tags` solo finales), así que de momento solo sale por GitHub Releases.
 - **Clave de firma:** el usuario prefiere hacer los pasos a mano (sin script): `keytool` en `~/keys/ultimateterminal-release.jks` y `gh secret set` de los cuatro `UT_*` (RELEASING.md, "Signing"). Una clave propia por app, como en las otras apps.
 - **Licencia de Termux:** el usuario decide no pedir confirmación a los mantenedores de Termux (D-T03-2 queda abierto y aceptado). **GitGuardian:** los dos incidentes los descarta el usuario en su panel.
+
+### D-REL-2 · 2026-10-05 · Clave de firma creada
+- La clave de firma (`~/keys/ultimateterminal-release.jks`, alias `ultimateterminal`, RSA 4096) la creó el usuario a mano y subió los cuatro secretos `UT_*`. Huella SHA-256 del certificado: `19:73:00:45:28:24:46:33:3B:45:F8:72:B0:39:5C:D5:31:B4:A8:81:68:71:BE:6E:09:B7:8D:64:19:CD:21:2B`, puesta en `AllowedAPKSigningKeys` de la receta de F-Droid (en minúsculas y sin dos puntos). La huella es pública; la contraseña y el `.jks` no están en el repositorio.
+- Pendiente de F-Droid: `fdroid lint`, y que la receta use la primera versión final (las `-rc.N` no se ofrecen allí).
