@@ -9,6 +9,8 @@
     <string name="terminal_description">Terminal</string>
     <string name="terminal_show_keyboard">Show the keyboard</string>
     <string name="terminal_session_ended">Session ended (exit %1$d). Tap to restart</string>
+    <string name="terminal_session_ended_not_found">Session ended (exit %1$d): a program was not found. Check the distro\'s default user and shell. Tap to restart</string>
+    <string name="terminal_session_ended_not_executable">Session ended (exit %1$d): a program could not be run. Tap to restart</string>
     <string name="extra_key_esc">Escape</string>
     <string name="extra_key_tab">Tab</string>
     <string name="extra_key_ctrl">Control</string>
@@ -215,6 +217,7 @@
     <string name="launch_problem_proot_missing">proot is missing from this build, so distros cannot start.</string>
     <string name="launch_problem_distro_corrupt">\"%1$s\" is damaged: its files are missing. Remove it and install it again.</string>
     <string name="launch_problem_invalid_user">The distro\'s user name \"%1$s\" is not valid.</string>
+    <string name="launch_problem_user_unavailable">The user \"%1$s\" does not exist in this distro and could not be created. Change the default user to root in the distro settings.</string>
     <string name="launch_problem_tmp">The app has no private folder for proot\'s temporary files.</string>
     <string name="launch_problem_unexpected">The shell could not start.</string>
     <string name="proot_compat_label">Compatibility mode</string>

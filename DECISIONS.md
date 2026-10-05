@@ -2434,3 +2434,22 @@ Hecha en un clon aparte, sin tocar ningún dispositivo. Todo probado solo en hos
 
 ### D-T22c-6 · 2026-10-05 · Qué NO está validado (sin dispositivo)
 - Aspecto real de las pantallas de SSH y Apariencia y de las hojas de formulario (teclado, desplazamiento dentro de la hoja con el deslizador), el arrastre del `IosSlider` dentro de una hoja que también se desplaza en vertical, TalkBack en filas de color y deslizadores, y la franja de los paneles en móvil y tablet (D-T22c-4).
+
+## Usuario no root sin `su` (fix/non-root-user)
+
+Evidencia (tablet Huawei): Fedora 44 mínima no trae `su` y el usuario elegido no existía en `/etc/passwd`; `su -l <usuario>` terminaba con código 127. Sustituye a D-T08b-5. Hecho sin dispositivo.
+
+### D-USER-1 · 2026-10-05 · Identidad con `-i uid:gid` de proot, sin `su`
+- **Decisión:** un usuario que no es root ejecuta directamente su shell de login (`<shell> -l`) con `-i uid:gid` en lugar de `-0`, y `env -i` con `HOME`, `USER`, `LOGNAME`, `SHELL`, `TERM`, `LANG`, `PATH`. Los ids, el home y el shell salen de `/etc/passwd` del rootfs (`GuestAccounts.find`, función pura; se salta comentarios y líneas rotas; con nombres duplicados vale la primera). Un shell `nologin`/`false`/vacío/relativo se cambia por `/bin/sh`.
+- **Comprobado en el código de proot (`third_party/proot`, fork de Termux):** `-i, --change-id=uid:gid` hace que el usuario y grupo actuales aparezcan como uid:gid y que los ficheros del usuario real aparezcan con ese dueño; `-0` es `-i 0:0`. En el rootfs todos los ficheros son del uid de la app, así que dentro aparecen del usuario: no hace falta `chown`.
+- **Root y comandos:** root no cambia (`-0`, `/bin/sh -l`). Un comando (SSH) sigue corriendo con `-0`, ignorando el usuario.
+- **Sin validar en dispositivo:** que `-i` funcione con seccomp en Android 17 y que el prompt muestre el usuario (Pixel 8).
+
+### D-USER-2 · 2026-10-05 · Si el usuario no existe, se crea (obligatorio por decisión del usuario)
+- **Decisión:** `GuestAccountResolver` crea el usuario si falta: uid libre desde 1000 (hasta 59999), grupo con su nombre (se reutiliza si existe, con su gid) y gid igual al uid si está libre, línea `nombre:x:uid:gid:nombre:/home/nombre:shell` en `/etc/passwd` (sin hash: no hay contraseña ni `/etc/shadow`, porque no se usa `su`), y `/home/<nombre>` por `FileSystemRepository`. Shell: `/bin/bash` si `/etc/shells` lo lista, si no `/bin/sh`. Nunca se sobrescribe una entrada existente ni se crea `root`; funciona con ficheros sin salto de línea final.
+- **Transaccional:** `FileSystemRepository` gana `readText` y `writeText` (escribe junto al destino y renombra con `ATOMIC_MOVE`; rechaza enlaces simbólicos finales y ficheros de más de 1 MiB). Primero se escribe `/etc/group` y al final `/etc/passwd`: un grupo sin usuario es inofensivo, así que un fallo entre medias no cambia el login de nadie.
+- **Propiedad y modo del home:** el directorio lo crea la app con el modo por defecto del repositorio; por `-i` aparece del usuario. No se fuerza 0700 (la abstracción no expone modos); queda pendiente si se quiere.
+- **Fallo:** si `/etc/passwd` no se puede leer, no se puede crear o hay un fallo al escribir, no se lanza una sesión condenada: `LaunchProblem.UserUnavailable` con aviso localizado (EN/ES) que sugiere usar root. Un home fuera de `/home` no se crea; la sesión empieza en `/`.
+
+### D-USER-3 · 2026-10-05 · Códigos 127 y 126
+- La tarjeta «Sesión terminada» muestra un texto distinto para 127 («no se encontró un programa») y 126 («no se pudo ejecutar»), vía `ExitHint` (puro, probado). Otros códigos como antes.

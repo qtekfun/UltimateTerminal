@@ -9,6 +9,8 @@
     <string name="terminal_description">Terminal</string>
     <string name="terminal_show_keyboard">Mostrar el teclado</string>
     <string name="terminal_session_ended">Sesión terminada (código %1$d). Toca para reiniciar</string>
+    <string name="terminal_session_ended_not_found">Sesión terminada (código %1$d): no se encontró un programa. Revisa el usuario y el shell predeterminados de la distro. Toca para reiniciar</string>
+    <string name="terminal_session_ended_not_executable">Sesión terminada (código %1$d): no se pudo ejecutar un programa. Toca para reiniciar</string>
     <string name="extra_key_esc">Escape</string>
     <string name="extra_key_tab">Tabulador</string>
     <string name="extra_key_ctrl">Control</string>
@@ -211,6 +213,7 @@
     <string name="launch_problem_proot_missing">Falta proot en esta compilación, así que las distros no pueden arrancar.</string>
     <string name="launch_problem_distro_corrupt">\"%1$s\" está dañada: faltan sus archivos. Elimínala e instálala de nuevo.</string>
     <string name="launch_problem_invalid_user">El nombre de usuario \"%1$s\" de la distro no es válido.</string>
+    <string name="launch_problem_user_unavailable">El usuario \"%1$s\" no existe en esta distro y no se pudo crear. Cambia el usuario predeterminado a root en los ajustes de la distro.</string>
     <string name="launch_problem_tmp">La app no tiene una carpeta privada para los archivos temporales de proot.</string>
     <string name="launch_problem_unexpected">No se pudo arrancar el shell.</string>
     <string name="proot_compat_label">Modo de compatibilidad</string>

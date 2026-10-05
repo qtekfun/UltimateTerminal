@@ -119,15 +119,65 @@ class ProotSessionPlannerTest {
         assertTrue("HOME=/root" in command)
     }
 
+    private fun putAccounts(passwd: String, group: String = "root:x:0:\n") {
+        fileSystem.putFile("distros/a1/etc/passwd", passwd.toByteArray())
+        fileSystem.putFile("distros/a1/etc/group", group.toByteArray())
+    }
+
     @Test
-    fun `another user goes through su with a login shell`() = runTest {
+    fun `an existing user runs its shell with the ids of passwd and no su`() = runTest {
+        putAccounts("root:x:0:0:r:/root:/bin/sh\ndev:x:1500:1600::/home/dev:/bin/bash\n")
         val distro = install(user = "dev")
 
         val command = inDistro(planner.plan(distro.id)).launch.command
 
-        assertEquals(listOf("su", "-l", "dev"), command.takeLast(3))
+        assertEquals("1500:1600", command[command.indexOf("-i") + 1])
+        assertEquals(listOf("/bin/bash", "-l"), command.takeLast(2))
         assertTrue("HOME=/home/dev" in command)
-        assertEquals("/", command[command.indexOf("-w") + 1])
+        assertFalse("su" in command)
+        assertEquals("/home/dev", command[command.indexOf("-w") + 1])
+    }
+
+    @Test
+    fun `a missing user is created with a free id and a home`() = runTest {
+        putAccounts("root:x:0:0:r:/root:/bin/sh\n")
+        val distro = install(user = "dev")
+
+        val command = inDistro(planner.plan(distro.id)).launch.command
+
+        assertEquals("1000:1000", command[command.indexOf("-i") + 1])
+        assertEquals(listOf("/bin/sh", "-l"), command.takeLast(2))
+        assertTrue(
+            checkNotNull(fileSystem.readFile("distros/a1/etc/passwd")).decodeToString()
+                .contains("dev:x:1000:1000:dev:/home/dev:/bin/sh\n")
+        )
+        assertTrue(fileSystem.exists(path("distros/a1/home/dev")))
+        assertEquals("/home/dev", command[command.indexOf("-w") + 1])
+    }
+
+    @Test
+    fun `a created user gets bash when etc shells lists it`() = runTest {
+        putAccounts("root:x:0:0:r:/root:/bin/sh")
+        fileSystem.putFile("distros/a1/etc/shells", "/bin/sh\n/bin/bash\n".toByteArray())
+        val distro = install(user = "dev")
+
+        val command = inDistro(planner.plan(distro.id)).launch.command
+
+        assertEquals(listOf("/bin/bash", "-l"), command.takeLast(2))
+        assertTrue(
+            checkNotNull(fileSystem.readFile("distros/a1/etc/passwd")).decodeToString()
+                .startsWith("root:x:0:0:r:/root:/bin/sh\ndev:")
+        )
+    }
+
+    @Test
+    fun `a user that cannot be found or created stops the launch with a clear problem`() = runTest {
+        val distro = install(user = "dev")
+
+        assertEquals(
+            LaunchPlan.Failed(LaunchProblem.UserUnavailable("dev")),
+            planner.plan(distro.id)
+        )
     }
 
     @Test
