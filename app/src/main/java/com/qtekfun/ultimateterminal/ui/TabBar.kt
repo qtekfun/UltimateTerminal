@@ -5,6 +5,7 @@ package com.qtekfun.ultimateterminal.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -63,6 +64,7 @@ import com.qtekfun.ultimateterminal.domain.session.TabName
 import com.qtekfun.ultimateterminal.domain.session.TabSwitch
 import com.qtekfun.ultimateterminal.domain.session.TabsController
 import com.qtekfun.ultimateterminal.domain.session.dropIndex
+import com.qtekfun.ultimateterminal.domain.session.tabInitial
 import com.qtekfun.ultimateterminal.domain.session.tabNames
 import com.qtekfun.ultimateterminal.ui.ios.IosAction
 import com.qtekfun.ultimateterminal.ui.ios.IosActionRole
@@ -79,17 +81,14 @@ import com.qtekfun.ultimateterminal.ui.settings.SettingsButton
 /** Height of the bar when it runs along the top; also the minimum touch size (SPEC §6). */
 internal val TabBarHeight = 48.dp
 
-/** Width of the bar when it is a column on a wide window. */
-internal val TabBarSideWidth = 192.dp
-
-private val TouchSize = 48.dp
+internal val TouchSize = 48.dp
 private val TabMinWidth = 96.dp
 private val TabMaxWidth = 200.dp
 private val TabTextPadding = 14.dp
-private val PillInset = 6.dp
+internal val PillInset = 6.dp
 private val BarPadding = 4.dp
-private const val INACTIVE_TAB_ALPHA = 0.72f
-private const val ENDED_TAB_ALPHA = 0.6f
+internal const val INACTIVE_TAB_ALPHA = 0.72f
+internal const val ENDED_TAB_ALPHA = 0.6f
 
 /**
  * The tabs, drawn as capsules in the colors of the scheme: a row on narrow windows and a column on
@@ -103,7 +102,8 @@ fun TabBar(
     tabs: TabsController,
     placement: TabBarPlacement,
     links: TabBarLinks,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    sidebar: SidebarControl = SidebarControl.None
 ) {
     val items by tabs.tabs.collectAsStateWithLifecycle()
     val choices by tabs.distroChoices.collectAsStateWithLifecycle()
@@ -112,9 +112,11 @@ fun TabBar(
     val drag = remember { TabDrag() }
     val vertical = placement == TabBarPlacement.Side
     val names = remember(items) { tabNames(items) }
+    val sidebarAction = sidebarActionFor(vertical, sidebar)
 
     TabStrip(
         vertical = vertical,
+        sidebar = sidebar,
         modifier = modifier,
         tabList = {
             items.forEachIndexed { index, item ->
@@ -125,14 +127,15 @@ fun TabBar(
                     onMove = { step -> tabs.move(item.id, item.position - 1 + step) },
                     onDrop = { offset ->
                         tabs.move(item.id, dropTarget(items, item.id, offset, drag))
-                    }
+                    },
+                    sidebar = sidebarAction
                 )
-                TabChip(
-                    item,
-                    tabNameText(names[index]),
-                    TabChipBar(items.size, vertical, drag),
-                    actions
-                )
+                val bar = TabChipBar(items.size, vertical, drag)
+                if (vertical && sidebar.collapsed) {
+                    RailTab(item, tabNameText(names[index]), bar, actions, sidebar.onExpand)
+                } else {
+                    TabChip(item, tabNameText(names[index]), bar, actions)
+                }
             }
         },
         // At the end of the bar, both of them: the new tab and, always in sight, the settings.
@@ -172,11 +175,15 @@ private fun dropTarget(items: List<TabItem>, id: SessionId, offset: Float, drag:
 @Composable
 private fun TabStrip(
     vertical: Boolean,
+    sidebar: SidebarControl,
     modifier: Modifier,
     tabList: @Composable () -> Unit,
     newTab: @Composable () -> Unit
 ) {
-    val description = stringResource(R.string.tab_bar_description)
+    val rail = vertical && sidebar.collapsed
+    val description = stringResource(
+        if (rail) R.string.sidebar_rail_description else R.string.tab_bar_description
+    )
     val chrome = currentChrome()
     val hairline = IosSize.hairline
     val bar = modifier
@@ -200,11 +207,19 @@ private fun TabStrip(
                 )
             }
         }
+        // A tap on the rail, anywhere the tabs and buttons do not take it, opens the bar again.
+        .pointerInput(rail) { if (rail) detectTapGestures { sidebar.onExpand() } }
         .semantics { contentDescription = description }
     if (vertical) {
         Column(bar.padding(BarPadding)) {
+            if (rail) {
+                SidebarButton(IosGlyph.CHEVRON_RIGHT, R.string.sidebar_expand, sidebar.onExpand)
+            }
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) { tabList() }
             newTab()
+            sidebar.onCollapse?.takeIf { !rail }?.let {
+                SidebarButton(IosGlyph.CHEVRON_LEFT, R.string.sidebar_collapse, it)
+            }
         }
     } else {
         Row(bar.padding(horizontal = BarPadding), verticalAlignment = Alignment.CenterVertically) {
@@ -215,7 +230,7 @@ private fun TabStrip(
 }
 
 /** The drag in progress, shared by the tabs so only one moves at a time. */
-private class TabDrag {
+internal class TabDrag {
     var id by mutableStateOf<SessionId?>(null)
     var offsetPx by mutableFloatStateOf(0f)
 
@@ -232,19 +247,20 @@ private class TabDrag {
 class TabBarLinks(val screens: ScreenLinks, val splitRight: () -> Unit, val splitDown: () -> Unit)
 
 /** What touching one tab does. */
-private class TabChipActions(
+internal class TabChipActions(
     val onSelect: () -> Unit,
     val onRename: () -> Unit,
     val onClose: () -> Unit,
     val onMove: (step: Int) -> Unit,
-    val onDrop: (Float) -> Unit
+    val onDrop: (Float) -> Unit,
+    val sidebar: SidebarAction? = null
 )
 
 /** What a tab needs to know about the bar it sits in. */
-private class TabChipBar(val count: Int, val vertical: Boolean, val drag: TabDrag)
+internal class TabChipBar(val count: Int, val vertical: Boolean, val drag: TabDrag)
 
 /** The texts a screen reader hears for a tab, and for what it can do with it. */
-private class TabSpeech(
+internal class TabSpeech(
     val description: String,
     val renameLabel: String,
     val closeLabel: String,
@@ -256,18 +272,7 @@ private class TabSpeech(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TabChip(item: TabItem, name: String, bar: TabChipBar, actions: TabChipActions) {
-    val state = stringResource(
-        if (item.running) R.string.tab_state_running else R.string.tab_state_ended
-    )
-    val speech = TabSpeech(
-        stringResource(R.string.tab_description, name, item.position, bar.count, state),
-        stringResource(R.string.tab_rename),
-        stringResource(R.string.tab_close),
-        stringResource(R.string.tab_select),
-        // Dragging is the only touch way to reorder, so a screen reader gets the same as actions.
-        if (item.position > 1) stringResource(R.string.tab_move_earlier) else null,
-        if (item.position < bar.count) stringResource(R.string.tab_move_later) else null
-    )
+    val speech = tabSpeech(item, name, bar.count)
     val dragging = bar.drag.id == item.id
     // The active tab grows when its "..." button appears, and it may then end under the "+" or
     // past the edge: once the new size is laid out, scroll the whole tab into view.
@@ -309,11 +314,7 @@ private fun TabChip(item: TabItem, name: String, bar: TabChipBar, actions: TabCh
 /** The name of a tab: bolder when it is the active one, fainter when it ended or is not active. */
 @Composable
 private fun TabLabel(item: TabItem, name: String, modifier: Modifier) {
-    val alpha = when {
-        !item.running -> ENDED_TAB_ALPHA
-        item.active -> 1f
-        else -> INACTIVE_TAB_ALPHA
-    }
+    val alpha = tabAlpha(item)
     IosText(
         name,
         modifier = modifier.padding(
@@ -329,7 +330,7 @@ private fun TabLabel(item: TabItem, name: String, modifier: Modifier) {
 }
 
 /** What a screen reader says about a tab, and the actions it offers on every one of them. */
-private fun Modifier.tabSemantics(
+internal fun Modifier.tabSemantics(
     active: Boolean,
     speech: TabSpeech,
     actions: TabChipActions
@@ -361,11 +362,12 @@ private fun Modifier.tabSemantics(
         speech.moveLater?.let {
             add(CustomAccessibilityAction(it) { actions.onMove(1).let { true } })
         }
+        actions.sidebar?.let { add(CustomAccessibilityAction(it.label) { it.run().let { true } }) }
     }
 }
 
 /** Fills a capsule inside the element, [inset] short of its top and bottom, as a pill-shaped tab. */
-private fun Modifier.capsule(color: Color, inset: Dp): Modifier = drawBehind {
+internal fun Modifier.capsule(color: Color, inset: Dp): Modifier = drawBehind {
     if (color.alpha > 0f) {
         val top = inset.toPx()
         val height = size.height - 2 * top
@@ -445,7 +447,7 @@ private fun TabMenu(name: String, actions: TabChipActions) {
     }
 }
 
-private val MenuIconSize = 20.dp
+internal val MenuIconSize = 20.dp
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

@@ -99,7 +99,8 @@ fun TerminalPanes(
     painter: TerminalPainter,
     inputView: Array<TerminalInputView?>,
     screens: ScreenLinks,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onTerminalUsed: () -> Unit = {}
 ) {
     val density = LocalDensity.current
     val dividerPx = with(density) { DividerThickness.roundToPx() }
@@ -135,12 +136,16 @@ fun TerminalPanes(
                     header = if (isSplit) PaneHeaderHeight else 0.dp
                 ) {
                     if (hasKeyboard) {
-                        TerminalCanvas(viewModel, painter, onTap = { inputView[0]?.showKeyboard() })
+                        TerminalCanvas(viewModel, painter, onTap = {
+                            inputView[0]?.showKeyboard()
+                            onTerminalUsed()
+                        })
                     } else {
                         val host = remember(box.id, hostChanges) { viewModel.hostOf(box.id) }
                         InactivePane(host, painter) {
                             viewModel.panes.focusPane(box.id)
                             inputView[0]?.showKeyboard()
+                            onTerminalUsed()
                         }
                     }
                 }
