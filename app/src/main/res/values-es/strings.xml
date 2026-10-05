@@ -40,7 +40,11 @@
     <string name="distros_empty">Aún no hay distros. Instala una para tener un shell Linux.</string>
     <string name="distros_preparing">Preparando…</string>
     <string name="distro_default">Predeterminada</string>
-    <string name="distro_set_default">Usar como predeterminada</string>
+    <string name="distro_set_default">Establecer como predeterminada</string>
+    <string name="distro_change_user">Cambiar usuario…</string>
+    <string name="distro_change_user_title">Usuario por defecto</string>
+    <string name="distro_change_user_note">Las sesiones nuevas se abren con este usuario. Si no existe en la distro, se crea la próxima vez que empiece una sesión. Usa root para no crear nada.</string>
+    <string name="distro_change_user_invalid">Usa minúsculas, dígitos, _ y -, empezando por una letra o _ (hasta 32 caracteres).</string>
     <string name="distro_rename">Renombrar</string>
     <string name="distro_duplicate">Duplicar</string>
     <string name="distro_delete">Eliminar</string>

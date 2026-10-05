@@ -87,6 +87,8 @@ private sealed interface DistroDialog {
 
     data class Duplicate(val distro: Distro) : DistroDialog
 
+    data class ChangeUser(val distro: Distro) : DistroDialog
+
     data class Delete(val distro: Distro) : DistroDialog
 }
 
@@ -119,6 +121,15 @@ private fun DistroDialogHost(
             initial = dialog.distro.name,
             onConfirm = {
                 viewModel.rename(dialog.distro.id, it)
+                dismiss()
+            },
+            onDismiss = dismiss
+        )
+
+        is DistroDialog.ChangeUser -> UserSheet(
+            initial = dialog.distro.defaultUser,
+            onConfirm = {
+                viewModel.setUser(dialog.distro.id, it)
                 dismiss()
             },
             onDismiss = dismiss
@@ -171,6 +182,11 @@ private fun ActionsSheet(
             )
         }
         if (ready) {
+            add(
+                IosAction(stringResource(R.string.distro_change_user)) {
+                    open(DistroDialog.ChangeUser(distro))
+                }
+            )
             add(
                 IosAction(stringResource(R.string.distro_duplicate)) {
                     open(DistroDialog.Duplicate(distro))
