@@ -67,6 +67,11 @@ class TabsController(
         }
     }
 
+    /** Always asks before closing [id], even when its shell ended: the long press on a tab (D-TAB-1). */
+    fun askToClose(id: SessionId) {
+        if (editor.state.value.items.any { it.id == id }) pendingClose.value = id
+    }
+
     override fun requestCloseActive() {
         editor.state.value.activeId?.let(::requestClose)
     }
