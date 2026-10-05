@@ -12,12 +12,12 @@ import com.qtekfun.ultimateterminal.data.storage.FileTrees
 import com.qtekfun.ultimateterminal.data.storage.OwnerAccess
 import com.qtekfun.ultimateterminal.data.storage.TreeVisitor
 import com.qtekfun.ultimateterminal.data.storage.TreeWalker
-import com.qtekfun.ultimateterminal.domain.backup.BackupResult
 import com.qtekfun.ultimateterminal.domain.Outcome
 import com.qtekfun.ultimateterminal.domain.appearance.CursorShape
 import com.qtekfun.ultimateterminal.domain.appearance.ExtraKeyStyle
 import com.qtekfun.ultimateterminal.domain.appearance.TerminalAppearance
 import com.qtekfun.ultimateterminal.domain.backup.BackupKind
+import com.qtekfun.ultimateterminal.domain.backup.BackupResult
 import com.qtekfun.ultimateterminal.domain.backup.ExportRequest
 import com.qtekfun.ultimateterminal.domain.distro.InstallRequest
 import com.qtekfun.ultimateterminal.domain.distro.InstallResult

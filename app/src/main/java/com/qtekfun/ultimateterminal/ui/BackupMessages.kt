@@ -81,6 +81,11 @@ private fun backupErrorText(context: Context, error: BackupError): String = when
 
     is BackupError.HashMismatch -> context.getString(R.string.backup_error_hash, error.part)
 
+    else -> operationErrorText(context, error)
+}
+
+/** The errors of what the backup holds or of the device, rather than of the file's format. */
+private fun operationErrorText(context: Context, error: BackupError): String = when (error) {
     BackupError.KeysNeedPassword -> context.getString(R.string.backup_error_keys_need_password)
 
     BackupError.DistroUnavailable -> context.getString(R.string.backup_error_distro_unavailable)
@@ -92,7 +97,11 @@ private fun backupErrorText(context: Context, error: BackupError): String = when
     )
 
     is BackupError.UnreadableFile -> context.getString(
-        if (error.denied) R.string.backup_error_unreadable_denied else R.string.backup_error_unreadable,
+        if (error.denied) {
+            R.string.backup_error_unreadable_denied
+        } else {
+            R.string.backup_error_unreadable
+        },
         error.path
     )
 
@@ -102,6 +111,8 @@ private fun backupErrorText(context: Context, error: BackupError): String = when
     )
 
     is BackupError.Io -> context.getString(R.string.backup_error_io, error.message)
+
+    else -> context.getString(R.string.backup_error_io, error.toString())
 }
 
 private fun ExtractionError.describe(): String = when (this) {

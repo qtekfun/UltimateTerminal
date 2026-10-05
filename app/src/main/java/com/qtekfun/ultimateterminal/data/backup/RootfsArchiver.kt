@@ -25,13 +25,12 @@ import org.apache.commons.compress.archivers.tar.TarConstants
  * app cannot read (a distro's `/etc/shadow` is mode 000) is made readable for the owner just while
  * it is read, and its mode is put back: the archive records the original mode. A link is never
  * followed. A file that cannot be read at all fails the whole export with
- * [BackupError.UnreadableFile] naming it, so no incomplete backup is ever written. Special files (sockets, pipes, devices) are skipped, as the installer's
- * extractor would skip them. Every entry is owned by root: the files belong to the app's user on
- * the device, and proot presents ownership itself.
+ * [BackupError.UnreadableFile] naming it, so no incomplete backup is ever written. Special files
+ * (sockets, pipes, devices) are skipped, as the installer's extractor would skip them. Every entry
+ * is owned by root: the files belong to the app's user on the device, and proot presents ownership
+ * itself.
  */
-internal class RootfsArchiver(
-    private val open: (Path) -> InputStream = Files::newInputStream
-) {
+internal class RootfsArchiver(private val open: (Path) -> InputStream = Files::newInputStream) {
     /**
      * Archives the tree under [root] into [out], which is closed. [onFile] is told how many bytes
      * of file content went in so far, and may throw to stop (it is how cancellation gets in).
@@ -45,8 +44,8 @@ internal class RootfsArchiver(
         try {
             tar.use { TreeWalker.walk(root, TreeWriter(root, tar, open, onFile)) }
         } catch (e: UnreadableFileException) {
-            val name = root.relativize(e.path).toString().ifEmpty { "./" }
-            throw BackupFailure(BackupError.UnreadableFile(name, e.denied))
+            val name = root.relativize(e.path).toString()
+            throw BackupFailure(BackupError.UnreadableFile(name, e.denied)).apply { initCause(e) }
         }
     }
 

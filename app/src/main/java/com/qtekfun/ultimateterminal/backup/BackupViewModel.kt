@@ -78,6 +78,7 @@ class BackupViewModel @Inject constructor(
         when (val result = exporter.export(request, sink, ::onProgress)) {
             is BackupResult.Success ->
                 BackupMessage.Exported(result.value, documentName(resolver, target))
+
             is BackupResult.Failure -> BackupMessage.Failed(result.error)
         }
     }

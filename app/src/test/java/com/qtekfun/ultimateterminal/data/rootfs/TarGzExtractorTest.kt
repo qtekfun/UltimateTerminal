@@ -175,7 +175,9 @@ class TarGzExtractorTest {
         assertInstanceOf(ExtractionResult.Success::class.java, result)
         assertEquals(0, OwnerAccess.modeOf(out("etc/shadow").toPath()))
         assertEquals(0b001_001_001, OwnerAccess.modeOf(out("usr-sudo").toPath()))
-        val text = OwnerAccess.reading(out("etc/shadow").toPath()) { it.readBytes().decodeToString() }
+        val text = OwnerAccess.reading(out("etc/shadow").toPath()) {
+            it.readBytes().decodeToString()
+        }
         assertEquals("root:*:0", text)
     }
 
