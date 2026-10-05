@@ -12,6 +12,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -32,6 +33,7 @@ import com.qtekfun.ultimateterminal.terminal.SessionManager
 import com.qtekfun.ultimateterminal.terminal.TerminalFontLoader
 import com.qtekfun.ultimateterminal.ui.AppearanceScreen
 import com.qtekfun.ultimateterminal.ui.DistroScreen
+import com.qtekfun.ultimateterminal.ui.LocalTerminalCovered
 import com.qtekfun.ultimateterminal.ui.ScreenLinks
 import com.qtekfun.ultimateterminal.ui.SessionPrompts
 import com.qtekfun.ultimateterminal.ui.SshScreen
@@ -108,22 +110,25 @@ class MainActivity : ComponentActivity() {
                 finishAndRemoveTask()
             }
         }
+        val covered = showSettings || showDistros || showSsh || showAppearance
         Box {
-            TerminalScreen(
-                look = TerminalLook(scheme, settings.appearance, typefaces),
-                initialFontSizeSp = settings.terminalFontSizeSp,
-                onFontSizeChanged = { size ->
-                    scope.launch {
-                        settingsRepository.update { it.copy(terminalFontSizeSp = size) }
-                    }
-                },
-                screens = ScreenLinks(
-                    openDistros = { showDistros = true },
-                    openSsh = { showSsh = true },
-                    openAppearance = { showAppearance = true },
-                    openSettings = { showSettings = true }
+            CompositionLocalProvider(LocalTerminalCovered provides covered) {
+                TerminalScreen(
+                    look = TerminalLook(scheme, settings.appearance, typefaces),
+                    initialFontSizeSp = settings.terminalFontSizeSp,
+                    onFontSizeChanged = { size ->
+                        scope.launch {
+                            settingsRepository.update { it.copy(terminalFontSizeSp = size) }
+                        }
+                    },
+                    screens = ScreenLinks(
+                        openDistros = { showDistros = true },
+                        openSsh = { showSsh = true },
+                        openAppearance = { showAppearance = true },
+                        openSettings = { showSettings = true }
+                    )
                 )
-            )
+            }
             // Later is on top: Settings opens Appearance and Distributions over itself.
             IosTheme(decision, scheme) {
                 if (showSettings) {
