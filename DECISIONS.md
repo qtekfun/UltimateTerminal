@@ -2782,3 +2782,6 @@ Con tests en el anfitrión (JVM): modos, enlaces (absolutos, relativos, rotos), 
 5. Ajustes: `~/storage` hay que volver a activarlo (el permiso es del dispositivo). `/etc/resolv.conf` y las rutas de proot se reconstruyen al lanzar (no se guardan rutas absolutas).
 6. Errores en pantalla, localizados y sin dejar nada: contraseña errónea, archivo copiado a medias (cortarlo), archivo de una versión del formato más nueva.
 7. Dispositivo: comprobar con `find <rootfs> ! -type l ! -readable` (como el informe) que tras exportar **no** queda ningún modo cambiado (la lista debe ser la misma que antes).
+
+### D-REL-5 · 2026-10-05 · 0.1.1
+- A petición del usuario ("tan pronto tengas todo saca una release y vemos de probarla en el móvil real") se publica la `0.1.1` (versionCode 10199) con la barra lateral dinámica (T26) y sus correcciones, el tipo de teclado, el teclado que no tapa los campos y las copias de seguridad con archivos que solo lee root. Varias correcciones están probadas en el ordenador y **sin verificar aún en un móvil real**; el registro dice cuáles. La receta de F-Droid se actualiza a `0.1.1`/10199 (la huella no cambia).

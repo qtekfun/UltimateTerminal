@@ -1,0 +1,1 @@
+Release 0.1.1. A dynamic tab sidebar on wide screens, a keyboard type setting (normal keyboard instead of the secure one on some phones), the keyboard no longer covers form fields, and backups that handle files only root can read. Early software: the README says what is verified on a device.
