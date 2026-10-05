@@ -2480,3 +2480,19 @@ Evidencia (Pixel 8, Android 17): Ajustes > Perfiles > «+» cerraba la app con `
 - **Decisión:** se quita el `verticalScroll` interior de ambas hojas; el desplazamiento y el límite de altura son responsabilidad de la hoja. Revisadas todas las demás hojas (SSH, Apariencia: editor de esquemas y selector de color, distros, copias, DNS, guardar disposición): no anidan ningún scroll ni `LazyColumn`.
 - **Protección:** `SheetScrollNestingTest` (sin dependencias nuevas) lee las fuentes y falla si un fichero que abre un `IosBottomSheet` usa `verticalScroll`, `LazyColumn` o cuadrículas verticales perezosas, y comprueba que la hoja desplaza una sola vez. Regla: contenido de hoja = columna simple; si hace falta una lista larga, hacerla con `Column` o dar a la hoja una altura acotada explícita.
 - **Sin validar en dispositivo:** que «+» y editar perfil, y editar un atajo, abran la hoja y se desplacen con el teclado abierto (Pixel 8).
+
+## Distros: usuario y predeterminada desde la lista (feat/distro-user-default)
+
+Evidencia (Pixel 8): la hoja de acciones de una distro instalada no permitía cambiar su usuario por defecto ni elegir otra distro predeterminada. Hecho sin dispositivo.
+
+### D-DISTRO-1 · 2026-10-05 · Cambiar el usuario de una distro
+- **Decisión:** nueva acción «Cambiar usuario…» (solo distros `READY`) que abre una hoja con un campo de texto (`UserSheet`, mismo patrón que `NameSheet`, sin desplazamiento propio). `DistroManager.setDefaultUser` recorta el nombre y lo valida con `GuestUser.isValid` (root permitido) antes de llamar al repositorio, que ya tenía `setDefaultUser`; el `Validation.user` del repositorio es más laxo y se mantiene como segunda red. Un nombre inválido da `InvalidValue("user")` y el botón OK de la hoja queda desactivado mientras no sea válido.
+- **Usuario inexistente:** la hoja avisa de que se crea al empezar la siguiente sesión (D-USER-2) y de que root evita crear nada. No se crea nada al guardar.
+
+### D-DISTRO-2 · 2026-10-05 · Distro predeterminada
+- **Decisión:** la acción ya existía en el código (`setDefault`, solo si es `READY` y no es ya la predeterminada; la repo la hace exclusiva en una transacción). Se renombra a «Establecer como predeterminada» / «Set as default». En el Pixel la fila mostraba «Predeterminada» y por eso la acción estaba oculta; con una sola distro no hay otra a la que cambiar.
+- **Backup:** sin cambios de formato. El manifiesto ya guarda `defaultUser` e `isDefault` por distro y la configuración `DistroRefDto(name, isDefault)`; la restauración los aplica como antes.
+
+### D-DISTRO-3 · 2026-10-05 · La pestaña activa siempre se ve entera
+- **Decisión:** el «⋯» solo existe en la pestaña activa, que crece al activarse y podía quedar bajo el «+» al final de la barra. Cada pestaña lleva un `BringIntoViewRequester` y, cuando pasa a activa (o cambia el número de pestañas), espera un fotograma (ya con el nuevo tamaño) y se desplaza a la vista. Sin cálculo propio, así que no hay lógica pura que probar.
+- **Por validar en dispositivo:** con 3 o más pestañas en móvil, el «⋯» de la activa queda completo y tocable.

@@ -17,15 +17,19 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -249,6 +253,7 @@ private class TabSpeech(
     val moveLater: String?
 )
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TabChip(item: TabItem, name: String, bar: TabChipBar, actions: TabChipActions) {
     val state = stringResource(
@@ -264,6 +269,15 @@ private fun TabChip(item: TabItem, name: String, bar: TabChipBar, actions: TabCh
         if (item.position < bar.count) stringResource(R.string.tab_move_later) else null
     )
     val dragging = bar.drag.id == item.id
+    // The active tab grows when its "..." button appears, and it may then end under the "+" or
+    // past the edge: once the new size is laid out, scroll the whole tab into view.
+    val requester = remember { BringIntoViewRequester() }
+    LaunchedEffect(item.active, bar.count) {
+        if (item.active) {
+            withFrameNanos { }
+            requester.bringIntoView()
+        }
+    }
     val chip = if (bar.vertical) {
         Modifier.fillMaxWidth()
     } else {
@@ -273,6 +287,7 @@ private fun TabChip(item: TabItem, name: String, bar: TabChipBar, actions: TabCh
     Row(
         chip
             .heightIn(min = TouchSize)
+            .bringIntoViewRequester(requester)
             .zIndex(if (dragging) 1f else 0f)
             .graphicsLayer {
                 if (dragging && bar.vertical) translationY = bar.drag.offsetPx
