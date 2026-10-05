@@ -25,6 +25,18 @@ and the project uses [SemVer](https://semver.org/).
 - Wide layouts: after the sidebar collapsed, typed keys did not reach the terminal, and a space re-opened the
   sidebar and closed the soft keyboard. The sidebar controls no longer take keyboard focus, and opening or
   closing the sidebar never hides the keyboard.
+- Exporting a backup of a distro that has files only root can read (Fedora's `/etc/shadow` and `sudo`, for
+  example) no longer fails with "cannot read ...". The app owns those files, so it opens them for itself
+  while it reads them and puts their mode back; the backup keeps the original modes. Duplicating, measuring
+  and deleting such a distro work too.
+- Restoring a backup in the first-run setup no longer closes the setup, or opens a tab, as soon as the first
+  distro is back: it waits for the whole restore, so the default distro and its user are the right ones.
+- If a file really cannot be read, the export says which one and why, in your language, and writes nothing.
+
+### Changed
+- The file picker suggests `UltimateTerminal-<date>.utbackup` (and `-settings-` or the distro's name for a
+  smaller backup), and the finished message gives the file name and size. Settings > Backups says where
+  the file goes.
 
 ## [0.1.0] - 2026-10-05
 

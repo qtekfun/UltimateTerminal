@@ -25,7 +25,7 @@ class BackupFileNameTest {
             BackupFileName.suggest(BackupKind.CONFIG, "ignored", day)
         )
         assertEquals(
-            "UltimateTerminal-all-2026-10-05.utbackup",
+            "UltimateTerminal-2026-10-05.utbackup",
             BackupFileName.suggest(BackupKind.ALL, null, day)
         )
     }
