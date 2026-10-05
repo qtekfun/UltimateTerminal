@@ -26,7 +26,8 @@ fun Sessions.split(
         items = items + SessionInfo(
             id,
             SessionState.Running,
-            distroId = if (opening == null) source.distroId else opening.distroId
+            distroId = if (opening == null) source.distroId else opening.distroId,
+            profileName = opening?.spec?.profileName
         ),
         activeId = id,
         nextId = nextId + 1,
@@ -46,7 +47,12 @@ fun Sessions.openedTab(root: PlannedNode): Pair<Sessions, List<SessionId>> {
     val tree = plannedTree(root) { SessionId(next++).also(ids::add) }
     val openings = root.openings()
     val added = ids.zip(openings).map { (id, opening) ->
-        SessionInfo(id, SessionState.Running, distroId = opening.distroId)
+        SessionInfo(
+            id,
+            SessionState.Running,
+            distroId = opening.distroId,
+            profileName = opening.spec.profileName
+        )
     }
     val tab = ids.first()
     val opened = copy(

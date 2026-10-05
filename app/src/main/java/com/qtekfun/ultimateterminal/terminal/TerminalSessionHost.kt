@@ -55,6 +55,11 @@ class TerminalSessionHost(
     /** Why nothing started, null if a shell did or is about to. */
     val problem: StateFlow<LaunchProblem?> = problemState.asStateFlow()
 
+    /** Counts the times the shell wrote output; the start-up command waits for it to go quiet. */
+    @Volatile
+    var outputCount: Int = 0
+        private set
+
     /** How many lines of history the shell keeps; set before [launch], it applies to that shell. */
     var transcriptRows: Int = TRANSCRIPT_ROWS
 
@@ -145,6 +150,7 @@ class TerminalSessionHost(
     }
 
     override fun onTextChanged(changedSession: TerminalSession) {
+        outputCount++
         frameState.value++
     }
 

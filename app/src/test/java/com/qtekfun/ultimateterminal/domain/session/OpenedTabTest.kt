@@ -95,4 +95,21 @@ class OpenedTabTest {
         assertEquals(listOf<Long?>(3, 8), other.items.map { it.distroId })
         assertNull(Sessions().split(SplitOrientation.VERTICAL, PaneOpening(pane(8).spec)))
     }
+
+    @Test
+    fun aPaneOpenedWithAProfileRemembersItsName() {
+        val named = PlannedNode.Pane(
+            PaneSpec(
+                PaneTarget.AndroidShell,
+                PaneLook(scrollbackLines = 1000),
+                null,
+                profileId = 2L,
+                profileName = "dev"
+            )
+        )
+
+        val (opened, _) = Sessions().openedTab(named)
+
+        assertEquals("dev", opened.items.single().profileName)
+    }
 }

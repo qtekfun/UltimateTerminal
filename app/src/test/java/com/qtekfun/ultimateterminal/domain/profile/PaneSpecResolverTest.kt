@@ -61,11 +61,14 @@ class PaneSpecResolverTest {
 
         assertEquals(PaneTarget.InDistro(2, "Debian", "dev"), result.spec.target)
         assertEquals(5L, result.spec.profileId)
+        assertEquals("dev", result.spec.profileName)
     }
 
     @Test
     fun aProfileThatWasNeverSavedHasNoId() {
-        assertNull(ready(resolver.resolve(Profile(name = "draft"))).spec.profileId)
+        val spec = ready(resolver.resolve(Profile(name = "draft"))).spec
+        assertNull(spec.profileId)
+        assertNull(spec.profileName)
     }
 
     @Test

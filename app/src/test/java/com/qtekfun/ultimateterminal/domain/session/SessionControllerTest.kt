@@ -313,14 +313,38 @@ class SessionControllerOpeningsTest {
     }
 
     @Test
-    fun aPaneSplitWithAnOpeningRemembersItAndAPlainSplitDoesNot() {
-        controller.newSession()
+    fun aPaneSplitWithAnOpeningRemembersItAndASplitOfAPlainPaneHasNone() {
+        val first = controller.newSession()
 
-        val profiled = controller.splitActive(SplitOrientation.VERTICAL, opening)!!
         val plain = controller.splitActive(SplitOrientation.VERTICAL)!!
+        controller.edit { activated(first) }
+        val profiled = controller.splitActive(SplitOrientation.VERTICAL, opening)!!
 
-        assertEquals(opening, controller.openingOf(profiled))
         assertEquals(null, controller.openingOf(plain))
+        assertEquals(opening, controller.openingOf(profiled))
+    }
+
+    @Test
+    fun aPlainSplitOfAProfilePaneInheritsItsDistroAndUserButNotItsCommand() {
+        val profiled = PaneOpening(
+            PaneSpec(
+                PaneTarget.InDistro(7L, "Fedora", "dev"),
+                PaneLook(scrollbackLines = 500),
+                "make\r",
+                profileId = 3L,
+                profileName = "dev"
+            )
+        )
+        controller.newSession()
+        controller.splitActive(SplitOrientation.VERTICAL, profiled)
+
+        val split = controller.splitActive(SplitOrientation.HORIZONTAL)!!
+
+        val inherited = controller.openingOf(split)!!
+        assertEquals(profiled.spec.target, inherited.spec.target)
+        assertEquals(null, inherited.spec.startupInput)
+        assertEquals(500, inherited.spec.look.scrollbackLines)
+        assertEquals(7L, controller.state.value.items.single { it.id == split }.distroId)
     }
 
     @Test
