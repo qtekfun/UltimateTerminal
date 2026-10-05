@@ -75,6 +75,7 @@ tablet** (Android 12, 2800x1840). Nothing was run on any other device.
 | Back button: leaves Settings pages, hides the keyboard in the terminal without typing anything | yes (Pixel 8) | Android 12 tablet: not verified |
 | Resizing on a **tablet**: landscape and portrait, keyboard, a freeform window resized (PTY size matches what is drawn each time) | yes (tablet) | |
 | Performance, debug build, Pixel 8, Fedora: cold start to prompt **1.63 s** median (1.48 to 1.65 s over five runs); `seq 1 200000` in **1.07 s** with a smooth interface | yes (Pixel 8) | |
+| Performance, **release build** (`0.1.0-rc.2`, signed), Pixel 8, Alpine: cold start to prompt **about 1.2 s** median (1.17 to 1.24 s, measured by screenshots, so about ±0.25 s); first frame 0.12 to 0.23 s; `seq 1 200000` in **1.09 s**, 0 to 0.8 % janky frames | yes (Pixel 8) | Fedora not timed in release (heavier than Alpine) |
 | Install Debian or Ubuntu | | yes (index and download logic; never run on a device) |
 | Pinch zoom, selection gestures, tab reordering, hardware-keyboard shortcuts | | yes |
 | Fonts of your own, OLED mode, schemes you edit | | yes (the preview and picking a built-in scheme were seen on the Pixel 8) |
@@ -98,8 +99,7 @@ Every decision, and everything still to be validated, is written in [`DECISIONS.
 
 Still pending, in this order of importance:
 
-- Timing of a **release** build (the 1.63 s above is a debug build and misses the 1.5 s goal by about
-  130 ms), TalkBack, and the layouts at font scale 2.0.
+- TalkBack and the layouts at font scale 2.0 (and a release timing with Fedora: the release timing above is Alpine).
 - Split-screen on the tablet, split panes and an installed distro on the tablet.
 - Backup export and restore with the system file picker, and the SSH and `~/storage` flows, on a device.
 - F-Droid publication: real screenshots, the signing-key fingerprint of the recipe and the checks
