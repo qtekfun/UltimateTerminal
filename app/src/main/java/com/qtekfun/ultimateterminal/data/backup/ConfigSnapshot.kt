@@ -50,8 +50,22 @@ internal data class SettingsDto(
     val dnsFallbackServers: List<String>? = null,
     /** The extra-keys row, in its stored text form. */
     val extraKeys: String? = null,
-    val appearance: AppearanceDto? = null
+    val appearance: AppearanceDto? = null,
+    /** The application shortcuts (T12b); null in a backup that predates them. */
+    val shortcuts: ShortcutsDto? = null
 )
+
+/**
+ * The application shortcuts in their stored text form (`chord=action`, one per line). [version]
+ * says how to read [bindings]: a backup from a later app that changed the format is not guessed
+ * at, it is left alone (see `ConfigApplier`).
+ */
+@Serializable
+internal data class ShortcutsDto(val version: Int = VERSION, val bindings: String) {
+    companion object {
+        const val VERSION = 1
+    }
+}
 
 /**
  * The look of the terminal (T12c). The imported fonts' files are not carried, so a font that this

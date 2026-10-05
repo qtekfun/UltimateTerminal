@@ -106,6 +106,7 @@ private fun AppSettings.toDto() = SettingsDto(
     prootCompatibilityMode = prootCompatibilityMode,
     dnsFallbackServers = dnsFallbackServers,
     extraKeys = extraKeys.serialize(),
+    shortcuts = ShortcutsDto(bindings = shortcuts.serialize()),
     appearance = AppearanceDto(
         fontId = appearance.fontId,
         lineSpacing = appearance.lineSpacing,

@@ -75,6 +75,22 @@ class ConfigCodecTest {
     }
 
     @Test
+    fun theShortcutsSurviveWithTheirVersionAndABackupFromBeforeThemHasNone() {
+        val withShortcuts = sampleSnapshot().copy(
+            settings = sampleSettings().copy(
+                shortcuts = ShortcutsDto(bindings = "ctrl+alt+k=new_tab\n")
+            )
+        )
+        val decoded = ConfigCodec.decode(ConfigCodec.encode(withShortcuts)).value()
+        assertEquals(withShortcuts, decoded)
+        assertEquals(1, decoded.settings.shortcuts?.version)
+
+        val old = text(ConfigCodec.encode(sampleSnapshot()))
+            .replace(Regex(",?\"shortcuts\":null"), "")
+        assertEquals(null, ConfigCodec.decode(old.toByteArray()).value().settings.shortcuts)
+    }
+
+    @Test
     fun unknownFieldsFromALaterVersionAreIgnored() {
         val json = text(
             ConfigCodec.encode(sampleSnapshot())

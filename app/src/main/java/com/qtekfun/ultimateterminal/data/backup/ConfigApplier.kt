@@ -27,6 +27,8 @@ import com.qtekfun.ultimateterminal.domain.ssh.SshKeyType
 import com.qtekfun.ultimateterminal.domain.ssh.SshResult
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
 import com.qtekfun.ultimateterminal.domain.terminal.FontZoom
+import com.qtekfun.ultimateterminal.domain.terminal.ShortcutMap
+import com.qtekfun.ultimateterminal.domain.terminal.ShortcutText
 import com.qtekfun.ultimateterminal.domain.theme.BuiltInSchemes
 import com.qtekfun.ultimateterminal.domain.theme.SchemeCodec
 import java.time.Instant
@@ -192,6 +194,7 @@ private fun AppSettings.withLaterSettings(dto: SettingsDto): AppSettings {
     val keys = dto.extraKeys
     val look = dto.appearance
     return copy(
+        shortcuts = restoredShortcuts(dto.shortcuts, shortcuts),
         dnsFallbackServers = if (servers == null) {
             dnsFallbackServers
         } else {
@@ -201,6 +204,18 @@ private fun AppSettings.withLaterSettings(dto: SettingsDto): AppSettings {
         appearance = (if (look == null) appearance else look.toAppearance(customFonts))
             .copy(extraKeyStyle = ExtraKeyStyle.parse(dto.extraKeyStyle))
     )
+}
+
+/**
+ * The shortcuts of a backup, or [current] when it brings none that can be used: it predates them,
+ * it was written in a format this app does not know, or not one of its lines made sense. A line
+ * that does not (a key that does not exist, an action from a later app) is dropped and the rest is
+ * kept, so a partly readable backup is not lost.
+ */
+private fun restoredShortcuts(dto: ShortcutsDto?, current: ShortcutMap): ShortcutMap {
+    val readable = dto?.takeIf { it.version == ShortcutsDto.VERSION }
+        ?.let { ShortcutText.analyze(it.bindings).map }
+    return readable?.takeIf { it.all.isNotEmpty() } ?: current
 }
 
 private fun ProfileDto.toProfile(distroIds: Map<String, Long>) = Profile(

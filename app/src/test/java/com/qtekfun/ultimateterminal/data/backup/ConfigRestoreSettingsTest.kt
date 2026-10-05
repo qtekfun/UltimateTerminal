@@ -3,12 +3,16 @@
 
 package com.qtekfun.ultimateterminal.data.backup
 
+import android.view.KeyEvent
 import com.qtekfun.ultimateterminal.domain.appearance.CursorShape
 import com.qtekfun.ultimateterminal.domain.appearance.CustomFont
 import com.qtekfun.ultimateterminal.domain.appearance.FontCatalog
 import com.qtekfun.ultimateterminal.domain.appearance.TerminalAppearance
 import com.qtekfun.ultimateterminal.domain.launch.ResolvConf
+import com.qtekfun.ultimateterminal.domain.terminal.AppShortcut
 import com.qtekfun.ultimateterminal.domain.terminal.ExtraKeysConfig
+import com.qtekfun.ultimateterminal.domain.terminal.KeyChord
+import com.qtekfun.ultimateterminal.domain.terminal.ShortcutMap
 import java.io.File
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -89,6 +93,63 @@ class ConfigRestoreSettingsTest {
         assertEquals(6, onlyLook.appearance.marginDp)
         assertEquals(listOf("1.1.1.1"), onlyLook.dnsFallbackServers)
         assertEquals(listOf(listOf("tab", "ctrl")), onlyLook.extraKeys.rows)
+    }
+
+    private val mine = ShortcutMap.defaults()
+        .unbind(KeyChord(KeyEvent.KEYCODE_T, ctrl = true, shift = true))
+        .bind(KeyChord(KeyEvent.KEYCODE_K, ctrl = true, alt = true), AppShortcut.NewTab)
+
+    private suspend fun keepOnDevice(map: ShortcutMap) =
+        device.settings.update { it.copy(shortcuts = map) }
+
+    @Test
+    fun theShortcutsOfABackupReplaceTheOnesOfTheDevice() = runBlocking {
+        keepOnDevice(ShortcutMap.defaults())
+
+        val now = restore(
+            sampleSettings().copy(shortcuts = ShortcutsDto(bindings = mine.serialize()))
+        )
+
+        assertEquals(mine, now.shortcuts)
+    }
+
+    @Test
+    fun aBackupFromBeforeTheShortcutsKeepsTheOnesOfTheDevice() = runBlocking {
+        keepOnDevice(mine)
+
+        assertEquals(mine, restore(sampleSettings()).shortcuts)
+    }
+
+    @Test
+    fun shortcutsInAFormatFromALaterAppAreNotGuessedAt() = runBlocking {
+        keepOnDevice(mine)
+        val later = ShortcutsDto(version = ShortcutsDto.VERSION + 1, bindings = "ctrl+k=copy\n")
+
+        assertEquals(mine, restore(sampleSettings().copy(shortcuts = later)).shortcuts)
+    }
+
+    @Test
+    fun aLineOfTheBackupThatMakesNoSenseIsDroppedAndTheRestIsKept() = runBlocking {
+        keepOnDevice(ShortcutMap.defaults())
+        val text = "ctrl+alt+k=new_tab\nctrl+alt+j=from_a_later_app\nt=new_tab\nghost+x=copy\n"
+
+        val now = restore(sampleSettings().copy(shortcuts = ShortcutsDto(bindings = text)))
+
+        assertEquals(
+            mapOf(KeyChord(KeyEvent.KEYCODE_K, ctrl = true, alt = true) to AppShortcut.NewTab),
+            now.shortcuts.all
+        )
+    }
+
+    @Test
+    fun shortcutsOfWhichNoLineIsUsableKeepTheOnesOfTheDevice() = runBlocking {
+        keepOnDevice(mine)
+
+        val now = restore(
+            sampleSettings().copy(shortcuts = ShortcutsDto(bindings = "nothing here\n"))
+        )
+
+        assertEquals(mine, now.shortcuts)
     }
 
     @Test
