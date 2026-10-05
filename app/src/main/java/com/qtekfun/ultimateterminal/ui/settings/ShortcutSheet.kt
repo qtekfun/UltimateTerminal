@@ -5,8 +5,6 @@ package com.qtekfun.ultimateterminal.ui.settings
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,7 +59,7 @@ internal fun ShortcutSheet(
     val preview = ShortcutEditing.preview(map, shortcut, text)
     val addable = preview is ShortcutPreview.Ready && !preview.alreadyBound
     IosBottomSheet(onDismiss = onDismiss, detents = listOf(SheetDetent.LARGE)) {
-        Column(Modifier.imePadding().verticalScroll(rememberScrollState())) {
+        Column(Modifier.imePadding()) {
             IosSheetHeader(
                 title = shortcutLabel(shortcut),
                 cancelLabel = stringResource(R.string.shortcuts_done),
