@@ -64,6 +64,12 @@ object SshCommand {
         add("ServerAliveInterval=$KEEPALIVE_SECONDS")
         add("-o")
         add("ServerAliveCountMax=$KEEPALIVE_MISSES")
+        // The app owns the file of trusted host keys (see SshKnownHosts), and ssh only appends to
+        // it: no temporary file, hard link and rename, which proot has to emulate.
+        add("-o")
+        add("UserKnownHostsFile=${SshKnownHosts.OPTION_VALUE}")
+        add("-o")
+        add("UpdateHostKeys=no")
         add("-p")
         add(port.toString())
         if (keyPath != null) {
