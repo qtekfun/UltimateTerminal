@@ -10,6 +10,11 @@ and the project uses [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-10-14
+
+Two fixes from using the app on a phone. Neither has been tried on a device yet; the README says what has
+been tried where.
+
 ### Fixed
 - SSH: the host key you trust ("are you sure you want to continue connecting?") is now kept by the app, in
   its own storage outside the distro, and is bound into the connection. The question used to come back at
