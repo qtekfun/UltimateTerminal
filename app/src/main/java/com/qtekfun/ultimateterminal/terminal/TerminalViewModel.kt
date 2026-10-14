@@ -216,6 +216,15 @@ class TerminalViewModel @Inject constructor(
 
     private fun pasteFromClipboard() = output.pasteFromClipboard()
 
+    /**
+     * The Paste button: drops the selection (the paste replaces it in the user's mind) and writes
+     * the clipboard to the shell, to every pane of a broadcast.
+     */
+    fun paste() {
+        selection.clear()
+        pasteFromClipboard()
+    }
+
     fun scrollBy(deltaPx: Float, lineHeightPx: Float) {
         val lines = scroll.consume(deltaPx, lineHeightPx)
         if (lines != 0) topRowState.value = clampTopRow(topRowState.value - lines, transcriptRows)

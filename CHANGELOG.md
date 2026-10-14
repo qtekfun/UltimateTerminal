@@ -10,6 +10,12 @@ and the project uses [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- There is now a Paste button on a touch screen. Copy had a button when text was selected, but pasting
+  only worked with a hardware keyboard (Ctrl+Shift+V, Shift+Insert). A long press on the terminal selects
+  a cell and shows "Copy" and "Paste"; Paste writes the clipboard to the shell (bracketed when the
+  program asked for it, and to every pane of a broadcast). (Not yet tried on a device.)
+
 ## [0.1.3] - 2026-10-05
 
 Closing the app is now reliable. The notification fix was tried on a real phone (an OPPO PGEM10); the

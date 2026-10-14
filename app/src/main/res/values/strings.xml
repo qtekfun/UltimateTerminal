@@ -6,6 +6,7 @@
 <resources>
     <string name="app_name">UltimateTerminal</string>
     <string name="terminal_copy">Copy</string>
+    <string name="terminal_paste">Paste</string>
     <string name="terminal_description">Terminal</string>
     <string name="terminal_show_keyboard">Show the keyboard</string>
     <string name="terminal_session_ended">Session ended (exit %1$d). Tap to restart</string>
