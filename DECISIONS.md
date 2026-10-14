@@ -2898,3 +2898,11 @@ With tests on the host (JVM): modes, links (absolute, relative, broken), 000 and
 - **Consequence:** the "Session ended, tap to restart" card now only shows for failed starts. A shell that ends with an error after more than 2 s (an `exit 1`) closes like any other.
 - **Not validated on a device:** closing with `exit` in a tab, in a pane of a split tab, and in the last tab.
 
+
+### D-LANG-1 · 2026-10-14 · Choosing the app's language
+- **Request:** make the app multilingual if it is not yet. **State found:** English (default) and Spanish already ship in full (`values` and `values-es` have the same strings; the four that differ are brand names marked `translatable=false`), and the build already generates `locales_config.xml` from the resources (`generateLocaleConfig`), so Android 13+ lists the app in its per-app language settings. What was missing was a way to choose from inside the app, and anything for Android 8–12 (`minSdk` 26).
+- **Decision:** `AppLanguage` (System, English, Spanish; pure, with tests) and `AppLocale`. From Android 13 it uses `LocaleManager.applicationLocales`, so the system and the app agree. Before that the choice is kept in a small `SharedPreferences` file and applied in `MainActivity.attachBaseContext`; the activity is recreated on change. A new row group in Settings > Terminal lists the options with their own-language names.
+- **Not in the backup:** the language is a per-device preference (the system's own per-app language is not restored by a backup either), so it is not part of `SettingsDto`; this also leaves `data.backup`'s 100 % untouched.
+- **`bundle { language { enableSplit = false } }`:** Lint's `AppBundleLocaleChanges` fails on a runtime locale change unless a bundle does not split by language. The app is distributed as APKs, so this is configuration, not a suppression.
+- **Adding a language** is a `values-xx/strings.xml` and one entry in `AppLanguage`; the per-app list is generated from the resources.
+- **Not validated on a device:** the change on Android 13+ (and the system settings entry) and the recreation on Android 8–12.

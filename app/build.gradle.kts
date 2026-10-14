@@ -148,6 +148,13 @@ android {
     androidResources {
         generateLocaleConfig = true
     }
+
+    // The language can be changed inside the app, so a bundle must not split resources by language.
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
 }
 
 /**

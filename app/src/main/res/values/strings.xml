@@ -616,4 +616,9 @@
     <string name="setup_retry">Try again</string>
     <string name="setup_restore">Restore from a backup</string>
     <string name="setup_skip">Skip, use the Android shell for now</string>
+    <string name="settings_language_header">Language</string>
+    <string name="settings_language_footer">The language of the interface. “System default” follows the device. Language names are always shown in their own language.</string>
+    <string name="settings_language_system">System default</string>
+    <string name="settings_language_english" translatable="false">English</string>
+    <string name="settings_language_spanish" translatable="false">Español</string>
 </resources>
