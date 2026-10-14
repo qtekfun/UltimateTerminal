@@ -612,4 +612,7 @@
     <string name="setup_retry">Reintentar</string>
     <string name="setup_restore">Restaurar desde una copia de seguridad</string>
     <string name="setup_skip">Omitir, usar por ahora el shell de Android</string>
+    <string name="settings_language_header">Idioma</string>
+    <string name="settings_language_footer">El idioma de la interfaz. «Predeterminado del sistema» sigue el del dispositivo. Los nombres de idioma se muestran siempre en su propio idioma.</string>
+    <string name="settings_language_system">Predeterminado del sistema</string>
 </resources>

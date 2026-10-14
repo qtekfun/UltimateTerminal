@@ -3,6 +3,7 @@
 
 package com.qtekfun.ultimateterminal
 
+import android.content.Context
 import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -33,6 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qtekfun.ultimateterminal.domain.model.AppSettings
 import com.qtekfun.ultimateterminal.domain.repository.SettingsRepository
+import com.qtekfun.ultimateterminal.domain.repository.saveFontSize
 import com.qtekfun.ultimateterminal.domain.session.ExitStep
 import com.qtekfun.ultimateterminal.domain.session.Sessions
 import com.qtekfun.ultimateterminal.domain.session.StartupTabRule
@@ -42,6 +44,7 @@ import com.qtekfun.ultimateterminal.domain.theme.SchemeCatalog
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
 import com.qtekfun.ultimateterminal.domain.theme.ThemeDecision
 import com.qtekfun.ultimateterminal.domain.theme.resolveTheme
+import com.qtekfun.ultimateterminal.platform.AppLocale
 import com.qtekfun.ultimateterminal.setup.SetupViewModel
 import com.qtekfun.ultimateterminal.terminal.SessionManager
 import com.qtekfun.ultimateterminal.terminal.TerminalFontLoader
@@ -74,6 +77,10 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var settingsRepository: SettingsRepository
 
     @Inject lateinit var fontLoader: TerminalFontLoader
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppLocale.wrap(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -157,7 +164,9 @@ class MainActivity : ComponentActivity() {
                     initialFontSizeSp = settings.terminalFontSizeSp,
                     sidebarMode = settings.sidebarMode,
                     keyboardType = settings.keyboardType,
-                    onFontSizeChanged = { size -> scope.launch { saveFontSize(size) } },
+                    onFontSizeChanged = { size ->
+                        scope.launch { settingsRepository.saveFontSize(size) }
+                    },
                     screens = ScreenLinks(
                         openDistros = { showDistros = true },
                         openSsh = { showSsh = true },
@@ -266,9 +275,6 @@ class MainActivity : ComponentActivity() {
             SaveLayoutSheet(close, close)
         }
     }
-
-    private suspend fun saveFontSize(size: Float) =
-        settingsRepository.update { it.copy(terminalFontSizeSp = size) }
 
     /**
      * A stale screen never shows an empty app (RF-13b, D-NOTIF-1). The task is normally removed by

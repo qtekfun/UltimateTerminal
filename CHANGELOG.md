@@ -10,6 +10,11 @@ and the project uses [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Language: Settings > Terminal > Language chooses English, Spanish or the system's for this app only. On
+  Android 13 and later the app also shows up in the system's per-app language settings. Not tried on a
+  device yet.
+
 ### Changed
 - Text selection: the two big Copy/Paste buttons in the corner are replaced by a compact bar next to the
   selection with Copy, Paste, Select all and Select line. A long press now picks the word under the
