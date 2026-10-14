@@ -1,2888 +1,2887 @@
-# UltimateTerminal — Decisiones
+# UltimateTerminal — Decisions
 
-Registro de las decisiones tomadas durante el desarrollo que no estaban fijadas en `SPEC.md`, o que
-se desvían de él. Una entrada por decisión, la más reciente al final de su sección. Formato: fecha,
-decisión, motivo, alternativas, impacto. Si una decisión contradice a `SPEC.md`, se anota aquí y el
-usuario decide si se actualiza la spec.
+A record of the decisions taken during development that were not fixed in `SPEC.md`, or that
+deviate from it. One entry per decision, the most recent at the end of its section. Format: date,
+decision, reason, alternatives, impact. If a decision contradicts `SPEC.md`, it is noted here and the
+user decides whether the spec is updated.
 
-## Pendiente de validar en hardware
+## Pending hardware validation
 
-Los agentes que desarrollan **no** prueban en dispositivos: lo hace el orquestador, y solo en el
-Pixel 8 (el usuario lo autorizó el 2026-10-04). Lo verificado allí consta en la sección "Primeras
-pruebas en hardware"; **lo que no aparece ahí sigue sin verificar** y no debe darse por
-funcionando. Pendiente, entre otras cosas:
+The agents that develop do **not** test on devices: the orchestrator does, and only on the
+Pixel 8 (the user authorized it on 2026-10-04). What was verified there is in the section "First
+tests on hardware"; **what does not appear there is still unverified** and must not be taken as
+working. Pending, among other things:
 
-- Que `libproot.so` arranque y ejecute `/bin/sh` de un rootfs Alpine (T02, ver D-005).
-- Que el loader (`libproot-loader.so`, vía `PROOT_LOADER`) se inyecte correctamente en arm64,
-  armeabi-v7a y x86_64.
-- Comportamiento de seccomp, `ptrace`, `/proc` y `--link2symlink` en Android moderno (API 26–37).
-- Ejecutar binarios desde `nativeLibraryDir` con `targetSdk` 28 en Android 15+/16.
-- T07, instalación de distros: descargar, descomprimir y mover un rootfs real en el almacenamiento privado,
-  el cálculo de espacio libre y la pantalla de gestión (ver "T07: lo que NO se ha validado").
-- Capa de datos (T05): el cableado de Hilt, `AndroidSQLiteDriver` y `java.nio` (enlaces simbólicos,
-  permisos, `ATOMIC_MOVE`) en el almacenamiento privado de la app (ver D-T05-9).
-- T03, todo lo que necesita un PTY real o una pantalla: que `libtermux.so` cargue y el `fork/exec` de
-  `/system/bin/sh` funcione; que el dibujo (colores, cursor, texto ancho, fuente) sea correcto y fluido;
-  el teclado en pantalla (IME), el teclado físico, los gestos (scroll y selección) y que `stty size`
-  coincida con lo visible tras redimensionar (ver D-T03-4 a D-T03-6 y T04).
-- T03, release con R8: que los métodos nativos de `JNI` sobrevivan a la minificación (las reglas por
-  defecto de Android conservan los nombres de los `native`, pero no se ha comprobado en un APK real).
-- T08b, arranque de una pestaña en una distro: que `libproot.so` se ejecute desde `nativeLibraryDir` con
-  `targetSdk` 28, que `uname -a` y `apk update` funcionen dentro de Alpine, que haya red (DNS), que `su -l <usuario>`
-  funcione, que los montajes de T13 se vean y que el modo de compatibilidad (sin seccomp) arregle lo que falle
-  (ver D-T08b-8 con el criterio de aceptación de la primera prueba en la tablet).
-- T14, SSH: el Keystore real, `ssh` dentro de proot con la clave temporal, el selector de archivos y la
-  limpieza del fichero de la clave (ver "T14: lo que NO se ha validado").
-- T08, servicio en primer plano: que Android lo arranque con el tipo `specialUse` en 12–16, que la
-  notificación aparezca y sus acciones (nueva sesión, salir) funcionen, que el shell sobreviva a
-  cerrar la actividad y a apagar la pantalla, y que la UI se reconecte a la sesión viva. También el
-  wake lock real y el efecto del *phantom process killer* (ver D-T08-5).
-- T09, pestañas: los gestos de la barra (tocar, doble toque, pulsación larga + arrastre para
-  reordenar, scroll de la propia barra) pueden competir entre sí; los menús desplegables, los
-  diálogos, la barra lateral en pantallas anchas (y con idioma de derecha a izquierda), los 48 dp
-  táctiles, TalkBack, y que al cambiar de pestaña el pty de la que pasa a primer plano reciba el
-  tamaño correcto (ver D-T09-8).
+- That `libproot.so` starts and runs `/bin/sh` of an Alpine rootfs (T02, see D-005).
+- That the loader (`libproot-loader.so`, through `PROOT_LOADER`) is injected correctly on arm64,
+  armeabi-v7a and x86_64.
+- The behavior of seccomp, `ptrace`, `/proc` and `--link2symlink` on modern Android (API 26–37).
+- Running binaries from `nativeLibraryDir` with `targetSdk` 28 on Android 15+/16.
+- T07, distro installation: downloading, decompressing and moving a real rootfs in private storage,
+  the free-space calculation and the management screen (see "T07: what has NOT been validated").
+- The data layer (T05): the Hilt wiring, `AndroidSQLiteDriver` and `java.nio` (symbolic links,
+  permissions, `ATOMIC_MOVE`) in the app's private storage (see D-T05-9).
+- T03, everything that needs a real PTY or a screen: that `libtermux.so` loads and the `fork/exec` of
+  `/system/bin/sh` works; that the drawing (colors, cursor, wide text, font) is correct and smooth;
+  the on-screen keyboard (IME), the hardware keyboard, the gestures (scroll and selection) and that `stty size`
+  matches what is visible after resizing (see D-T03-4 to D-T03-6 and T04).
+- T03, release with R8: that the `JNI` native methods survive minification (Android's default
+  rules keep the names of `native` methods, but this has not been checked on a real APK).
+- T08b, starting a tab in a distro: that `libproot.so` runs from `nativeLibraryDir` with
+  `targetSdk` 28, that `uname -a` and `apk update` work inside Alpine, that there is network (DNS), that `su -l <user>`
+  works, that the T13 mounts are visible and that the compatibility mode (without seccomp) fixes what fails
+  (see D-T08b-8 with the acceptance criterion of the first test on the tablet).
+- T14, SSH: the real Keystore, `ssh` inside proot with the temporary key, the file picker and the
+  cleanup of the key file (see "T14: what has NOT been validated").
+- T08, foreground service: that Android starts it with the `specialUse` type on 12–16, that the
+  notification appears and its actions (new session, exit) work, that the shell survives
+  closing the activity and turning the screen off, and that the UI reconnects to the live session. Also the
+  real wake lock and the effect of the *phantom process killer* (see D-T08-5).
+- T09, tabs: the bar's gestures (tap, double tap, long press + drag to
+  reorder, scroll of the bar itself) may compete with each other; the drop-down menus, the
+  dialogs, the side bar on wide screens (and with a right-to-left language), the 48 dp
+  touch targets, TalkBack, and that when switching tab the pty of the one that comes to the foreground receives the
+  right size (see D-T09-8).
 
-Lo que sí está verificado sin dispositivo: compila para las tres ABIs, los ejecutables se empaquetan
-en el APK con el tipo ELF y los puntos de entrada esperados, `./gradlew check` y el CI en verde.
-- T13, acceso a `/sdcard`: que el permiso de almacenamiento se conceda con `targetSdk` 28 en Android 11, 12, 13 y posteriores y
-  que con él los procesos nativos (proot) puedan leer y escribir en `/storage/emulated/0`, incluidos Descargas y Documentos;
-  que `cp /var/log/syslog ~/storage/downloads/` aparezca en la carpeta Descargas (ver D-T13-3 y "T13: lo que NO se ha validado").
-- T10, paneles divididos: ver D-T10-9. Los separadores arrastrables, el foco por toque, el menú del
-  panel, el tamaño de cada pty tras dividir, cerrar o hacer zoom, y los gestos de cada panel se han
-  probado solo con tests de host.
+What is verified without a device: it builds for the three ABIs, the executables are packaged
+in the APK with the ELF type and the expected entry points, `./gradlew check` and CI green.
+- T13, access to `/sdcard`: that the storage permission is granted with `targetSdk` 28 on Android 11, 12, 13 and later and
+  that with it the native processes (proot) can read and write in `/storage/emulated/0`, including Downloads and Documents;
+  that `cp /var/log/syslog ~/storage/downloads/` shows up in the Downloads folder (see D-T13-3 and "T13: what has NOT been validated").
+- T10, split panes: see D-T10-9. The draggable dividers, focus by touch, the pane
+  menu, the size of each pty after splitting, closing or zooming, and the gestures of each pane have been
+  tested only with host tests.
 
-## Decisiones
+## Decisions
 
-### D-001 · 2026-10-04 · proot: usar el fork de Termux como submódulo git
-- **Decisión:** las fuentes de proot son el fork `termux/proot` en el tag `v5.1.107.96`, como
-  submódulo en `third_party/proot`.
-- **Motivo:** es proot (GPL-2.0-or-later) con los parches para Android que Termux mantiene y usa en
-  producción; el submódulo fija el commit exacto y F-Droid lo soporta. Es código, no binarios
-  precompilados ni el prefijo `com.termux`, así que cumple SPEC §2 ("compilado desde fuente").
-- **Alternativas:** `proot-me/proot` upstream (menos parches Android); copiar las fuentes al repo
-  (ensucia el historial y dificulta actualizar).
-- **Impacto:** el CI y el build necesitan `submodules: true`. Se acredita en `THIRD_PARTY_NOTICES.md`.
+### D-001 · 2026-10-04 · proot: use the Termux fork as a git submodule
+- **Decision:** the proot sources are the `termux/proot` fork at tag `v5.1.107.96`, as a
+  submodule in `third_party/proot`.
+- **Reason:** it is proot (GPL-2.0-or-later) with the Android patches that Termux maintains and uses in
+  production; the submodule pins the exact commit and F-Droid supports it. It is code, not prebuilt
+  binaries and not the `com.termux` prefix, so it meets SPEC §2 ("built from source").
+- **Alternatives:** upstream `proot-me/proot` (fewer Android patches); copying the sources into the repo
+  (dirties the history and makes updating harder).
+- **Impact:** CI and the build need `submodules: true`. It is credited in `THIRD_PARTY_NOTICES.md`.
 
-### D-002 · 2026-10-04 · talloc: vendorizado con un `replace.h` propio
-- **Decisión:** `talloc.c` y `talloc.h` 2.5.0 sin modificar en `third_party/talloc`, con un
-  `replace.h` mínimo escrito a mano (también `MIN`/`MAX` y `memset_explicit`, que bionic no tiene
-  en API 26).
-- **Motivo:** el `replace.h` de Samba lo genera waf (Python, configure con comprobaciones); traerlo
-  aumenta mucho el build. talloc solo necesita unas pocas definiciones.
-- **Alternativas:** compilar talloc con su waf (frágil en el cross-compile); usar el `libtalloc` de
-  Termux (binario, atado al prefijo).
-- **Impacto:** LGPL-3.0-or-later enlazado estáticamente en un proyecto GPL-3.0-or-later: compatible.
-  Hash del tarball registrado en `third_party/talloc/README.md`. No se ha verificado la firma GPG del
-  tarball (solo el SHA-256 al descargarlo).
+### D-002 · 2026-10-04 · talloc: vendored with an own `replace.h`
+- **Decision:** `talloc.c` and `talloc.h` 2.5.0 unmodified in `third_party/talloc`, with a minimal
+  hand-written `replace.h` (also `MIN`/`MAX` and `memset_explicit`, which bionic does not have
+  on API 26).
+- **Reason:** Samba's `replace.h` is generated by waf (Python, configure with checks); bringing it in
+  makes the build much bigger. talloc only needs a few definitions.
+- **Alternatives:** building talloc with its waf (fragile when cross-compiling); using Termux's
+  `libtalloc` (a binary, tied to the prefix).
+- **Impact:** LGPL-3.0-or-later statically linked in a GPL-3.0-or-later project: compatible.
+  The tarball's hash is recorded in `third_party/talloc/README.md`. The tarball's GPG signature
+  has not been verified (only the SHA-256 when downloading it).
 
-### D-003 · 2026-10-04 · ABIs: arm64-v8a, armeabi-v7a y x86_64
-- **Decisión:** se compilan esas tres. Sin x86 (32 bits).
-- **Motivo:** arm64 y armeabi-v7a cubren móviles/tablets; x86_64 sirve para emuladores y pruebas.
-- **Impacto:** el loader de 32 bits (`loader-m32`, que proot usa en arm64/x86_64 para ejecutar
-  binarios de 32 bits dentro de una distro de 64) **no se construye**. Los programas de 32 bits en
-  una distro de 64 bits no funcionarán. Los rootfs de 64 bits (Debian, Ubuntu, Alpine arm64) no lo
-  necesitan.
+### D-003 · 2026-10-04 · ABIs: arm64-v8a, armeabi-v7a and x86_64
+- **Decision:** those three are built. No x86 (32-bit).
+- **Reason:** arm64 and armeabi-v7a cover phones/tablets; x86_64 serves emulators and tests.
+- **Impact:** the 32-bit loader (`loader-m32`, which proot uses on arm64/x86_64 to run
+  32-bit binaries inside a 64-bit distro) **is not built**. 32-bit programs in
+  a 64-bit distro will not work. 64-bit rootfs images (Debian, Ubuntu, Alpine arm64) do not
+  need it.
 
-### D-004 · 2026-10-04 · proot y loader empaquetados como `lib*.so`; NDK fijado
-- **Decisión:** `add_executable` con `OUTPUT_NAME`/`PREFIX lib`/`SUFFIX .so` (`libproot.so`,
-  `libproot-loader.so`), `useLegacyPackaging = true` y `android:extractNativeLibs="true"` para que
-  queden extraídos en `nativeLibraryDir`. `ndkVersion` fijado a `28.2.13676358`.
-- **Motivo:** Android solo permite ejecutar desde `nativeLibraryDir` a una app con `targetSdk` 28.
-  Empíricamente AGP empaqueta esos ejecutables sin más (se comprobó en el APK). El NDK se fija para
-  que el build nativo sea reproducible en F-Droid.
-- **Alternativas:** descargar/extraer los binarios en runtime al almacenamiento privado (no
-  permitido con targetSdk ≥ 29 y va contra "sin binarios de terceros").
-- **Impacto:** el APK es más grande (~0,5 MB por ABI). El loader se localiza con la variable
-  `PROOT_LOADER`, no con una ruta compilada. El CI comprueba que las 6 librerías están en el APK.
+### D-004 · 2026-10-04 · proot and the loader packaged as `lib*.so`; NDK pinned
+- **Decision:** `add_executable` with `OUTPUT_NAME`/`PREFIX lib`/`SUFFIX .so` (`libproot.so`,
+  `libproot-loader.so`), `useLegacyPackaging = true` and `android:extractNativeLibs="true"` so that
+  they end up extracted in `nativeLibraryDir`. `ndkVersion` pinned to `28.2.13676358`.
+- **Reason:** Android only lets an app with `targetSdk` 28 execute from `nativeLibraryDir`.
+  Empirically AGP packages those executables with no further ado (checked in the APK). The NDK is pinned so
+  the native build is reproducible on F-Droid.
+- **Alternatives:** downloading/extracting the binaries at runtime to private storage (not
+  allowed with targetSdk ≥ 29 and against "no third-party binaries").
+- **Impact:** the APK is bigger (~0.5 MB per ABI). The loader is located with the
+  `PROOT_LOADER` variable, not a compiled path. CI checks that the 6 libraries are in the APK.
 
-### D-005 · 2026-10-04 · T02 sin prueba en dispositivo (desviación del plan)
-- **Decisión:** T02 se marca como hecha con compilación y empaquetado verificados, pero **sin
-  ejecutar proot en dispositivo**. La prueba con Alpine queda pendiente.
-- **Motivo:** el usuario prohibió probar en el Pixel 8. Tampoco se ejecuta en el host ni en un
-  emulador sin su autorización expresa.
-- **Impacto:** el riesgo nº 1 de `SPEC.md` (proot en Android moderno) sigue **abierto**. No debe
-  construirse en T07/T08 asumiendo que funciona sin antes validar.
+### D-005 · 2026-10-04 · T02 without a device test (deviation from the plan)
+- **Decision:** T02 is marked as done with the build and packaging verified, but **without
+  running proot on a device**. The test with Alpine stays pending.
+- **Reason:** the user forbade testing on the Pixel 8. It is not run on the host or on an
+  emulator either without their express authorization.
+- **Impact:** risk no. 1 of `SPEC.md` (proot on modern Android) remains **open**. T07/T08 must not
+  be built assuming it works without validating first.
 
-### D-006 · 2026-10-04 · `libandroid-shmem` no se enlaza
-- **Decisión:** no se define `WITH_LIBANDROID_SHMEM`.
-- **Motivo:** es una biblioteca extra de Termux (otro componente y licencia) que solo emula
-  memoria compartida SysV; no es necesaria para un shell, apt/apk, ssh, nmap ni python.
-- **Impacto:** programas que usen memoria compartida SysV (p. ej. algunos `postgres`) pueden fallar
-  en la distro. Se revisa si hace falta más adelante.
+### D-006 · 2026-10-04 · `libandroid-shmem` is not linked
+- **Decision:** `WITH_LIBANDROID_SHMEM` is not defined.
+- **Reason:** it is an extra Termux library (another component and license) that only emulates
+  SysV shared memory; it is not needed for a shell, apt/apk, ssh, nmap or python.
+- **Impact:** programs that use SysV shared memory (e.g. some `postgres`) may fail
+  in the distro. It will be reviewed later if needed.
 
-### D-007 · 2026-10-04 · Lanzamiento de proot: flags y entorno por defecto
-- **Decisión:** `ProotCommandBuilder` usa `--link2symlink`, `--kill-on-exit`, `-0` (root simulado),
-  binds de `/dev`, `/proc` y `/sys`, `PROOT_TMP_DIR` en un directorio privado y un entorno de guest
-  limpio (`env -i` con `HOME`, `TERM`, `LANG`, `PATH`). `PROOT_NO_SECCOMP=1` es una opción, apagada
-  por defecto.
-- **Motivo:** `link2symlink` porque el almacenamiento de la app no admite enlaces duros;
-  `PROOT_TMP_DIR` porque `/tmp` no existe en Android; el entorno limpio porque el del proceso es el
-  de Android; seccomp se deja como interruptor por si ciertos kernels lo rompen.
-- **Alternativas:** `--sysvipc`, `-L`, `--root-id` solo con usuario normal: se decide al probar.
-- **Impacto:** los flags son hipótesis razonables **sin validar en dispositivo** (ver la sección de
-  pendientes); el constructor está cubierto con tests de host.
+### D-007 · 2026-10-04 · Starting proot: default flags and environment
+- **Decision:** `ProotCommandBuilder` uses `--link2symlink`, `--kill-on-exit`, `-0` (simulated root),
+  binds of `/dev`, `/proc` and `/sys`, `PROOT_TMP_DIR` in a private directory and a clean guest
+  environment (`env -i` with `HOME`, `TERM`, `LANG`, `PATH`). `PROOT_NO_SECCOMP=1` is an option, off
+  by default.
+- **Reason:** `link2symlink` because the app's storage does not support hard links;
+  `PROOT_TMP_DIR` because `/tmp` does not exist on Android; the clean environment because the process's is
+  Android's; seccomp is left as a switch in case certain kernels break it.
+- **Alternatives:** `--sysvipc`, `-L`, `--root-id` only with a normal user: to be decided when testing.
+- **Impact:** the flags are reasonable hypotheses **not validated on a device** (see the section
+  on pending items); the builder is covered with host tests.
 
-### D-008 · 2026-10-04 · Cobertura: el paquete `data` ya cuenta
-- **Decisión:** con `data.proot` el umbral de Kover (≥ 85 % en `domain` y `data`) empieza a medirse
-  de verdad. Los paquetes críticos al 100 % (`data.rootfs.verify`, `data.backup`) siguen vacíos
-  hasta T06/T15.
-- **Impacto:** cada código nuevo en `data` necesita tests reales.
+### D-008 · 2026-10-04 · Coverage: the `data` package now counts
+- **Decision:** with `data.proot` the Kover threshold (≥ 85 % in `domain` and `data`) starts being measured
+  for real. The critical packages at 100 % (`data.rootfs.verify`, `data.backup`) stay empty
+  until T06/T15.
+- **Impact:** every new piece of code in `data` needs real tests.
 
-### D-009 · 2026-10-04 · El loader se enlaza con `--no-gc-sections`
-- **Decisión:** `libproot-loader.so` se enlaza con `--no-gc-sections`.
-- **Motivo:** en las builds de release CMake añade `--gc-sections`, que eliminaba `pokedata_workaround`
-  (arm64): nadie lo referencia, pero proot localiza su offset en runtime. Se detectó porque
-  `loader-info` fallaba en release; sin esa comprobación habría sido un fallo silencioso.
-- **Impacto:** el offset generado es idéntico en debug y release (1016 en arm64).
+### D-009 · 2026-10-04 · The loader is linked with `--no-gc-sections`
+- **Decision:** `libproot-loader.so` is linked with `--no-gc-sections`.
+- **Reason:** in release builds CMake adds `--gc-sections`, which removed `pokedata_workaround`
+  (arm64): nobody references it, but proot locates its offset at runtime. It was detected because
+  `loader-info` failed in release; without that check it would have been a silent failure.
+- **Impact:** the generated offset is identical in debug and release (1016 on arm64).
 
-## T03 — Terminal (emulador y vista)
+## T03 — Terminal (emulator and view)
 
-### D-T03-1 · 2026-10-04 · `terminal-emulator` vendorizado como módulo, no por JitPack
-- **Decisión:** los fuentes de `terminal-emulator` de Termux (tag `v0.118.3`) van **sin modificar** en el
-  módulo Gradle `:terminal-emulator` (Java, JNI `termux.c` y sus tests). Solo son nuestros su
-  `build.gradle.kts` y un `CMakeLists.txt` que sustituye al `Android.mk`.
-- **Motivo:** F-Droid compila desde fuente y no admite un binario ya compilado por terceros (el artefacto
-  de JitPack); además el JNI hay que compilarlo con el NDK de todos modos, y así se fija el commit exacto
-  y el build es reproducible.
-- **Alternativas:** dependencia `com.termux.termux-app:terminal-emulator` de JitPack (comodidad, pero un
-  binario ajeno y un repositorio más); escribir un emulador propio (SPEC §8: meses de trabajo y riesgo).
-- **Impacto:** 3 ABIs (arm64-v8a, armeabi-v7a, x86_64) y el mismo NDK que `:app`. Actualizar Termux es
-  copiar de nuevo desde otro tag. Los 145 tests de upstream pasan en la JVM del host
-  (`:terminal-emulator:testDebugUnitTest`) con JUnit 4 (solo test).
+### D-T03-1 · 2026-10-04 · `terminal-emulator` vendored as a module, not through JitPack
+- **Decision:** the sources of Termux's `terminal-emulator` (tag `v0.118.3`) go **unmodified** in the
+  Gradle module `:terminal-emulator` (Java, JNI `termux.c` and its tests). Only its
+  `build.gradle.kts` and a `CMakeLists.txt` that replaces `Android.mk` are ours.
+- **Reason:** F-Droid builds from source and does not accept a binary already built by third parties (the JitPack
+  artifact); besides, the JNI has to be built with the NDK anyway, and this way the exact commit is pinned
+  and the build is reproducible.
+- **Alternatives:** the `com.termux.termux-app:terminal-emulator` dependency from JitPack (convenient, but
+  somebody else's binary and one more repository); writing an emulator of our own (SPEC §8: months of work and risk).
+- **Impact:** 3 ABIs (arm64-v8a, armeabi-v7a, x86_64) and the same NDK as `:app`. Updating Termux is
+  copying again from another tag. The 145 upstream tests pass on the host JVM
+  (`:terminal-emulator:testDebugUnitTest`) with JUnit 4 (test only).
 
-### D-T03-2 · 2026-10-04 · Licencia del emulador: punto abierto que hay que confirmar
-- **Qué se encontró:** ningún fichero de `terminal-emulator/` lleva cabecera de licencia y el directorio
-  no tiene `LICENSE`. La única declaración es el `LICENSE.md` raíz de termux-app: el repositorio es
-  GPL-3.0-only **salvo** el código derivado de Android Terminal Emulator (Jack Palevich), en las
-  librerías `terminal-view` y `terminal-emulator`, que es Apache-2.0. No lo dice fichero a fichero y la
-  librería ha crecido desde entonces (p. ej. soporte sixel y bitmap).
-- **Decisión:** se usa bajo esa declaración, sin modificar, con el texto Apache-2.0 en
-  `terminal-emulator/LICENSE`, el crédito a Termux y a Jack Palevich, y el aviso MIT de
-  `jquast/wcwidth` (del que deriva `WcWidth.java`) en `terminal-emulator/NOTICE-wcwidth.txt`. No se
-  copia nada más de termux-app.
-- **Riesgo:** si alguna parte fuera en realidad GPL-3.0-only, seguiría siendo compatible con nuestra
-  GPL-3.0-or-later, pero **no** con la parte "or-later" ni con la etiqueta Apache-2.0. Es una
-  incertidumbre de upstream, no algo que podamos resolver desde aquí.
-- **Acción propuesta (la decide el usuario):** pedir a los mantenedores de Termux que confirmen la
-  licencia de la librería (o que añadan cabeceras) antes de publicar en F-Droid; si no la confirman,
-  sustituir el emulador por uno propio. Esto no es asesoría legal.
+### D-T03-2 · 2026-10-04 · The emulator's license: an open point to confirm
+- **What was found:** no file in `terminal-emulator/` carries a license header and the directory
+  has no `LICENSE`. The only statement is termux-app's root `LICENSE.md`: the repository is
+  GPL-3.0-only **except** the code derived from Android Terminal Emulator (Jack Palevich), in the
+  `terminal-view` and `terminal-emulator` libraries, which is Apache-2.0. It does not say so file by file and the
+  library has grown since then (e.g. sixel and bitmap support).
+- **Decision:** it is used under that statement, unmodified, with the Apache-2.0 text in
+  `terminal-emulator/LICENSE`, the credit to Termux and to Jack Palevich, and the MIT notice of
+  `jquast/wcwidth` (from which `WcWidth.java` derives) in `terminal-emulator/NOTICE-wcwidth.txt`. Nothing
+  else is copied from termux-app.
+- **Risk:** if some part were actually GPL-3.0-only, it would still be compatible with our
+  GPL-3.0-or-later, but **not** with the "or-later" part nor with the Apache-2.0 label. It is an
+  upstream uncertainty, not something we can resolve from here.
+- **Proposed action (the user decides):** ask the Termux maintainers to confirm the
+  library's license (or to add headers) before publishing on F-Droid; if they do not confirm it,
+  replace the emulator with one of our own. This is not legal advice.
 
-### D-T03-3 · 2026-10-04 · Vista propia en Compose; `terminal-view` no se usa
-- **Decisión:** se escribió desde cero un `TerminalPainter` (Android `Canvas` dentro de un `Canvas` de
-  Compose) que solo lee el emulador. No se copió código de `TerminalRenderer` ni de `terminal-view`;
-  esa clase se leyó para entender cómo se interpretan los estilos (color indexado y de 24 bits, negrita
-  con colores brillantes, atenuado a 2/3, inverso).
-- **Motivo:** SPEC §2 pide una vista propia en Compose y evita depender de la parte con licencia dudosa
-  (D-T03-2). Las reglas de color se aislaron en `domain/terminal/CellStyles` para probarlas en host.
-- **Impacto:** el pintado agrupa celdas ASCII del mismo estilo en una sola llamada y dibuja aparte el
-  resto (CJK, emoji, combinados), encogiéndolos a sus celdas si no miden lo esperado. Sin parpadeo
-  (`blink`), sin sixel ni imágenes, sin subrayados especiales: fuera del prototipo.
+### D-T03-3 · 2026-10-04 · Own view in Compose; `terminal-view` is not used
+- **Decision:** a `TerminalPainter` was written from scratch (an Android `Canvas` inside a Compose
+  `Canvas`) that only reads the emulator. No code from `TerminalRenderer` or `terminal-view` was copied;
+  that class was read to understand how styles are interpreted (indexed and 24-bit color, bold
+  with bright colors, dimmed to 2/3, inverse).
+- **Reason:** SPEC §2 asks for an own view in Compose and avoids depending on the part with a doubtful license
+  (D-T03-2). The color rules were isolated in `domain/terminal/CellStyles` to test them on the host.
+- **Impact:** drawing groups ASCII cells of the same style in a single call and draws the
+  rest (CJK, emoji, combined) separately, shrinking them to their cells if they do not measure what is expected. No blinking
+  (`blink`), no sixel or images, no special underlines: outside the prototype.
 
-### D-T03-4 · 2026-10-04 · Teclado mediante una `View` invisible, no el protocolo de texto de Compose
-- **Decisión:** el teclado en pantalla y el físico llegan a una `TerminalInputView` (1 dp, enfocable) con
-  `onCreateInputConnection`. Se pide entrada de contraseña visible sin sugerencias para que el teclado
-  envíe los caracteres según se escriben; lo que llegue como "composición" se retiene y se envía al
-  confirmarla. Retroceso se envía como `DEL`, Enter como `\r`.
-- **Motivo:** es el patrón que ya usan los terminales Android y no depende de las APIs experimentales de
-  Compose (`PlatformTextInputModifierNode`). Sin dispositivo no se puede validar ninguna de las dos, así
-  que se eligió la de menor riesgo.
-- **Impacto:** **no validado**: queda por comprobar Gboard y otros teclados (composición, autocorrector,
-  retroceso en campo vacío, teclas muertas), Ctrl/Alt pegajosos (T11) y el foco al volver a la app.
+### D-T03-4 · 2026-10-04 · Keyboard through an invisible `View`, not Compose's text protocol
+- **Decision:** the on-screen and hardware keyboards reach a `TerminalInputView` (1 dp, focusable) with
+  `onCreateInputConnection`. A visible-password input without suggestions is requested so the keyboard
+  sends characters as they are typed; what arrives as "composition" is held back and sent when
+  it is confirmed. Backspace is sent as `DEL`, Enter as `\r`.
+- **Reason:** it is the pattern Android terminals already use and it does not depend on Compose's experimental APIs
+  (`PlatformTextInputModifierNode`). Without a device neither can be validated, so
+  the lower-risk one was chosen.
+- **Impact:** **not validated**: Gboard and other keyboards remain to be checked (composition, autocorrect,
+  backspace on an empty field, dead keys), sticky Ctrl/Alt (T11) and the focus when returning to the app.
 
-### D-T03-5 · 2026-10-04 · Gestos y selección: mínimos, sin validar
-- **Decisión:** un toque pide el teclado; arrastre vertical recorre el scrollback; pulsación larga y
-  arrastre seleccionan por flujo y aparece "Copiar". Todavía no hay botón de pegar (el emulador ya
-  sabe pegar con bracketed paste; falta la acción en la interfaz).
-- **Motivo:** cubrir lo imprescindible (RF-01, RF-08) para el prototipo. Los tres detectores de gestos
-  van en el mismo nodo y **podrían competir** (arrastre vertical frente a pulsación larga): no se ha
-  podido comprobar sin dispositivo.
-- **Impacto:** pendientes para T11: asas de selección, selección por palabra, pegar, ratón (mouse
-  reporting), rueda, zoom con pellizco y desplazamiento con inercia.
+### D-T03-5 · 2026-10-04 · Gestures and selection: minimal, not validated
+- **Decision:** a tap asks for the keyboard; a vertical drag scrolls the scrollback; a long press and
+  drag select by flow and "Copy" appears. There is no paste button yet (the emulator already
+  knows how to paste with bracketed paste; the action in the interface is missing).
+- **Reason:** to cover what is essential (RF-01, RF-08) for the prototype. The three gesture detectors
+  are on the same node and **could compete** (vertical drag against long press): this could not
+  be checked without a device.
+- **Impact:** pending for T11: selection handles, selection by word, paste, mouse (mouse
+  reporting), wheel, pinch zoom and scrolling with inertia.
 
-### D-T03-6 · 2026-10-04 · Rendimiento: no medido
-- **Estado:** no se ha medido nada (no hay dispositivo). El diseño evita reservar memoria por fotograma
-  (una sola `Run` y un `Paint` reutilizados) y agrupa texto en tramos; es una expectativa, no un dato.
-- **Pendiente:** medir con salida masiva (`cat` de un fichero grande, `yes`) y desplazamiento, con el
-  criterio de SPEC §6 (fluido sin bloquear la UI). Si no basta, se evalúa un caché de filas o pintar en
-  una `SurfaceView`/capa propia.
+### D-T03-6 · 2026-10-04 · Performance: not measured
+- **Status:** nothing has been measured (there is no device). The design avoids allocating memory per frame
+  (a single `Run` and a reused `Paint`) and groups text into spans; this is an expectation, not data.
+- **Pending:** measure with massive output (`cat` of a large file, `yes`) and scrolling, with the
+  criterion of SPEC §6 (smooth without blocking the UI). If it is not enough, a row cache is evaluated or drawing on
+  a `SurfaceView`/own layer.
 
-### D-T03-7 · 2026-10-04 · Lint relajado solo en el módulo vendorizado
-- **Decisión:** en `:terminal-emulator` Lint no trata los avisos como errores (`warningsAsErrors=false`,
-  `abortOnError=false`, `checkReleaseBuilds=false`). En `:app` sigue estricto.
-- **Motivo:** es código de terceros que no se modifica a propósito; sus hallazgos de Lint no son
-  nuestros. Es una excepción a la regla de `CLAUDE.md` "no relajes Lint", acotada a ese módulo.
-- **Alternativas:** parchear los fuentes upstream (rompería "sin modificar" y la actualización fácil).
+### D-T03-7 · 2026-10-04 · Lint relaxed only in the vendored module
+- **Decision:** in `:terminal-emulator` Lint does not treat warnings as errors (`warningsAsErrors=false`,
+  `abortOnError=false`, `checkReleaseBuilds=false`). In `:app` it stays strict.
+- **Reason:** it is third-party code that is deliberately not modified; its Lint findings are not
+  ours. It is an exception to the `CLAUDE.md` rule "do not relax Lint", limited to that module.
+- **Alternatives:** patching the upstream sources (it would break "unmodified" and easy updating).
 
-### D-T03-8 · 2026-10-04 · Prototipo: shell de Android y lógica en `domain/terminal`
-- **Decisión:** el prototipo lanza `/system/bin/sh` con un entorno mínimo (`TERM=xterm-256color`,
-  `COLORTERM=truecolor`, `HOME` y `TMPDIR` privados, `PATH` del sistema y solo las variables de
-  `ANDROID_*` del proceso). El proot se conectará en T07/T08. Todo lo que no toca Android (estilos de
-  celda, tamaño de rejilla, scroll, selección, codificación de teclas, entorno) está en
-  `domain/terminal` y se prueba en host; el pegamento Android (`TerminalSessionHost`, `TerminalPainter`,
-  `TerminalInputView`, la pantalla) queda fuera de Kover, como la UI.
-- **Impacto:** secuencias como las que imprimen `ls --color` y `top` (colores, posicionamiento del
-  cursor, borrado, pantalla alterna, scrollback, ancho doble, redimensionado) se verifican contra el
-  emulador real con tests de host (`EmulatorScreenTest`). Programas reales (vim, tmux, htop, `ls`,
-  `top`) no se han ejecutado: no hay distro ni dispositivo.
-- **Logs:** el cliente de la librería descarta sus mensajes de log: pueden contener texto de la
-  terminal y SPEC §6 prohíbe registrarlo.
+### D-T03-8 · 2026-10-04 · Prototype: Android shell and logic in `domain/terminal`
+- **Decision:** the prototype launches `/system/bin/sh` with a minimal environment (`TERM=xterm-256color`,
+  `COLORTERM=truecolor`, private `HOME` and `TMPDIR`, the system's `PATH` and only the
+  `ANDROID_*` variables of the process). proot will be connected in T07/T08. Everything that does not touch Android (cell
+  styles, grid size, scroll, selection, key encoding, environment) is in
+  `domain/terminal` and tested on the host; the Android glue (`TerminalSessionHost`, `TerminalPainter`,
+  `TerminalInputView`, the screen) stays out of Kover, like the UI.
+- **Impact:** sequences such as those printed by `ls --color` and `top` (colors, cursor
+  positioning, erasing, alternate screen, scrollback, double width, resizing) are verified against the
+  real emulator with host tests (`EmulatorScreenTest`). Real programs (vim, tmux, htop, `ls`,
+  `top`) have not been run: there is no distro or device.
+- **Logs:** the library's client discards its log messages: they may contain terminal
+  text and SPEC §6 forbids recording it.
 
 ## T04
 
-### D-T04-1 · 2026-10-04 · Una sola función decide el tamaño del terminal
-- **Decisión:** `terminalLayoutFor(ventana, EdgeInsets, métricas de celda)` (en `domain/terminal`) es la
-  única fuente del tamaño. El área dibujada es la ventana menos los insets, y la UI aplica como padding
-  esos mismos números; así lo que se dibuja y lo que se le dice al pty no pueden desviarse. Los insets
-  son los de las barras del sistema, el recorte de pantalla y el teclado, combinados borde a borde con
-  el máximo (`EdgeInsets.union`): el teclado sustituye a la barra de navegación, no se suma.
-- **Cambio respecto a T03:** la UI ya no usa `safeDrawingPadding()` ni mide el `Canvas`; mide la ventana
-  completa (el fondo negro cubre también bajo las barras: sin bandas) y calcula el layout con la función.
-- **Alternativas:** dejar que Compose reparta los insets y medir el `Canvas` (más simple, pero la
-  semántica de los insets queda fuera del dominio y sin tests).
+### D-T04-1 · 2026-10-04 · A single function decides the terminal's size
+- **Decision:** `terminalLayoutFor(window, EdgeInsets, cell metrics)` (in `domain/terminal`) is the
+  only source of the size. The drawn area is the window minus the insets, and the UI applies as padding
+  those same numbers; so what is drawn and what the pty is told cannot drift apart. The insets
+  are those of the system bars, the screen cutout and the keyboard, combined edge by edge with
+  the maximum (`EdgeInsets.union`): the keyboard replaces the navigation bar, it is not added.
+- **Change from T03:** the UI no longer uses `safeDrawingPadding()` nor measures the `Canvas`; it measures the whole
+  window (the black background also covers under the bars: no bands) and computes the layout with the function.
+- **Alternatives:** letting Compose distribute the insets and measuring the `Canvas` (simpler, but the
+  semantics of the insets stay outside the domain and without tests).
 
-### D-T04-2 · 2026-10-04 · Redimensionado con debounce y sin reiniciar la sesión
-- **Decisión:** los layouts pasan por `Flow.settled(120 ms)`: el primero se entrega al instante (el shell
-  arranca ya con su tamaño) y después solo llega el último, cuando no entra otro en 120 ms; los iguales
-  se descartan. Así una animación del teclado o arrastrar el borde de una ventana no envía un `SIGWINCH`
-  por fotograma. `TerminalSessionHost.resize` ya ignoraba tamaños iguales y llama a
-  `TerminalSession.updateSize`, que redimensiona el emulador y el pty (`TIOCSWINSZ`) sin tocar el
-  proceso: el contenido y el shell se conservan.
-- **Motivo del valor:** 120 ms salta los ~8 fotogramas de la animación del teclado sin notarse como
-  retraso. Es una estimación sin medir.
-- **Dependencias:** `kotlinx-coroutines-core` 1.11.0, declarada explícitamente porque el código la usa
-  directamente (antes llegaba transitiva con `lifecycle`, en 1.9.0), y `kotlinx-coroutines-test` 1.11.0
-  (solo tests). Ambas Apache-2.0. Lint (`NewerVersionAvailable`) falla con 1.9.0 y no aceptaba 1.11.0
-  solo para tests mientras producción resolvía 1.9.0. Se anota en `THIRD_PARTY_NOTICES.md`.
+### D-T04-2 · 2026-10-04 · Resizing with a debounce and without restarting the session
+- **Decision:** layouts go through `Flow.settled(120 ms)`: the first is delivered at once (the shell
+  starts already with its size) and afterwards only the last arrives, when no other comes in 120 ms; equal ones
+  are discarded. This way a keyboard animation or dragging a window's edge does not send a `SIGWINCH`
+  per frame. `TerminalSessionHost.resize` already ignored equal sizes and calls
+  `TerminalSession.updateSize`, which resizes the emulator and the pty (`TIOCSWINSZ`) without touching the
+  process: the content and the shell are kept.
+- **Reason for the value:** 120 ms skips the ~8 frames of the keyboard animation without being noticed as a
+  delay. It is an unmeasured estimate.
+- **Dependencies:** `kotlinx-coroutines-core` 1.11.0, declared explicitly because the code uses it
+  directly (before it arrived transitively with `lifecycle`, at 1.9.0), and `kotlinx-coroutines-test` 1.11.0
+  (tests only). Both Apache-2.0. Lint (`NewerVersionAvailable`) fails with 1.9.0 and did not accept 1.11.0
+  only for tests while production resolved 1.9.0. It is noted in `THIRD_PARTY_NOTICES.md`.
 
-### D-T04-3 · 2026-10-04 · Actividad: sin recreación y redimensionable
-- **Decisión:** `configChanges` añade `navigation|fontScale|layoutDirection|locale` a lo que ya estaba
-  (orientación, tamaños, teclado, `uiMode`, densidad), y `resizeableActivity="true"` es explícito (para
-  `targetSdk` 28 ya es el valor por defecto, pero así no depende de un valor implícito en plegables y
-  multiventana). `ManifestWindowConfigTest` falla si alguien lo quita. El `ViewModel` (y con él el
-  shell) ya sobrevive a una recreación, pero recrear reconstruiría la vista y el campo de entrada.
-- **Descartado:** `androidx.window` / `WindowSizeClass` en este prototipo: el cálculo no depende de
-  clases de tamaño. Se evaluará (licencia Apache-2.0) en T10, cuando el layout de pestañas y paneles
-  dependa del ancho.
+### D-T04-3 · 2026-10-04 · Activity: no recreation and resizable
+- **Decision:** `configChanges` adds `navigation|fontScale|layoutDirection|locale` to what was already there
+  (orientation, sizes, keyboard, `uiMode`, density), and `resizeableActivity="true"` is explicit (for
+  `targetSdk` 28 it is already the default, but this way it does not depend on an implicit value on foldables and
+  multi-window). `ManifestWindowConfigTest` fails if someone removes it. The `ViewModel` (and with it the
+  shell) already survives a recreation, but recreating would rebuild the view and the input field.
+- **Ruled out:** `androidx.window` / `WindowSizeClass` in this prototype: the calculation does not depend on
+  size classes. It will be evaluated (Apache-2.0 license) in T10, when the layout of tabs and panes
+  depends on the width.
 
-### D-T04-4 · 2026-10-04 · Riesgo: `adjustResize` con edge-to-edge
-- **Riesgo:** se mantiene `windowSoftInputMode="adjustResize"` y la app pinta edge-to-edge. Desde API 30
-  el teclado llega como insets y la ventana no se redimensiona; en API 26-29 el comportamiento depende de
-  cómo propague `enableEdgeToEdge` los insets. Si en algún nivel de API el sistema redimensionara la
-  ventana **y** además se restara el teclado como inset, el terminal perdería el alto del teclado dos
-  veces.
-- **Pendiente:** comprobarlo en API 26-29 y 30+ (ver abajo). Si ocurre, la salida es no restar el
-  teclado en las APIs en que `adjustResize` ya lo hace.
+### D-T04-4 · 2026-10-04 · Risk: `adjustResize` with edge-to-edge
+- **Risk:** `windowSoftInputMode="adjustResize"` is kept and the app draws edge-to-edge. From API 30
+  the keyboard arrives as insets and the window is not resized; on API 26-29 the behavior depends on
+  how `enableEdgeToEdge` propagates the insets. If at some API level the system resized the
+  window **and** the keyboard were also subtracted as an inset, the terminal would lose the keyboard's height
+  twice.
+- **Pending:** check it on API 26-29 and 30+ (see below). If it happens, the way out is not to subtract the
+  keyboard on the APIs where `adjustResize` already does it.
 
-### T04: lo que NO se ha validado (sin dispositivo; hace falta una tablet y un móvil reales)
-Cubierto en host (26 tests): cálculo de la rejilla para móvil, tablet vertical y apaisada, pantalla
-dividida, ventana flotante, recorte lateral y teclado; el debounce con tiempo virtual; que el emulador
-real adopta el nuevo tamaño y conserva el contenido y el historial; y los atributos del manifest.
-Sin validar:
-1. `stty size` y `echo $LINES $COLUMNS` coinciden con lo visible tras rotar, entrar/salir de
-   multiventana y de pantalla dividida, abrir/cerrar el teclado y plegar/desplegar.
-2. Que el pty recibe realmente `TIOCSWINSZ` y los programas (`vim`, `tmux`, `htop`) se redibujan.
-3. Que no hay bandas ni huecos: el área ocupa el 100 % bajo las barras en tablet y móvil, con y sin
-   recorte de pantalla, y con la barra de tareas de la tablet.
-4. El comportamiento del teclado en API 26-29 frente a 30+ (D-T04-4) y con teclado físico conectado.
-5. Que la actividad no se recrea en ninguno de esos cambios (el test solo comprueba el manifest).
-6. Que 120 ms de debounce se siente bien y no hace saltar el contenido.
-7. Redimensionar la ventana flotante arrastrando (freeform) en tablets con ese modo.
+### T04: what has NOT been validated (without a device; a real tablet and a phone are needed)
+Covered on the host (26 tests): the grid calculation for phone, portrait and landscape tablet, split
+screen, floating window, side cutout and keyboard; the debounce with virtual time; that the real
+emulator adopts the new size and keeps the content and the history; and the manifest attributes.
+Not validated:
+1. `stty size` and `echo $LINES $COLUMNS` match what is visible after rotating, entering/leaving
+   multi-window and split screen, opening/closing the keyboard and folding/unfolding.
+2. That the pty really receives `TIOCSWINSZ` and the programs (`vim`, `tmux`, `htop`) redraw.
+3. That there are no bands or gaps: the area takes 100 % under the bars on a tablet and a phone, with and without
+   a screen cutout, and with the tablet's taskbar.
+4. The keyboard's behavior on API 26-29 against 30+ (D-T04-4) and with a hardware keyboard connected.
+5. That the activity is not recreated in any of those changes (the test only checks the manifest).
+6. That 120 ms of debounce feels right and does not make the content jump.
+7. Resizing the floating window by dragging (freeform) on tablets with that mode.
 
-## T05 — Room y repositorios
+## T05 — Room and repositories
 
-### D-T05-1 · 2026-10-04 · Room 3 como en UltimateDeck, SQLite del sistema en la app
-- **Decisión:** `androidx.room3` 3.0.3 (las versiones de Deck). En la app, `AndroidSQLiteDriver`
-  (SQLite del sistema); en los tests de host, el `BundledSQLiteDriver` de JVM. Esquema exportado a
-  `app/schemas`, versión 1, sin migración destructiva: subir `UltimateTerminalDatabase.VERSION` exige
-  añadir su migración (lo comprueba `DatabaseSchemaTest`) y un caso en `MigrationTest`.
-- **Motivo:** mismo patrón probado en Deck; el SQLite del sistema no engorda el APK.
-- **Alternativas:** SQLite empaquetado en el APK (más peso); DataStore o JSON a mano (sin esquema ni
-  migraciones verificables).
-- **Impacto:** `MigrationTest` crea una base con cada esquema exportado y la abre con el código
-  actual; hoy solo existe la versión 1.
+### D-T05-1 · 2026-10-04 · Room 3 as in UltimateDeck, the system SQLite in the app
+- **Decision:** `androidx.room3` 3.0.3 (Deck's versions). In the app, `AndroidSQLiteDriver`
+  (the system SQLite); in the host tests, the JVM `BundledSQLiteDriver`. The schema is exported to
+  `app/schemas`, version 1, with no destructive migration: raising `UltimateTerminalDatabase.VERSION` requires
+  adding its migration (checked by `DatabaseSchemaTest`) and a case in `MigrationTest`.
+- **Reason:** the same pattern proven in Deck; the system SQLite does not fatten the APK.
+- **Alternatives:** SQLite bundled in the APK (more weight); DataStore or hand-made JSON (no schema or
+  verifiable migrations).
+- **Impact:** `MigrationTest` creates a database with each exported schema and opens it with the current
+  code; today only version 1 exists.
 
-### D-T05-2 · 2026-10-04 · Ajustes en una tabla clave-valor de Room
-- **Decisión:** `AppSettings` se guarda en la tabla `setting` (`key`, `value` como texto), no en
-  DataStore. Un valor ausente o ilegible cae a su valor por defecto; el *scrollback* se acota a
-  100..1 000 000 al guardar.
-- **Motivo:** los ajustes viajan en la copia de seguridad (T15) junto con el resto de metadatos y
-  quedan en una sola base; no añade dependencia. Una fila dañada no debe romper la app.
-- **Alternativas:** DataStore (otra dependencia y otro fichero que respaldar).
-- **Impacto:** **los nombres de las claves (`SettingKeys`) son parte del formato de backup**: no
-  renombrarlos sin migración.
+### D-T05-2 · 2026-10-04 · Settings in a Room key-value table
+- **Decision:** `AppSettings` is stored in the `setting` table (`key`, `value` as text), not in
+  DataStore. A missing or unreadable value falls back to its default; the *scrollback* is bounded to
+  100..1 000 000 when saving.
+- **Reason:** the settings travel in the backup (T15) together with the rest of the metadata and
+  stay in a single database; it adds no dependency. A damaged row must not break the app.
+- **Alternatives:** DataStore (another dependency and another file to back up).
+- **Impact:** **the key names (`SettingKeys`) are part of the backup format**: do not
+  rename them without a migration.
 
-### D-T05-3 · 2026-10-04 · Rutas siempre relativas y validadas (`FsPath`)
-- **Decisión:** el directorio de cada distro se guarda como ruta relativa a la raíz de
-  almacenamiento (`FsPath`), nunca absoluta. `FsPath` rechaza vacío, absolutas, segmentos vacíos,
-  `.`, `..`, `\` y NUL. Las filas cuya ruta no sea válida (p. ej. de una copia manipulada) no se
-  devuelven.
-- **Motivo:** una copia restaurada en otro dispositivo (T15) no debe depender de dónde esté
-  `filesDir`, y una ruta venida de un backup no debe poder salir de la raíz.
-- **Impacto:** `ui` y `domain` no usan `java.io.File`; la ruta absoluta solo existe como `String` en
-  `FileSystemRepository.absolutePathOf`, para construir la línea de comandos de proot.
+### D-T05-3 · 2026-10-04 · Paths always relative and validated (`FsPath`)
+- **Decision:** each distro's directory is stored as a path relative to the storage
+  root (`FsPath`), never absolute. `FsPath` rejects empty, absolute, empty segments,
+  `.`, `..`, `\` and NUL. Rows whose path is not valid (e.g. from a tampered backup) are not
+  returned.
+- **Reason:** a backup restored on another device (T15) must not depend on where
+  `filesDir` is, and a path coming from a backup must not be able to leave the root.
+- **Impact:** `ui` and `domain` do not use `java.io.File`; the absolute path only exists as a `String` in
+  `FileSystemRepository.absolutePathOf`, to build proot's command line.
 
-### D-T05-4 · 2026-10-04 · `FileSystemRepository` no sigue enlaces simbólicos y copia de forma atómica
-- **Decisión:** si algún componente intermedio de una ruta es un enlace simbólico, la operación se
-  rechaza (`InvalidPath`); los recorridos de árboles no siguen enlaces. `copyRecursively` construye
-  una copia `<destino>.partial` y la renombra (todo o nada; un `.partial` de un cierre anterior se
-  reemplaza). El borrado da permisos de escritura al propietario en directorios de solo lectura. Los
-  ficheros especiales (sockets, pipes, dispositivos) se omiten y los enlaces duros quedan como
-  copias independientes.
-- **Motivo:** un rootfs está lleno de enlaces absolutos (`/var/run -> /run`); seguirlos permitiría
-  borrar o leer fuera de la raíz. Es la propiedad de seguridad más importante de esta capa y tiene
-  tests específicos.
-- **Alternativas:** `Files.copy` simple sin carpeta temporal (deja distros a medias, contra la regla
-  de CLAUDE.md).
-- **Impacto:** T07 (duplicar/eliminar) y T15 (restaurar) deben usar solo esta interfaz.
+### D-T05-4 · 2026-10-04 · `FileSystemRepository` does not follow symbolic links and copies atomically
+- **Decision:** if any intermediate component of a path is a symbolic link, the operation is
+  rejected (`InvalidPath`); tree walks do not follow links. `copyRecursively` builds
+  a `<destination>.partial` copy and renames it (all or nothing; a `.partial` from a previous close is
+  replaced). Deletion gives the owner write permission on read-only directories. Special
+  files (sockets, pipes, devices) are skipped and hard links end up as independent
+  copies.
+- **Reason:** a rootfs is full of absolute links (`/var/run -> /run`); following them would allow
+  deleting or reading outside the root. It is the most important security property of this layer and it has
+  specific tests.
+- **Alternatives:** a plain `Files.copy` without a temporary folder (it leaves distros half done, against CLAUDE.md's
+  rule).
+- **Impact:** T07 (duplicate/delete) and T15 (restore) must use only this interface.
 
-### D-T05-5 · 2026-10-04 · Una única distro predeterminada, garantizada por transacción
-- **Decisión:** la primera distro registrada es la predeterminada. `setDefault` deja exactamente
-  una. Al eliminar la predeterminada, la **más antigua** de las restantes pasa a serlo. Se hace en
-  transacciones del DAO, no con una restricción en la base (SQLite vía Room no ofrece índices
-  parciales).
-- **Motivo:** una pestaña nueva siempre debe tener dónde abrirse; sin esta regla, borrar la
-  predeterminada dejaba el estado sin distro por defecto.
-- **Impacto:** el SPEC no fija este comportamiento; si se prefiere "ninguna", es un cambio de una
-  línea en `deleteAndPromote`.
+### D-T05-5 · 2026-10-04 · A single default distro, guaranteed by a transaction
+- **Decision:** the first registered distro is the default. `setDefault` leaves exactly
+  one. When the default one is deleted, the **oldest** of the remaining ones becomes it. It is done in
+  DAO transactions, not with a constraint in the database (SQLite through Room does not offer partial
+  indexes).
+- **Reason:** a new tab must always have somewhere to open; without this rule, deleting the
+  default one left the state with no default distro.
+- **Impact:** the SPEC does not fix this behavior; if "none" is preferred, it is a one-line
+  change in `deleteAndPromote`.
 
-### D-T05-6 · 2026-10-04 · Nombres únicos sin distinguir mayúsculas; entradas SSH validadas
-- **Decisión:** distros, perfiles, layouts y hosts tienen nombre único sin distinguir mayúsculas
-  (`COLLATE NOCASE` + comprobación transaccional), de 1 a 64 caracteres y sin caracteres de control.
-  El host SSH debe cumplir `[A-Za-z0-9._:%\[\]-]+` y no empezar por `-`; el usuario, un patrón sin
-  espacios ni `-` inicial; el puerto, 1..65535. Perfiles: fuente 6..72 sp, *scrollback* 100..1 000 000.
-- **Motivo:** un host `-oProxyCommand=...` pasado a `ssh` se interpretaría como opción (inyección de
-  argumentos). Se rechaza ya al guardar, además de lo que deba hacer T14 al lanzar el comando.
-- **Impacto:** T14 debe seguir pasando `--` antes del destino aunque los datos ya estén validados.
+### D-T05-6 · 2026-10-04 · Names unique ignoring case; SSH entries validated
+- **Decision:** distros, profiles, layouts and hosts have a name unique ignoring case
+  (`COLLATE NOCASE` + a transactional check), of 1 to 64 characters and with no control characters.
+  The SSH host must match `[A-Za-z0-9._:%\[\]-]+` and not start with `-`; the user, a pattern with no
+  spaces or leading `-`; the port, 1..65535. Profiles: font 6..72 sp, *scrollback* 100..1 000 000.
+- **Reason:** a host `-oProxyCommand=...` passed to `ssh` would be interpreted as an option (argument
+  injection). It is rejected already when saving, in addition to whatever T14 must do when launching the command.
+- **Impact:** T14 must keep passing `--` before the destination even if the data is already validated.
 
-### D-T05-7 · 2026-10-04 · El árbol de paneles se guarda como JSON
-- **Decisión:** `LayoutNode` (`pane` / `split`) se serializa con kotlinx.serialization a una columna
-  de texto, con `type` como discriminador y claves desconocidas ignoradas (un layout de una versión
-  posterior sigue abriéndose). El `ratio` de un `Split` debe estar estrictamente entre 0 y 1; un
-  layout con JSON ilegible o `ratio` inválido no se devuelve en vez de romper la lista.
-- **Alternativas:** tablas relacionales de nodos (más complejas sin ganancia: el árbol siempre se
-  lee y se escribe entero).
-- **Impacto:** el formato JSON de la copia de configuración (T15) puede reutilizar este.
+### D-T05-7 · 2026-10-04 · The pane tree is stored as JSON
+- **Decision:** `LayoutNode` (`pane` / `split`) is serialized with kotlinx.serialization to a text
+  column, with `type` as the discriminator and unknown keys ignored (a layout from a later
+  version still opens). The `ratio` of a `Split` must be strictly between 0 and 1; a
+  layout with unreadable JSON or an invalid `ratio` is not returned instead of breaking the list.
+- **Alternatives:** relational node tables (more complex with no gain: the tree is always
+  read and written whole).
+- **Impact:** the JSON format of the configuration backup (T15) can reuse this one.
 
-### D-T05-8 · 2026-10-04 · Fakes: solo los que ya hacen falta, verificados con el mismo contrato
-- **Decisión:** `FakeDistroRepository` e `InMemoryFileSystemRepository` (en `src/test`) pasan los
-  mismos tests de contrato que las implementaciones reales (`DistroRepositoryContract`,
-  `FileSystemRepositoryContract`), para que un fake no se desvíe de la realidad. No hay fakes de
-  perfiles, layouts, hosts ni ajustes todavía; se añaden cuando una tarea los necesite.
-- **Impacto:** T07 puede probar la instalación de distros sin base de datos ni disco.
+### D-T05-8 · 2026-10-04 · Fakes: only those already needed, verified with the same contract
+- **Decision:** `FakeDistroRepository` and `InMemoryFileSystemRepository` (in `src/test`) pass the
+  same contract tests as the real implementations (`DistroRepositoryContract`,
+  `FileSystemRepositoryContract`), so that a fake does not drift from reality. There are no fakes of
+  profiles, layouts, hosts or settings yet; they are added when a task needs them.
+- **Impact:** T07 can test distro installation without a database or a disk.
 
-### D-T05-9 · 2026-10-04 · Qué NO está validado
-- Todo se verificó en la JVM del host (Room en memoria con SQLite empaquetado, `java.nio` sobre el
-  sistema de ficheros de Linux). **No se ha probado en Android**: el cableado de Hilt (`di/`), el
-  `AndroidSQLiteDriver`, la creación de `files/storage`, y que `java.nio` (enlaces simbólicos,
-  permisos POSIX, `ATOMIC_MOVE`) se comporte igual en el almacenamiento privado de la app.
-- Cobertura de `domain` + `data` en el momento de esta tarea: 99,4 % de líneas y 92,4 % de ramas.
+### D-T05-9 · 2026-10-04 · What is NOT validated
+- Everything was verified on the host JVM (in-memory Room with bundled SQLite, `java.nio` on
+  Linux's file system). **It has not been tested on Android**: the Hilt wiring (`di/`), the
+  `AndroidSQLiteDriver`, the creation of `files/storage`, and that `java.nio` (symbolic links,
+  POSIX permissions, `ATOMIC_MOVE`) behaves the same in the app's private storage.
+- Coverage of `domain` + `data` at the time of this task: 99.4 % of lines and 92.4 % of branches.
 
 ## T11
 
-### D-T11-1 · 2026-10-04 · Un solo enrutador decide qué significa cada entrada
-- **Decisión:** `InputRouter` (en `domain/terminal`) recibe todo lo que llega del teclado (teclas
-  físicas, texto del teclado en pantalla y toques en la fila de teclas extra) y devuelve
-  `RoutedInput`: atajo de la app, tecla para el shell, texto, o nada. `TerminalKeyboard` solo
-  ejecuta ese resultado. Así Ctrl/Alt pegajosos valen igual para los tres orígenes (tocar CTRL y
-  escribir `c` en el teclado en pantalla envía Ctrl+C) y todo se prueba en el host.
-- **Teclas modificadoras solas** (Shift, Ctrl, Alt, Meta, Bloq Mayús...) se ignoran y no gastan un
-  modificador armado.
-- **Alternativas:** dejar la lógica en `TerminalInputView` (no se puede probar en host).
+### D-T11-1 · 2026-10-04 · A single router decides what each input means
+- **Decision:** `InputRouter` (in `domain/terminal`) receives everything that comes from the keyboard (hardware
+  keys, on-screen keyboard text and taps on the extra-keys row) and returns
+  `RoutedInput`: an app shortcut, a key for the shell, text, or nothing. `TerminalKeyboard` only
+  executes that result. This way sticky Ctrl/Alt apply equally to the three sources (tapping CTRL and
+  typing `c` on the on-screen keyboard sends Ctrl+C) and everything is tested on the host.
+- **Modifier keys on their own** (Shift, Ctrl, Alt, Meta, Caps Lock...) are ignored and do not spend an
+  armed modifier.
+- **Alternatives:** leaving the logic in `TerminalInputView` (it cannot be tested on the host).
 
-### D-T11-2 · 2026-10-04 · Ctrl/Alt pegajosos: un toque arma, otro bloquea
-- **Decisión:** cada toque cicla apagado → armado (solo la siguiente tecla) → bloqueado → apagado.
-  "Doble toque = bloqueado" se implementa como un segundo toque mientras sigue armado, sin ventana
-  de tiempo: es determinista y no depende de cuánto tarde el usuario.
-- **Alternativa:** pulsación larga para bloquear (como Termux). Descartada: más difícil de descubrir
-  y de hacer accesible.
-- **Accesibilidad:** el estado (activa para la próxima tecla / bloqueada) se anuncia con
-  `stateDescription`; los nombres hablados de cada tecla están en `strings.xml` (en/es).
+### D-T11-2 · 2026-10-04 · Sticky Ctrl/Alt: one tap arms, another locks
+- **Decision:** each tap cycles off → armed (only the next key) → locked → off.
+  "Double tap = locked" is implemented as a second tap while it is still armed, with no time
+  window: it is deterministic and does not depend on how long the user takes.
+- **Alternative:** a long press to lock (like Termux). Discarded: harder to discover
+  and to make accessible.
+- **Accessibility:** the state (active for the next key / locked) is announced with
+  `stateDescription`; the spoken names of each key are in `strings.xml` (en/es).
 
-### D-T11-3 · 2026-10-04 · Configuración de teclas extra y atajos como texto, sin dependencia nueva
-- **Decisión:** `ExtraKeysConfig` y `ShortcutMap` son modelos puros e inmutables con
-  `serialize()`/`parse()` en texto plano (una fila por línea con ids; `ctrl+shift+t=new_tab`).
-  El `parse` es tolerante: descarta lo desconocido y lo devuelve en una lista de rechazos, y si no
-  queda nada usa el valor por defecto. `ExtraKeysStore` es solo una interfaz: la persistencia
-  (ajustes/Room) la hace otra tarea.
-- **Motivo:** el formato JSON previsto para el backup (SPEC §5) pediría `kotlinx-serialization`,
-  una dependencia nueva que aquí no hace falta. Cuando exista la copia de configuración (T15), estos
-  textos pueden ir tal cual como campos de ese JSON.
-- **Fila por defecto:** dos filas de siete teclas, que caben en 360 dp con el tamaño táctil de 48 dp.
+### D-T11-3 · 2026-10-04 · Extra-keys and shortcut configuration as text, with no new dependency
+- **Decision:** `ExtraKeysConfig` and `ShortcutMap` are pure, immutable models with
+  `serialize()`/`parse()` in plain text (one row per line with ids; `ctrl+shift+t=new_tab`).
+  `parse` is tolerant: it discards what is unknown and returns it in a list of rejections, and if nothing
+  is left it uses the default value. `ExtraKeysStore` is only an interface: persistence
+  (settings/Room) is done by another task.
+- **Reason:** the JSON format planned for the backup (SPEC §5) would need `kotlinx-serialization`,
+  a new dependency that is not needed here. When the configuration backup exists (T15), these
+  texts can go as they are as fields of that JSON.
+- **Default row:** two rows of seven keys, which fit in 360 dp with the 48 dp touch size.
 
-### D-T11-4 · 2026-10-04 · Atajos por defecto y sus choques conocidos
-- **Valores:** Ctrl+Shift+T nueva pestaña, Ctrl+Shift+W cerrar, Ctrl+Tab / Ctrl+Shift+Tab siguiente
-  y anterior, Alt+1..9 ir a la pestaña n, Ctrl+Shift+C / Ctrl+Insert copiar, Ctrl+Shift+V /
-  Shift+Insert pegar, Ctrl+Shift+`+` / Ctrl+Shift+`-` / Ctrl+Shift+0 zoom (más Ctrl+`+` y
-  Ctrl+`-` del teclado numérico).
-- **Choques:** Alt+dígito choca con los argumentos numéricos de readline (la SPEC lo pide, es
-  reasignable). Ctrl+`-` y Ctrl+0 normales **no** se usan para el zoom porque el terminal los
-  necesita (`^_` deshacer en readline).
-- **Regla:** un atajo debe llevar Ctrl o Alt (Shift solo escribe mayúsculas), con la única
-  excepción de Shift+Insert; `bind` y `parse` rechazan lo demás, de modo que un atajo mal
-  configurado no puede quitarle al usuario la escritura normal.
-- **Sin efecto todavía:** los atajos de pestañas salen como eventos (`appShortcuts`) que nadie
-  atiende hasta T09. Copiar, pegar y zoom sí actúan. Con Ctrl+Shift+C y sin selección no se envía
-  nada al shell.
+### D-T11-4 · 2026-10-04 · Default shortcuts and their known clashes
+- **Values:** Ctrl+Shift+T new tab, Ctrl+Shift+W close, Ctrl+Tab / Ctrl+Shift+Tab next
+  and previous, Alt+1..9 go to tab n, Ctrl+Shift+C / Ctrl+Insert copy, Ctrl+Shift+V /
+  Shift+Insert paste, Ctrl+Shift+`+` / Ctrl+Shift+`-` / Ctrl+Shift+0 zoom (plus the numeric keypad's Ctrl+`+` and
+  Ctrl+`-`).
+- **Clashes:** Alt+digit clashes with readline's numeric arguments (the SPEC asks for it, it is
+  reassignable). Plain Ctrl+`-` and Ctrl+0 are **not** used for zoom because the terminal
+  needs them (`^_` undo in readline).
+- **Rule:** a shortcut must carry Ctrl or Alt (Shift only types capitals), with the only
+  exception of Shift+Insert; `bind` and `parse` reject anything else, so a badly
+  configured shortcut cannot take normal typing away from the user.
+- **No effect yet:** the tab shortcuts come out as events (`appShortcuts`) that nobody
+  handles until T09. Copy, paste and zoom do act. With Ctrl+Shift+C and no selection nothing is sent
+  to the shell.
 
-### D-T11-5 · 2026-10-04 · Pegado: se usa el del emulador
-- **Decisión:** no se reimplementa. `TerminalEmulator.paste` ya quita ESC y los C1, convierte los
-  saltos de línea en retorno de carro y envuelve con `ESC[200~ … ESC[201~` si el programa activó el
-  modo bracketed. `PasteTest` lo comprueba con el emulador real, incluido que un texto pegado que
-  contiene `ESC[201~` no puede cerrar el corchete antes de tiempo.
-- **Pendiente:** el texto que llega por `commitText` del teclado en pantalla (autocompletado de
-  texto largo) se envía sin bracketed paste: es escritura, no pegado. Si algún teclado pega así,
-  habrá que tratarlo.
+### D-T11-5 · 2026-10-04 · Paste: the emulator's is used
+- **Decision:** it is not reimplemented. `TerminalEmulator.paste` already strips ESC and the C1s, converts
+  line breaks into carriage return and wraps with `ESC[200~ … ESC[201~` if the program turned on the
+  bracketed mode. `PasteTest` checks it with the real emulator, including that a pasted text
+  containing `ESC[201~` cannot close the bracket early.
+- **Pending:** text that arrives through the on-screen keyboard's `commitText` (long-text
+  autocomplete) is sent without bracketed paste: it is typing, not pasting. If some keyboard pastes that way,
+  it will have to be handled.
 
-### D-T11-6 · 2026-10-04 · Zoom con pellizco: tamaño exacto aparte del mostrado
-- **Decisión:** `FontZoom` guarda el tamaño exacto (entre 8 y 40 sp) y muestra el redondeado a
-  medio punto. Un pellizco lento da muchos factores muy pequeños; redondear cada uno haría que el
-  tamaño no se moviera nunca. Los pasos de atajo son de 1 sp y el reinicio vuelve a 14 sp.
-- **Efecto:** al cambiar el tamaño cambia la celda, y el layout se recalcula (T04) y llega al pty
-  con el debounce de siempre. Sin persistencia todavía.
+### D-T11-6 · 2026-10-04 · Pinch zoom: the exact size apart from the displayed one
+- **Decision:** `FontZoom` keeps the exact size (between 8 and 40 sp) and shows it rounded to
+  half a point. A slow pinch gives many very small factors; rounding each one would make the
+  size never move. Shortcut steps are 1 sp and the reset goes back to 14 sp.
+- **Effect:** when the size changes the cell changes, and the layout is recomputed (T04) and reaches the pty
+  with the usual debounce. No persistence yet.
 
-### D-T11-7 · 2026-10-04 · La fila de teclas extra reserva su alto en el layout
-- **Decisión:** la fila va encima del teclado y las barras; su alto (filas × 48 dp, o 0 si está
-  oculta) se suma al borde inferior con `EdgeInsets.reserveBottom` antes de calcular la rejilla,
-  así el pty no cuenta ese espacio. Alto fijo de 48 dp por fila, el mínimo táctil de accesibilidad.
-- **Fila oculta:** la configuración tiene `visible`; el ajuste que lo cambia llega con T16.
+### D-T11-7 · 2026-10-04 · The extra-keys row reserves its height in the layout
+- **Decision:** the row sits above the keyboard and the bars; its height (rows × 48 dp, or 0 if it is
+  hidden) is added to the bottom edge with `EdgeInsets.reserveBottom` before computing the grid,
+  so the pty does not count that space. A fixed height of 48 dp per row, the accessibility touch minimum.
+- **Hidden row:** the configuration has `visible`; the setting that changes it arrives with T16.
 
-### T11: lo que NO se ha validado (sin dispositivo) y lo que falta
-Cubierto en host (todo en `domain/terminal`): estados pegajosos, catálogo y (de)serialización de
-teclas extra, coincidencia exacta de modificadores y (de)serialización de atajos, el enrutador con
-`KeyEncoder` real (Ctrl+C, Alt+x, Ctrl+flecha...), zoom, reserva de alto y pegado con el emulador
-real.
-Sin validar en dispositivo:
-1. **Tres gestos en el mismo nodo** (toque, desplazamiento vertical, pulsación larga) más el nuevo
-   pellizco. El pellizco va el último en la cadena de `pointerInput` para ver los eventos primero y
-   solo consume con dos o más dedos, pero no se ha comprobado que no compita con el desplazamiento
-   (un dedo que ya arrastró antes de que entre el segundo) ni con la selección.
-2. **IME real:** `commitText`, `setComposingText` y las teclas de otros teclados con Ctrl/Alt
-   pegajosos (un teclado que manda el carácter ya compuesto no pasa por `KeyEvent`).
-3. **Teclado físico real:** que `onKeyDown` reciba Alt+dígito, Ctrl+Tab y Ctrl+Shift+letra (el
-   sistema o el teclado pueden quedárselos), el `numLock` y los teclados no estadounidenses (el
-   código de `+` y de `=` cambia con la distribución).
-4. **La fila de teclas extra:** que tocarla no le quite el foco a la vista de entrada y cierre el
-   teclado; su aspecto; su altura real frente a los 48 dp calculados.
-5. **Rendimiento del zoom:** recrear el `TerminalPainter` en cada paso del pellizco.
-6. **Portapapeles real** con Ctrl+Shift+C/V.
-Falta por hacer:
-- **Ratón y rueda** (reporte de ratón al shell, rueda para el historial): no está en este cambio.
-- **Persistencia y ajuste de la fila y de los atajos:** otra tarea (ajustes, T16).
-- **Efecto de los atajos de pestañas:** T09.
+### T11: what has NOT been validated (without a device) and what is missing
+Covered on the host (everything in `domain/terminal`): sticky states, catalog and (de)serialization of
+extra keys, exact modifier matching and (de)serialization of shortcuts, the router with the
+real `KeyEncoder` (Ctrl+C, Alt+x, Ctrl+arrow...), zoom, height reservation and paste with the real
+emulator.
+Not validated on a device:
+1. **Three gestures on the same node** (tap, vertical scroll, long press) plus the new
+   pinch. The pinch goes last in the `pointerInput` chain to see the events first and
+   only consumes with two or more fingers, but it has not been checked that it does not compete with scrolling
+   (a finger that already dragged before the second one comes in) nor with selection.
+2. **A real IME:** `commitText`, `setComposingText` and the keys of other keyboards with sticky
+   Ctrl/Alt (a keyboard that sends the already composed character does not go through `KeyEvent`).
+3. **A real hardware keyboard:** that `onKeyDown` receives Alt+digit, Ctrl+Tab and Ctrl+Shift+letter (the
+   system or the keyboard may keep them), `numLock` and non-US keyboards (the
+   code of `+` and `=` changes with the layout).
+4. **The extra-keys row:** that tapping it does not take the focus from the input view and close the
+   keyboard; its look; its real height against the calculated 48 dp.
+5. **Zoom performance:** recreating the `TerminalPainter` at every step of the pinch.
+6. **The real clipboard** with Ctrl+Shift+C/V.
+Still to do:
+- **Mouse and wheel** (mouse reporting to the shell, wheel for the history): it is not in this change.
+- **Persistence and setting of the row and of the shortcuts:** another task (settings, T16).
+- **Effect of the tab shortcuts:** T09.
 
-## T08 — Servicio en primer plano y sesiones
+## T08 — Foreground service and sessions
 
-### D-T08-1 · 2026-10-04 · El ciclo de vida de las sesiones es lógica pura en `domain/session`
+### D-T08-1 · 2026-10-04 · The sessions' lifecycle is pure logic in `domain/session`
 
-- **Decisión:** `Sessions` (instantánea inmutable) y `SessionController` (con `SessionFactory`,
-  `SessionHandle` y `ServiceControl` como interfaces) deciden qué sesiones existen, cuál es la activa
-  y cuándo debe correr el servicio. No usan tipos de Android.
-- **Motivo:** CLAUDE.md pide la lógica de negocio en `domain`, y así las reglas de la SPEC RF-07
-  («el servicio vive mientras corra un shell y solo entonces») se prueban en el host.
-- **Reglas:** el servicio corre si hay al menos un shell *en ejecución*; una sesión terminada sigue
-  listada, para poder leer su salida o reiniciarla, pero no mantiene el servicio. Al cerrar la
-  activa se prefiere una en ejecución. Los ids no se reutilizan. Un shell que no puede arrancar queda
-  como sesión terminada con estado `-1`; uno que termina antes de que `start` devuelva se registra
-  igualmente (la sesión se publica antes de arrancar el shell).
-- **Impacto:** `SessionManager` (Android, `@Singleton`) es solo un adaptador fino. La capa Android no
-  tiene tests de host porque necesita un PTY.
+- **Decision:** `Sessions` (an immutable snapshot) and `SessionController` (with `SessionFactory`,
+  `SessionHandle` and `ServiceControl` as interfaces) decide which sessions exist, which one is active
+  and when the service must run. They use no Android types.
+- **Reason:** CLAUDE.md asks for business logic in `domain`, and this way the rules of SPEC RF-07
+  ("the service lives while a shell runs and only then") are tested on the host.
+- **Rules:** the service runs if there is at least one *running* shell; an ended session stays
+  listed, so its output can be read or it can be restarted, but it does not keep the service. When closing the
+  active one, a running one is preferred. Ids are not reused. A shell that cannot start ends up
+  as an ended session with status `-1`; one that ends before `start` returns is registered
+  all the same (the session is published before the shell is started).
+- **Impact:** `SessionManager` (Android, `@Singleton`) is only a thin adapter. The Android layer has no
+  host tests because it needs a PTY.
 
-### D-T08-2 · 2026-10-04 · Tipo de servicio `specialUse`, no `dataSync`
+### D-T08-2 · 2026-10-04 · Service type `specialUse`, not `dataSync`
 
-- **Decisión:** `foregroundServiceType="specialUse"` con el subtipo `terminal_sessions`, más los
-  permisos `FOREGROUND_SERVICE` y `FOREGROUND_SERVICE_SPECIAL_USE`.
-- **Motivo:** ningún tipo estándar describe un terminal. `dataSync` es el que se usa por costumbre,
-  pero está pensado para transferencias finitas y Android 15 le pone un tope de 6 horas por día
-  cuando el `targetSdk` es ≥ 35; cortaría un SSH largo. `specialUse` no tiene tope. La revisión que
-  Google Play exige para `specialUse` no aplica: no se publica allí (SPEC §2).
-- **Alternativas:** no declarar tipo (lo que hace Termux con `targetSdk` 28), válido hoy porque el
-  tipo solo es obligatorio con `targetSdk` ≥ 34; se declara de todos modos para no tener que
-  tocarlo el día que se suba el `targetSdk`.
-- **Impacto:** `ServiceCompat.startForeground` pasa el tipo solo desde API 34. **Sin validar en
-  dispositivo.** Si algún Android rechazara `specialUse` con `targetSdk` 28, la alternativa es quitar
-  el tipo y dejar solo los permisos.
+- **Decision:** `foregroundServiceType="specialUse"` with the subtype `terminal_sessions`, plus the
+  permissions `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_SPECIAL_USE`.
+- **Reason:** no standard type describes a terminal. `dataSync` is the one used by habit,
+  but it is meant for finite transfers and Android 15 puts a cap of 6 hours per day on it
+  when `targetSdk` is ≥ 35; it would cut a long SSH. `specialUse` has no cap. The review that
+  Google Play requires for `specialUse` does not apply: it is not published there (SPEC §2).
+- **Alternatives:** not declaring a type (what Termux does with `targetSdk` 28), valid today because the
+  type is only mandatory with `targetSdk` ≥ 34; it is declared anyway so as not to have to
+  touch it the day the `targetSdk` is raised.
+- **Impact:** `ServiceCompat.startForeground` passes the type only from API 34. **Not validated on a
+  device.** If some Android rejected `specialUse` with `targetSdk` 28, the alternative is to remove
+  the type and keep only the permissions.
 
-### D-T08-3 · 2026-10-04 · El servicio no posee las sesiones; las posee `SessionManager`
+### D-T08-3 · 2026-10-04 · The service does not own the sessions; `SessionManager` does
 
-- **Decisión:** las sesiones viven en un singleton de Hilt con la vida del proceso. El servicio solo
-  mantiene vivo el proceso, muestra la notificación, sostiene el wake lock y se detiene solo.
-  `TerminalViewModel` ya no arranca ni para el shell: se reconecta al activo. Cerrar la actividad
-  con «atrás» no mata el shell mientras el servicio corra.
-- **Motivo:** la UI se reconecta a sesiones vivas tras recrear o cerrar la actividad (SPEC RF-07),
-  y un servicio *bound* o un `Binder` habría añadido un ciclo de vida más sin ganar nada: servicio y
-  actividad comparten proceso.
-- **Detalles:** el contador de fotogramas del ViewModel cuenta cada emisión del host activo, porque
-  los contadores de dos hosts pueden coincidir y la pantalla no se redibujaría al cambiar de
-  sesión. «Salir» en la notificación cierra todas las sesiones y la actividad; después del primer
-  layout el ViewModel no vuelve a crear una sesión por su cuenta, para no resucitar el shell
-  mientras la pantalla se cierra.
-- **Pendiente:** el cambio entre sesiones desde la UI (pestañas) es T09; aquí solo hay una activa a
-  la vez, creada al abrir o desde la notificación.
+- **Decision:** the sessions live in a Hilt singleton with the process's lifetime. The service only
+  keeps the process alive, shows the notification, holds the wake lock and stops itself.
+  `TerminalViewModel` no longer starts or stops the shell: it reconnects to the active one. Closing the activity
+  with "back" does not kill the shell while the service runs.
+- **Reason:** the UI reconnects to live sessions after recreating or closing the activity (SPEC RF-07),
+  and a *bound* service or a `Binder` would have added one more lifecycle for no gain: service and
+  activity share a process.
+- **Details:** the ViewModel's frame counter counts each emission of the active host, because
+  the counters of two hosts can coincide and the screen would not redraw when switching
+  session. "Exit" in the notification closes all the sessions and the activity; after the first
+  layout the ViewModel no longer creates a session by itself, so as not to resurrect the shell
+  while the screen is closing.
+- **Pending:** switching between sessions from the UI (tabs) is T09; here there is only one active at
+  a time, created on opening or from the notification.
 
-### D-T08-4 · 2026-10-04 · Permisos pedidos en contexto y optimización de batería solo como aviso
+### D-T08-4 · 2026-10-04 · Permissions requested in context and battery optimization only as a notice
 
-- **Decisión:** cuando hay un shell en ejecución se muestra, una vez por arranque y como diálogo con
-  explicación, primero el permiso de notificaciones (API 33+) y después el aviso de batería. El
-  orden y las condiciones están en `nextPrompt`, probado. Lo rechazado no se vuelve a pedir en ese
-  arranque (persistirlo, con los ajustes, es T16).
-- **Batería:** se abre `ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS`, la pantalla de ajustes del
-  sistema. **No** se declara `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, que mostraría un diálogo de
-  exclusión directa: la app no se excluye sola y un test lo vigila. Es el «sin exclusión forzada»
-  que pidió el plan.
-- **Notificaciones con `targetSdk` 28:** Android 13+ solo exige el permiso en tiempo de ejecución a
-  apps con `targetSdk` ≥ 33, y a las demás les muestra su propio aviso al crear el canal. La app lo
-  pide explícitamente, con su explicación, antes de que ocurra. **Sin validar en dispositivo** cuál
-  de los dos aparece primero.
-- **Wake lock:** `PARTIAL_WAKE_LOCK` sin tiempo máximo, mientras haya un shell y el ajuste
-  `keepAwake` (modelo de T05) esté activo; se suelta al terminar el último shell y en `onDestroy`.
-  `WakelockTimeout` de Lint está suprimido en ese punto, con motivo: un tope anularía la función.
-  Cambiar el ajuste desde la UI llega con T16.
+- **Decision:** when a shell is running, once per start and as a dialog with an
+  explanation, first the notification permission (API 33+) and then the battery notice are shown. The
+  order and conditions are in `nextPrompt`, tested. What is rejected is not asked again in that
+  start (persisting it, with the settings, is T16).
+- **Battery:** `ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS` is opened, the system's settings screen.
+  `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` is **not** declared, which would show a direct
+  exclusion dialog: the app does not exclude itself and a test watches for it. It is the "no forced
+  exclusion" the plan asked for.
+- **Notifications with `targetSdk` 28:** Android 13+ only requires the runtime permission from
+  apps with `targetSdk` ≥ 33, and shows the others its own notice when the channel is created. The app asks
+  for it explicitly, with its explanation, before that happens. **Not validated on a device** which
+  of the two appears first.
+- **Wake lock:** `PARTIAL_WAKE_LOCK` with no maximum time, while there is a shell and the `keepAwake`
+  setting (the T05 model) is on; it is released when the last shell ends and in `onDestroy`.
+  Lint's `WakelockTimeout` is suppressed at that point, with a reason: a cap would defeat the feature.
+  Changing the setting from the UI arrives with T16.
 
-### D-T08-5 · 2026-10-04 · Phantom process killer (Android 12+): documentado, sin mitigación en código
+### D-T08-5 · 2026-10-04 · Phantom process killer (Android 12+): documented, with no mitigation in code
 
-- **Qué es:** desde Android 12 el sistema limita a 32 los procesos hijo («fantasma») por app y mata
-  el más antiguo al pasarse, **aunque haya un servicio en primer plano**. Cada programa que lance un
-  shell (y con proot, cada programa de la distro) cuenta. Un `tmux` con muchos paneles o varias
-  sesiones con SSH, `ssh` y `top` pueden llegar al límite y morir sin aviso.
-- **Qué hace falta del usuario hoy:** en Android 14 QPR1 y posteriores, Opciones de desarrollador →
-  «Desactivar restricciones de procesos secundarios». En 12–13 solo se desactiva con `adb`
-  (`settings put global settings_enable_monitor_phantom_procs false`, o
+- **What it is:** since Android 12 the system limits child ("phantom") processes to 32 per app and kills
+  the oldest when exceeded, **even with a foreground service**. Every program that launches a
+  shell (and with proot, every program of the distro) counts. A `tmux` with many panes or several
+  sessions with SSH, `ssh` and `top` can reach the limit and die without warning.
+- **What is needed from the user today:** on Android 14 QPR1 and later, Developer options →
+  "Disable child process restrictions". On 12–13 it is only disabled with `adb`
+  (`settings put global settings_enable_monitor_phantom_procs false`, or
   `device_config put activity_manager max_phantom_processes 2147483647`).
-- **Decisión:** la app no puede cambiar ese ajuste (necesita un permiso de sistema), así que no se
-  intenta nada en código. Se documentará en el README y la política de privacidad (T21) y es
-  un punto a explicar en la primera ejecución cuando exista la pantalla de ayuda.
-- **Impacto:** el servicio mantiene vivo el proceso, pero no garantiza que sobrevivan todos sus hijos.
-  **Sin medir:** no se sabe cuántos procesos fantasma cuenta cada shell con proot (T07).
+- **Decision:** the app cannot change that setting (it needs a system permission), so nothing is
+  attempted in code. It will be documented in the README and the privacy policy (T21) and is
+  a point to explain on first run when the help screen exists.
+- **Impact:** the service keeps the process alive, but does not guarantee that all its children survive.
+  **Not measured:** it is not known how many phantom processes each shell with proot counts (T07).
 
-### D-T08-7 · 2026-10-04 · La selección sale del `ViewModel` a `SelectionController`
+### D-T08-7 · 2026-10-04 · The selection moves out of the `ViewModel` into `SelectionController`
 
-- **Decisión:** `SelectionController` (en `terminal/`, como `FontSizeController`) guarda la selección y
-  copia el texto del host activo. `TerminalViewModel` la expone como `selection` y la pantalla llama a
+- **Decision:** `SelectionController` (in `terminal/`, like `FontSizeController`) holds the selection and
+  copies the text of the active host. `TerminalViewModel` exposes it as `selection` and the screen calls
   `viewModel.selection.start/extend/clear/copy`.
-- **Motivo:** detekt (`TooManyFunctions`, 11/11) falló en `TerminalViewModel` al sumar el ciclo de vida
-  de sesiones. No se relajó la regla (CLAUDE.md): se movió la lógica a un colaborador, el patrón que ya
-  usaban el zoom y los atajos.
-- **Impacto:** cambio de API interna sin efecto visible. Sin validar en dispositivo, como el resto.
+- **Reason:** detekt (`TooManyFunctions`, 11/11) failed in `TerminalViewModel` when the session lifecycle was added.
+  The rule was not relaxed (CLAUDE.md): the logic was moved to a collaborator, the pattern that zoom and the
+  shortcuts already used.
+- **Impact:** an internal API change with no visible effect. Not validated on a device, like the rest.
 
-### D-T08-8 · 2026-10-04 · `POST_NOTIFICATIONS` con guarda de `SDK_INT`, y un test corregido
+### D-T08-8 · 2026-10-04 · `POST_NOTIFICATIONS` with an `SDK_INT` guard, and a corrected test
 
-- **Decisión:** el permiso se pide solo si `SDK_INT >= 33`, con una comprobación explícita en lugar de
-  silenciar `InlinedApi`. El diálogo ya solo se mostraba en API 33+, pero Lint no lo sabía.
-- **Test corregido:** `activatingASessionResizesItToTheCurrentLayout` suponía que la sesión no activa
-  recibía el cambio de tamaño, pero tras `newSession()` la activa es la última, así que el
-  comportamiento del controlador era el correcto y el test, erróneo. Ahora comprueba que la sesión
-  inactiva solo se redimensiona al activarla y que la activa lo hace en `onLayout`.
+- **Decision:** the permission is requested only if `SDK_INT >= 33`, with an explicit check instead of
+  silencing `InlinedApi`. The dialog was already only shown on API 33+, but Lint did not know it.
+- **Corrected test:** `activatingASessionResizesItToTheCurrentLayout` assumed that the inactive session
+  received the size change, but after `newSession()` the active one is the last, so the
+  controller's behavior was right and the test, wrong. It now checks that the inactive
+  session is only resized when activated and that the active one is in `onLayout`.
 
-### D-T08-6 · 2026-10-04 · Qué NO está validado en T08
+### D-T08-6 · 2026-10-04 · What is NOT validated in T08
 
-Todo lo que necesita un dispositivo, por la prohibición del usuario: arranque del servicio y su tipo
-en cada versión de Android, la notificación y sus acciones, la reconexión de la UI al cambiar de
-actividad, el wake lock real, el comportamiento tras «Salir» y los diálogos de permisos. En el host
-están probados el ciclo de vida de las sesiones (`SessionsTest`, `SessionControllerTest`), el orden de
-los avisos (`SessionPromptsTest`) y el manifiesto del servicio (`ManifestServiceTest`).
+Everything that needs a device, because of the user's prohibition: the service start and its type
+on each Android version, the notification and its actions, the UI's reconnection when changing
+activity, the real wake lock, the behavior after "Exit" and the permission dialogs. On the host the
+following are tested: the sessions' lifecycle (`SessionsTest`, `SessionControllerTest`), the order of
+the notices (`SessionPromptsTest`) and the service manifest (`ManifestServiceTest`).
 
-## T19 — Versionado y releases
+## T19 — Versioning and releases
 
-### D-T19-1 · 2026-10-04 · Release solo con clave: el workflow se niega a publicar sin firma
-- **Decisión:** `release.yml` falla si `UT_KEYSTORE_BASE64` no está definido; también falla si el
-  `CHANGELOG.md` no tiene notas de esa versión. Sin variables `UT_*`, `assembleRelease` sigue
-  produciendo un APK sin firmar (lo que F-Droid compara).
-- **Motivo:** el workflow de UltimateDeck publicaría un APK sin firmar si faltara el secreto; un
-  usuario no podría actualizar después sobre él.
-- **Impacto:** el primer tag necesita la clave creada y los 4 secretos (ver `RELEASING.md`). No se creó
-  ninguna clave, secreto, tag ni release en esta tarea.
+### D-T19-1 · 2026-10-04 · Release only with a key: the workflow refuses to publish without a signature
+- **Decision:** `release.yml` fails if `UT_KEYSTORE_BASE64` is not defined; it also fails if
+  `CHANGELOG.md` has no notes for that version. Without the `UT_*` variables, `assembleRelease` still
+  produces an unsigned APK (what F-Droid compares).
+- **Reason:** UltimateDeck's workflow would publish an unsigned APK if the secret were missing; a
+  user could not update over it afterwards.
+- **Impact:** the first tag needs the key created and the 4 secrets (see `RELEASING.md`). No key,
+  secret, tag or release was created in this task.
 
-### D-T19-2 · 2026-10-04 · Reproducibilidad: rutas fuera del código nativo
-- **Decisión:** `-ffile-prefix-map=<raíz del proyecto>=.` en las compilaciones C de `:app` (proot y
-  talloc) y de `:terminal-emulator`. No hay marcas de tiempo ni `git describe` en los scripts de
-  build (`PROOT_VERSION` es una constante). NDK y CMake siguen fijados.
-- **Comprobado:** en un clon fuera del repo, ninguna lib de proot ni del emulador contiene la ruta
-  del checkout.
-- **NO comprobado:** que dos máquinas distintas produzcan un APK idéntico bit a bit (`diffoscope`).
-  Queda como paso previo al primer envío a F-Droid (`RELEASING.md`).
+### D-T19-2 · 2026-10-04 · Reproducibility: paths out of the native code
+- **Decision:** `-ffile-prefix-map=<project root>=.` in the C builds of `:app` (proot and
+  talloc) and of `:terminal-emulator`. There are no timestamps or `git describe` in the build
+  scripts (`PROOT_VERSION` is a constant). NDK and CMake stay pinned.
+- **Checked:** in a clone outside the repo, no proot or emulator lib contains the checkout's
+  path.
+- **NOT checked:** that two different machines produce a bit-for-bit identical APK (`diffoscope`).
+  It remains as a step before the first submission to F-Droid (`RELEASING.md`).
 
-### D-T19-3 · 2026-10-04 · `fdroid/com.qtekfun.ultimateterminal.yml` con valores de ejemplo
-- **Decisión:** versión `0.1.0`, `submodules: true`, NDK `28.2.13676358` y `AllowedAPKSigningKeys` con un
-  marcador `REPLACE_WITH_THE_SHA256_OF_THE_RELEASE_CERTIFICATE`. Solo se ofrecen versiones finales
-  (`UpdateCheckMode: Tags ^v…$`, sin `-rc`).
-- **Pendiente:** huella real del certificado, tag real y revisión de antifeatures. Los campos
-  `ndk:` y `submodules:` siguen la sintaxis de fdroiddata pero no se han validado con `fdroid lint`.
-- **Fuera de alcance aquí:** metadatos fastlane y capturas (T20).
+### D-T19-3 · 2026-10-04 · `fdroid/com.qtekfun.ultimateterminal.yml` with example values
+- **Decision:** version `0.1.0`, `submodules: true`, NDK `28.2.13676358` and `AllowedAPKSigningKeys` with a
+  placeholder `REPLACE_WITH_THE_SHA256_OF_THE_RELEASE_CERTIFICATE`. Only final versions are
+  offered (`UpdateCheckMode: Tags ^v…$`, no `-rc`).
+- **Pending:** the real certificate fingerprint, the real tag and a review of the antifeatures. The
+  `ndk:` and `submodules:` fields follow fdroiddata's syntax but have not been validated with `fdroid lint`.
+- **Out of scope here:** fastlane metadata and screenshots (T20).
 
-## T06 — Descarga y verificación de rootfs
+## T06 — Rootfs download and verification
 
-### D-T06-1 · 2026-10-04 · De dónde sale la URL y el hash: el índice oficial de cada distro
-- **Decisión:** el catálogo (`OfficialRootfsCatalog`) no lleva URLs ni hashes escritos en el código.
-  Lee en el momento el índice que publica cada proyecto, y de ahí sale el fichero actual:
+### D-T06-1 · 2026-10-04 · Where the URL and the hash come from: each distro's official index
+- **Decision:** the catalog (`OfficialRootfsCatalog`) carries no URLs or hashes written in the code.
+  It reads, at that moment, the index each project publishes, and the current file comes from there:
   - **Alpine:** `https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/<arch>/latest-releases.yaml`.
-    La entrada `alpine-minirootfs` trae `file`, `version`, `size` y `sha256`. Arquitecturas: `aarch64`,
+    The `alpine-minirootfs` entry carries `file`, `version`, `size` and `sha256`. Architectures: `aarch64`,
     `armv7`, `x86_64`.
-  - **Ubuntu:** `https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/SHA256SUMS`, con líneas
-    `<sha256> *ubuntu-base-<versión>-base-<arch>.tar.gz`. Hay varias versiones puntuales en la misma
-    carpeta, así que se elige la más alta comparando números (24.04.10 > 24.04.9). El índice no da
-    tamaños: el tamaño de Ubuntu es `null` y solo se verifica el hash. Arquitecturas: `arm64`, `armhf`,
+  - **Ubuntu:** `https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/SHA256SUMS`, with lines
+    `<sha256> *ubuntu-base-<version>-base-<arch>.tar.gz`. There are several point releases in the same
+    folder, so the highest one is chosen by comparing numbers (24.04.10 > 24.04.9). The index gives no
+    sizes: Ubuntu's size is `null` and only the hash is verified. Architectures: `arm64`, `armhf`,
     `amd64`.
-  - **Debian:** el rootfs oficial `slim` que construye [debuerreotype] y publica como imagen OCI el
-    repositorio `debuerreotype/docker-debian-artifacts` (ramas `dist-arm64v8`, `dist-arm32v7`,
-    `dist-amd64`). El `image-manifest.json` da el `digest` (SHA-256) y el tamaño de la única capa, y el
-    fichero es `<suite>/slim/oci/blobs/rootfs.tar.gz` (un `tar.gz`, unos 30 MB), servido por
+  - **Debian:** the official `slim` rootfs built by [debuerreotype] and published as an OCI image by the
+    `debuerreotype/docker-debian-artifacts` repository (branches `dist-arm64v8`, `dist-arm32v7`,
+    `dist-amd64`). The `image-manifest.json` gives the `digest` (SHA-256) and the size of the single layer, and the
+    file is `<suite>/slim/oci/blobs/rootfs.tar.gz` (a `tar.gz`, about 30 MB), served by
     `raw.githubusercontent.com`.
-- **Motivo:** las URLs de los mirrors caducan (cada versión puntual sustituye a la anterior y las
-  antiguas se retiran). Descubrirlas en el índice evita publicar una versión de la app solo para
-  actualizar una URL, y el hash viaja siempre junto al fichero que describe.
-- **Alternativas descartadas:**
-  - *URLs y hashes fijos en el código:* se rompen con la siguiente versión puntual.
-  - *Debian con `debootstrap` en el dispositivo:* necesita red, es lento y complejo bajo proot, y deja el
-    resultado sin un hash único que verificar.
-  - *Imágenes cloud de Debian:* son discos `qcow2`/`raw`, no un rootfs.
-  - *`rootfs.tar.xz` del mismo repositorio:* solo existe su `.sha256`; el fichero no está en la rama.
-    El que se publica y se puede descargar es el `tar.gz` de la capa OCI.
-- **Impacto:** se usan las constantes de `RootfsEndpoints` (Alpine `latest-stable`, Ubuntu `24.04` LTS,
-  Debian `trixie`); cambiar de versión mayor es una actualización de la app, a propósito (ver D-T06-4).
+- **Reason:** mirror URLs expire (each point release replaces the previous one and the old ones are
+  withdrawn). Discovering them in the index avoids publishing an app version just to
+  update a URL, and the hash always travels together with the file it describes.
+- **Alternatives discarded:**
+  - *Fixed URLs and hashes in the code:* they break with the next point release.
+  - *Debian with `debootstrap` on the device:* it needs network, is slow and complex under proot, and leaves the
+    result without a single hash to verify.
+  - *Debian cloud images:* they are `qcow2`/`raw` disks, not a rootfs.
+  - *`rootfs.tar.xz` from the same repository:* only its `.sha256` exists; the file is not on the branch.
+    The one that is published and can be downloaded is the OCI layer's `tar.gz`.
+- **Impact:** the constants of `RootfsEndpoints` are used (Alpine `latest-stable`, Ubuntu `24.04` LTS,
+  Debian `trixie`); changing major version is an app update, on purpose (see D-T06-4).
 
 [debuerreotype]: https://github.com/debuerreotype/debuerreotype
 
-### D-T06-2 · 2026-10-04 · Hash sobre HTTPS, sin comprobar firma GPG (riesgo aceptado, a mejorar)
-- **Decisión:** la integridad se basa en el **SHA-256 publicado por el propio proyecto**, obtenido por
-  HTTPS, y en comprobar el tamaño cuando el índice lo da. **No** se verifican las firmas GPG que
-  publican Ubuntu (`SHA256SUMS.gpg`), Alpine (`.asc`) o Debian (`InRelease`).
-- **Motivo:** verificar firmas exige una biblioteca OpenPGP y llevar dentro las claves públicas de cada
-  proyecto (y mantenerlas al día), lo que añade una dependencia y una superficie de errores grande para
-  el MVP.
-- **Riesgo (qué NO protege esto):** quien controle a la vez el mirror (o la cuenta de GitHub, para
-  Debian) y su hash, o rompa la validación TLS, puede servir un rootfs manipulado que pasaría la
-  comprobación. El hash sí protege de descargas corruptas o cortadas, de mirrors que sirven un fichero
-  distinto al del índice y de equivocaciones en la reanudación.
-- **Mejora pendiente (backlog):** comprobar la firma de `SHA256SUMS`/`InRelease` con claves incluidas en
-  la app (y revisar su licencia y distribución). No se hace sin consultar al usuario.
+### D-T06-2 · 2026-10-04 · Hash over HTTPS, no GPG signature check (accepted risk, to improve)
+- **Decision:** integrity relies on the **SHA-256 published by the project itself**, obtained over
+  HTTPS, and on checking the size when the index gives it. The GPG signatures published by Ubuntu
+  (`SHA256SUMS.gpg`), Alpine (`.asc`) or Debian (`InRelease`) are **not** verified.
+- **Reason:** verifying signatures requires an OpenPGP library and shipping each project's public
+  keys (and keeping them up to date), which adds a dependency and a large surface for mistakes for
+  the MVP.
+- **Risk (what this does NOT protect against):** whoever controls both the mirror (or the GitHub account, for
+  Debian) and its hash, or breaks TLS validation, can serve a tampered rootfs that would pass the
+  check. The hash does protect against corrupted or truncated downloads, against mirrors serving a file
+  different from the index's, and against mistakes when resuming.
+- **Pending improvement (backlog):** check the signature of `SHA256SUMS`/`InRelease` with keys included in
+  the app (and review their license and distribution). It is not done without consulting the user.
 
-### D-T06-3 · 2026-10-04 · Debian: manifiesto y capa se leen en dos peticiones sobre una rama que cambia
-- **Riesgo:** `dist-*` es una rama que se reescribe con frecuencia (se republica al reconstruir la imagen).
-  Entre leer el `image-manifest.json` y descargar el `rootfs.tar.gz` puede publicarse una versión nueva,
-  y entonces el hash del manifiesto ya no corresponde al fichero.
-- **Decisión:** no se intenta evitar en T06. El descargador lo trata como lo que es, un `HashMismatch`:
-  borra el parcial y no instala nada. T07 debe **volver a resolver el catálogo y reintentar una vez**
-  antes de mostrar el error. (Se podría fijar a un commit con la API de GitHub, pero añade una consulta
-  con límite de peticiones; se descarta de momento.)
+### D-T06-3 · 2026-10-04 · Debian: manifest and layer are read in two requests over a branch that changes
+- **Risk:** `dist-*` is a branch that is rewritten frequently (it is republished when the image is rebuilt).
+  Between reading the `image-manifest.json` and downloading the `rootfs.tar.gz` a new version may be published,
+  and then the manifest's hash no longer matches the file.
+- **Decision:** it is not attempted to avoid it in T06. The downloader treats it as what it is, a `HashMismatch`:
+  it deletes the partial and installs nothing. T07 must **resolve the catalog again and retry once**
+  before showing the error. (It could be pinned to a commit with the GitHub API, but that adds a request
+  with a rate limit; it is discarded for now.)
 
-### D-T06-4 · 2026-10-04 · Versiones elegidas
-- **Decisión:** Alpine `latest-stable` (se actualiza solo), Ubuntu **24.04 LTS** (la última puntual de
-  esa serie) y Debian **trixie**. `RootfsEndpoints` las agrupa.
-- **Motivo:** una versión estable y con soporte largo es más segura para un usuario que mantiene
-  servidores; Alpine es la que más se mueve y por eso sigue `latest-stable`.
-- **Impacto:** al salir otra LTS o estable hay que cambiar la constante a mano y publicar la app.
+### D-T06-4 · 2026-10-04 · Chosen versions
+- **Decision:** Alpine `latest-stable` (updates itself), Ubuntu **24.04 LTS** (the latest point release of
+  that series) and Debian **trixie**. `RootfsEndpoints` groups them.
+- **Reason:** a stable, long-support version is safer for a user who maintains
+  servers; Alpine is the one that moves the most and that is why it follows `latest-stable`.
+- **Impact:** when another LTS or stable is released the constant has to be changed by hand and the app published.
 
-### D-T06-5 · 2026-10-04 · Protocolo de descarga: parcial, Range, reintentos e instalación atómica
-- **Decisión (`HttpRootfsDownloader`):**
-  - Descarga a `<destino>.part`; el fichero solo aparece en `<destino>` tras verificarlo, con un
-    `ATOMIC_MOVE` en el mismo directorio (existe completo o no existe). Un destino anterior se sustituye.
-  - **Reanudación:** si hay parcial, se pide `Range: bytes=<n>-`. Con `206` se añade al parcial, pero
-    solo si `Content-Range` empieza exactamente en `<n>`; si no, se descarta el parcial y se reintenta.
-    Con `200` (el servidor ignoró el rango) se empieza de cero. Con `416` se verifica el parcial: si ya
-    es el fichero completo se instala, y si no se borra y se reintenta.
-  - **Reintentos:** hasta 4 intentos con espera exponencial (1 s, 2 s, 4 s) ante errores de red, `5xx`,
-    `408` y `429`; el parcial se conserva para continuar. Cualquier otro `4xx` (p. ej. `404`) falla sin
-    reintentar. (OkHttp ya reintenta él solo un primer `408`.)
-  - **Verificación:** el tamaño (si se conoce) y el SHA-256 se comprueban sobre el fichero completo. Si
-    fallan, se **borra el parcial** y se devuelve `SizeMismatch`/`HashMismatch`: no hay reintento, porque
-    repetir la descarga de lo mismo no arregla un hash que no corresponde.
-  - **Cancelación:** se comprueba en cada bloque leído; el parcial se conserva para reanudar después.
-  - Errores con tipos sellados (`RootfsError`/`RootfsResult`), no excepciones hacia la UI.
-- **Motivo:** son las garantías que pedía la spec (RF-04): un fallo de red a mitad no deja una distro
-  corrupta y no se instala nada sin verificar.
+### D-T06-5 · 2026-10-04 · Download protocol: partial, Range, retries and atomic installation
+- **Decision (`HttpRootfsDownloader`):**
+  - It downloads to `<destination>.part`; the file only appears at `<destination>` after verifying it, with an
+    `ATOMIC_MOVE` in the same directory (it exists complete or it does not exist). A previous destination is replaced.
+  - **Resuming:** if there is a partial, `Range: bytes=<n>-` is requested. With `206` it is appended to the partial, but
+    only if `Content-Range` starts exactly at `<n>`; otherwise the partial is discarded and it is retried.
+    With `200` (the server ignored the range) it starts from zero. With `416` the partial is verified: if it is already
+    the complete file it is installed, and if not it is deleted and retried.
+  - **Retries:** up to 4 attempts with exponential backoff (1 s, 2 s, 4 s) on network errors, `5xx`,
+    `408` and `429`; the partial is kept to continue. Any other `4xx` (e.g. `404`) fails without
+    retrying. (OkHttp already retries a first `408` by itself.)
+  - **Verification:** the size (if known) and the SHA-256 are checked over the complete file. If
+    they fail, the **partial is deleted** and `SizeMismatch`/`HashMismatch` is returned: there is no retry, because
+    repeating the download of the same thing does not fix a hash that does not match.
+  - **Cancellation:** it is checked on every block read; the partial is kept to resume later.
+  - Errors with sealed types (`RootfsError`/`RootfsResult`), not exceptions towards the UI.
+- **Reason:** these are the guarantees the spec asked for (RF-04): a network failure midway does not leave a corrupted
+  distro and nothing is installed without verifying.
 
-### D-T06-6 · 2026-10-04 · Solo HTTPS, aplicado en el código
-- **Decisión:** el descargador rechaza (`InsecureUrl`) cualquier URL que no sea `https://`, sin hacer la
-  petición. Un parámetro `requireHttps` (por defecto `true`) existe solo para los tests con
+### D-T06-6 · 2026-10-04 · HTTPS only, enforced in the code
+- **Decision:** the downloader rejects (`InsecureUrl`) any URL that is not `https://`, without making the
+  request. A `requireHttps` parameter (`true` by default) exists only for the tests with
   `MockWebServer`.
-- **Motivo:** con `targetSdk` 28 el tráfico en claro está permitido por defecto en Android, así que no
-  se puede delegar en el sistema.
-
-### D-T06-7 · 2026-10-04 · Dependencias nuevas
-- **Decisión:** OkHttp 5.5.0 (Apache-2.0; arrastra Okio y AndroidX Startup, también Apache-2.0),
-  `kotlinx-serialization-json` 1.11.0 (Apache-2.0) y, solo para tests, `mockwebserver3` y
-  `mockwebserver3-junit5`. Son las mismas versiones y bibliotecas que usa UltimateDeck. Anotadas en
-  `THIRD_PARTY_NOTICES.md`; pasan `licensee` (solo Apache-2.0) y `checkForbiddenDependencies`.
-- **Motivo del JSON:** `org.json` de Android está vacío en los tests de host, y una expresión regular
-  sobre JSON es frágil. El YAML de Alpine y `SHA256SUMS` son formatos planos y se leen a mano, sin
-  añadir un parser de YAML.
-
-### D-T06-8 · 2026-10-04 · Cobertura crítica del paquete `data.rootfs.verify`
-- **Decisión:** `Sha256Verifier` (tamaño y SHA-256) está al **100 % de líneas y ramas** con tests de
-  host que cubren: coincidencia, hash en mayúsculas, tamaño desconocido, tamaño o hash erróneos,
-  fichero mayor que el búfer, fichero vacío, checksum mal formado y fichero ilegible. Las constantes
-  están a nivel de archivo porque en un `companion object` privado Kover contaba el accesor sintético
-  como una línea sin cubrir.
-- **Impacto:** `koverVerifyCritical` mide ya código real; antes el paquete estaba vacío.
-
-### T06: lo que NO está validado
-- Los índices reales se consultaron con `curl` el 2026-10-04 y los tests usan extractos de esas
-  respuestas, pero **la app no ha descargado todavía de los mirrors reales** (sin dispositivo ni
-  autorización para usar la red desde uno). El formato de esos índices puede cambiar.
-- Comportamiento de red real en Android: tiempos de espera (el cliente de OkHttp por defecto corta tras
-  10 s sin datos y se reintenta), cambios de red a mitad, ahorro de datos y la validación TLS del
-  sistema.
-- Que `ATOMIC_MOVE` funcione en el almacenamiento privado de la app en todos los dispositivos (es el
-  mismo directorio, así que debería).
-- La extracción, la elección de arquitectura con `Build.SUPPORTED_ABIS` (`Architecture.fromAbis`) y el
-  reintento por `HashMismatch` de Debian son de T07; aquí solo están las interfaces `RootfsCatalog` y
-  `RootfsDownloader` y sus implementaciones.
-
-## T07 — Instalación y gestión de distros
-
-### D-T07-1 · 2026-10-04 · Una instalación es una transacción: preparar al lado y mover al final
-- **Decisión:** `DistroInstaller` registra la distro como `INSTALLING` **antes** de descargar (así un nombre
-  repetido falla sin gastar datos), descarga y descomprime en `distros-tmp/<token>/` y solo mueve el árbol
-  terminado a `distros/<token>` con un renombrado atómico; después marca la fila `READY`. Cada instalación
-  tiene su propio token (UUID), así que dos instalaciones, o una instalación y los restos de una caída, nunca
-  comparten directorio.
-- **Fallo o cancelación:** un `finally` bajo `NonCancellable` borra el directorio temporal, el destino y la
-  fila. Así, cancelar a mitad de la extracción no deja ni ficheros ni registros (hay un test que cancela con
-  el extractor detenido y comprueba ambas cosas).
-- **Si el proceso muere:** `DistroManager.recoverInterrupted()` borra toda fila que no sea `READY` con sus
-  ficheros y el área temporal. Se llama una vez al arrancar la pantalla, antes de permitir instalar.
-- **Alternativas descartadas:** extraer directamente en el destino y borrar si falla (un corte de energía
-  dejaría una distro a medias que parece válida); no registrar la fila hasta el final (permitiría descargar
-  100 MB para descubrir que el nombre ya existe).
-- **Impacto:** T08 mueve la instalación al servicio en primer plano; la lógica de limpieza no cambia.
-
-### D-T07-2 · 2026-10-04 · Ante un hash que no coincide, se vuelve a resolver el catálogo y se reintenta una vez
-- **Decisión:** cumple lo que pedía D-T06-3. Solo el error `HashMismatch` repite el intento completo (resolver,
-  descargar, verificar, extraer); cualquier otro fallo (red, 404, disco) se muestra sin repetir. Un segundo
-  `HashMismatch` se informa al usuario. Cada intento es una transacción entera, así que el primero ya no deja nada.
-- **Motivo:** la rama de Debian se reescribe a menudo y el hash del índice puede quedar obsoleto entre las dos
-  peticiones. No se repite ante fallos de red para no gastar datos del usuario en bucle.
-- **Riesgo:** un hash incorrecto *real* (un fichero manipulado) también se reintenta una vez; el segundo intento
-  vuelve a fallar y no se instala nada, así que el único coste es una descarga extra.
-
-### D-T07-3 · 2026-10-04 · Extractor propio sobre Apache Commons Compress, solo gzip y tar
-- **Decisión:** `TarGzExtractor` usa `commons-compress` 1.28.0 (Apache-2.0). Solo se leen **gzip y tar plano**,
-  que es lo que publican las tres fuentes de T06. xz, bzip2 y zstd se reconocen por su cabecera y se rechazan
-  con un error que nombra el formato (`ArchiveFormat`), en vez de un fallo genérico.
-- **Dependencias que entran en el APK** (comprobadas con `licensee`, todas Apache-2.0): `commons-compress`
-  1.28.0, `commons-io` 2.20.0, `commons-codec` 1.19.0 y `commons-lang3` 3.18.0. xz, zstd y brotli son
-  opcionales de Commons Compress y **no** se incluyen (reglas `-dontwarn` en R8).
-- **Alternativas descartadas:** `tar` del sistema vía `ProcessBuilder` (no está garantizado en Android y no se
-  puede probar en el host); escribir un lector de tar propio (reinventa un formato con muchas rarezas, PAX,
-  GNU long names…); añadir `xz` (otra dependencia para un formato que ninguna fuente usa hoy).
-- **Impacto:** si una fuente pasa a servir `.tar.xz` hay que añadir `org.tukaani:xz` (dominio público, se
-  puede usar) y quitar el rechazo.
-
-### D-T07-4 · 2026-10-04 · Reglas de seguridad de la extracción (lo más delicado de T07)
-Un rootfs descargado se trata como entrada hostil aunque su hash coincida, porque el hash solo prueba que es
-el fichero que publicó el proyecto, no que sea inofensivo. Reglas (código en `SafeTreeWriter`, probadas con
-tars sintéticos hostiles):
-- **Nada fuera del destino.** Un nombre con `..` se rechaza (`UnsafeEntry`). Las barras iniciales se quitan
-  como hace GNU tar.
-- **Nunca se escribe a través de un enlace simbólico.** Cada directorio padre se comprueba sin seguir enlaces:
-  si es un enlace, se rechaza todo el archivo. Esto cierra el ataque clásico de crear `link -> /ruta/fuera` y
-  luego escribir `link/fichero`.
-- **Los enlaces simbólicos en sí se guardan tal cual**, incluso los absolutos (`/bin/sh -> /bin/busybox`), porque
-  un rootfs normal está lleno de ellos y solo se resuelven dentro de proot, nunca en el sistema anfitrión.
-- **Enlaces duros:** solo hacia un fichero regular ya extraído dentro del destino; hacia fuera, hacia un enlace
-  simbólico o hacia la raíz se rechazan. Si el sistema de ficheros no admite enlaces duros, se copia el contenido.
-- **Un directorio no puede sustituir a un fichero ni al revés**, y un fichero no puede ocupar el sitio de un
-  directorio padre.
-- **Permisos:** se conservan los nueve bits rwx; **se descartan setuid, setgid y sticky**. Los directorios
-  siempre conservan rwx para el propietario (la app) para poder borrarlos; el modo real se aplica al final para
-  que un directorio de solo lectura no bloquee a sus hijos. No se restaura el propietario (todo es de la app).
-- **Dispositivos, sockets y FIFO se omiten** (no se pueden crear sin root) y se cuentan en `skippedSpecialFiles`.
-- **Límites contra bombas de descompresión:** 2 000 000 entradas, 16 GiB y 4096 caracteres por ruta (valores
-  muy por encima de cualquier rootfs real; configurables). Se rechaza un archivo **sin ninguna entrada** (un
-  fichero vacío o equivocado no es una distro).
-- **Un nombre con byte nulo no puede colar una ruta:** Commons Compress corta el nombre en el primer `\0`, como
-  `tar`, de modo que lo que se valida es lo que se escribe. Se comprobó con un tar construido a mano.
-- **Cancelación:** se comprueba entre entradas y cada MiB de datos, así que cancelar responde sin esperar a que
-  termine un fichero grande.
-
-### D-T07-5 · 2026-10-04 · Espacio libre: se comprueba antes de descargar
-- **Decisión:** se exige `max(64 MiB, 5 × tamaño del archivo)` (el archivo se conserva mientras se descomprime y
-  un rootfs ocupa unas 4 veces su tamaño comprimido); si el índice no da tamaño (Ubuntu) se asume 512 MiB.
-- **Motivo:** rechazar con un mensaje claro y el espacio necesario es mejor que llenar el disco y fallar al
-  final. Es una estimación **sin medir en un rootfs real**: queda pendiente de validar.
-
-### D-T07-6 · 2026-10-04 · Duplicar y eliminar son seguros ante interrupciones
-- **Duplicar:** la copia se construye junto a su destino y se renombra (`copyRecursively` de T05); su fila solo
-  pasa a `READY` después. Un fallo o una cancelación dejan sin copia ni fila. La copia no es la distro
-  predeterminada.
-- **Eliminar:** la fila se marca `FAILED` **antes** de borrar ficheros. Si el borrado se interrumpe, la distro
-  se ve como "dañada" (y se puede volver a eliminar) en vez de parecer intacta. No se puede eliminar una distro
-  que se está instalando.
-- **Predeterminada:** solo una distro `READY` puede serlo, para que una pestaña nueva siempre pueda abrirla.
-  Al eliminar la predeterminada, T05 ya pasa la marca a la más antigua que quede.
-
-### D-T07-7 · 2026-10-04 · Pantalla de gestión: mínima y provisional
-- **Decisión:** `DistroScreen` (lista, instalar, renombrar, duplicar, eliminar, predeterminada, progreso y
-  cancelar) sin lógica en los composables: el estado y las acciones están en `DistroViewModel`, con los
-  mensajes de error traducidos en `DistroMessages`. Se abre desde un botón provisional en `MainActivity`
-  que T09 (pestañas) sustituirá. Textos en `values/` y `values-es/`; botones de al menos 48 dp.
-- **La instalación vive en el `ViewModel`**: sobrevive a rotar la pantalla pero **no a cerrar la app**. T08 la
-  pasa al servicio en primer plano. Mientras tanto, si el proceso muere a mitad, `recoverInterrupted()` limpia
-  al arrancar.
-- **Permiso `INTERNET`:** añadido al manifiesto, solo para descargar el rootfs de la distro que el usuario elige
-  instalar. Debe explicarse en `PRIVACY.md` (T21).
-
-### D-T07-8 · 2026-10-04 · Créditos de Apache Commons: el APK no conserva sus avisos, se empaquetan a mano
-- **Hallazgo:** al comprobar el APK, Android Gradle Plugin **no incluye** los `META-INF/NOTICE.txt` ni
-  `LICENSE.txt` de estas librerías (el único `NOTICE` presente es el de Jakarta Injection). La Apache-2.0 exige
-  conservar el aviso al redistribuir en binario.
-- **Decisión:** los textos de las cuatro librerías se copian **sin modificar** a
-  `app/src/main/res/raw/third_party_notices_apache.txt`, con un `keep.xml` para que el *resource shrinker* no los
-  elimine. Se comprobó con `aapt2` en el APK de release que el recurso existe y es idéntico byte a byte al fuente.
-- **Abierto en T07, cerrado en T23 (D-T23-2):** lo mismo puede afectar a **OkHttp y Okio** (T06) y al resto de dependencias que
-  ya estaban en `master`; hay que comprobarlo y, si es así, empaquetar también sus avisos y mostrar una pantalla
-  de licencias. Se deja para decidir; no se amplió el alcance de T07 sin preguntar.
-
-### T07: lo que NO se ha validado (sin dispositivo)
-- **Que la instalación funcione de principio a fin en un dispositivo:** descargar de los mirrors reales,
-  descomprimir un rootfs de verdad (decenas de miles de ficheros) y que `ATOMIC_MOVE` y los enlaces simbólicos
-  funcionen en el almacenamiento privado (ya señalado en D-T05-9).
-- **El tiempo y el espacio reales** de instalar Debian, Ubuntu y Alpine, y si el cálculo de espacio libre
-  (D-T07-5) es acertado.
-- **Que un rootfs extraído por esta vía arranque con proot** (T02 tampoco está validada): los permisos, los
-  enlaces absolutos y la ausencia de dispositivos pueden necesitar ajustes que solo se ven al ejecutarlo.
-- **La pantalla:** el aspecto y el uso real en móvil y tablet, la rotación durante una instalación, los
-  diálogos con el teclado, y TalkBack. Solo se han probado el `ViewModel` y la lógica, no los composables.
-- **Rendimiento de la extracción** con el almacenamiento real, y que cancelar responda a tiempo en un fichero
-  muy grande.
-
-## T09 — Pestañas
-
-### D-T09-1 · 2026-10-04 · Una pestaña es una sesión; el modelo vive en `Sessions`
-**Decisión:** no hay un modelo de pestañas aparte. `SessionInfo` gana `title` (lo que escribe el
-usuario, null = nombre por defecto) y `distroId`, y `Sessions` gana reducers puros: `renamed`,
-`moved`, `switched(TabSwitch)` y `closeAction`. El orden de las pestañas es el orden de `items`.
-**Motivo:** una pestaña no tiene vida propia sin su sesión; un segundo modelo habría que mantenerlo
-sincronizado (¿qué pasa si el shell termina?). Así toda la lógica es inmutable y se prueba en host.
-**Alternativas:** `Tab` separado con referencia a `SessionId` (más piezas, mismo comportamiento).
-**Impacto:** `SessionInfo` cambia con valores por defecto, por lo que el código y los tests de T08
-siguen compilando.
-
-### D-T09-2 · 2026-10-04 · Los cambios puros pasan por `SessionEditor.edit`
-**Decisión:** `SessionController` implementa `SessionEditor` (`state`, `newSession(distroId)`,
-`close`, `edit { ... }`). Renombrar, reordenar y cambiar de pestaña son un `edit` que no toca los
-shells; solo si cambia la pestaña activa se redimensiona el pty que pasa a primer plano al tamaño
-actual (lo mismo que ya hacía `activate`, que ahora es un `edit`).
-**Motivo:** añadir una función por operación al controlador superaba el límite de `TooManyFunctions`
-de detekt (11), que no se relaja, y mezclaba el ciclo de vida de los procesos con ediciones que no
-lo cambian. La interfaz permite probar `TabsController` con el controlador real y fakes.
-**Alternativas:** una función por operación (rompe detekt); `TabsController` dependiendo de
-`SessionManager` (Android, sin pruebas de host).
-
-### D-T09-3 · 2026-10-04 · Cerrar: confirmación solo si el shell sigue vivo
-**Decisión:** cerrar una pestaña cuyo shell ya terminó la cierra sin preguntar; si sigue en marcha,
-`TabsController` guarda la pestaña en `closeConfirmation` y la UI muestra un diálogo; solo al
-confirmar se detiene el shell. Una pregunta sobre una pestaña que desaparece mientras tanto (el
-shell se cerró por otro lado) se descarta sola. Cerrar la última pestaña cierra la app, igual que
-«Salir» de la notificación (comportamiento de T08: sin sesiones, la pantalla se cierra).
-**Motivo:** SPEC RF-02 («al cerrar una sesión con procesos en curso se pide confirmación»); no
-perder trabajo por un toque accidental.
-**Alternativa:** abrir una pestaña nueva al cerrar la última. Más cómodo, pero contradice «Salir» y
-deja el servicio en primer plano sin que el usuario lo pida.
-
-### D-T09-4 · 2026-10-04 · La distro de cada pestaña se registra, pero aún no se usa para arrancar
-**Decisión:** una pestaña nueva se abre en la distro predeterminada si está `READY` (`defaultDistroId`)
-y, si no hay ninguna, en el shell de Android. Una pulsación larga en «+» ofrece elegir entre el shell
-y las distros `READY` (`distroOptions`). El `distroId` queda guardado en la sesión, y «reiniciar» una
-sesión terminada la abre en la misma distro. `AndroidSessionFactory` sigue arrancando el shell de
-Android sea cual sea la distro: enlazar `ProotCommandBuilder` llega con T07, que es quien instala
-distros. «Nueva sesión» de la notificación abre siempre el shell de Android.
-**Motivo:** SPEC RF-02/RF-04; dejar el selector y el modelo listos sin inventar un arranque que aún
-no se puede probar (no hay distros instaladas).
-**Impacto:** cuando T07 enlace el arranque, bastará con que la fábrica lea el `distroId`.
-
-### D-T09-5 · 2026-10-04 · Barra superior o lateral según el ancho, sin dependencia nueva
-**Decisión:** `tabBarPlacement(anchoDp)`: lateral (columna de 192 dp) desde 600 dp, superior (48 dp)
-por debajo. Es el umbral de la clase «medium» de las guías de Material, calculado a mano. El espacio
-de la barra se descuenta del layout del pty con `reserveForTabBar`, igual que la fila de teclas
-extra en T04, de modo que `stty size` debería seguir coincidiendo con lo visible.
-**Motivo:** `WindowSizeClass` es otra dependencia (Apache-2.0) para una sola comparación.
-**Alternativas:** `material3-window-size-class`.
-**Pendiente:** la barra lateral va siempre en el borde izquierdo físico, también con idioma de derecha
-a izquierda (la terminal es de izquierda a derecha); sin validar en dispositivo.
-
-### D-T09-6 · 2026-10-04 · Atajos de pestañas con efecto real
-**Decisión:** `ShortcutHandler` recibe un `TabCommands` y resuelve todos los atajos (ya no existe el
-flujo de «atajos sin manejar»). `Alt+n` selecciona la pestaña n contando desde 1 y no hace nada si no
-existe (no salta a la última como en los navegadores); `Ctrl+Tab` y `Ctrl+Shift+Tab` avanzan y
-retroceden dando la vuelta.
-**Aviso:** `Alt+dígito` choca con los argumentos numéricos de readline (ver T11); se mantiene porque lo
-pide la SPEC y se puede reasignar.
-
-### D-T09-7 · 2026-10-04 · `TerminalViewModel` pasa a ser `@HiltViewModel`
-**Decisión:** recibe `SessionManager` y `DistroRepository` por inyección, en lugar de leer el gestor
-de la clase `Application`. `viewModel()` de Compose usa la fábrica de Hilt de la actividad
-(`@AndroidEntryPoint`), así que no hace falta `hilt-navigation-compose`. Al cambiar la sesión activa
-se vuelve al final del historial y se borra la selección.
-**Limitación:** la posición del scroll es del ViewModel, no de cada pestaña: al volver a una pestaña
-se empieza en la pantalla viva, no donde se dejó.
-**Alternativa:** guardar la posición por sesión (más estado; no se ha pedido).
-
-### D-T09-8 · 2026-10-04 · Qué NO está validado (sin dispositivo)
-Todo se probó con tests de host (380 en total, 47 nuevos de pestañas): reducers, reordenación por
-arrastre (`dropIndex`), estado de la barra, controlador con el `SessionController` real y los
-atajos. No se ha visto la barra en ninguna pantalla. Pendiente en una tablet y un móvil reales:
-1. Que los gestos de cada pestaña (toque, doble toque, pulsación larga + arrastre) no se pisen entre
-   sí ni con el scroll de la barra, y que el doble toque para renombrar se reconozca sin retrasar el
-   toque simple.
-2. Los menús desplegables y los diálogos (renombrar, confirmar cierre) y que el teclado no los tape.
-3. La barra lateral: ancho, desplazamiento con muchas pestañas y la pantalla dividida (umbral de 600 dp).
-4. Que al cambiar de pestaña el pty recibe el tamaño correcto (`stty size` y `SIGWINCH`).
-5. Accesibilidad: descripciones de TalkBack («Shell 2, pestaña 2 de 3, en ejecución»), tamaños
-   táctiles de 48 dp y el rol de pestaña.
-6. El efecto de tener muchas pestañas con el *phantom process killer* de Android 12+ (SPEC §8).
-
-## T10 — Paneles divididos
-
-### D-T10-1 · 2026-10-04 · El árbol de paneles y el foco viven en `Sessions`
-**Decisión:** una pestaña con paneles sigue siendo una sesión (la que la abrió); sus paneles extra
-son otras sesiones de `items` que no salen en la barra. `Sessions` gana `panes: Map<SessionId,
-PaneTab>` (árbol, panel con el teclado y zoom) y `tabs` (lo que muestra la barra). `activeId` pasa
-a ser el panel que tiene el teclado. Las operaciones nuevas (`split`, `focused`, `ratioSet`,
-`swappedPanes`, `zoomToggled`, `closedPane`) son funciones de extensión; los reducers de T09
-(`closed`, `activated`, `switched`, `moved`, `closeAction`) pasan a contar pestañas, no sesiones.
-**Motivo:** una sola fuente de verdad inmutable y probada en host; el servicio, la notificación y el
-tamaño del pty siguen viendo todas las sesiones sin cambios. Las extensiones evitan superar el
-límite de `TooManyFunctions` de detekt (10 funciones en `Sessions`), que no se relaja.
-**Alternativas:** un `Workspace` aparte con `Map<tab, árbol>` (dos modelos que sincronizar cuando un
-shell termina o se cierra); mover `Sessions` a «pestaña = árbol» (reescribe T09 entero).
-**Impacto:** `nextId` pasa de privado a público (hace falta para crear el id del panel nuevo). Con
-panes sin dividir todo se comporta como en T09 (los 380 tests de T09 siguen pasando).
-
-### D-T10-2 · 2026-10-04 · Dos modelos: el de ejecución y el guardado
-**Decisión:** `PaneNode` (hojas = sesiones vivas) es el árbol de ejecución y `LayoutNode` (T05) sigue
-siendo el guardado. `toLayoutNode()` descarta las sesiones y conserva forma y proporciones;
-`paneNodeOf(layout) { sesión }` asigna sesiones nuevas en orden de lectura. No cambia el esquema de
-Room ni `LayoutCodec` (hay un test de ida y vuelta por JSON).
-**Motivo:** el esquema guardado no debe depender de ids de sesión que no sobreviven al proceso.
-Guardar y restaurar layouts con nombre, perfiles y comandos por panel es T12b.
-**Alternativas:** guardar el `PaneNode` (ids efímeros en disco).
-
-### D-T10-3 · 2026-10-04 · Orientación: nombra la línea que divide
-**Decisión:** `HORIZONTAL` es una línea horizontal (el primer panel arriba, el segundo abajo) y
-`VERTICAL` una línea vertical (izquierda y derecha), como en Terminator. «Dividir a la derecha» usa
-`VERTICAL`; «Dividir hacia abajo», `HORIZONTAL`. El panel nuevo va siempre en la segunda mitad.
-**Motivo:** `Layout.kt` (T05) no definía qué significaban; fijarlo ahora evita layouts guardados
-ambiguos. **Impacto:** documentado en `PaneNode`; si se prefiere la otra convención, se cambia en un
-solo sitio antes de que existan layouts guardados.
-
-### D-T10-4 · 2026-10-04 · Geometría pura: la UI dibuja lo que el dominio calcula
-**Decisión:** `paneScene` reparte el área en rectángulos en píxeles enteros (el divisor entre las dos
-mitades, el reparto exacto, sin huecos) y `paneLayouts` calcula la rejilla de cada pty con la misma
-`terminalLayoutFor` de T04. La UI solo coloca cajas en esos rectángulos. El arrastre se mide contra el
-«span» del divisor (`ratioForPointer`) con un tamaño mínimo y ajuste a 50 % (margen de 0,03).
-**Motivo:** lo que se ve y el tamaño que recibe el pty salen de la misma función, así que `stty size`
-debe coincidir con lo visible (a validar en tablet). Se prueba con tamaños de móvil y tablet.
-**Alternativas:** medir cada panel en Compose y avisar al pty desde el `onSizeChanged` (dos fuentes de
-verdad y más difícil de probar).
-
-### D-T10-5 · 2026-10-04 · Tamaño mínimo y aviso en vez de bloqueo
-**Decisión:** un panel no baja de 20 columnas × 4 filas (`canSplit`, `ratioForPointer`). Dividir donde
-no cabe no hace nada y avisa con un toast («No hay espacio suficiente para dividir aquí»); en un
-móvil en vertical se puede dividir hasta ese límite. No se usa `WindowSizeClass`: los paneles se
-pueden crear en cualquier ancho y la barra de pestañas ya cambia a 600 dp (D-T09-5).
-**Motivo:** SPEC RF-02 y la petición del usuario: «en móvil permite splits pero con tamaño mínimo y
-avisos». **Alternativas:** impedir los splits en pantallas estrechas.
-
-### D-T10-6 · 2026-10-04 · Tamaños de pty con debounce, también al arrastrar
-**Decisión:** el controlador envía el tamaño de cada panel con el mismo `settled(120 ms)` de T04
-(ahora genérico) y solo si cambió (`PtySizes`). Al arrastrar un divisor se mueve el dibujo en cada
-fotograma, pero cada shell recibe un único `SIGWINCH` cuando el arrastre se detiene. Una pestaña sin
-dividir sigue dimensionándose con el área completa (`onLayout`); un panel con zoom ocupa toda el
-área. **Motivo:** un `SIGWINCH` por fotograma hace que `vim`/`htop` se redibujen sin parar.
-**Impacto:** al dividir, el panel nuevo arranca con el tamaño completo y recibe el suyo ~120 ms
-después.
-
-### D-T10-7 · 2026-10-04 · Foco, zoom, intercambio y cierre
-**Decisión:** el panel con el teclado lleva un borde (solo si la pestaña está dividida). Tocar otro
-panel le da el teclado; los atajos de T11 mueven el foco por geometría (el vecino más cercano de ese
-lado, y entre ellos el que más se solapa). Zoom: solo se dibuja el panel enfocado, a toda el área,
-sin cerrar los demás. Intercambiar cambia los lugares de dos paneles, no las sesiones. Cerrar un panel
-con el shell vivo pide confirmación; el hermano ocupa el espacio y, si era el panel «propio» de la
-pestaña, el siguiente en orden de lectura pasa a ser la pestaña conservando su sitio y su nombre.
-Cerrar una pestaña cierra todos sus paneles (primero los demás, al final el propio) y la confirmación
-cuenta todos los paneles.
-**Atajos nuevos** (configurables, T11): Ctrl+Shift+O dividir abajo, Ctrl+Shift+E dividir a la derecha,
-Ctrl+Shift+Q cerrar panel (Ctrl+Shift+W sigue cerrando la pestaña), Ctrl+Shift+X zoom y Ctrl+Alt+flecha
-para el foco, para que Alt+flecha siga yendo por palabras en readline. Sin Ctrl/Alt no se aceptan.
-
-### D-T10-8 · 2026-10-04 · Lo que NO se hizo (alcance de T12b)
-Perfiles por panel, layouts guardados con nombre y comando inicial, atajos editables en la interfaz y
-emisión a varios paneles son T12b. «Reiniciar» un panel terminado cierra ese panel y abre una
-pestaña nueva (no lo reinicia en su sitio). El desplazamiento y la selección de texto solo existen
-en el panel con el teclado; los demás se dibujan en vivo y un toque les da el foco. Reordenar
-paneles arrastrándolos tampoco se hizo: se intercambian con el menú del panel o por geometría.
-
-### D-T10-9 · 2026-10-04 · Qué NO está validado (sin dispositivo)
-Todo se probó con tests de host (tests nuevos de árbol, geometría, `Sessions`, controladores y
-atajos): el árbol, el reparto de píxeles, el foco por geometría, los reducers y que cada pty reciba el
-tamaño de su panel. No se ha visto ninguna pantalla con paneles. Pendiente en una tablet y un móvil
-reales:
-1. Que `stty size` coincida con lo visible en cada panel tras dividir, cerrar, arrastrar y hacer zoom.
-2. El arrastre del divisor (zona táctil de 48 dp) y que no compita con el scroll del panel.
-3. Los gestos del panel enfocado (scroll, selección, pellizco) y el toque para dar el foco.
-4. El menú «⋮» y el diálogo de cierre, y que el teclado en pantalla no los tape.
-5. El rendimiento al dibujar varios paneles a la vez (el pintor compartido dibuja uno tras otro).
-6. TalkBack: las descripciones de panel y de separador.
-7. El efecto de tener muchos shells con el *phantom process killer* de Android 12+.
-
-## T12 — Temas, modo OLED y fuentes
-
-### D-T12-1 · 2026-10-04 · Fuente: JetBrains Mono 2.304, incluida sin modificar
-- **Decisión:** el terminal usa JetBrains Mono (Regular, Bold, Italic, Bold Italic) como fuente incluida, en `res/font`.
-- **Motivo:** licencia SIL OFL-1.1 verificada en el repositorio oficial (`Copyright 2020 The JetBrains Mono Project Authors`), compatible con distribuir la fuente dentro de una app GPL-3.0-or-later siempre que no se venda suelta y se incluya el texto de la licencia. Sin *Reserved Font Name*.
-- **Verificado:** los cuatro `.ttf` son idénticos byte a byte (SHA-256) a los de la release oficial `v2.304`. El texto de la OFL y la lista de autores van en el APK (`assets/licenses/`).
-- **Alternativas:** Fira Code, Hack o una Nerd Font (las Nerd Fonts son parches de otras fuentes con licencias mezcladas: más trabajo de verificar). **Impacto:** unos 1,1 MB más en el APK. **Pendiente:** las Nerd Fonts / iconos de powerline, por si el usuario los quiere (no es MVP).
-
-### D-T12-2 · 2026-10-04 · Esquemas incluidos y por qué NO está Tango
-- **Decisión:** vienen Dracula (predeterminado), Solarized Dark, Solarized Light, Gruvbox Dark, Nord y un esquema OLED propio. Se acreditan en `THIRD_PARTY_NOTICES.md` y con el texto MIT completo en `assets/licenses/ColorSchemes-MIT.txt`.
-- **Verificado en los repositorios oficiales:** Solarized (© 2011 Ethan Schoonover, MIT), Dracula (© 2023 Dracula Theme, MIT), Nord (© 2016-presente Sven Greb, MIT) y Gruvbox (© Pavel Pertsev; MIT/X11 según su README y `package.json`, aunque el repositorio no trae un fichero `LICENSE`).
-- **Tango, retirado:** el primer borrador lo incluía como predeterminado diciendo «dominio público». **No pude verificar esa afirmación**: las guías de Tango se publican bajo CC BY-SA 2.5, que no es compatible con GPLv3, y no encontré una declaración clara para la paleta. Al no poder comprobarlo y querer evitar reclamaciones, se quitó. Si más adelante se verifica una fuente clara de licencia, se puede añadir.
-- **Cambios a las paletas:** retoques mínimos de legibilidad, documentados junto a cada esquema en `BuiltInSchemes.kt` y exigidos por el test de contraste: Solarized Light (verde, amarillo y cian 1–2 % más oscuros: los oficiales dan 2,9–3,0:1) y Gruvbox Dark (rojo normal más claro: el oficial `CC241D` da 2,7:1). Los esquemas MIT permiten modificar con atribución.
-- **Impacto:** el esquema predeterminado cambia a Dracula. Un usuario que importe un esquema responde de su origen.
-
-### D-T12-3 · 2026-10-04 · Modo OLED = variante del tema oscuro
-- **Decisión:** `resolveTheme` solo activa OLED cuando el tema resultante es oscuro (`oled = oledBlack && dark`). En OLED, un esquema oscuro pasa a fondo `#000000` puro (`forOled()`); uno claro no se toca.
-- **Motivo:** apagar los píxeles solo tiene sentido en oscuro; un fondo negro con un esquema claro dejaría texto ilegible.
-- **Impacto:** la interfaz Material y la vista del terminal usan la misma decisión.
-
-### D-T12-4 · 2026-10-04 · El esquema se aplica a todas las sesiones, también a las futuras
-- **Decisión:** `SessionManager.applyScheme` delega en `AndroidSessionFactory`, que recuerda el esquema, lo aplica a todos los hosts en marcha y a cada host nuevo antes de arrancar su emulador.
-- **Motivo:** con varias pestañas (T09) un esquema por host dejaría pestañas con colores antiguos. La librería de Termux lee sus colores iniciales de una paleta estática compartida; se escribe ahí y se reinician los colores del emulador activo (los que un programa fijó con OSC 4/10/11 se descartan: el esquema nuevo manda).
-- **Impacto:** la integración con los cambios de T08/T09 se rehízo sobre `master`; el diseño de H, que asumía un único host, no valía tal cual.
-
-### D-T12-5 · 2026-10-04 · No se dibuja nada hasta tener los ajustes
-- **Decisión:** `MainActivity` espera a que lleguen los ajustes guardados (`produceState`) antes de componer la pantalla.
-- **Motivo:** evita un primer fotograma con el esquema y tamaño de fuente por defecto que luego salte a los guardados.
-- **Alternativa:** una pantalla de carga; descartada por ser un instante. **Riesgo:** si el repositorio tardara, se vería la ventana vacía; no medido.
-
-### D-T12-6 · 2026-10-04 · Persistencia y tamaño de fuente
-- **Decisión:** tema, modo OLED, colores dinámicos, esquema elegido, esquemas importados y tamaño de fuente viven en el repositorio de ajustes de T05 (clave-valor). El tamaño del zoom de T11 se restaura una vez y solo se guardan los cambios del usuario, con un *debounce* de 500 ms (un pellizco genera muchos valores).
-- **Importación/exportación:** JSON versionado (`version: 1`) con `kotlinx.serialization`, probado con ida y vuelta. Un fichero de una versión desconocida se rechaza. Un test cazó que, con `encodeDefaults` apagado, `kotlinx.serialization` omitía el campo `version` al exportar (por tener valor por defecto): los ficheros no llevaban versión. Se activó `encodeDefaults`.
-
-### D-T12-7 · 2026-10-04 · Contraste mínimo comprobado en tests
-- **Decisión:** cada esquema incluido debe cumplir: texto sobre fondo ≥ 4,5:1 (WCAG AA), cursor ≥ 3:1, texto sobre selección ≥ 3:1, cada color ANSI sobre el fondo ≥ 3:1 y el «negro brillante» ≥ 1,5:1; y lo mismo en su variante OLED.
-- **Motivo:** una paleta con colores ilegibles es un fallo de accesibilidad; el test lo caza antes de publicar.
-- **Nota:** el umbral de 1,5:1 del negro brillante es deliberadamente bajo: en muchos esquemas es el color de texto «atenuado» y subirlo lo desvirtúa.
-
-### D-T12-8 · 2026-10-04 · Las barras del sistema siguen al esquema
-- **Decisión:** los iconos de las barras de estado y navegación se eligen según el fondo del **esquema** (`SystemBarStyle.auto`), no según el tema del sistema, porque el terminal se dibuja bajo las barras.
-
-### Pendiente de validar en dispositivo (T12)
-Nada de esto se ha visto en pantalla; solo hay tests de host.
-1. Que los colores se ven bien de verdad: contraste real con brillo bajo y al sol, y que OLED apaga los píxeles.
-2. Que el cambio de esquema en caliente repinta todas las pestañas sin reiniciarlas, y los colores que un programa fijó con OSC.
-3. El renderizado de JetBrains Mono: negrita/cursiva con las cuatro variantes, ancho de celda correcto, y que no cambia el tamaño de la rejilla (`stty size`) respecto a la fuente del sistema.
-4. Iconos de las barras del sistema con esquemas claros y oscuros.
-5. La pantalla de ajustes para elegir esquema/tema aún no existe (T16): hoy solo se cambian por el repositorio de ajustes.
-
-## T14 — Hosts SSH y claves
-
-Alcance: lista de hosts guardados con alta/edición/borrado, conexión con un toque en una pestaña
-nueva, y gestión de claves (generar, importar, exportar, borrar) cifradas en reposo. Todo se ha
-probado solo en la JVM del host; ver "T14: lo que NO se ha validado" al final.
-
-### D-T14-1 · 2026-10-04 · `ssh` se lanza como vector de argumentos, sin shell
-**Decisión:** `SshCommand.build` devuelve una lista de argumentos (`ssh -o ServerAliveInterval=30 …
--p <puerto> [-i <clave> -o IdentitiesOnly=yes] -- usuario@host`) que proot ejecuta directamente. No
-hay ninguna cadena de shell, así que no hace falta escapar nada: no existe el intérprete que lo
-leería. Aun así se validan host, usuario y puerto (`Validation`: un host que empieza por `-` se
-leería como opción de `ssh`; no se aceptan espacios ni metacaracteres), `--` termina las opciones
-antes del destino y la ruta de la clave solo puede ser `/tmp/.ut-ssh-<hex>`.
-**Motivo:** una inyección de comandos a través del nombre de un host guardado (o importado de una
-copia de seguridad) sería la vulnerabilidad más obvia de esta función. Eliminar el shell es más
-robusto que escapar bien.
-**Alternativas:** `sh -c "ssh …"` con escapado de comillas (un solo fallo de escapado es una
-ejecución de comandos); `ProxyCommand`/`LocalCommand` quedan fuera: no se emite ninguna opción
-`-o` que ejecute programas.
-**Impacto:** hay tests con entradas hostiles (`;`, `$(…)`, comillas, saltos de línea, `-oProxyCommand=…`,
-rutas con `..`). El nombre del host guardado es solo una etiqueta y nunca llega a la línea de comandos.
-
-### D-T14-2 · 2026-10-04 · Formato de claves: OpenSSH propio, sin librerías nuevas
-**Decisión:** el formato `openssh-key-v1` (clave privada sin passphrase) y la línea `authorized_keys`
-se escriben y leen en `OpenSshKeyFormat`, para Ed25519 y RSA. La importación acepta además PKCS#8 y
-PKCS#1 (solo RSA, que son las claves antiguas habituales) en `PrivateKeyText`. Una clave con passphrase
-se rechaza con un mensaje que explica cómo quitarla (`ssh-keygen -p`). No se admiten ECDSA, DSA ni
-certificados, ni Ed25519 en PKCS#8.
-**Motivo:** `ssh` necesita ese formato y la API de criptografía de la plataforma no lo produce. Es
-poco código (unos 200 líneas) y se prueba contra claves reales de `ssh-keygen`; BouncyCastle añadiría
-~2 MB y una licencia más para algo que no necesitamos.
-**Alternativas:** BouncyCastle (descartada por peso); generar las claves dentro de la distro con
-`ssh-keygen` (la clave nacería en texto plano en el rootfs, justo lo que se quiere evitar).
-**Impacto:** Ed25519 en PKCS#8 no se puede importar porque habría que derivar la clave pública de la
-semilla y el JDK no lo expone. Quien tenga una clave así la convierte con `ssh-keygen -p -m RFC4716`.
-
-### D-T14-3 · 2026-10-04 · Generación con la criptografía de la plataforma; Ed25519 solo desde Android 13
-**Decisión:** `JcaSshKeyGenerator` usa `KeyPairGenerator` (RSA de 3072 bits en todas las versiones;
-Ed25519 donde la plataforma lo tiene, Android 13 o posterior). La pantalla solo ofrece los tipos que
-`supportedTypes` dice que el dispositivo soporta. La generación RSA corre fuera del hilo principal.
-**Motivo:** `minSdk` 26 no tiene Ed25519 en `java.security`. RSA 3072 tarda unos segundos en un móvil;
-4096 podía tardar medio minuto.
-**Alternativas:** BouncyCastle para Ed25519 en API 26–32 (ver D-T14-2); ofrecer solo RSA.
-**Impacto:** en Android 8–12 el único tipo para generar es RSA. Importar Ed25519 funciona en todas.
-
-### D-T14-4 · 2026-10-04 · Cifrado en reposo: AES-256-GCM con una clave del Android Keystore
-**Decisión:** la clave privada (texto OpenSSH) se sella con `AesGcmSecretBox`: AES-256-GCM, IV de 12
-bytes aleatorio, formato `versión | longitud del IV | IV | texto cifrado + etiqueta`. El alias de la
-clave va como dato autenticado, así que un blob no se puede mover a otra clave. La clave AES está en
-el Android Keystore (`KeystoreSecretKey`, no exportable). Cada clave son dos ficheros en
-`files/storage/ssh-keys/`: `<alias>.key` (sellado, 0600) y `<alias>.meta` (JSON con nombre, tipo, clave
-pública y huella; el alias es el nombre del fichero). El `.meta` se escribe el último: una clave cuya
-escritura se interrumpió no aparece en la lista.
-**Motivo:** el Keystore impide sacar la clave del dispositivo, así que un volcado del almacenamiento (o
-una copia de seguridad) no revela las claves privadas. El formato y las comprobaciones de integridad
-se prueban en la JVM con una clave en memoria; solo el Keystore real necesita un dispositivo.
-**Alternativas:** `EncryptedFile`/Jetpack Security (obsoleto); exigir autenticación biométrica para
-cada uso (`setUserAuthenticationRequired`): mejor seguridad pero rompe la conexión de un toque.
-**Impacto:** como la clave del Keystore no sale del dispositivo, las claves de SSH **no se pueden
-restaurar tal cual en otro móvil** con la copia de seguridad (T15). Habrá que exportarlas (descifradas,
-con aviso) o cifrarlas con una contraseña del usuario, como ya hace Deck con las sesiones.
-
-### D-T14-5 · 2026-10-04 · Cómo llega la clave a `ssh`: un fichero temporal 0600 en el rootfs
-**Decisión:** al conectar, `SshConnector` descifra la clave y la escribe en
-`<rootfs>/tmp/.ut-ssh-<16 hex aleatorios>` (solo legible por la app, escritura atómica), pasa
-`-i /tmp/.ut-ssh-…` a `ssh` y borra el fichero cuando la sesión termina o se cierra. Los ficheros que
-deje un cierre brusco se borran al iniciar la siguiente conexión, salvo los de sesiones vivas. Las
-rutas pasan por `FileTrees.resolveInside`, que rechaza un enlace simbólico en el camino: el `/tmp` de un
-rootfs ajeno no puede apuntar fuera del almacenamiento.
-**Motivo:** `ssh -i` necesita un fichero. Es lo más simple que funciona con cualquier distro.
-**Alternativas:** `ssh-agent` dentro de la distro con `ssh-add -` leyendo la clave por la entrada
-estándar (la clave no llegaría a un fichero, pero hace falta orquestar el agente y su socket en cada
-pestaña); una FIFO (`ssh` abre la clave más de una vez); la variable de entorno (visible en
-`/proc/<pid>/environ`). El agente es la mejora natural si el modelo de amenazas lo pide.
-**Impacto:** la clave está en claro en el almacenamiento privado mientras dura la sesión (ver D-T14-6).
-
-### D-T14-6 · 2026-10-04 · Modelo de amenazas
-**Protege contra:** un volcado del almacenamiento o una copia de seguridad del sistema con la app
-cerrada (las claves están selladas con una clave que no sale del Keystore); una clave que acabe en
-un log (los tipos de clave no imprimen sus campos, y la interfaz solo recibe partes públicas); un host
-con caracteres de shell o que se lea como opción de `ssh` (D-T14-1); un `/tmp` enlazado fuera del
-almacenamiento; borrar una clave que aún usa un host.
-**No protege contra:** otra app con el mismo UID (ninguna) o con root en el dispositivo, que pueden leer
-el fichero temporal de la clave mientras la sesión está abierta o la memoria del proceso; un dispositivo
-desbloqueado en manos de otra persona (no se pide autenticación para usar la clave, ver D-T14-4);
-programas dentro de la distro, que pueden leer `/tmp/.ut-ssh-…` mientras dura la sesión; que el
-usuario guarde la clave privada exportada en un sitio inseguro (la pantalla avisa antes).
-**Impacto:** es un nivel parecido al de `~/.ssh/id_*` sin passphrase en cualquier Linux, con la
-ventaja de que en reposo está cifrada.
-
-### D-T14-7 · 2026-10-04 · Hueco encontrado: nada conectaba proot con las sesiones
-**Decisión:** T09 y T07 dejaron el `distroId` guardado en cada pestaña, pero `AndroidSessionFactory`
-solo sabía arrancar el shell de Android; `ProotCommandBuilder` (T02) no estaba en la inyección. T14 lo
-necesita para ejecutar `ssh` en una distro, así que añade el mínimo: `SessionLaunch` (comando, entorno
-y limpieza), `LaunchingSessionFactory` (una factoría que además sabe ejecutar un comando),
-`SessionController.newSession(distroId, launch)` y `DistroLaunchFactory`, que arma la línea de proot.
-`ProotCommandBuilder` queda inyectado en `SshModule`.
-**Motivo:** sin esto el botón "Conectar" no podría abrir nada.
-**Alternativas:** cambiar la firma de `SessionFactory` (rompía los tests de T08 y T09).
-**Impacto:** **las pestañas normales de una distro siguen abriendo el shell de Android**: lanzar proot
-en una pestaña sin comando es la misma pieza pero no se ha conectado al botón "+" de la barra
-(`TabsController.newTabIn`) para no tocar T09. Queda como tarea pendiente y es lo primero que habrá
-que hacer para que las distros sirvan para algo más que `ssh`. Tampoco hay "reiniciar" para una
-pestaña de `ssh`: `restartActive` abre un shell de Android.
-
-### D-T14-8 · 2026-10-04 · DNS dentro de proot
-**Decisión:** antes de conectar, `SshConnector` escribe `/etc/resolv.conf` del rootfs con
-`1.1.1.1` y `9.9.9.9` si falta o está vacío. No toca uno que el usuario haya configurado.
-**Motivo:** Android no tiene un `resolv.conf` que compartir y el de un rootfs recién instalado no
-funciona (el de Ubuntu es un enlace a un fichero que no existe), así que `ssh servidor.ejemplo`
-fallaría al resolver el nombre aunque la red funcione.
-**Alternativas:** leer los DNS del sistema (una app no puede, desde Android 8); montar uno propio con
-`-b`; no hacerlo (solo funcionarían las IP).
-**Impacto:** hay una decisión de privacidad: los nombres se resuelven con esos resolutores públicos,
-no con los de la red del usuario. Es solo para la distro. **Debería ser configurable** (T16).
-**Sustituida por D-T08b-6 (2026-10-04):** ahora hay un único mecanismo para todas las pestañas. Se usan los
-DNS de la red activa y `1.1.1.1`/`9.9.9.9` solo como último recurso. `SshConnector` ya no escribe nada en el
-rootfs. Nota sobre la alternativa descartada aquí: una app sí puede leer los DNS del sistema con
-`ConnectivityManager.getLinkProperties` (lo que no puede desde Android 8 es leer `net.dns1` con `getprop`).
-
-### D-T14-9 · 2026-10-04 · Pantallas, ViewModels y punto de entrada
-**Decisión:** dos pantallas (hosts y claves) con un ViewModel cada una (`SshViewModel`,
-`SshKeysViewModel`); la lista de claves de la pantalla de hosts es de solo lectura. La exportación de
-la clave privada y la importación desde fichero usan el selector del sistema (`CreateDocument` y
-`OpenDocument`), con un aviso antes de guardar la privada. La clave pública se copia al portapapeles.
-Una clave en uso por algún host no se puede borrar (`KeyInUse`). Botón "SSH" provisional junto al de
-"Distros" en `MainActivity`; debe ir al menú de "nueva pestaña" que T09 posee (como D-T07-7).
-**Motivo:** el límite de funciones por clase de detekt, y que cada pantalla tenga un solo trabajo.
-**Alternativas:** un único ViewModel (superaba el límite de funciones).
-**Impacto:** hosts sin clave abren `ssh` normal y piden la contraseña en la terminal.
-
-### D-T14-10 · 2026-10-04 · `known_hosts` y verificación de la clave del servidor
-**Decisión:** no se toca. `ssh` pregunta por la huella la primera vez y guarda `known_hosts` en
-`~/.ssh` del rootfs, como en cualquier Linux. No se pasa `StrictHostKeyChecking=no`.
-**Motivo:** desactivarlo anularía la protección contra un servidor suplantado.
-**Impacto:** el historial vive en el rootfs, así que viaja con la copia de seguridad de la distro.
-
-### D-T14-11 · 2026-10-04 · Verificado contra OpenSSH real, en el host
-**Decisión:** además de los tests unitarios, el formato de claves se contrastó con `ssh-keygen` y
-`sshd` de OpenSSH 10.2 en la máquina de desarrollo (no en un dispositivo): se leyeron claves
-generadas por `ssh-keygen` (OpenSSH Ed25519 y RSA, PKCS#1, PKCS#8) y las huellas coincidieron con
-`ssh-keygen -l`; `ssh-keygen -y` aceptó las copias que escribe `OpenSshKeyFormat` y dedujo la misma
-clave pública; las claves Ed25519 y RSA 3072 generadas por `JcaSshKeyGenerator` fueron aceptadas por
-`ssh-keygen`, y un `sshd` de usuario en el puerto 2222 de loopback las admitió con la misma forma de
-comando que construye `SshCommand` (`-p … -i … -o IdentitiesOnly=yes -- usuario@host`) y rechazó una
-clave ajena. Una clave ECDSA y las dos con passphrase (PEM y OpenSSH) se rechazaron con el error
-esperado.
-**Motivo:** que un formato "parezca" correcto no basta: solo `ssh` real dice si lo acepta.
-**Impacto:** no se commitean claves de prueba (un escáner de secretos las marcaría); el contraste se
-hizo con claves desechables y no es un test automático. Los tests unitarios cubren el round trip,
-la corrupción y los casos hostiles; si cambia el formato hay que repetir esta comprobación a mano.
-
-### T14: lo que NO se ha validado (sin dispositivo)
-- **Keystore real:** que `KeystoreSecretKey` cree la clave AES-256 y que `AesGcmSecretBox` selle y
-  abra con ella en Android 8 a 16 (el formato se probó con una clave en memoria, no con el Keystore).
-- **Generación en el móvil:** el tiempo real de RSA 3072 en un móvil de gama baja, y que Ed25519 esté
-  disponible en Android 13 o posterior (`supportedTypes` lo decide en tiempo de ejecución).
-- **`ssh` dentro de proot:** que la distro tenga `openssh-client` (no se instala; el usuario debe hacer
-  `apt install openssh-client` o `apk add openssh`; la pantalla no lo avisa todavía), que proot ejecute
-  `ssh` con la línea de `DistroLaunchFactory`, que `-i` acepte el fichero 0600 cuando proot simula root
-  (propietario y permisos vistos desde dentro) y que la red y el DNS funcionen (D-T14-8).
-- **Limpieza de la clave:** que el fichero temporal desaparezca al cerrar la pestaña y al morir el
-  proceso, y que los restos se borren en la siguiente conexión.
-- **Selector de archivos del sistema** (importar y exportar) y el portapapeles; la rotación con los
-  diálogos abiertos (`HostDraft` se guarda con `listSaver`); TalkBack y los 48 dp.
-- **Pestañas normales de una distro**: siguen abriendo el shell de Android (D-T14-7).
-
-## T13 — Acceso a los archivos del dispositivo
-
-### D-T13-1 · 2026-10-04 · Qué se monta y dónde
-- **Decisión:** con la función activada, cada sesión de proot recibe `~/storage/shared` (todo el almacenamiento compartido) y atajos a las carpetas habituales que existan en el dispositivo: `downloads` (Download), `dcim`, `documents`, `pictures`, `music` y `movies`. El origen es `Environment.getExternalStorageDirectory()` (normalmente `/storage/emulated/0`), no `/sdcard`, que es un enlace simbólico.
-- **Motivo:** `~/storage/downloads` es lo que pide la SPEC (RF-05) y `shared` cubre cualquier otra carpeta sin tener que listarlas todas. Solo se montan las carpetas que existen para no enseñar atajos rotos.
-- **Alternativas:** montar solo Descargas (poco útil); montar `/sdcard` directamente en `~/storage` (no deja sitio para los atajos).
-- **Impacto:** el cálculo vive en `domain/storage` (`SharedStoragePlanner`) y se aplica con `ProotSession.withSharedStorage`.
-
-### D-T13-2 · 2026-10-04 · Ajuste global, no por distro
-- **Decisión:** un solo interruptor (`AppSettings.sharedStorage`, clave `shared_storage`, desactivado por defecto) para todas las distros.
-- **Motivo:** la SPEC dice «por distro/ajuste»; el permiso de Android es del app entero, así que un interruptor por distro solo añadiría una pantalla sin dar más control real.
-- **Alternativas:** una columna en la tabla de distros (migración de Room y pantalla por distro). Se puede añadir más tarde sin romper nada.
-- **Impacto:** la clave entra en el backup de ajustes (T15) con el resto.
-
-### D-T13-3 · 2026-10-04 · Permiso: READ/WRITE_EXTERNAL_STORAGE, sin MANAGE_EXTERNAL_STORAGE (NO verificado en hardware)
-- **Decisión:** al activar el interruptor se piden `READ_EXTERNAL_STORAGE` y `WRITE_EXTERNAL_STORAGE`, y solo entonces. No se declara ni se pide `MANAGE_EXTERNAL_STORAGE`. Si el usuario ya concedió «acceso a todos los archivos» en los ajustes del sistema, también se acepta (`Environment.isExternalStorageManager()`).
-- **Motivo (hipótesis, sin comprobar en un dispositivo):** la app apunta a la API 28 a propósito (SPEC §2). A esa versión Android la trata como app con almacenamiento «clásico» y deja que un proceso lea y escriba por ruta con el permiso de siempre; es el modelo de Termux, que también apunta a 28. Pedir `MANAGE_EXTERNAL_STORAGE` obligaría a mandar al usuario a una pantalla de ajustes, es un permiso muy amplio y Google Play lo restringe; no hace falta si lo anterior funciona.
-- **Riesgos conocidos:** (1) en Android 13 y posteriores los permisos de almacenamiento se dividieron por tipo de medio y puede que, para una app que apunte a una versión anterior, el sistema solo conceda fotos, vídeo y audio y no Descargas ni Documentos; (2) desde Android 11 `Android/data` y `Android/obb` quedan fuera de alcance; (3) el sistema de archivos del almacenamiento compartido no admite enlaces simbólicos, bits de ejecución ni `chmod`, así que `ln -s`, `chmod +x` y los ejecutables dentro de `~/storage` fallarán o no tendrán efecto (igual que en Termux), y `--link2symlink` no puede emular enlaces duros allí.
-- **Plan si falla:** ofrecer «acceso a todos los archivos» con `ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION`. El código ya lo reconoce como permiso concedido; solo habría que declarar el permiso y añadir el botón. Queda pendiente de decidir tras probarlo en una tablet real.
-- **Para PRIVACY.md (T21):** el permiso solo se pide cuando el usuario activa la función; sirve para que las distros lean y escriban sus carpetas compartidas; ningún dato sale del dispositivo por ello. Ojo: el permiso está **declarado** en el manifiesto aunque la función esté apagada, y por eso aparece en la lista de permisos de la app.
-
-### D-T13-4 · 2026-10-04 · Degradar, no fallar
-- **Decisión:** si el permiso no está concedido, el almacenamiento no está montado o no se pueden crear los puntos de montaje, el plan queda como `Degraded(motivo)`, la sesión arranca igual y sin `~/storage`. Con la función apagada ni siquiera se consulta el permiso.
-- **Motivo:** un terminal que no abre por un permiso revocado es peor que uno sin `~/storage`.
-- **Impacto:** el aviso al usuario hoy es el texto bajo el interruptor («permiso no concedido»). El aviso al abrir una sesión llegará cuando el arranque de proot se conecte (ver siguiente punto).
-- **Importante, sin conectar:** todavía no hay ningún sitio que lance proot con una distro (T07 instala y T08 gestiona sesiones con el shell de Android). `SharedStorageMounts.prepare(...)` y `withSharedStorage(...)` están listos y probados, pero **nadie los llama aún**. Quien conecte proot a las sesiones debe usarlos; hasta entonces el interruptor se guarda pero no tiene efecto en una sesión.
-
-### D-T13-5 · 2026-10-04 · Los puntos de montaje se crean por el repositorio de ficheros
-- **Decisión:** los directorios vacíos donde proot monta (`<distro>/rootfs/root/storage/...`) se crean con `FileSystemRepository.createDirectories` y rutas validadas `FsPath`, en cada arranque (es idempotente). Se hace para que `ls ~/storage` los muestre: proot no inventa entradas en un directorio.
-- **Impacto:** no hay `java.io.File` en `domain` ni `ui`. Se hizo público `DistroInstaller.UNPACKED_NAME` (`rootfs`) para no duplicar la constante (cambio mínimo en código de T07).
-
-### D-T13-6 · 2026-10-04 · El código de Android va en `platform`, fuera de la cobertura
-- **Decisión:** `AndroidSharedStorageAccess` (permiso, ruta, `File.isDirectory`) está en `com.qtekfun.ultimateterminal.platform`, sin lógica propia. Kover solo mide `domain` y `data`, así que no cuenta; la lógica que decide está toda en `domain.storage` con tests.
-- **Motivo:** no se puede ejecutar en la JVM del host y un test que lo simule solo probaría el simulacro.
-- **Nota:** `Environment.getExternalStorageDirectory()` está obsoleta (API 29) y se usa con `@Suppress("DEPRECATION")` porque dar una ruta a un proceso nativo es justo lo que `targetSdk` 28 permite.
-
-### T13: lo que NO se ha validado (sin dispositivo)
-1. Que el diálogo de permiso salga y que, concedido, `/storage/emulated/0` se pueda leer y escribir desde proot (ver D-T13-3 y sus riesgos), en la tablet (API 31) y en Android 13 o posterior.
-2. El criterio de la SPEC: `cp /var/log/syslog ~/storage/downloads/` aparece en Descargas.
-3. Que proot monte (`-b`) esas rutas con `--link2symlink` y `--kill-on-exit` sin error, y que `ls ~/storage` muestre los puntos de montaje.
-4. La pantalla: el interruptor, el cambio del permiso en los ajustes del sistema mientras la app está en segundo plano y el botón «Abrir ajustes de la app».
-5. Que desactivar el interruptor no deje montajes colgados en una sesión ya abierta (cambia al abrir la siguiente).
-
-## T08b — Conectar proot a las sesiones
-
-Contexto: tras T07 (instalar distros), T09 (pestañas) y T13 (montajes) nadie lanzaba proot: la fábrica de sesiones
-arrancaba siempre `/system/bin/sh`. T08b une las piezas. **Nada de esto se ha ejecutado en un dispositivo**: todas las
-decisiones sobre el comportamiento real de proot son hipótesis hasta la primera prueba en la tablet (D-T08b-8).
-
-### D-T08b-1 · 2026-10-04 · Un planificador puro decide; la fábrica solo ejecuta
-- **Decisión:** `ProotSessionPlanner` (`data/proot`) recibe el `distroId` de la pestaña (null = shell de Android) y devuelve un `LaunchPlan`: `AndroidShell`, `FallbackToAndroid(aviso)`, `InDistro(proot, aviso?)` o `Failed(problema)`. No toca procesos. `AndroidSessionFactory` lo ejecuta. Solo se usa cuando el que abre la pestaña **no** trae un `SessionLaunch` propio (ver D-T08b-9).
-- **Motivo:** todas las reglas (qué distro, qué usuario, qué montajes, qué errores) quedan probadas en la JVM. Lo único que necesita un dispositivo es el `fork/exec`.
-- **Alternativas:** decidir dentro de `TerminalSessionHost` (imposible de probar sin PTY); un `runBlocking` en el hilo principal (bloquearía la UI al consultar Room y el disco).
-- **Impacto:** `data/proot` pasa a cubrir también la política de arranque (Kover ≥85 % en `data`). El planificador se inyecta por constructor; los puertos del dispositivo (`ProotRuntime`, `ResolvConfSource`) tienen su implementación Android en `platform/`, sin lógica propia.
-
-### D-T08b-2 · 2026-10-04 · El arranque es asíncrono: el host espera al plan y al tamaño
-- **Decisión:** `SessionFactory.start` no cambia de firma y devuelve el manejador al instante. El host recuerda el tamaño que pide la pantalla; la fábrica lanza una corrutina (hilo principal, que es donde la librería del emulador entrega sus callbacks) que obtiene el plan y llama a `host.launch(...)`. El PTY se crea cuando se conocen **las dos cosas**: qué ejecutar y qué tamaño tiene.
-- **Motivo:** el plan necesita Room y el disco (suspend). Evita tocar la interfaz `SessionFactory` y sus fakes de test. El distro de la pestaña se lee del estado que el controlador ya publica antes de llamar a la fábrica, y hay un test que lo fija. La fábrica implementa `LaunchingSessionFactory` (de T14), así que la firma que ve el controlador no cambia.
-- **Alternativas:** añadir el `ShellRequest` a `SessionFactory.start` (rompe los fakes y no resuelve la parte suspend).
-- **Impacto:** `TerminalSessionHost.stop()` olvida lo que había que ejecutar; «reiniciar» abre una sesión nueva (ya era así). Un `Handle.stop()` cancela la corrutina, así que una pestaña cerrada mientras arrancaba no deja nada.
-
-### D-T08b-3 · 2026-10-04 · Qué se hace cuando no se puede abrir la distro
-- **Decisión:** sin distro pedida → shell de Android sin aviso (es la elección explícita «Android shell»). Distro pedida que no está lista o ya no existe → **shell de Android con un aviso descartable** y acceso a la pantalla de distros. Distro lista pero sin sus archivos, proot ausente, usuario no válido o sin carpeta temporal → **error explicado** (`LaunchProblem`) y la sesión termina como fallida; nunca una excepción.
-- **Una pestaña con `SessionLaunch` propio (ssh) no pasa por aquí**, así que nunca cae al shell de Android: si no puede arrancar, falla con su propio mensaje.
-- **Motivo:** la SPEC pide «sin distro lista, fallback al shell de Android» y «errores sellados, nunca un crash». Se separa «no hay distro todavía» (normal en un primer arranque) de «algo está roto».
-- **Impacto:** el aviso se dibuja encima de las primeras filas (no cambia el tamaño del PTY) y los textos están en inglés y español.
-
-### D-T08b-4 · 2026-10-04 · Pestaña por defecto: la distro predeterminada si está lista
-- **Decisión:** al arrancar la app y desde la notificación, `SessionManager.newDefaultSession()` consulta la distro predeterminada y abre en ella solo si está `READY`; si no, shell de Android. El botón «+» ya hacía lo mismo.
-- **Motivo:** antes el arranque pasaba siempre `null` (shell de Android) aunque hubiera una distro predeterminada.
-- **Alternativas:** abrir siempre el shell de Android (ignora la distro predeterminada).
-
-### D-T08b-5 · 2026-10-04 · Usuario de la distro: `su -l`, con el nombre validado
-- **Decisión:** `root` ejecuta el shell directamente (`-0`). Otro usuario pasa por `su -l <usuario>`. El nombre se valida con `[a-z_][a-z0-9_-]{0,31}`: un nombre que empiece por `-` se leería como opción de `su`. Un comando (`ProotSession.command`, lo usa la conexión SSH) es una **lista de argumentos**, nunca una línea de shell, y corre con la identidad de proot (root), no con la del usuario.
-- **Motivo:** el nombre llega de la base de datos; validarlo en el planificador protege aunque una fila antigua no lo estuviera. Hay tests con nombres hostiles.
-- **Hipótesis sin validar:** que `su -l` funcione con proot y `-0` en Debian, Ubuntu y Alpine (busybox `su`), y que el usuario exista en la distro; si no existe, el shell termina con error de `su`.
-- **Límite:** `/bin/sh -l` es el shell de login por defecto en las tres distros (dash en Debian/Ubuntu, ash en Alpine); no se elige `bash` aunque exista.
-
-### D-T08b-6 · 2026-10-04 · `/etc/resolv.conf` desde los DNS del dispositivo, con permiso `ACCESS_NETWORK_STATE`
-- **Decisión:** la app escribe `filesDir/resolv.conf` con los DNS de la red activa (`ConnectivityManager`) y lo monta con `-b` sobre `/etc/resolv.conf` de la distro. Solo se admiten literales IPv4/IPv6 (sin zona ni nombres ni saltos de línea) y como máximo tres (límite de glibc). Si el dispositivo no informa de ninguno, se usan `1.1.1.1` y `9.9.9.9`. Si no se puede escribir el fichero, la sesión arranca igual con un aviso.
-- **Motivo:** Android no tiene `/etc/resolv.conf` y el de un rootfs apunta a un resolvedor inexistente. No se depende de rutas de Termux. Montar un fichero evita modificar el rootfs.
-- **Un solo mecanismo (unificado con T14):** lo usan las pestañas normales (`ProotSessionPlanner`) y la conexión SSH (`DistroLaunchFactory`) por igual, a través de `ResolvConfSource` y `resolvConfBinds`. `SshConnector.ensureResolver` y su decisión D-T14-8 (escribir `1.1.1.1`/`9.9.9.9` en el rootfs) desaparecen. Los DNS del dispositivo van primero; los públicos son **último recurso**, constante `ResolvConf.FALLBACK_SERVERS`, para que T16 los haga configurables.
-- **Privacidad (para `PRIVACY.md`, T21):** los DNS de reserva son resolvedores públicos de terceros (Cloudflare y Quad9); solo se usan cuando el dispositivo no da ninguno. `ACCESS_NETWORK_STATE` es un permiso normal (no se pide al usuario) y solo sirve para leer esos servidores.
-- **Alternativas:** escribir `8.8.8.8` siempre (envía todo a un tercero aunque la red tenga DNS propio, y rompe DNS internos); copiar el `/etc/resolv.conf` del sistema (no existe desde Android 8).
-- **Sin validar:** que `getLinkProperties(activeNetwork)` devuelva servidores en todas las redes (VPN, datos móviles) y que el bind de un fichero sobre `/etc/resolv.conf` funcione con proot.
-
-### D-T08b-7 · 2026-10-04 · Modo de compatibilidad (proot sin seccomp) como ajuste visible
-- **Decisión:** `AppSettings.prootCompatibilityMode` (clave `proot_compatibility_mode`, desactivado) pone `PROOT_NO_SECCOMP=1`. Hay un interruptor en la pantalla de distros y se aplica a las pestañas que se abran después.
-- **Motivo:** en algunos núcleos el filtro seccomp hace que proot falle o se cuelgue; es lo primero que hay que probar si una distro no arranca, y sin ajuste habría que recompilar la app para probarlo en la tablet. Entra en la copia de ajustes de T15 con el resto.
-- **Coste:** sin seccomp, proot intercepta todas las llamadas al sistema con `ptrace`: es notablemente más lento.
-
-### D-T08b-8 · 2026-10-04 · Hipótesis sin validar y criterio de aceptación de la primera prueba real
-- **Ejecutar desde `nativeLibraryDir`:** el manifiesto ya declara `android:extractNativeLibs="true"` y Gradle `useLegacyPackaging = true`, así que los binarios son ficheros reales. Con `targetSdk` 28 la app puede ejecutarlos; no se ha comprobado en Android 10–16 (SELinux de `untrusted_app_27/28`).
-- **`PROOT_TMP_DIR`:** `cacheDir/proot-tmp`; proot no tiene `/tmp` en Android.
-- **Binds:** `/dev`, `/proc`, `/sys`, `/etc/resolv.conf` y los de T13. Android 8+ no deja leer `/proc/stat` ni `/proc/loadavg` a las apps: `top`, `uptime` o `free` pueden fallar. Termux lo resuelve con ficheros falsos; no se hace aquí todavía.
-- **El *phantom process killer* de Android 12+** puede matar procesos hijo de proot aunque el servicio esté en primer plano (D-T08-5).
-- **Criterio de aceptación (primera prueba en la tablet, solo cuando el usuario la autorice):** (1) instalar Alpine desde la pantalla de distros; (2) abrir una pestaña nueva y comprobar que el prompt es el de Alpine, no el de Android; (3) `uname -a` y `cat /etc/os-release` muestran Alpine; (4) `apk update` descarga índices (red y DNS); (5) con el almacenamiento compartido activado, `ls ~/storage/downloads`; (6) cerrar y reabrir la app con la sesión viva; (7) si (2) o (3) fallan, repetir con el modo de compatibilidad activado y anotar el resultado aquí. Hasta entonces, ninguna de estas afirmaciones es cierta.
-
-### D-T08b-9 · 2026-10-04 · Un solo mecanismo de «qué ejecutar» por pestaña: `SessionLaunch`
-- **Contexto:** T14 (ya en `master`) añadió `SessionLaunch(command, environment, onClosed)` para que la pantalla de hosts abra una pestaña con `ssh`, y yo había añadido un `initialCommand` por pestaña con el mismo fin. Eran dos caminos para lo mismo.
-- **Decisión:** gana `SessionLaunch`, porque lleva la limpieza `onClosed` (el fichero de la clave SSH se borra pase lo que pase con la sesión) y ya la usa la pantalla de hosts. Mi `initialCommand`, `ShellRequest`, los problemas `InvalidCommand`/`CommandNeedsDistro` y el citado `su -c` (`ShellQuote`) se eliminan: sin comandos del planificador no tenían uso.
-- **Reglas:** (1) con `SessionLaunch` se ejecuta tal cual, con proot ya construido por quien lo crea (`DistroLaunchFactory`); (2) sin él, decide `ProotSessionPlanner` según el distro de la pestaña. Nunca los dos.
-- **«+» y los demás atajos** abren por (2): distro predeterminada si está lista, shell de Android si no, con aviso.
-- **Reiniciar una pestaña SSH que terminó** (`restartActive`) abre un shell normal **de la misma distro** (por el planificador), no el de Android; el fichero de clave ya se borró al terminar, así que no se puede repetir la conexión: hay que reconectar desde la pantalla de hosts. Si la distro ya no sirve, se ve el aviso de «shell de Android» o el error; no pasa en silencio.
-- **Entradas de menú:** los botones provisionales «Distros» (T07) y «SSH» (T14) de `MainActivity` pasan al menú de «nueva pestaña» (pulsación larga en «+»).
-
-### D-T08b-10 · 2026-10-04 · Corrección de un fallo de T13: el directorio de la distro **es** el rootfs
-- **Hallazgo:** `DistroInstaller.publish` mueve lo que extrajo (`staging/rootfs`) a `distro.directory`; por tanto la raíz de la distro es `distro.directory` y no existe una carpeta `rootfs` dentro. T14 lo usa bien, pero `SharedStorageMounts` (T13, ya mergeada) creaba los puntos de montaje en `distro.directory/rootfs/…` (no existía, así que el montaje de `~/storage` no habría aparecido) y mi primera versión del planificador usaba la misma ruta (habría dado toda distro como «dañada»).
-- **Decisión:** `SharedStorageMounts` y el planificador usan `distro.directory`. `DistroInstaller.UNPACKED_NAME` pasa a ser privada (es solo el nombre de la carpeta de preparación) y su comentario, que decía lo contrario, se corrige. Los tests de T13 usaban la misma ruta equivocada y se corrigen; hay un test nuevo que fija `-r` en `distros/<token>`.
-- **Por qué no lo cazaron los tests:** el fake de sistema de ficheros y los tests de T13 construían la ruta con el mismo supuesto equivocado que el código. Lección: un test que comparte el supuesto con el código no lo comprueba; hace falta una prueba de extremo a extremo con un rootfs real en la primera prueba en la tablet.
-
-## T08c — Correcciones halladas en hardware
-
-Salen de las primeras pruebas reales en un Pixel 8 (Android 17, API 37, app con `targetSdk` 28), hechas
-por el orquestador cuando el usuario las autorizó; este fork no tocó ningún dispositivo. **Lo que
-funcionó** (informado por el orquestador): el shell con PTY real en una pestaña, la entrada, el área
-del terminal encogiéndose por encima del teclado y de la fila de teclas extra (`stty size` = 18×49, lo
-visible), el servicio en primer plano (`specialUse`) y proot con un rootfs de Alpine lanzado a mano
-desde `nativeLibraryDir` (red, `apk update`, `ssh`, `nmap` y `python3` instalados dentro). **Lo que
-falló o se veía mal** es lo que corrige esta sección. Todo lo de abajo está probado solo en el host.
-
-### D-T08c-1 · 2026-10-04 · Permiso de batería: el diálogo del sistema (sustituye a D-T08-4 en este punto)
-
-- **Qué se vio:** el diálogo «Mantener las sesiones activas» (notificaciones) y, encadenado, el aviso
-  de batería llevaban a la lista general *Uso de batería de las aplicaciones* de Ajustes. El usuario
-  quiere la pantalla de permitir de verdad.
-- **Decisión:** el aviso de batería ahora pulsa «Permitir» y lanza
-  `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` con `package:<la app>`, que es el diálogo del sistema
-  «¿Permitir que la app se ejecute siempre en segundo plano?». Si el dispositivo no lo tiene
-  (`ActivityNotFoundException`) o lo rechaza (`SecurityException`), se abre la lista general
-  (`ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS`). El orden y los datos están en `BatteryExemption`,
-  probados; abrir las pantallas es Android y queda por comprobar. No se pide si la app ya está
-  exenta (`nextPrompt` no cambia).
-- **Permiso:** se declara `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` (permiso normal, sin pregunta de
-  instalación). **Solo abre ese diálogo: no cambia nada salvo que el usuario acepte allí.** F-Droid lo
-  admite; Google Play lo restringe, y esta app no se publica allí (`targetSdk` 28, SPEC §2). Lint
-  avisa con `BatteryLife`: se suprime **solo en esa línea del manifiesto**, con el motivo escrito
-  al lado, no en la configuración global.
-- **Por qué se sustituye D-T08-4:** la anterior era «sin exclusión forzada», y un diálogo del sistema
-  que el usuario acepta o rechaza no fuerza nada. Lo demás de D-T08-4 (orden de los avisos, una vez
-  por arranque, wake lock) sigue igual.
-- **Para `PRIVACY.md` (T21):** explicar que el permiso existe para que una conexión SSH o una tarea
-  larga no se pause con la pantalla apagada, que no recoge datos y que solo abre el diálogo.
-- **Sin validar en dispositivo:** que el diálogo del sistema aparezca en Android 17 con `targetSdk` 28.
-
-### D-T08c-2 · 2026-10-04 · Interruptor de almacenamiento: no se pudo reproducir; dos fallos reales corregidos
-
-- **Qué se vio:** en una instalación limpia, la tarjeta «Almacenamiento del dispositivo en `~/storage`»
-  mostraba el interruptor **activado**, aunque T13 (D-T13-2) lo documenta apagado por defecto.
-- **Qué se comprobó:** ningún código escribe `shared_storage = true` por su cuenta; el valor por
-  defecto de `AppSettings` es `false` y un test ya lo vigila (`SharedStorageSettingTest`). Así que
-  **la causa exacta no se ha podido determinar sin el dispositivo**.
-- **Fallo latente 1 (probable causa):** el callback del permiso usaba `results.values.all { it }`, y
-  `all` sobre un mapa vacío es `true`: un resultado vacío (petición interrumpida) activaba la
-  función **sin ningún permiso**. Ahora `StorageToggle.allGranted` exige que el resultado no esté vacío.
-- **Fallo latente 2:** la UI mostraba `enabled` sin mirar si el permiso estaba concedido, así que un
-  «activado» guardado sin permiso se veía como si funcionara. Ahora el interruptor se muestra
-  encendido solo si el ajuste está activo **y** el permiso concedido (`StorageToggle.isShownOn`).
-- **Pendiente:** reinstalar en limpio y comprobar el interruptor. Si sigue apareciendo activado, la
-  causa es otra y hay que mirar el estado real de `setting` en el dispositivo.
-
-### D-T08c-3 · 2026-10-04 · Pantalla de Distros: la cabecera en dos filas
-
-El título «Distribuciones» y el botón «Instalar una distro» compartían fila y se solapaban en un
-móvil de ~360 dp. Ahora el título y «Cerrar» comparten fila (el título con `weight(1f)`) y el botón
-de instalar ocupa la suya, a todo el ancho. Así no se solapa con ningún ancho ni escala de fuente.
-Sin validar en dispositivo (el solape sí se vio; la corrección es de diseño).
-
-### D-T08c-4 · 2026-10-04 · `/proc` falso dentro de proot (aproximado a propósito)
-
-- **Qué se vio:** dentro de proot, `/proc/stat`, `uptime`, `loadavg`, `version`, `vmstat` y otros dan
-  `Permission denied` (SELinux no deja a una app leerlos), así que `top`, `uptime`, `free`, `vmstat`
-  y `htop` no funcionan.
-- **Decisión:** como hace proot-distro, cada lanzamiento escribe en el almacenamiento privado
-  (`files/fake-proc/`) cinco ficheros falsos y los monta con `-b <fichero>:/proc/<nombre>` **después**
-  de `-b /proc` (los binds se aplican en orden). Rige en las pestañas normales y en las de SSH
-  (`ProotSessionPlanner` y `DistroLaunchFactory`). Si no se pueden escribir, la sesión arranca sin
-  ellos (`FakeProcSource.None`), sin error.
-- **Qué contiene (`FakeProc`, puro y probado):** el **formato** es exacto para que lo lean `procps` y
-  `busybox`; los **valores son inventados**: `stat` reparte el tiempo de CPU en proporciones fijas
-  del uptime (3 % usuario, 4 % sistema, 1 % iowait, 1 % softirq, el resto ocioso) con una línea por
-  CPU real y contadores que crecen con el uptime; `uptime` es el real del dispositivo (con el ocioso
-  de todas las CPU); `loadavg` es una constante (`0.12 0.07 0.02`); `version` lleva la versión de
-  kernel real (saneada: sin saltos de línea ni caracteres de control, para que un valor raro no
-  inyecte líneas); `vmstat` tiene los contadores que `procps` pide, con valores plausibles.
-- **Consecuencia:** `top` y `htop` mostrarán un uso de CPU **falso** y constante en el tiempo. Sirve
-  para que arranquen, no para medir nada. `/proc/meminfo` y las carpetas por proceso **no** se
-  falsean: se asumen legibles (sin comprobar en el dispositivo).
-- **No se falsea:** `cpuinfo` (parcial en el listado visto), `/proc/sys/kernel/cap_last_cap`.
-- **Sin validar en dispositivo:** que proot admita el bind de un fichero sobre uno de `/proc` en
-  Android 17 (proot-distro lo hace en Termux) y que `top`, `uptime` y `free` queden funcionando.
-
-### D-T08c-5 · 2026-10-04 · El círculo oscuro era el menú de paneles; margen del texto
-
-- **El círculo:** no era un asa ni un artefacto: es el botón «⋮» del menú de paneles de T10
-  (`PaneMenu`), dibujado siempre en la esquina superior izquierda del panel enfocado, con un fondo
-  oscuro redondo. Tapaba el principio de la primera línea aunque no hubiera ninguna división.
-- **Decisión:** el botón solo aparece cuando la pestaña está dividida (entonces sirve para zoom,
-  cerrar e intercambiar) y pasa a la esquina **superior derecha**. Dividir un panel que está solo se
-  hace desde el menú «+» de la barra de pestañas (pulsación larga), junto a SSH y Distros, con
-  «Dividir a la derecha» y «Dividir hacia abajo»; los atajos de T11 siguen igual. Los enlaces de ese
-  menú se agrupan en `TabBarLinks` por el límite de parámetros de detekt.
-- **Margen:** 6 dp alrededor del texto (hoy tocaba el borde de la pantalla). No es rejilla: se
-  resta del área (`EdgeInsets.withTextMargin`, probado) y la pantalla rellena lo mismo
-  (`padding` antes de medir el área de los paneles), así que el PTY sigue sabiendo exactamente el
-  tamaño que se dibuja. 6 dp es una elección de ojo, sin ver el resultado.
-- **Fuera de alcance, para T12c:** fuentes propias, editor de esquemas y estilo de pestañas.
-- **Sin validar en dispositivo:** que el margen quede bien en móvil y tablet, que el tamaño de rejilla
-  siga coincidiendo con lo visible (`stty size`) y que dividir desde el menú «+» funcione.
-
-## T12c — Apariencia personalizable
-
-Sale de la primera prueba real en un Pixel 8: el usuario dijo que la vista del terminal era fea y
-preguntó si podía haber fuentes y diseño propios (y, entendido así, que **no** se parezca a Termux).
-Antes de T12c los esquemas y JetBrains Mono existían, pero **no había ninguna pantalla** para elegirlos.
-
-### D-T12c-1 · 2026-10-04 · Una pantalla "Apariencia" con vista previa en vivo, enlazada desde el menú "+"
-
-- **Decisión:** `AppearanceScreen` (tema claro/oscuro/sistema, negro OLED, colores dinámicos, esquema,
-  fuente, tamaño, interlineado, espaciado entre letras, margen, esquinas, forma y parpadeo del cursor, estilo
-  de las barras) con una vista previa que dibuja un terminal de muestra con esos valores. Se abre desde
-  el menú del "+" de la barra de pestañas ("Apariencia…"). T16 la enlazará desde los ajustes generales.
-- **Motivo:** cambiar algo sin ver el resultado obliga a ir y volver al terminal. La vista previa usa
-  `Text` de Compose con la misma fuente (`FontFamily(Typeface)`), el mismo esquema y los mismos espaciados.
-- **Alternativas:** ajustes planos sin vista previa (más rápido, peor para decidir); previsualizar con el
-  emulador real (más fiel, pero arrastra una sesión entera a una pantalla de ajustes).
-- **Impacto:** la vista previa es una aproximación: el interlineado y el espaciado de Compose no son
-  idénticos a los del `TerminalPainter`. Lo definitivo es lo que se ve en el terminal.
-
-### D-T12c-2 · 2026-10-04 · Fuentes propias: se validan antes de aceptarlas y no se redistribuyen
-
-- **Decisión:** importar con `ACTION_OPEN_DOCUMENT`, leer como mucho **8 MB**, y aceptar solo si: la
-  cabecera es TrueType (`0x00010000` o `true`) u OpenType (`OTTO`); `Typeface.Builder` la carga; tiene los
-  glifos básicos (`a-z`, dígitos, signos de uso común) y es **monoespaciada** (15 glifos de anchos muy
-  distintos, `iIl1.:|WMm@#0OQ`, miden lo mismo con un 1 % de tolerancia). Si falla cualquier paso se
-  **borra el archivo** y no queda nada. Se guarda en `files/fonts/<id>.ttf|otf` con un id propio
-  (`font-<nombre>-<sufijo aleatorio>`), nunca con el nombre del archivo original.
-- **Motivo:** una fuente proporcional rompe la cuadrícula (cada celda mide lo mismo); una fuente de iconos
-  o sin letras hace ilegible el terminal. El nombre de fichero es un dato no fiable: se descarta.
-- **Alternativas:** aceptar colecciones `.ttc` (`ttcf`, descartado: una colección trae varias caras y habría
-  que elegir una); no validar y avisar al usar (peor: el usuario ve un terminal roto sin saber por qué).
-- **Impacto:** las fuentes importadas quedan en el dispositivo y **no se suben ni se redistribuyen**: la
-  pantalla avisa de que su licencia es responsabilidad del usuario. El negrita y la cursiva de una fuente
-  importada los sintetiza Android (`Typeface.create(family, BOLD)`) si la familia no los trae.
-- **Sin validar:** que `Typeface.Builder(file)` cargue fuentes reales de distintos formatos en Android 8–17,
-  y la medición de anchos con el motor de texto real (los tests usan una sonda falsa).
-
-### D-T12c-3 · 2026-10-04 · El espaciado entre letras ensancha la celda; el interlineado la alarga y centra el texto
-
-- **Decisión:** `Paint.letterSpacing` se aplica antes de medir `cellWidth` ("X"), así que toda la cuadrícula
-  usa la celda ensanchada y `terminalLayoutFor` calcula las columnas con ella. El interlineado multiplica
-  la altura de celda y el texto se centra en ella (el espacio extra se reparte arriba y abajo).
-- **Rangos:** interlineado 0,8 a 1,6; espaciado −0,05 a 0,3 em; margen 0 a 24 dp; esquinas 0 a 16 dp. Todo
-  valor guardado o importado se **recorta** a su rango (`sanitized()`), y uno no finito vuelve al defecto.
-- **Impacto:** un interlineado menor que 1 puede recortar los trazos de las letras altas: es el precio de
-  permitirlo (rango mínimo 0,8).
-- **Sin validar:** el aspecto real con cada fuente, y que el glifo ancho (emoji, CJK) siga alineado con
-  espaciado distinto de 0 (la corrección existente de T03 los comprime a su celda).
-
-### D-T12c-4 · 2026-10-04 · La forma del cursor la elige el usuario y manda sobre la que pida el programa
-
-- **Decisión:** el cursor (bloque, subrayado, barra) y su parpadeo salen de la apariencia; el
-  `TerminalPainter` ya no mira `emulator.cursorStyle`.
-- **Motivo:** predecible. Con el estilo del programa, un `vim` o un `fish` que cambie la forma por modo
-  deja al usuario sin control.
-- **Alternativa:** respetar la forma que pide el programa (DECSCUSR) y usar la elegida solo por defecto.
-  Es más fiel a lo que hace un terminal de escritorio. **Revisable**: se puede añadir un ajuste
-  "respetar al programa".
-- **Sin validar:** el parpadeo (un temporizador de 530 ms que invalida el canvas) y su coste de batería.
-
-### D-T12c-5 · 2026-10-04 · Las barras toman los colores del esquema, y siempre se leen
-
-- **Decisión:** `ChromeColorsFor.scheme` deriva de la paleta del esquema los colores de la barra de pestañas,
-  la pestaña activa, las teclas extra, el borde de panel y el acento, mezclando fondo y texto
-  (7 % / 18 % / 30 %). Si esa mezcla deja el texto de la barra por debajo de **4,5:1** (Solarized lo hace
-  por diseño), `ColorMath.readableOn` lo empuja hacia blanco o negro lo mínimo necesario. `ChromeStyle`
-  permite volver a los colores del tema del sistema.
-- **Motivo:** con colores dinámicos activos el Pixel mostraba las barras en el azul del fondo de pantalla,
-  ajeno al esquema. Con esto la ventana entera parece una pieza.
-- **Hallazgo:** el test de legibilidad de todos los esquemas integrados cazó Solarized Dark antes de
-  llegar a la pantalla.
-- **Por defecto:** `SCHEME`. Quien quiera lo anterior elige "Los del tema del sistema".
-
-### D-T12c-6 · 2026-10-04 · Sin barras "compactas": rompen los 48 dp táctiles
-
-- **Decisión:** no hay opción de barra compacta. En su lugar se personaliza el **color** y el
-  **radio de las esquinas**.
-- **Motivo:** la SPEC (§6, accesibilidad) exige objetivos táctiles de al menos 48 dp, y la barra de pestañas
-  y la fila de teclas ya miden eso. Una barra de 36 dp sería una regresión de accesibilidad.
-- **Alternativa:** permitirlo avisando. Descartado: mejor no ofrecer lo que no debe usarse.
-- **Detalle:** el color de cada tecla se dibuja con un hueco de 2 dp, pero **toda la celda** es el objetivo
-  táctil.
-
-### D-T12c-7 · 2026-10-04 · El botón `⋮` flotante ya estaba resuelto en T08c
-
-- El círculo oscuro sobre el prompt era el menú de paneles de T10. T08c ya lo muestra solo cuando hay
-  paneles divididos (el split de un panel único vive en el menú "+"). T12c solo le da los colores de
-  la paleta de las barras.
-
-### D-T12c-8 · 2026-10-04 · Editor de esquemas sin librería de color: hexadecimal y tres deslizadores
-
-- **Decisión:** editor a pantalla completa con el nombre y los **20 colores** (16 ANSI, texto, fondo,
-  cursor, selección). Cada color se cambia con un cuadro de texto hexadecimal (`#rrggbb`, también `#rgb`) y
-  tres deslizadores (rojo, verde, azul) sincronizados. Duplicar, crear, editar, eliminar, importar y
-  exportar (JSON versionado de T12). Un esquema no puede llamarse como otro, integrado o propio.
-- **Aviso de contraste:** lista hasta cinco colores difíciles de leer sobre el fondo (texto 4,5:1; cursor y
-  ANSI 3:1; se exceptúan negro y negro brillante, que se funden con el fondo a propósito). **Nunca bloquea.**
-- **Motivo de no usar un selector de color:** una dependencia más para un control que esto hace igual de bien.
-- **Alternativa:** rueda de color HSV propia. Más cómoda; más código para validar sin dispositivo.
-
-### D-T12c-9 · 2026-10-04 · Para la copia de seguridad (T15): claves y archivos de fuente
-
-- **Claves del repositorio de ajustes que T15 debe serializar** (forman parte del formato de backup: no
-  renombrar): `appearance_font_id`, `appearance_line_spacing`, `appearance_letter_spacing`,
+- **Reason:** with `targetSdk` 28 cleartext traffic is allowed by default on Android, so it
+  cannot be delegated to the system.
+
+### D-T06-7 · 2026-10-04 · New dependencies
+- **Decision:** OkHttp 5.5.0 (Apache-2.0; it pulls in Okio and AndroidX Startup, also Apache-2.0),
+  `kotlinx-serialization-json` 1.11.0 (Apache-2.0) and, for tests only, `mockwebserver3` and
+  `mockwebserver3-junit5`. They are the same versions and libraries UltimateDeck uses. Noted in
+  `THIRD_PARTY_NOTICES.md`; they pass `licensee` (Apache-2.0 only) and `checkForbiddenDependencies`.
+- **Reason for the JSON:** Android's `org.json` is empty in host tests, and a regular expression
+  over JSON is fragile. Alpine's YAML and `SHA256SUMS` are flat formats and are read by hand, without
+  adding a YAML parser.
+
+### D-T06-8 · 2026-10-04 · Critical coverage of the `data.rootfs.verify` package
+- **Decision:** `Sha256Verifier` (size and SHA-256) is at **100 % of lines and branches** with host
+  tests that cover: match, uppercase hash, unknown size, wrong size or hash, file larger than
+  the buffer, empty file, malformed checksum and unreadable file. The constants
+  are at file level because in a private `companion object` Kover counted the synthetic accessor
+  as an uncovered line.
+- **Impact:** `koverVerifyCritical` now measures real code; before, the package was empty.
+
+### T06: what is NOT validated
+- The real indexes were queried with `curl` on 2026-10-04 and the tests use excerpts of those
+  responses, but **the app has not downloaded from the real mirrors yet** (no device nor
+  authorization to use the network from one). The format of those indexes may change.
+- Real network behavior on Android: timeouts (OkHttp's default client cuts after
+  10 s without data and it is retried), network changes midway, data saver and the
+  system's TLS validation.
+- That `ATOMIC_MOVE` works on the app's private storage on all devices (it is the
+  same directory, so it should).
+- Extraction, the architecture choice with `Build.SUPPORTED_ABIS` (`Architecture.fromAbis`) and
+  Debian's retry on `HashMismatch` belong to T07; here there are only the `RootfsCatalog` and
+  `RootfsDownloader` interfaces and their implementations.
+
+## T07 — Distro installation and management
+
+### D-T07-1 · 2026-10-04 · An installation is a transaction: prepare on the side and move at the end
+- **Decision:** `DistroInstaller` registers the distro as `INSTALLING` **before** downloading (so a repeated
+  name fails without spending data), downloads and decompresses in `distros-tmp/<token>/` and only moves the
+  finished tree to `distros/<token>` with an atomic rename; afterwards it marks the row `READY`. Each installation
+  has its own token (UUID), so two installations, or an installation and the leftovers of a crash, never
+  share a directory.
+- **Failure or cancellation:** a `finally` under `NonCancellable` deletes the temporary directory, the destination and the
+  row. This way, cancelling midway through extraction leaves neither files nor records (there is a test that cancels with
+  the extractor stopped and checks both).
+- **If the process dies:** `DistroManager.recoverInterrupted()` deletes every row that is not `READY` together with its
+  files and the temporary area. It is called once when the screen starts, before allowing installs.
+- **Alternatives discarded:** extracting directly into the destination and deleting on failure (a power cut
+  would leave a half-done distro that looks valid); not registering the row until the end (it would allow downloading
+  100 MB to discover that the name already exists).
+- **Impact:** T08 moves the installation to the foreground service; the cleanup logic does not change.
+
+### D-T07-2 · 2026-10-04 · On a hash mismatch, the catalog is resolved again and retried once
+- **Decision:** fulfills what D-T06-3 asked for. Only the `HashMismatch` error repeats the full attempt (resolve,
+  download, verify, extract); any other failure (network, 404, disk) is shown without repeating. A second
+  `HashMismatch` is reported to the user. Each attempt is an entire transaction, so the first one leaves nothing behind.
+- **Reason:** Debian's branch is rewritten often and the index's hash may become stale between the two
+  requests. It is not repeated on network failures so as not to spend the user's data in a loop.
+- **Risk:** a *really* wrong hash (a tampered file) is also retried once; the second attempt
+  fails again and nothing is installed, so the only cost is an extra download.
+
+### D-T07-3 · 2026-10-04 · Own extractor on top of Apache Commons Compress, gzip and tar only
+- **Decision:** `TarGzExtractor` uses `commons-compress` 1.28.0 (Apache-2.0). Only **gzip and plain tar** are read,
+  which is what the three T06 sources publish. xz, bzip2 and zstd are recognized by their header and rejected
+  with an error that names the format (`ArchiveFormat`), instead of a generic failure.
+- **Dependencies that enter the APK** (checked with `licensee`, all Apache-2.0): `commons-compress`
+  1.28.0, `commons-io` 2.20.0, `commons-codec` 1.19.0 and `commons-lang3` 3.18.0. xz, zstd and brotli are
+  optional for Commons Compress and are **not** included (`-dontwarn` rules in R8).
+- **Alternatives discarded:** the system's `tar` via `ProcessBuilder` (not guaranteed on Android and it cannot
+  be tested on the host); writing our own tar reader (it reinvents a format with many quirks, PAX,
+  GNU long names…); adding `xz` (another dependency for a format no source uses today).
+- **Impact:** if a source starts serving `.tar.xz`, `org.tukaani:xz` has to be added (public domain, it can
+  be used) and the rejection removed.
+
+### D-T07-4 · 2026-10-04 · Extraction security rules (the most delicate part of T07)
+A downloaded rootfs is treated as hostile input even if its hash matches, because the hash only proves that it is
+the file the project published, not that it is harmless. Rules (code in `SafeTreeWriter`, tested with
+hostile synthetic tars):
+- **Nothing outside the destination.** A name with `..` is rejected (`UnsafeEntry`). Leading slashes are removed
+  as GNU tar does.
+- **Never write through a symbolic link.** Each parent directory is checked without following links:
+  if it is a link, the whole archive is rejected. This closes the classic attack of creating `link -> /path/outside` and
+  then writing `link/file`.
+- **Symbolic links themselves are stored as they are**, even absolute ones (`/bin/sh -> /bin/busybox`), because
+  a normal rootfs is full of them and they are only resolved inside proot, never on the host system.
+- **Hard links:** only towards a regular file already extracted inside the destination; towards the outside, towards a symbolic
+  link or towards the root they are rejected. If the file system does not support hard links, the content is copied.
+- **A directory cannot replace a file nor the other way round**, and a file cannot take the place of a
+  parent directory.
+- **Permissions:** the nine rwx bits are kept; **setuid, setgid and sticky are dropped**. Directories
+  always keep rwx for the owner (the app) so they can be deleted; the real mode is applied at the end so
+  that a read-only directory does not block its children. The owner is not restored (everything belongs to the app).
+- **Devices, sockets and FIFOs are skipped** (they cannot be created without root) and are counted in `skippedSpecialFiles`.
+- **Limits against decompression bombs:** 2,000,000 entries, 16 GiB and 4096 characters per path (values
+  far above any real rootfs; configurable). An archive with **no entries at all** is rejected (an empty or
+  wrong file is not a distro).
+- **A name with a null byte cannot smuggle a path in:** Commons Compress cuts the name at the first `\0`, like
+  `tar`, so what is validated is what is written. It was checked with a hand-built tar.
+- **Cancellation:** it is checked between entries and every MiB of data, so cancelling responds without waiting for
+  a large file to finish.
+
+### D-T07-5 · 2026-10-04 · Free space: checked before downloading
+- **Decision:** `max(64 MiB, 5 × the archive's size)` is required (the archive is kept while it is decompressed and
+  a rootfs takes about 4 times its compressed size); if the index gives no size (Ubuntu), 512 MiB is assumed.
+- **Reason:** rejecting with a clear message and the space needed is better than filling the disk and failing at
+  the end. It is an estimate **not measured on a real rootfs**: pending validation.
+
+### D-T07-6 · 2026-10-04 · Duplicating and deleting are safe against interruptions
+- **Duplicate:** the copy is built next to its destination and renamed (`copyRecursively` from T05); its row only
+  becomes `READY` afterwards. A failure or a cancellation leaves neither copy nor row. The copy is not the default
+  distro.
+- **Delete:** the row is marked `FAILED` **before** deleting files. If the deletion is interrupted, the distro
+  is seen as "damaged" (and can be deleted again) instead of looking intact. A distro that is being installed
+  cannot be deleted.
+- **Default:** only a `READY` distro can be it, so that a new tab can always open it.
+  When the default one is deleted, T05 already passes the mark to the oldest one left.
+
+### D-T07-7 · 2026-10-04 · Management screen: minimal and provisional
+- **Decision:** `DistroScreen` (list, install, rename, duplicate, delete, default, progress and
+  cancel) with no logic in the composables: the state and the actions are in `DistroViewModel`, with the
+  error messages translated in `DistroMessages`. It is opened from a provisional button in `MainActivity`
+  that T09 (tabs) will replace. Texts in `values/` and `values-es/`; buttons of at least 48 dp.
+- **The installation lives in the `ViewModel`**: it survives rotating the screen but **not closing the app**. T08 moves it
+  to the foreground service. Meanwhile, if the process dies midway, `recoverInterrupted()` cleans up
+  at startup.
+- **`INTERNET` permission:** added to the manifest, only to download the rootfs of the distro the user chooses to
+  install. It must be explained in `PRIVACY.md` (T21).
+
+### D-T07-8 · 2026-10-04 · Apache Commons credits: the APK does not keep their notices, they are packaged by hand
+- **Finding:** when checking the APK, the Android Gradle Plugin **does not include** these libraries' `META-INF/NOTICE.txt` nor
+  `LICENSE.txt` (the only `NOTICE` present is Jakarta Injection's). The Apache-2.0 requires keeping the notice
+  when redistributing in binary form.
+- **Decision:** the texts of the four libraries are copied **unmodified** to
+  `app/src/main/res/raw/third_party_notices_apache.txt`, with a `keep.xml` so the *resource shrinker* does not
+  remove them. It was checked with `aapt2` on the release APK that the resource exists and is byte-for-byte identical to the source.
+- **Open in T07, closed in T23 (D-T23-2):** the same may affect **OkHttp and Okio** (T06) and the rest of the dependencies that
+  were already in `master`; it has to be checked and, if so, their notices packaged too and a licenses screen
+  shown. It is left to decide; T07's scope was not widened without asking.
+
+### T07: what has NOT been validated (without a device)
+- **That the installation works end to end on a device:** downloading from the real mirrors,
+  decompressing a real rootfs (tens of thousands of files) and that `ATOMIC_MOVE` and symbolic links
+  work on private storage (already noted in D-T05-9).
+- **The real time and space** of installing Debian, Ubuntu and Alpine, and whether the free-space calculation
+  (D-T07-5) is right.
+- **That a rootfs extracted this way boots with proot** (T02 is not validated either): permissions, absolute
+  links and the absence of devices may need adjustments that are only seen when running it.
+- **The screen:** the look and the real use on phone and tablet, rotation during an installation, the
+  dialogs with the keyboard, and TalkBack. Only the `ViewModel` and the logic have been tested, not the composables.
+- **Extraction performance** with real storage, and that cancelling responds in time on a very
+  large file.
+
+## T09 — Tabs
+
+### D-T09-1 · 2026-10-04 · A tab is a session; the model lives in `Sessions`
+**Decision:** there is no separate tab model. `SessionInfo` gains `title` (what the user types,
+null = default name) and `distroId`, and `Sessions` gains pure reducers: `renamed`,
+`moved`, `switched(TabSwitch)` and `closeAction`. The order of the tabs is the order of `items`.
+**Reason:** a tab has no life of its own without its session; a second model would have to be kept
+in sync (what happens if the shell ends?). This way all the logic is immutable and tested on the host.
+**Alternatives:** a separate `Tab` with a reference to `SessionId` (more pieces, same behavior).
+**Impact:** `SessionInfo` changes with default values, so T08's code and tests
+still compile.
+
+### D-T09-2 · 2026-10-04 · Pure changes go through `SessionEditor.edit`
+**Decision:** `SessionController` implements `SessionEditor` (`state`, `newSession(distroId)`,
+`close`, `edit { ... }`). Renaming, reordering and switching tab are an `edit` that does not touch the
+shells; only if the active tab changes is the pty that comes to the foreground resized to the current
+size (the same as `activate` already did, which is now an `edit`).
+**Reason:** adding one function per operation to the controller exceeded detekt's `TooManyFunctions` limit
+(11), which is not relaxed, and mixed the processes' lifecycle with edits that do not change
+it. The interface makes it possible to test `TabsController` with the real controller and fakes.
+**Alternatives:** one function per operation (breaks detekt); `TabsController` depending on
+`SessionManager` (Android, no host tests).
+
+### D-T09-3 · 2026-10-04 · Closing: confirmation only if the shell is still alive
+**Decision:** closing a tab whose shell already ended closes it without asking; if it is still running,
+`TabsController` keeps the tab in `closeConfirmation` and the UI shows a dialog; only on
+confirming is the shell stopped. A question about a tab that disappears in the meantime (the
+shell was closed elsewhere) is dropped by itself. Closing the last tab closes the app, the same as
+"Exit" in the notification (T08's behavior: with no sessions, the screen closes).
+**Reason:** SPEC RF-02 ("closing a session with running processes asks for confirmation"); not
+losing work to an accidental tap.
+**Alternative:** opening a new tab when closing the last one. More convenient, but it contradicts "Exit" and
+leaves the foreground service running without the user asking for it.
+
+### D-T09-4 · 2026-10-04 · Each tab's distro is registered, but not yet used to start
+**Decision:** a new tab opens in the default distro if it is `READY` (`defaultDistroId`)
+and, if there is none, in the Android shell. A long press on "+" offers choosing between the shell
+and the `READY` distros (`distroOptions`). The `distroId` is stored in the session, and "restart" on an
+ended session opens it in the same distro. `AndroidSessionFactory` keeps starting the Android shell
+whatever the distro: linking `ProotCommandBuilder` comes with T07, which is the one that installs
+distros. The notification's "New session" always opens the Android shell.
+**Reason:** SPEC RF-02/RF-04; leaving the selector and the model ready without inventing a start that cannot
+be tested yet (there are no installed distros).
+**Impact:** when T07 links the start, it will be enough for the factory to read the `distroId`.
+
+### D-T09-5 · 2026-10-04 · Top or side bar depending on the width, no new dependency
+**Decision:** `tabBarPlacement(widthDp)`: side (a 192 dp column) from 600 dp, top (48 dp)
+below. It is the threshold of Material's guidelines "medium" class, computed by hand. The bar's space
+is subtracted from the pty layout with `reserveForTabBar`, like the extra-keys row in T04, so
+`stty size` should still match what is visible.
+**Reason:** `WindowSizeClass` is another dependency (Apache-2.0) for a single comparison.
+**Alternatives:** `material3-window-size-class`.
+**Pending:** the side bar always sits on the physical left edge, also with a right-to-left
+language (the terminal is left to right); not validated on a device.
+
+### D-T09-6 · 2026-10-04 · Tab shortcuts with real effect
+**Decision:** `ShortcutHandler` receives a `TabCommands` and resolves all the shortcuts (the "unhandled
+shortcuts" flow no longer exists). `Alt+n` selects tab n counting from 1 and does nothing if it does not
+exist (it does not jump to the last one as in browsers); `Ctrl+Tab` and `Ctrl+Shift+Tab` go forward and
+back, wrapping around.
+**Warning:** `Alt+digit` clashes with readline's numeric arguments (see T11); it is kept because
+the SPEC asks for it and it can be reassigned.
+
+### D-T09-7 · 2026-10-04 · `TerminalViewModel` becomes `@HiltViewModel`
+**Decision:** it receives `SessionManager` and `DistroRepository` by injection, instead of reading the manager
+from the `Application` class. Compose's `viewModel()` uses the activity's Hilt factory
+(`@AndroidEntryPoint`), so `hilt-navigation-compose` is not needed. When the active session changes
+it goes back to the end of the history and the selection is cleared.
+**Limitation:** the scroll position belongs to the ViewModel, not to each tab: when returning to a tab
+it starts at the live screen, not where it was left.
+**Alternative:** storing the position per session (more state; it was not asked for).
+
+### D-T09-8 · 2026-10-04 · What is NOT validated (without a device)
+Everything was tested with host tests (380 in total, 47 new for tabs): reducers, drag reordering
+(`dropIndex`), the bar's state, the controller with the real `SessionController` and the
+shortcuts. The bar has not been seen on any screen. Pending on a real tablet and phone:
+1. That each tab's gestures (tap, double tap, long press + drag) do not step on each other
+   nor on the bar's scroll, and that the double tap to rename is recognized without delaying the
+   single tap.
+2. The dropdown menus and the dialogs (rename, confirm close) and that the keyboard does not cover them.
+3. The side bar: width, scrolling with many tabs and split screen (600 dp threshold).
+4. That when switching tab the pty receives the right size (`stty size` and `SIGWINCH`).
+5. Accessibility: TalkBack descriptions ("Shell 2, tab 2 of 3, running"), 48 dp touch
+   sizes and the tab role.
+6. The effect of having many tabs with Android 12+'s *phantom process killer* (SPEC §8).
+
+## T10 — Split panes
+
+### D-T10-1 · 2026-10-04 · The pane tree and the focus live in `Sessions`
+**Decision:** a tab with panes is still a session (the one that opened it); its extra panes
+are other sessions in `items` that do not appear in the bar. `Sessions` gains `panes: Map<SessionId,
+PaneTab>` (tree, pane with the keyboard and zoom) and `tabs` (what the bar shows). `activeId` becomes
+the pane that has the keyboard. The new operations (`split`, `focused`, `ratioSet`,
+`swappedPanes`, `zoomToggled`, `closedPane`) are extension functions; T09's reducers
+(`closed`, `activated`, `switched`, `moved`, `closeAction`) now count tabs, not sessions.
+**Reason:** a single immutable source of truth tested on the host; the service, the notification and the
+pty size still see all the sessions unchanged. The extensions avoid exceeding detekt's
+`TooManyFunctions` limit (10 functions in `Sessions`), which is not relaxed.
+**Alternatives:** a separate `Workspace` with `Map<tab, tree>` (two models to sync when a
+shell ends or is closed); moving `Sessions` to "tab = tree" (rewrites all of T09).
+**Impact:** `nextId` goes from private to public (needed to create the new pane's id). With
+unsplit panes everything behaves as in T09 (T09's 380 tests still pass).
+
+### D-T10-2 · 2026-10-04 · Two models: the runtime one and the stored one
+**Decision:** `PaneNode` (leaves = live sessions) is the runtime tree and `LayoutNode` (T05) is still
+the stored one. `toLayoutNode()` drops the sessions and keeps shape and proportions;
+`paneNodeOf(layout) { session }` assigns new sessions in reading order. The Room schema and
+`LayoutCodec` do not change (there is a JSON round-trip test).
+**Reason:** the stored schema must not depend on session ids that do not survive the process.
+Saving and restoring named layouts, profiles and commands per pane is T12b.
+**Alternatives:** storing the `PaneNode` (ephemeral ids on disk).
+
+### D-T10-3 · 2026-10-04 · Orientation: it names the line that divides
+**Decision:** `HORIZONTAL` is a horizontal line (the first pane on top, the second below) and
+`VERTICAL` a vertical line (left and right), as in Terminator. "Split right" uses
+`VERTICAL`; "Split down", `HORIZONTAL`. The new pane always goes in the second half.
+**Reason:** `Layout.kt` (T05) did not define what they meant; fixing it now avoids ambiguous
+saved layouts. **Impact:** documented in `PaneNode`; if the other convention is preferred, it is changed in a
+single place before saved layouts exist.
+
+### D-T10-4 · 2026-10-04 · Pure geometry: the UI draws what the domain computes
+**Decision:** `paneScene` splits the area into rectangles in whole pixels (the divider between the two
+halves, the exact split, no gaps) and `paneLayouts` computes each pty's grid with T04's same
+`terminalLayoutFor`. The UI only places boxes in those rectangles. Dragging is measured against the
+divider's "span" (`ratioForPointer`) with a minimum size and snapping to 50 % (margin of 0.03).
+**Reason:** what is seen and the size the pty receives come from the same function, so `stty size`
+must match what is visible (to be validated on a tablet). It is tested with phone and tablet sizes.
+**Alternatives:** measuring each pane in Compose and notifying the pty from `onSizeChanged` (two sources of
+truth and harder to test).
+
+### D-T10-5 · 2026-10-04 · Minimum size and a notice instead of blocking
+**Decision:** a pane does not go below 20 columns × 4 rows (`canSplit`, `ratioForPointer`). Splitting where
+it does not fit does nothing and shows a toast ("Not enough room to split here"); on a
+phone in portrait it can be split up to that limit. `WindowSizeClass` is not used: panes can be
+created at any width and the tab bar already changes at 600 dp (D-T09-5).
+**Reason:** SPEC RF-02 and the user's request: "on phone allow splits but with a minimum size and
+notices". **Alternatives:** preventing splits on narrow screens.
+
+### D-T10-6 · 2026-10-04 · pty sizes with debounce, also when dragging
+**Decision:** the controller sends each pane's size with T04's same `settled(120 ms)`
+(now generic) and only if it changed (`PtySizes`). When dragging a divider the drawing moves on every
+frame, but each shell receives a single `SIGWINCH` when the drag stops. An unsplit tab
+is still sized with the whole area (`onLayout`); a zoomed pane takes the whole
+area. **Reason:** one `SIGWINCH` per frame makes `vim`/`htop` redraw nonstop.
+**Impact:** when splitting, the new pane starts with the full size and receives its own ~120 ms
+later.
+
+### D-T10-7 · 2026-10-04 · Focus, zoom, swap and close
+**Decision:** the pane with the keyboard carries a border (only if the tab is split). Tapping another
+pane gives it the keyboard; T11's shortcuts move the focus by geometry (the nearest neighbor on that
+side, and among those the one that overlaps the most). Zoom: only the focused pane is drawn, at the whole
+area, without closing the others. Swapping exchanges the places of two panes, not the sessions. Closing a pane
+with a live shell asks for confirmation; its sibling takes the space and, if it was the tab's "own" pane,
+the next one in reading order becomes the tab keeping its place and its name.
+Closing a tab closes all its panes (the others first, the own one last) and the confirmation
+counts all the panes.
+**New shortcuts** (configurable, T11): Ctrl+Shift+O split down, Ctrl+Shift+E split right,
+Ctrl+Shift+Q close pane (Ctrl+Shift+W still closes the tab), Ctrl+Shift+X zoom and Ctrl+Alt+arrow
+for the focus, so that Alt+arrow keeps moving by words in readline. Without Ctrl/Alt they are not accepted.
+
+### D-T10-8 · 2026-10-04 · What was NOT done (T12b's scope)
+Per-pane profiles, named saved layouts with an initial command, shortcuts editable in the interface and
+broadcasting to several panes are T12b. "Restart" on an ended pane closes that pane and opens a
+new tab (it does not restart it in place). Scrolling and text selection only exist
+in the pane with the keyboard; the others are drawn live and a tap gives them the focus. Reordering
+panes by dragging them was not done either: they are swapped with the pane's menu or by geometry.
+
+### D-T10-9 · 2026-10-04 · What is NOT validated (without a device)
+Everything was tested with host tests (new tests for the tree, geometry, `Sessions`, controllers and
+shortcuts): the tree, the pixel split, focus by geometry, the reducers and that each pty receives its
+pane's size. No screen with panes has been seen. Pending on a real tablet and phone:
+1. That `stty size` matches what is visible in each pane after splitting, closing, dragging and zooming.
+2. Dragging the divider (48 dp touch zone) and that it does not compete with the pane's scroll.
+3. The focused pane's gestures (scroll, selection, pinch) and the tap to give focus.
+4. The "⋮" menu and the close dialog, and that the on-screen keyboard does not cover them.
+5. Performance when drawing several panes at once (the shared painter draws one after another).
+6. TalkBack: the pane and separator descriptions.
+7. The effect of having many shells with Android 12+'s *phantom process killer*.
+
+## T12 — Themes, OLED mode and fonts
+
+### D-T12-1 · 2026-10-04 · Font: JetBrains Mono 2.304, bundled unmodified
+- **Decision:** the terminal uses JetBrains Mono (Regular, Bold, Italic, Bold Italic) as a bundled font, in `res/font`.
+- **Reason:** SIL OFL-1.1 license verified in the official repository (`Copyright 2020 The JetBrains Mono Project Authors`), compatible with distributing the font inside a GPL-3.0-or-later app as long as it is not sold on its own and the license text is included. No *Reserved Font Name*.
+- **Verified:** the four `.ttf` files are byte-for-byte identical (SHA-256) to those of the official `v2.304` release. The OFL text and the list of authors are in the APK (`assets/licenses/`).
+- **Alternatives:** Fira Code, Hack or a Nerd Font (Nerd Fonts are patches of other fonts with mixed licenses: more work to verify). **Impact:** about 1.1 MB more in the APK. **Pending:** Nerd Fonts / powerline icons, in case the user wants them (not MVP).
+
+### D-T12-2 · 2026-10-04 · Bundled schemes and why Tango is NOT there
+- **Decision:** Dracula (default), Solarized Dark, Solarized Light, Gruvbox Dark, Nord and an own OLED scheme come bundled. They are credited in `THIRD_PARTY_NOTICES.md` and with the full MIT text in `assets/licenses/ColorSchemes-MIT.txt`.
+- **Verified in the official repositories:** Solarized (© 2011 Ethan Schoonover, MIT), Dracula (© 2023 Dracula Theme, MIT), Nord (© 2016-present Sven Greb, MIT) and Gruvbox (© Pavel Pertsev; MIT/X11 according to its README and `package.json`, although the repository has no `LICENSE` file).
+- **Tango, removed:** the first draft included it as the default saying "public domain". **I could not verify that claim**: Tango's guidelines are published under CC BY-SA 2.5, which is not compatible with GPLv3, and I found no clear statement for the palette. Since it could not be checked and to avoid claims, it was removed. If a clear license source is verified later, it can be added.
+- **Changes to the palettes:** minimal legibility tweaks, documented next to each scheme in `BuiltInSchemes.kt` and required by the contrast test: Solarized Light (green, yellow and cyan 1–2 % darker: the official ones give 2.9–3.0:1) and Gruvbox Dark (lighter normal red: the official `CC241D` gives 2.7:1). The MIT schemes allow modification with attribution.
+- **Impact:** the default scheme changes to Dracula. A user who imports a scheme is responsible for its origin.
+
+### D-T12-3 · 2026-10-04 · OLED mode = a variant of the dark theme
+- **Decision:** `resolveTheme` only activates OLED when the resulting theme is dark (`oled = oledBlack && dark`). In OLED, a dark scheme gets a pure `#000000` background (`forOled()`); a light one is not touched.
+- **Reason:** switching pixels off only makes sense in dark; a black background with a light scheme would leave illegible text.
+- **Impact:** the Material interface and the terminal view use the same decision.
+
+### D-T12-4 · 2026-10-04 · The scheme is applied to all sessions, also to future ones
+- **Decision:** `SessionManager.applyScheme` delegates to `AndroidSessionFactory`, which remembers the scheme, applies it to all running hosts and to each new host before starting its emulator.
+- **Reason:** with several tabs (T09) a per-host scheme would leave tabs with old colors. Termux's library reads its initial colors from a shared static palette; it is written there and the active emulator's colors are reset (those a program set with OSC 4/10/11 are discarded: the new scheme wins).
+- **Impact:** the integration with T08/T09's changes was redone on top of `master`; H's design, which assumed a single host, was not valid as it was.
+
+### D-T12-5 · 2026-10-04 · Nothing is drawn until the settings are there
+- **Decision:** `MainActivity` waits for the saved settings to arrive (`produceState`) before composing the screen.
+- **Reason:** it avoids a first frame with the default scheme and font size that then jumps to the saved ones.
+- **Alternative:** a loading screen; discarded because it is an instant. **Risk:** if the repository were slow, the empty window would be seen; not measured.
+
+### D-T12-6 · 2026-10-04 · Persistence and font size
+- **Decision:** theme, OLED mode, dynamic colors, chosen scheme, imported schemes and font size live in T05's settings repository (key-value). T11's zoom size is restored once and only the user's changes are saved, with a 500 ms *debounce* (a pinch generates many values).
+- **Import/export:** versioned JSON (`version: 1`) with `kotlinx.serialization`, tested with a round trip. A file of an unknown version is rejected. A test caught that, with `encodeDefaults` off, `kotlinx.serialization` omitted the `version` field on export (because it has a default value): files carried no version. `encodeDefaults` was turned on.
+
+### D-T12-7 · 2026-10-04 · Minimum contrast checked in tests
+- **Decision:** each bundled scheme must meet: text on background ≥ 4.5:1 (WCAG AA), cursor ≥ 3:1, text on selection ≥ 3:1, each ANSI color on the background ≥ 3:1 and "bright black" ≥ 1.5:1; and the same in its OLED variant.
+- **Reason:** a palette with illegible colors is an accessibility failure; the test catches it before publishing.
+- **Note:** the 1.5:1 threshold for bright black is deliberately low: in many schemes it is the "dimmed" text color and raising it distorts it.
+
+### D-T12-8 · 2026-10-04 · The system bars follow the scheme
+- **Decision:** the status and navigation bar icons are chosen according to the **scheme's** background (`SystemBarStyle.auto`), not the system theme, because the terminal is drawn under the bars.
+
+### Pending hardware validation (T12)
+None of this has been seen on screen; there are only host tests.
+1. That the colors really look good: real contrast at low brightness and in the sun, and that OLED turns the pixels off.
+2. That the hot scheme change repaints all the tabs without restarting them, and the colors a program set with OSC.
+3. JetBrains Mono rendering: bold/italic with the four variants, correct cell width, and that it does not change the grid size (`stty size`) compared with the system font.
+4. System bar icons with light and dark schemes.
+5. The settings screen to choose scheme/theme does not exist yet (T16): today they are only changed through the settings repository.
+
+## T14 — SSH hosts and keys
+
+Scope: list of saved hosts with create/edit/delete, one-tap connection in a new tab, and key
+management (generate, import, export, delete) encrypted at rest. Everything has been tested
+only on the host JVM; see "T14: what is NOT validated" at the end.
+
+### D-T14-1 · 2026-10-04 · `ssh` is launched as an argument vector, without a shell
+**Decision:** `SshCommand.build` returns a list of arguments (`ssh -o ServerAliveInterval=30 …
+-p <port> [-i <key> -o IdentitiesOnly=yes] -- user@host`) that proot runs directly. There is
+no shell string, so nothing needs escaping: the interpreter that would read it does not exist. Even so,
+host, user and port are validated (`Validation`: a host that starts with `-` would be read as an
+`ssh` option; spaces and metacharacters are not accepted), `--` ends the options
+before the destination and the key's path can only be `/tmp/.ut-ssh-<hex>`.
+**Reason:** a command injection through the name of a saved host (or one imported from a
+backup) would be the most obvious vulnerability of this feature. Removing the shell is more
+robust than escaping correctly.
+**Alternatives:** `sh -c "ssh …"` with quote escaping (a single escaping mistake is a
+command execution); `ProxyCommand`/`LocalCommand` stay out: no `-o` option that executes
+programs is emitted.
+**Impact:** there are tests with hostile inputs (`;`, `$(…)`, quotes, line breaks, `-oProxyCommand=…`,
+paths with `..`). The saved host's name is only a label and never reaches the command line.
+
+### D-T14-2 · 2026-10-04 · Key format: own OpenSSH, no new libraries
+**Decision:** the `openssh-key-v1` format (private key without passphrase) and the `authorized_keys` line
+are written and read in `OpenSshKeyFormat`, for Ed25519 and RSA. Import also accepts PKCS#8 and
+PKCS#1 (RSA only, which are the usual old keys) in `PrivateKeyText`. A key with a passphrase
+is rejected with a message that explains how to remove it (`ssh-keygen -p`). ECDSA, DSA and
+certificates are not supported, nor Ed25519 in PKCS#8.
+**Reason:** `ssh` needs that format and the platform's cryptography API does not produce it. It is
+little code (about 200 lines) and is tested against real `ssh-keygen` keys; BouncyCastle would add
+~2 MB and one more license for something we do not need.
+**Alternatives:** BouncyCastle (discarded for weight); generating the keys inside the distro with
+`ssh-keygen` (the key would be born in plain text in the rootfs, exactly what we want to avoid).
+**Impact:** Ed25519 in PKCS#8 cannot be imported because the public key would have to be derived from the
+seed and the JDK does not expose that. Whoever has such a key converts it with `ssh-keygen -p -m RFC4716`.
+
+### D-T14-3 · 2026-10-04 · Generation with the platform's cryptography; Ed25519 only from Android 13
+**Decision:** `JcaSshKeyGenerator` uses `KeyPairGenerator` (3072-bit RSA on all versions;
+Ed25519 where the platform has it, Android 13 or later). The screen only offers the types that
+`supportedTypes` says the device supports. RSA generation runs off the main thread.
+**Reason:** `minSdk` 26 does not have Ed25519 in `java.security`. RSA 3072 takes a few seconds on a phone;
+4096 could take half a minute.
+**Alternatives:** BouncyCastle for Ed25519 on API 26–32 (see D-T14-2); offering only RSA.
+**Impact:** on Android 8–12 the only type to generate is RSA. Importing Ed25519 works on all.
+
+### D-T14-4 · 2026-10-04 · Encryption at rest: AES-256-GCM with an Android Keystore key
+**Decision:** the private key (OpenSSH text) is sealed with `AesGcmSecretBox`: AES-256-GCM, random 12-byte
+IV, format `version | IV length | IV | ciphertext + tag`. The key's alias
+goes as authenticated data, so a blob cannot be moved to another key. The AES key is in
+the Android Keystore (`KeystoreSecretKey`, not exportable). Each key is two files in
+`files/storage/ssh-keys/`: `<alias>.key` (sealed, 0600) and `<alias>.meta` (JSON with name, type, public
+key and fingerprint; the alias is the file name). The `.meta` is written last: a key whose
+write was interrupted does not appear in the list.
+**Reason:** the Keystore prevents taking the key off the device, so a dump of the storage (or
+a backup) does not reveal the private keys. The format and the integrity checks
+are tested on the JVM with an in-memory key; only the real Keystore needs a device.
+**Alternatives:** `EncryptedFile`/Jetpack Security (deprecated); requiring biometric authentication for
+each use (`setUserAuthenticationRequired`): better security but it breaks one-tap connection.
+**Impact:** since the Keystore key does not leave the device, SSH keys **cannot be
+restored as they are on another phone** with the backup (T15). They will have to be exported (decrypted,
+with a warning) or encrypted with a user password, as Deck already does with the sessions.
+
+### D-T14-5 · 2026-10-04 · How the key reaches `ssh`: a temporary 0600 file in the rootfs
+**Decision:** when connecting, `SshConnector` decrypts the key and writes it to
+`<rootfs>/tmp/.ut-ssh-<16 random hex>` (readable only by the app, atomic write), passes
+`-i /tmp/.ut-ssh-…` to `ssh` and deletes the file when the session ends or is closed. Files
+left by an abrupt close are deleted when the next connection starts, except those of live sessions. The
+paths go through `FileTrees.resolveInside`, which rejects a symbolic link on the way: a
+foreign rootfs's `/tmp` cannot point outside the storage.
+**Reason:** `ssh -i` needs a file. It is the simplest thing that works with any distro.
+**Alternatives:** `ssh-agent` inside the distro with `ssh-add -` reading the key from standard
+input (the key would not reach a file, but the agent and its socket have to be orchestrated in each
+tab); a FIFO (`ssh` opens the key more than once); the environment variable (visible in
+`/proc/<pid>/environ`). The agent is the natural improvement if the threat model asks for it.
+**Impact:** the key is in the clear in private storage while the session lasts (see D-T14-6).
+
+### D-T14-6 · 2026-10-04 · Threat model
+**Protects against:** a storage dump or a system backup with the app
+closed (the keys are sealed with a key that does not leave the Keystore); a key ending up in
+a log (the key types do not print their fields, and the interface only receives public parts); a host
+with shell characters or that reads as an `ssh` option (D-T14-1); a `/tmp` linked outside the
+storage; deleting a key that a host still uses.
+**Does not protect against:** another app with the same UID (none) or with root on the device, which can read
+the key's temporary file while the session is open or the process memory; an unlocked device in the
+hands of another person (no authentication is asked to use the key, see D-T14-4);
+programs inside the distro, which can read `/tmp/.ut-ssh-…` while the session lasts; the
+user saving the exported private key in an insecure place (the screen warns before).
+**Impact:** it is a level similar to `~/.ssh/id_*` without passphrase on any Linux, with the
+advantage that at rest it is encrypted.
+
+### D-T14-7 · 2026-10-04 · Gap found: nothing connected proot with the sessions
+**Decision:** T09 and T07 left the `distroId` saved in each tab, but `AndroidSessionFactory`
+only knew how to start the Android shell; `ProotCommandBuilder` (T02) was not in the injection. T14
+needs it to run `ssh` in a distro, so it adds the minimum: `SessionLaunch` (command, environment
+and cleanup), `LaunchingSessionFactory` (a factory that also knows how to run a command),
+`SessionController.newSession(distroId, launch)` and `DistroLaunchFactory`, which assembles the proot line.
+`ProotCommandBuilder` stays injected in `SshModule`.
+**Reason:** without this the "Connect" button could not open anything.
+**Alternatives:** changing `SessionFactory`'s signature (it broke T08 and T09's tests).
+**Impact:** **a distro's normal tabs still open the Android shell**: launching proot
+in a tab with no command is the same piece but it has not been connected to the bar's "+" button
+(`TabsController.newTabIn`) so as not to touch T09. It remains as a pending task and is the first thing
+to do so that distros are good for more than `ssh`. There is also no "restart" for an `ssh`
+tab: `restartActive` opens an Android shell.
+
+### D-T14-8 · 2026-10-04 · DNS inside proot
+**Decision:** before connecting, `SshConnector` writes the rootfs's `/etc/resolv.conf` with
+`1.1.1.1` and `9.9.9.9` if it is missing or empty. It does not touch one the user has configured.
+**Reason:** Android has no `resolv.conf` to share and the one in a freshly installed rootfs does not
+work (Ubuntu's is a link to a file that does not exist), so `ssh server.example`
+would fail to resolve the name even though the network works.
+**Alternatives:** reading the system's DNS (an app cannot, since Android 8); mounting one of our own with
+`-b`; not doing it (only IPs would work).
+**Impact:** there is a privacy decision: names are resolved with those public resolvers,
+not with the user's network's. It is only for the distro. **It should be configurable** (T16).
+**Superseded by D-T08b-6 (2026-10-04):** there is now a single mechanism for all tabs. The active network's
+DNS is used and `1.1.1.1`/`9.9.9.9` only as a last resort. `SshConnector` no longer writes anything in the
+rootfs. Note on the alternative discarded here: an app can indeed read the system's DNS with
+`ConnectivityManager.getLinkProperties` (what it cannot do since Android 8 is read `net.dns1` with `getprop`).
+
+### D-T14-9 · 2026-10-04 · Screens, ViewModels and entry point
+**Decision:** two screens (hosts and keys) with one ViewModel each (`SshViewModel`,
+`SshKeysViewModel`); the key list on the hosts screen is read-only. Exporting the
+private key and importing from a file use the system picker (`CreateDocument` and
+`OpenDocument`), with a warning before saving the private one. The public key is copied to the clipboard.
+A key in use by some host cannot be deleted (`KeyInUse`). A provisional "SSH" button next to the
+"Distros" one in `MainActivity`; it must go to the "new tab" menu that T09 owns (as D-T07-7).
+**Reason:** detekt's limit of functions per class, and that each screen has a single job.
+**Alternatives:** a single ViewModel (exceeded the function limit).
+**Impact:** hosts without a key open a normal `ssh` and ask for the password in the terminal.
+
+### D-T14-10 · 2026-10-04 · `known_hosts` and server key verification
+**Decision:** it is not touched. `ssh` asks about the fingerprint the first time and saves `known_hosts` in
+the rootfs's `~/.ssh`, as on any Linux. `StrictHostKeyChecking=no` is not passed.
+**Reason:** disabling it would nullify the protection against an impersonated server.
+**Impact:** the history lives in the rootfs, so it travels with the distro's backup.
+
+### D-T14-11 · 2026-10-04 · Verified against real OpenSSH, on the host
+**Decision:** besides the unit tests, the key format was checked against OpenSSH 10.2's `ssh-keygen` and
+`sshd` on the development machine (not on a device): keys generated by `ssh-keygen` were read
+(OpenSSH Ed25519 and RSA, PKCS#1, PKCS#8) and the fingerprints matched
+`ssh-keygen -l`; `ssh-keygen -y` accepted the copies written by `OpenSshKeyFormat` and derived the same
+public key; the Ed25519 and RSA 3072 keys generated by `JcaSshKeyGenerator` were accepted by
+`ssh-keygen`, and a user `sshd` on loopback port 2222 admitted them with the same command shape
+that `SshCommand` builds (`-p … -i … -o IdentitiesOnly=yes -- user@host`) and rejected a
+foreign key. An ECDSA key and the two with a passphrase (PEM and OpenSSH) were rejected with the expected
+error.
+**Reason:** a format "looking" correct is not enough: only a real `ssh` says whether it accepts it.
+**Impact:** test keys are not committed (a secrets scanner would flag them); the check was
+done with disposable keys and is not an automatic test. The unit tests cover the round trip,
+corruption and the hostile cases; if the format changes this check must be repeated by hand.
+
+### T14: what has NOT been validated (without a device)
+- **Real Keystore:** that `KeystoreSecretKey` creates the AES-256 key and that `AesGcmSecretBox` seals and
+  opens with it on Android 8 to 16 (the format was tested with an in-memory key, not with the Keystore).
+- **Generation on the phone:** the real time of RSA 3072 on a low-end phone, and that Ed25519 is
+  available on Android 13 or later (`supportedTypes` decides it at run time).
+- **`ssh` inside proot:** that the distro has `openssh-client` (it is not installed; the user must do
+  `apt install openssh-client` or `apk add openssh`; the screen does not warn about it yet), that proot runs
+  `ssh` with `DistroLaunchFactory`'s line, that `-i` accepts the 0600 file when proot simulates root
+  (owner and permissions seen from inside) and that network and DNS work (D-T14-8).
+- **Key cleanup:** that the temporary file disappears when closing the tab and when the process dies,
+  and that the leftovers are deleted on the next connection.
+- **System file picker** (import and export) and the clipboard; rotation with the
+  dialogs open (`HostDraft` is saved with `listSaver`); TalkBack and the 48 dp.
+- **A distro's normal tabs**: they still open the Android shell (D-T14-7).
+
+## T13 — Access to the device's files
+
+### D-T13-1 · 2026-10-04 · What is mounted and where
+- **Decision:** with the feature on, each proot session receives `~/storage/shared` (all the shared storage) and shortcuts to the usual folders that exist on the device: `downloads` (Download), `dcim`, `documents`, `pictures`, `music` and `movies`. The source is `Environment.getExternalStorageDirectory()` (normally `/storage/emulated/0`), not `/sdcard`, which is a symbolic link.
+- **Reason:** `~/storage/downloads` is what the SPEC asks for (RF-05) and `shared` covers any other folder without having to list them all. Only the folders that exist are mounted so as not to show broken shortcuts.
+- **Alternatives:** mounting only Downloads (not very useful); mounting `/sdcard` directly at `~/storage` (leaves no room for the shortcuts).
+- **Impact:** the computation lives in `domain/storage` (`SharedStoragePlanner`) and is applied with `ProotSession.withSharedStorage`.
+
+### D-T13-2 · 2026-10-04 · Global setting, not per distro
+- **Decision:** a single switch (`AppSettings.sharedStorage`, key `shared_storage`, off by default) for all distros.
+- **Reason:** the SPEC says "per distro/setting"; Android's permission belongs to the whole app, so a switch per distro would only add a screen without giving more real control.
+- **Alternatives:** a column in the distros table (a Room migration and a per-distro screen). It can be added later without breaking anything.
+- **Impact:** the key goes into the settings backup (T15) with the rest.
+
+### D-T13-3 · 2026-10-04 · Permission: READ/WRITE_EXTERNAL_STORAGE, without MANAGE_EXTERNAL_STORAGE (NOT verified on hardware)
+- **Decision:** when the switch is turned on, `READ_EXTERNAL_STORAGE` and `WRITE_EXTERNAL_STORAGE` are requested, and only then. `MANAGE_EXTERNAL_STORAGE` is neither declared nor requested. If the user already granted "access to all files" in the system settings, that is also accepted (`Environment.isExternalStorageManager()`).
+- **Reason (hypothesis, not checked on a device):** the app targets API 28 on purpose (SPEC §2). At that version Android treats it as an app with "classic" storage and lets a process read and write by path with the usual permission; it is Termux's model, which also targets 28. Requesting `MANAGE_EXTERNAL_STORAGE` would force sending the user to a settings screen, it is a very broad permission and Google Play restricts it; it is not needed if the above works.
+- **Known risks:** (1) on Android 13 and later the storage permissions were split by media type and it may be that, for an app that targets an earlier version, the system only grants photos, video and audio and not Downloads or Documents; (2) since Android 11 `Android/data` and `Android/obb` are out of reach; (3) the shared storage's file system does not support symbolic links, execute bits or `chmod`, so `ln -s`, `chmod +x` and executables inside `~/storage` will fail or have no effect (just like in Termux), and `--link2symlink` cannot emulate hard links there.
+- **Plan if it fails:** offer "access to all files" with `ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION`. The code already recognizes it as a granted permission; the permission would only have to be declared and the button added. It remains to be decided after testing on a real tablet.
+- **For PRIVACY.md (T21):** the permission is only requested when the user turns the feature on; it is there so that distros read and write their shared folders; no data leaves the device because of it. Note: the permission is **declared** in the manifest even if the feature is off, and that is why it appears in the app's permission list.
+
+### D-T13-4 · 2026-10-04 · Degrade, don't fail
+- **Decision:** if the permission is not granted, the storage is not mounted or the mount points cannot be created, the plan stays as `Degraded(reason)`, the session starts anyway and without `~/storage`. With the feature off the permission is not even queried.
+- **Reason:** a terminal that does not open because of a revoked permission is worse than one without `~/storage`.
+- **Impact:** the notice to the user today is the text under the switch ("permission not granted"). The notice when opening a session will come when proot's start is connected (see next point).
+- **Important, not connected:** there is still nowhere that launches proot with a distro (T07 installs and T08 manages sessions with the Android shell). `SharedStorageMounts.prepare(...)` and `withSharedStorage(...)` are ready and tested, but **nobody calls them yet**. Whoever connects proot to the sessions must use them; until then the switch is saved but has no effect on a session.
+
+### D-T13-5 · 2026-10-04 · Mount points are created through the file repository
+- **Decision:** the empty directories where proot mounts (`<distro>/rootfs/root/storage/...`) are created with `FileSystemRepository.createDirectories` and validated `FsPath` paths, on each start (it is idempotent). It is done so that `ls ~/storage` shows them: proot does not invent entries in a directory.
+- **Impact:** there is no `java.io.File` in `domain` or `ui`. `DistroInstaller.UNPACKED_NAME` (`rootfs`) was made public so as not to duplicate the constant (a minimal change in T07's code).
+
+### D-T13-6 · 2026-10-04 · The Android code goes in `platform`, outside coverage
+- **Decision:** `AndroidSharedStorageAccess` (permission, path, `File.isDirectory`) is in `com.qtekfun.ultimateterminal.platform`, with no logic of its own. Kover only measures `domain` and `data`, so it does not count; the logic that decides is all in `domain.storage` with tests.
+- **Reason:** it cannot be run on the host JVM and a test that simulates it would only prove the simulation.
+- **Note:** `Environment.getExternalStorageDirectory()` is deprecated (API 29) and is used with `@Suppress("DEPRECATION")` because giving a path to a native process is exactly what `targetSdk` 28 allows.
+
+### T13: what has NOT been validated (without a device)
+1. That the permission dialog appears and that, once granted, `/storage/emulated/0` can be read and written from proot (see D-T13-3 and its risks), on the tablet (API 31) and on Android 13 or later.
+2. The SPEC's criterion: `cp /var/log/syslog ~/storage/downloads/` appears in Downloads.
+3. That proot mounts (`-b`) those paths with `--link2symlink` and `--kill-on-exit` without error, and that `ls ~/storage` shows the mount points.
+4. The screen: the switch, changing the permission in the system settings while the app is in the background and the "Open app settings" button.
+5. That turning off the switch leaves no hanging mounts in an already open session (it changes when the next one is opened).
+
+## T08b — Connecting proot to the sessions
+
+Context: after T07 (installing distros), T09 (tabs) and T13 (mounts) nobody launched proot: the session factory
+always started `/system/bin/sh`. T08b joins the pieces. **None of this has been run on a device**: all the
+decisions about proot's real behavior are hypotheses until the first test on the tablet (D-T08b-8).
+
+### D-T08b-1 · 2026-10-04 · A pure planner decides; the factory only executes
+- **Decision:** `ProotSessionPlanner` (`data/proot`) receives the tab's `distroId` (null = Android shell) and returns a `LaunchPlan`: `AndroidShell`, `FallbackToAndroid(notice)`, `InDistro(proot, notice?)` or `Failed(problem)`. It does not touch processes. `AndroidSessionFactory` executes it. It is only used when whoever opens the tab does **not** bring its own `SessionLaunch` (see D-T08b-9).
+- **Reason:** all the rules (which distro, which user, which mounts, which errors) are tested on the JVM. The only thing that needs a device is the `fork/exec`.
+- **Alternatives:** deciding inside `TerminalSessionHost` (impossible to test without a PTY); a `runBlocking` on the main thread (it would block the UI when querying Room and the disk).
+- **Impact:** `data/proot` now also covers the start policy (Kover ≥85 % in `data`). The planner is injected through the constructor; the device ports (`ProotRuntime`, `ResolvConfSource`) have their Android implementation in `platform/`, with no logic of their own.
+
+### D-T08b-2 · 2026-10-04 · Starting is asynchronous: the host waits for the plan and the size
+- **Decision:** `SessionFactory.start` does not change signature and returns the handle at once. The host remembers the size the screen asks for; the factory launches a coroutine (main thread, which is where the emulator library delivers its callbacks) that obtains the plan and calls `host.launch(...)`. The PTY is created when **both things** are known: what to run and what size it has.
+- **Reason:** the plan needs Room and the disk (suspend). It avoids touching the `SessionFactory` interface and its test fakes. The tab's distro is read from the state the controller already publishes before calling the factory, and there is a test that pins it. The factory implements `LaunchingSessionFactory` (from T14), so the signature the controller sees does not change.
+- **Alternatives:** adding the `ShellRequest` to `SessionFactory.start` (breaks the fakes and does not solve the suspend part).
+- **Impact:** `TerminalSessionHost.stop()` forgets what was to be run; "restart" opens a new session (it already was so). A `Handle.stop()` cancels the coroutine, so a tab closed while starting leaves nothing behind.
+
+### D-T08b-3 · 2026-10-04 · What is done when the distro cannot be opened
+- **Decision:** no distro requested → Android shell with no notice (it is the explicit "Android shell" choice). Distro requested that is not ready or no longer exists → **Android shell with a dismissible notice** and access to the distros screen. Distro ready but without its files, proot missing, invalid user or no temporary folder → **explained error** (`LaunchProblem`) and the session ends as failed; never an exception.
+- **A tab with its own `SessionLaunch` (ssh) does not go through here**, so it never falls back to the Android shell: if it cannot start, it fails with its own message.
+- **Reason:** the SPEC asks for "with no ready distro, fall back to the Android shell" and "sealed errors, never a crash". "There is no distro yet" (normal on a first start) is separated from "something is broken".
+- **Impact:** the notice is drawn over the first rows (it does not change the PTY's size) and the texts are in English and Spanish.
+
+### D-T08b-4 · 2026-10-04 · Default tab: the default distro if it is ready
+- **Decision:** when the app starts and from the notification, `SessionManager.newDefaultSession()` queries the default distro and opens in it only if it is `READY`; if not, Android shell. The "+" button already did the same.
+- **Reason:** before, startup always passed `null` (Android shell) even if there was a default distro.
+- **Alternatives:** always opening the Android shell (ignores the default distro).
+
+### D-T08b-5 · 2026-10-04 · Distro user: `su -l`, with the name validated
+- **Decision:** `root` runs the shell directly (`-0`). Another user goes through `su -l <user>`. The name is validated with `[a-z_][a-z0-9_-]{0,31}`: a name that starts with `-` would be read as an option of `su`. A command (`ProotSession.command`, used by the SSH connection) is an **argument list**, never a shell line, and runs with proot's identity (root), not the user's.
+- **Reason:** the name comes from the database; validating it in the planner protects even if an old row was not validated. There are tests with hostile names.
+- **Unvalidated hypothesis:** that `su -l` works with proot and `-0` on Debian, Ubuntu and Alpine (busybox `su`), and that the user exists in the distro; if it does not exist, the shell ends with an error from `su`.
+- **Limit:** `/bin/sh -l` is the default login shell on the three distros (dash on Debian/Ubuntu, ash on Alpine); `bash` is not chosen even if it exists.
+
+### D-T08b-6 · 2026-10-04 · `/etc/resolv.conf` from the device's DNS, with the `ACCESS_NETWORK_STATE` permission
+- **Decision:** the app writes `filesDir/resolv.conf` with the active network's DNS (`ConnectivityManager`) and mounts it with `-b` over the distro's `/etc/resolv.conf`. Only IPv4/IPv6 literals are accepted (no zone, names or line breaks) and at most three (glibc's limit). If the device reports none, `1.1.1.1` and `9.9.9.9` are used. If the file cannot be written, the session starts anyway with a notice.
+- **Reason:** Android has no `/etc/resolv.conf` and a rootfs's points to a nonexistent resolver. It does not depend on Termux paths. Mounting a file avoids modifying the rootfs.
+- **A single mechanism (unified with T14):** normal tabs (`ProotSessionPlanner`) and the SSH connection (`DistroLaunchFactory`) use it equally, through `ResolvConfSource` and `resolvConfBinds`. `SshConnector.ensureResolver` and its decision D-T14-8 (writing `1.1.1.1`/`9.9.9.9` into the rootfs) disappear. The device's DNS goes first; the public ones are a **last resort**, constant `ResolvConf.FALLBACK_SERVERS`, so that T16 makes them configurable.
+- **Privacy (for `PRIVACY.md`, T21):** the fallback DNS are third-party public resolvers (Cloudflare and Quad9); they are only used when the device gives none. `ACCESS_NETWORK_STATE` is a normal permission (not asked of the user) and only serves to read those servers.
+- **Alternatives:** always writing `8.8.8.8` (sends everything to a third party even if the network has its own DNS, and breaks internal DNS); copying the system's `/etc/resolv.conf` (it does not exist since Android 8).
+- **Not validated:** that `getLinkProperties(activeNetwork)` returns servers on all networks (VPN, mobile data) and that binding a file over `/etc/resolv.conf` works with proot.
+
+### D-T08b-7 · 2026-10-04 · Compatibility mode (proot without seccomp) as a visible setting
+- **Decision:** `AppSettings.prootCompatibilityMode` (key `proot_compatibility_mode`, off) sets `PROOT_NO_SECCOMP=1`. There is a switch on the distros screen and it applies to tabs opened afterwards.
+- **Reason:** on some kernels the seccomp filter makes proot fail or hang; it is the first thing to try if a distro does not start, and without a setting the app would have to be recompiled to try it on the tablet. It goes into T15's settings backup with the rest.
+- **Cost:** without seccomp, proot intercepts all system calls with `ptrace`: it is noticeably slower.
+
+### D-T08b-8 · 2026-10-04 · Unvalidated hypotheses and acceptance criterion for the first real test
+- **Running from `nativeLibraryDir`:** the manifest already declares `android:extractNativeLibs="true"` and Gradle `useLegacyPackaging = true`, so the binaries are real files. With `targetSdk` 28 the app can run them; it has not been checked on Android 10–16 (`untrusted_app_27/28` SELinux).
+- **`PROOT_TMP_DIR`:** `cacheDir/proot-tmp`; proot has no `/tmp` on Android.
+- **Binds:** `/dev`, `/proc`, `/sys`, `/etc/resolv.conf` and T13's. Android 8+ does not let apps read `/proc/stat` or `/proc/loadavg`: `top`, `uptime` or `free` may fail. Termux solves it with fake files; it is not done here yet.
+- **Android 12+'s *phantom process killer*** may kill proot's child processes even if the service is in the foreground (D-T08-5).
+- **Acceptance criterion (first test on the tablet, only when the user authorizes it):** (1) install Alpine from the distros screen; (2) open a new tab and check that the prompt is Alpine's, not Android's; (3) `uname -a` and `cat /etc/os-release` show Alpine; (4) `apk update` downloads indexes (network and DNS); (5) with shared storage on, `ls ~/storage/downloads`; (6) close and reopen the app with the session alive; (7) if (2) or (3) fail, repeat with compatibility mode on and note the result here. Until then, none of these statements is true.
+
+### D-T08b-9 · 2026-10-04 · A single "what to run" mechanism per tab: `SessionLaunch`
+- **Context:** T14 (already in `master`) added `SessionLaunch(command, environment, onClosed)` so that the hosts screen opens a tab with `ssh`, and I had added an `initialCommand` per tab with the same purpose. They were two paths for the same thing.
+- **Decision:** `SessionLaunch` wins, because it carries the `onClosed` cleanup (the SSH key file is deleted whatever happens to the session) and the hosts screen already uses it. My `initialCommand`, `ShellRequest`, the `InvalidCommand`/`CommandNeedsDistro` problems and the quoted `su -c` (`ShellQuote`) are removed: without commands in the planner they had no use.
+- **Rules:** (1) with `SessionLaunch` it is run as is, with proot already built by whoever creates it (`DistroLaunchFactory`); (2) without it, `ProotSessionPlanner` decides according to the tab's distro. Never both.
+- **"+" and the other shortcuts** open through (2): default distro if ready, Android shell if not, with a notice.
+- **Restarting an SSH tab that ended** (`restartActive`) opens a normal shell **of the same distro** (through the planner), not the Android one; the key file was already deleted when it ended, so the connection cannot be repeated: you have to reconnect from the hosts screen. If the distro no longer works, the "Android shell" notice or the error is seen; it does not happen silently.
+- **Menu entries:** the provisional "Distros" (T07) and "SSH" (T14) buttons of `MainActivity` move to the "new tab" menu (long press on "+").
+
+### D-T08b-10 · 2026-10-04 · Fix for a T13 bug: the distro's directory **is** the rootfs
+- **Finding:** `DistroInstaller.publish` moves what it extracted (`staging/rootfs`) to `distro.directory`; therefore the distro's root is `distro.directory` and there is no `rootfs` folder inside. T14 uses it correctly, but `SharedStorageMounts` (T13, already merged) created the mount points in `distro.directory/rootfs/…` (it did not exist, so the `~/storage` mount would not have appeared) and my first version of the planner used the same path (it would have reported every distro as "damaged").
+- **Decision:** `SharedStorageMounts` and the planner use `distro.directory`. `DistroInstaller.UNPACKED_NAME` becomes private (it is only the name of the staging folder) and its comment, which said the opposite, is corrected. T13's tests used the same wrong path and are corrected; there is a new test that pins `-r` at `distros/<token>`.
+- **Why the tests did not catch it:** the file system fake and T13's tests built the path with the same wrong assumption as the code. Lesson: a test that shares the assumption with the code does not check it; an end-to-end test with a real rootfs is needed in the first test on the tablet.
+
+## T08c — Fixes found on hardware
+
+They come from the first real tests on a Pixel 8 (Android 17, API 37, app with `targetSdk` 28), done
+by the orchestrator when the user authorized them; this fork did not touch any device. **What
+worked** (reported by the orchestrator): the shell with a real PTY in a tab, input, the terminal area
+shrinking above the keyboard and the extra-keys row (`stty size` = 18×49, what was
+visible), the foreground service (`specialUse`) and proot with an Alpine rootfs launched by hand
+from `nativeLibraryDir` (network, `apk update`, `ssh`, `nmap` and `python3` installed inside). **What
+failed or looked wrong** is what this section fixes. Everything below is tested on the host only.
+
+### D-T08c-1 · 2026-10-04 · Battery permission: the system dialog (replaces D-T08-4 on this point)
+
+- **What was seen:** the "Keep sessions active" dialog (notifications) and, chained to it, the battery notice
+  led to the general *Battery usage of apps* list in Settings. The user
+  wants the real allow screen.
+- **Decision:** the battery notice now taps "Allow" and launches
+  `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` with `package:<the app>`, which is the system dialog
+  "Allow the app to always run in the background?". If the device does not have it
+  (`ActivityNotFoundException`) or rejects it (`SecurityException`), the general list is opened
+  (`ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS`). The order and the data are in `BatteryExemption`,
+  tested; opening the screens is Android and remains to be checked. It is not requested if the app is already
+  exempt (`nextPrompt` does not change).
+- **Permission:** `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` is declared (a normal permission, no install
+  prompt). **It only opens that dialog: it changes nothing unless the user accepts there.** F-Droid
+  admits it; Google Play restricts it, and this app is not published there (`targetSdk` 28, SPEC §2). Lint
+  warns with `BatteryLife`: it is suppressed **only on that manifest line**, with the reason written
+  next to it, not in the global configuration.
+- **Why D-T08-4 is replaced:** the previous one was "no forced exclusion", and a system dialog
+  that the user accepts or rejects forces nothing. The rest of D-T08-4 (order of the notices, once
+  per start, wake lock) stays the same.
+- **For `PRIVACY.md` (T21):** explain that the permission exists so that an SSH connection or a
+  long task is not paused with the screen off, that it collects no data and that it only opens the dialog.
+- **Not validated on a device:** that the system dialog appears on Android 17 with `targetSdk` 28.
+
+### D-T08c-2 · 2026-10-04 · Storage switch: it could not be reproduced; two real bugs fixed
+
+- **What was seen:** on a clean install, the "Device storage at `~/storage`" card
+  showed the switch **on**, although T13 (D-T13-2) documents it as off by default.
+- **What was checked:** no code writes `shared_storage = true` by itself; `AppSettings`'s default
+  value is `false` and a test already watches it (`SharedStorageSettingTest`). So
+  **the exact cause could not be determined without the device**.
+- **Latent bug 1 (probable cause):** the permission callback used `results.values.all { it }`, and
+  `all` over an empty map is `true`: an empty result (an interrupted request) turned the
+  feature on **with no permission at all**. Now `StorageToggle.allGranted` requires the result not to be empty.
+- **Latent bug 2:** the UI showed `enabled` without checking whether the permission was granted, so a saved
+  "on" with no permission looked like it worked. Now the switch is shown
+  on only if the setting is on **and** the permission granted (`StorageToggle.isShownOn`).
+- **Pending:** reinstall clean and check the switch. If it still appears on, the
+  cause is another and the real state of `setting` on the device has to be looked at.
+
+### D-T08c-3 · 2026-10-04 · Distros screen: the header on two rows
+
+The "Distributions" title and the "Install a distro" button shared a row and overlapped on a
+~360 dp phone. Now the title and "Close" share a row (the title with `weight(1f)`) and the install
+button takes its own, at full width. This way it does not overlap at any width or font scale.
+Not validated on a device (the overlap was seen; the fix is a design one).
+
+### D-T08c-4 · 2026-10-04 · Fake `/proc` inside proot (approximate on purpose)
+
+- **What was seen:** inside proot, `/proc/stat`, `uptime`, `loadavg`, `version`, `vmstat` and others give
+  `Permission denied` (SELinux does not let an app read them), so `top`, `uptime`, `free`, `vmstat`
+  and `htop` do not work.
+- **Decision:** as proot-distro does, each launch writes five fake files to private storage
+  (`files/fake-proc/`) and mounts them with `-b <file>:/proc/<name>` **after**
+  `-b /proc` (binds are applied in order). It applies to normal tabs and to SSH ones
+  (`ProotSessionPlanner` and `DistroLaunchFactory`). If they cannot be written, the session starts without
+  them (`FakeProcSource.None`), with no error.
+- **What it contains (`FakeProc`, pure and tested):** the **format** is exact so that `procps` and
+  `busybox` read it; the **values are made up**: `stat` splits CPU time in fixed proportions
+  of the uptime (3 % user, 4 % system, 1 % iowait, 1 % softirq, the rest idle) with one line per
+  real CPU and counters that grow with the uptime; `uptime` is the device's real one (with the idle
+  of all CPUs); `loadavg` is a constant (`0.12 0.07 0.02`); `version` carries the real kernel
+  version (sanitized: no line breaks or control characters, so that an odd value does not
+  inject lines); `vmstat` has the counters `procps` asks for, with plausible values.
+- **Consequence:** `top` and `htop` will show a **fake** CPU usage that is constant over time. It serves
+  to make them start, not to measure anything. `/proc/meminfo` and the per-process folders are **not**
+  faked: they are assumed readable (not checked on the device).
+- **Not faked:** `cpuinfo` (partial in the listing seen), `/proc/sys/kernel/cap_last_cap`.
+- **Not validated on a device:** that proot admits binding a file over one in `/proc` on
+  Android 17 (proot-distro does it in Termux) and that `top`, `uptime` and `free` end up working.
+
+### D-T08c-5 · 2026-10-04 · The dark circle was the panes menu; text margin
+
+- **The circle:** it was not a handle or an artifact: it is the "⋮" button of T10's panes menu
+  (`PaneMenu`), always drawn in the top-left corner of the focused pane, with a round
+  dark background. It covered the start of the first line even if there was no split.
+- **Decision:** the button only appears when the tab is split (then it serves for zoom,
+  close and swap) and moves to the **top-right** corner. Splitting a pane that is alone is
+  done from the "+" menu of the tab bar (long press), next to SSH and Distros, with
+  "Split right" and "Split down"; T11's shortcuts stay the same. The links of that
+  menu are grouped in `TabBarLinks` because of detekt's parameter limit.
+- **Margin:** 6 dp around the text (today it touched the screen's edge). It is not grid: it is
+  subtracted from the area (`EdgeInsets.withTextMargin`, tested) and the screen pads the same
+  (`padding` before measuring the panes' area), so the PTY still knows exactly the
+  size that is drawn. 6 dp is an eyeballed choice, without seeing the result.
+- **Out of scope, for T12c:** own fonts, scheme editor and tab style.
+- **Not validated on a device:** that the margin looks good on phone and tablet, that the grid size
+  still matches what is visible (`stty size`) and that splitting from the "+" menu works.
+
+## T12c — Customizable appearance
+
+It comes from the first real test on a Pixel 8: the user said the terminal view was ugly and
+asked whether there could be own fonts and design (and, understood this way, that it should **not** look like Termux).
+Before T12c the schemes and JetBrains Mono existed, but **there was no screen at all** to choose them.
+
+### D-T12c-1 · 2026-10-04 · An "Appearance" screen with a live preview, linked from the "+" menu
+
+- **Decision:** `AppearanceScreen` (light/dark/system theme, OLED black, dynamic colors, scheme,
+  font, size, line spacing, letter spacing, margin, corners, cursor shape and blink, style
+  of the bars) with a preview that draws a sample terminal with those values. It is opened from
+  the "+" menu of the tab bar ("Appearance…"). T16 will link it from the general settings.
+- **Reason:** changing something without seeing the result forces going back and forth to the terminal. The preview uses
+  Compose's `Text` with the same font (`FontFamily(Typeface)`), the same scheme and the same spacing.
+- **Alternatives:** flat settings without a preview (faster, worse for deciding); previewing with the
+  real emulator (more faithful, but it drags a whole session into a settings screen).
+- **Impact:** the preview is an approximation: Compose's line spacing and letter spacing are not
+  identical to `TerminalPainter`'s. What is definitive is what is seen in the terminal.
+
+### D-T12c-2 · 2026-10-04 · Own fonts: validated before accepting and not redistributed
+
+- **Decision:** import with `ACTION_OPEN_DOCUMENT`, read at most **8 MB**, and accept only if: the
+  header is TrueType (`0x00010000` or `true`) or OpenType (`OTTO`); `Typeface.Builder` loads it; it has the
+  basic glyphs (`a-z`, digits, commonly used signs) and it is **monospaced** (15 glyphs of very
+  different widths, `iIl1.:|WMm@#0OQ`, measure the same within a 1 % tolerance). If any step fails the
+  **file is deleted** and nothing is left. It is stored in `files/fonts/<id>.ttf|otf` with its own id
+  (`font-<name>-<random suffix>`), never with the original file's name.
+- **Reason:** a proportional font breaks the grid (every cell measures the same); an icon font
+  or one without letters makes the terminal illegible. The file name is untrusted data: it is discarded.
+- **Alternatives:** accepting `.ttc` collections (`ttcf`, discarded: a collection brings several faces and one
+  would have to be chosen); not validating and warning on use (worse: the user sees a broken terminal without knowing why).
+- **Impact:** imported fonts stay on the device and are **not uploaded nor redistributed**: the
+  screen warns that their license is the user's responsibility. Bold and italic of an
+  imported font are synthesized by Android (`Typeface.create(family, BOLD)`) if the family does not carry them.
+- **Not validated:** that `Typeface.Builder(file)` loads real fonts of different formats on Android 8–17,
+  and the width measurement with the real text engine (the tests use a fake probe).
+
+### D-T12c-3 · 2026-10-04 · Letter spacing widens the cell; line spacing lengthens it and centers the text
+
+- **Decision:** `Paint.letterSpacing` is applied before measuring `cellWidth` ("X"), so the whole grid
+  uses the widened cell and `terminalLayoutFor` computes the columns with it. Line spacing multiplies
+  the cell height and the text is centered in it (the extra space is split above and below).
+- **Ranges:** line spacing 0.8 to 1.6; spacing −0.05 to 0.3 em; margin 0 to 24 dp; corners 0 to 16 dp. Every
+  saved or imported value is **clamped** to its range (`sanitized()`), and a non-finite one goes back to the default.
+- **Impact:** a line spacing below 1 may clip the strokes of tall letters: it is the price of
+  allowing it (minimum range 0.8).
+- **Not validated:** the real look with each font, and that wide glyphs (emoji, CJK) stay aligned with
+  a spacing other than 0 (T03's existing correction squeezes them into their cell).
+
+### D-T12c-4 · 2026-10-04 · The cursor shape is chosen by the user and takes precedence over what the program asks for
+
+- **Decision:** the cursor (block, underline, bar) and its blinking come from the appearance; the
+  `TerminalPainter` no longer looks at `emulator.cursorStyle`.
+- **Reason:** predictable. With the program's style, a `vim` or a `fish` that changes the shape per mode
+  leaves the user without control.
+- **Alternative:** respecting the shape the program asks for (DECSCUSR) and using the chosen one only as a default.
+  It is closer to what a desktop terminal does. **Revisable**: a "respect the program"
+  setting can be added.
+- **Not validated:** the blinking (a 530 ms timer that invalidates the canvas) and its battery cost.
+
+### D-T12c-5 · 2026-10-04 · The bars take the scheme's colors, and are always readable
+
+- **Decision:** `ChromeColorsFor.scheme` derives from the scheme's palette the colors of the tab bar,
+  the active tab, the extra keys, the pane border and the accent, mixing background and text
+  (7 % / 18 % / 30 %). If that mix leaves the bar's text below **4.5:1** (Solarized does so
+  by design), `ColorMath.readableOn` pushes it towards white or black the minimum necessary. `ChromeStyle`
+  allows going back to the system theme's colors.
+- **Reason:** with dynamic colors on, the Pixel showed the bars in the wallpaper's blue,
+  alien to the scheme. With this the whole window looks like one piece.
+- **Finding:** the legibility test of all the built-in schemes caught Solarized Dark before
+  it reached the screen.
+- **By default:** `SCHEME`. Whoever wants the previous behavior chooses "The system theme's".
+
+### D-T12c-6 · 2026-10-04 · No "compact" bars: they break the 48 dp touch targets
+
+- **Decision:** there is no compact bar option. Instead the **color** and the
+  **corner radius** are customized.
+- **Reason:** the SPEC (§6, accessibility) requires touch targets of at least 48 dp, and the tab bar
+  and the keys row already measure that. A 36 dp bar would be an accessibility regression.
+- **Alternative:** allowing it with a warning. Discarded: better not to offer what should not be used.
+- **Detail:** each key's color is drawn with a 2 dp gap, but **the whole cell** is the touch
+  target.
+
+### D-T12c-7 · 2026-10-04 · The floating `⋮` button was already resolved in T08c
+
+- The dark circle over the prompt was T10's panes menu. T08c already shows it only when there are
+  split panes (splitting a single pane lives in the "+" menu). T12c only gives it the colors of
+  the bars' palette.
+
+### D-T12c-8 · 2026-10-04 · Scheme editor without a color library: hexadecimal and three sliders
+
+- **Decision:** a full-screen editor with the name and the **20 colors** (16 ANSI, text, background,
+  cursor, selection). Each color is changed with a hexadecimal text box (`#rrggbb`, also `#rgb`) and
+  three synchronized sliders (red, green, blue). Duplicate, create, edit, delete, import and
+  export (T12's versioned JSON). A scheme cannot have the same name as another, built-in or own.
+- **Contrast warning:** lists up to five colors that are hard to read on the background (text 4.5:1; cursor and
+  ANSI 3:1; black and bright black are excepted, which blend into the background on purpose). **It never blocks.**
+- **Reason for not using a color picker:** one more dependency for a control that this does just as well.
+- **Alternative:** an own HSV color wheel. More convenient; more code to validate without a device.
+
+### D-T12c-9 · 2026-10-04 · For the backup (T15): keys and font files
+
+- **Settings repository keys that T15 must serialize** (they are part of the backup format: do not
+  rename): `appearance_font_id`, `appearance_line_spacing`, `appearance_letter_spacing`,
   `appearance_margin_dp`, `appearance_cursor_shape`, `appearance_cursor_blink`, `appearance_chrome_style`,
-  `appearance_corner_dp`, `custom_fonts` (JSON: `id`, `name`, `fileName`) y las ya existentes
+  `appearance_corner_dp`, `custom_fonts` (JSON: `id`, `name`, `fileName`) and the already existing
   `terminal_scheme`, `terminal_font_size_sp`, `custom_schemes`, `theme_mode`, `oled_black`, `dynamic_color`.
-- **Los archivos de fuente NO están en esas claves:** viven en `files/fonts/`. **T15 debe incluir esa
-  carpeta** en la copia de configuración; si solo lleva el JSON, una fuente restaurada vuelve a la incluida
-  (`FontCatalog.idOrBundled`), sin romper nada.
-- **Restauración segura:** `FontCatalog.decodeList` descarta entradas cuyo `fileName` sea una ruta (`/`, `\`,
-  `..`, `.`) o venga vacío, y `AndroidFontStore` solo toca nombres que sean un nombre de archivo simple
-  dentro de `files/fonts`. Un backup manipulado no puede escribir fuera de esa carpeta.
+- **The font files are NOT in those keys:** they live in `files/fonts/`. **T15 must include that
+  folder** in the configuration backup; if it only carries the JSON, a restored font goes back to the bundled one
+  (`FontCatalog.idOrBundled`), without breaking anything.
+- **Safe restoration:** `FontCatalog.decodeList` discards entries whose `fileName` is a path (`/`, `\`,
+  `..`, `.`) or comes empty, and `AndroidFontStore` only touches names that are a simple file name
+  inside `files/fonts`. A tampered backup cannot write outside that folder.
 
-### D-T12c-10 · 2026-10-04 · Los deslizadores guardan al soltar
+### D-T12c-10 · 2026-10-04 · The sliders save on release
 
-- Cada `Slider` mantiene su valor mientras se arrastra y escribe en los ajustes al levantar el dedo, así
-  que se hace una escritura por gesto y no cientos. A cambio, la vista previa se actualiza al soltar.
-- El tamaño de fuente de esta pantalla y el zoom por pellizco comparten el mismo valor guardado
-  (`terminal_font_size_sp`): un valor nuevo del almacén se reaplica al terminal vivo.
+- Each `Slider` keeps its value while it is dragged and writes to the settings when the finger is lifted, so
+  there is one write per gesture and not hundreds. In exchange, the preview updates on release.
+- This screen's font size and the pinch zoom share the same saved value
+  (`terminal_font_size_sp`): a new value from the store is reapplied to the live terminal.
 
-### T12c: lo que NO se ha validado (sin dispositivo)
+### T12c: what has NOT been validated (without a device)
 
-Solo hay tests de host. Falta comprobar en un móvil y en la tablet:
+There are only host tests. Still to check on a phone and on the tablet:
 
-- La pantalla "Apariencia" completa (diseño, desplazamiento, teclado, rotación, TalkBack y objetivos de 48 dp).
-- El selector de documentos para importar una fuente y para importar o exportar un esquema.
-- Que `Typeface.Builder` cargue de verdad .ttf y .otf reales, y que la comprobación de monoespaciado
-  acepte las fuentes buenas y rechace las proporcionales con el motor de texto real.
-- El aspecto del terminal con interlineado y espaciado distintos de 1 y 0, y con fuentes ajenas.
-- La forma del cursor y su parpadeo, el margen, y los colores de las barras con cada esquema (también
-  con colores dinámicos activos y con el modo OLED).
-- Que cambiar la fuente o el espaciado con sesiones abiertas repinte y reajuste el pty sin cortar nada.
-## T15 — Copias de seguridad y restauración
+- The full "Appearance" screen (layout, scrolling, keyboard, rotation, TalkBack and 48 dp targets).
+- The document picker to import a font and to import or export a scheme.
+- That `Typeface.Builder` really loads real .ttf and .otf, and that the monospace check
+  accepts the good fonts and rejects proportional ones with the real text engine.
+- The terminal's look with line spacing and letter spacing other than 1 and 0, and with foreign fonts.
+- The cursor shape and its blinking, the margin, and the bars' colors with each scheme (also
+  with dynamic colors on and with OLED mode).
+- That changing the font or the spacing with open sessions repaints and readjusts the pty without cutting anything.
 
-### D-T15-1 · 2026-10-04 · Formato: un tar plano, cifrado opcional por encima
+## T15 — Backups and restore
 
-- **Decisión:** un archivo `.utbackup` es un `tar` plano (legible con cualquier `tar`) con `manifest.json` primero, `config.json` y una parte `distros/N.tar.gz` por distro. El cifrado, si se pide, envuelve todo el tar. El manifiesto lleva versión de formato, tipo, y el SHA-256 y tamaño de cada parte.
-- **Motivo:** restaurar puede validar el archivo entero antes de tocar nada, y un backup sin contraseña sigue siendo recuperable a mano.
-- **Alternativas:** un contenedor binario propio (más compacto, pero opaco e imposible de rescatar sin la app); un `.zip` (obliga a leer el directorio central al final: mal para flujos).
-- **Detalle:** el contenedor usa `BIGNUMBER_STAR` y no `BIGNUMBER_POSIX`: este último antepone una cabecera PAX a cada entrada y el archivo ya no empieza por `manifest.json`, que es como se reconoce un backup plano.
+### D-T15-1 · 2026-10-04 · Format: a plain tar, optional encryption on top
 
-### D-T15-2 · 2026-10-04 · Desviación de la SPEC: gzip en lugar de zstd
+- **Decision:** a `.utbackup` file is a plain `tar` (readable with any `tar`) with `manifest.json` first, `config.json` and one `distros/N.tar.gz` part per distro. Encryption, if requested, wraps the whole tar. The manifest carries the format version, the type, and each part's SHA-256 and size.
+- **Reason:** restoring can validate the whole file before touching anything, and a backup without a password is still recoverable by hand.
+- **Alternatives:** an own binary container (more compact, but opaque and impossible to rescue without the app); a `.zip` (forces reading the central directory at the end: bad for streams).
+- **Detail:** the container uses `BIGNUMBER_STAR` and not `BIGNUMBER_POSIX`: the latter prepends a PAX header to each entry and the file no longer starts with `manifest.json`, which is how a plain backup is recognized.
 
-- **Decisión:** las distros se comprimen con **gzip** (`java.util.zip`), no con zstd como pide la SPEC (`.tar.zst`).
-- **Motivo:** zstd en Java necesita una librería. `zstd-jni` empaqueta `.so` precompilados (prohibido por CLAUDE.md para F-Droid). `aircompressor` es Apache-2.0 y Java puro, pero su v3 se apoya en APIs recientes del JDK y en `Unsafe`, y no puedo validarlo en Android sin dispositivo. gzip no añade dependencias y ya es lo que el instalador sabe leer.
-- **Impacto:** archivos algo mayores que con zstd. Si más adelante se valida una librería, solo cambia el nombre y el compresor de las partes de distro: `format` sube a 2.
+### D-T15-2 · 2026-10-04 · Deviation from the SPEC: gzip instead of zstd
 
-### D-T15-3 · 2026-10-04 · Cifrado: AES-256-GCM por trozos con clave PBKDF2
+- **Decision:** distros are compressed with **gzip** (`java.util.zip`), not with zstd as the SPEC asks (`.tar.zst`).
+- **Reason:** zstd in Java needs a library. `zstd-jni` packages precompiled `.so` files (forbidden by CLAUDE.md for F-Droid). `aircompressor` is Apache-2.0 and pure Java, but its v3 relies on recent JDK APIs and on `Unsafe`, and I cannot validate it on Android without a device. gzip adds no dependencies and is already what the installer knows how to read.
+- **Impact:** files somewhat larger than with zstd. If a library is validated later, only the name and the compressor of the distro parts change: `format` goes up to 2.
 
-- **Decisión:** clave de 256 bits derivada de la contraseña con PBKDF2-HMAC-SHA256 (600 000 iteraciones, sal aleatoria de 16 bytes). Los datos se cifran en trozos de 64 KiB, cada uno con su etiqueta GCM. El nonce de cada trozo es un prefijo aleatorio del archivo, el número de trozo y una marca de «último»; la cabecera entera se autentica con cada trozo.
-- **Motivo:** el rootfs no cabe en RAM, y con esta construcción un trozo cambiado, repetido, reordenado o un archivo cortado (incluso justo entre dos trozos) falla la autenticación igual que una contraseña errónea. Una cabecera con iteraciones o tamaño de trozo absurdos se rechaza antes de gastar CPU.
-- **Impacto:** contraseña errónea y archivo manipulado son indistinguibles (`WrongPasswordOrCorrupt`): no se escribe nada en ninguno de los dos casos.
+### D-T15-3 · 2026-10-04 · Encryption: AES-256-GCM in chunks with a PBKDF2 key
 
-### D-T15-4 · 2026-10-04 · Claves SSH: solo dentro de un backup cifrado
+- **Decision:** a 256-bit key derived from the password with PBKDF2-HMAC-SHA256 (600,000 iterations, random 16-byte salt). Data is encrypted in 64 KiB chunks, each with its own GCM tag. Each chunk's nonce is a random prefix of the file, the chunk number and a "last" mark; the whole header is authenticated with each chunk.
+- **Reason:** the rootfs does not fit in RAM, and with this construction a changed, repeated or reordered chunk or a truncated file (even right between two chunks) fails authentication just like a wrong password. A header with absurd iterations or chunk size is rejected before spending CPU.
+- **Impact:** a wrong password and a tampered file are indistinguishable (`WrongPasswordOrCorrupt`): nothing is written in either case.
 
-- **Decisión:** las claves privadas SSH están cifradas con el Keystore del dispositivo, y esa clave no puede salir. Por eso un backup las lleva **en claro dentro del contenedor cifrado con la contraseña del usuario**, y la exportación **se niega** (`KeysNeedPassword`) a incluirlas sin contraseña. El usuario puede dejarlas fuera.
-- **Motivo:** la alternativa, escribirlas sin proteger en un archivo que viaja entre dispositivos, es justo lo que el modelo de amenazas de T14 evita.
-- **Impacto:** al restaurar sin las claves, un host que apuntaba a una clave pierde ese alias y queda sin clave, no roto.
+### D-T15-4 · 2026-10-04 · SSH keys: only inside an encrypted backup
 
-### D-T15-5 · 2026-10-04 · Restaurar solo añade; los ajustes se sustituyen
+- **Decision:** the SSH private keys are encrypted with the device's Keystore, and that key cannot leave. That is why a backup carries them **in the clear inside the container encrypted with the user's password**, and the export **refuses** (`KeysNeedPassword`) to include them without a password. The user can leave them out.
+- **Reason:** the alternative, writing them unprotected in a file that travels between devices, is exactly what T14's threat model avoids.
+- **Impact:** when restoring without the keys, a host that pointed to a key loses that alias and is left without a key, not broken.
 
-- **Decisión:** restaurar nunca borra ni pisa lo que hay: perfiles, layouts, hosts y claves cuyo nombre (o alias) ya existe se conservan y se cuentan como «omitidos». Los ajustes sí se sustituyen, porque el objetivo es dejar la app igual. Las referencias entre elementos van por nombre o posición, nunca por id de base de datos, porque cambian entre dispositivos.
-- **Valores propios del dispositivo:** el interruptor de almacenamiento compartido **no se copia** (el permiso es del dispositivo y se vuelve a pedir). Valores fuera de rango se ajustan al límite o vuelven al valor por defecto.
-- **No incluido todavía:** teclas extra y atajos no están persistidos en la app, así que no hay nada que copiar. El `config.json` ignora campos desconocidos y lleva versión, de modo que se pueden añadir.
+### D-T15-5 · 2026-10-04 · Restoring only adds; settings are replaced
 
-### D-T15-6 · 2026-10-04 · Dos pasadas y distros transaccionales
+- **Decision:** restoring never deletes or overwrites what is there: profiles, layouts, hosts and keys whose name (or alias) already exists are kept and counted as "skipped". Settings are replaced, because the goal is to leave the app the same. References between elements go by name or position, never by database id, because those change between devices.
+- **Device-specific values:** the shared storage switch is **not copied** (the permission belongs to the device and is requested again). Out-of-range values are clamped to the limit or go back to the default value.
+- **Not included yet:** extra keys and shortcuts are not persisted in the app, so there is nothing to copy. `config.json` ignores unknown fields and carries a version, so they can be added.
 
-- **Decisión:** la primera pasada lee todo el archivo y comprueba etiquetas de cifrado, manifiesto, hash y tamaño de cada parte y la configuración, **sin escribir nada**. La segunda restaura y vuelve a comprobar cada parte al vuelo (el archivo puede haber cambiado entre pasadas, o venir de una fuente que cambia).
-- **Cada distro** es todo o nada: se registra, se desempaqueta en un directorio temporal con el extractor seguro de T07 (sin path traversal, sin escribir a través de enlaces, con límites de tamaño), se comprueba el hash y solo entonces se mueve a su sitio y se marca `READY`. Un fallo o una cancelación en cualquier punto la elimina.
-- **Entre distros no hay transacción:** si falla la segunda, la primera, ya completa y verificada, se queda. La configuración se aplica al final, después de las distros a las que puede referirse.
-- **Si el nombre ya existe**, la distro restaurada se llama `Nombre (restored)`, luego `(restored 2)`, etc.
-- **Impacto en disco:** exportar archiva cada distro primero en un directorio de trabajo privado (para conocer su hash antes de escribir el manifiesto), así que hace falta sitio para una copia comprimida temporal. Restaurar no necesita copia: lee del flujo.
+### D-T15-6 · 2026-10-04 · Two passes and transactional distros
 
-### D-T15-7 · 2026-10-04 · Lo que se conserva y lo que no del rootfs
+- **Decision:** the first pass reads the whole file and checks encryption tags, manifest, hash and size of each part and the configuration, **without writing anything**. The second restores and checks each part again on the fly (the file may have changed between passes, or come from a source that changes).
+- **Each distro** is all or nothing: it is registered, unpacked into a temporary directory with T07's safe extractor (no path traversal, no writing through links, with size limits), the hash is checked and only then is it moved to its place and marked `READY`. A failure or a cancellation at any point removes it.
+- **Between distros there is no transaction:** if the second fails, the first, already complete and verified, stays. The configuration is applied at the end, after the distros it may refer to.
+- **If the name already exists**, the restored distro is called `Name (restored)`, then `(restored 2)`, etc.
+- **Impact on disk:** exporting archives each distro first in a private working directory (to know its hash before writing the manifest), so room is needed for a temporary compressed copy. Restoring needs no copy: it reads from the stream.
 
-- Se conservan los nueve bits de permiso, los enlaces simbólicos como enlaces, las fechas, y los directorios. Los **sockets, tuberías y dispositivos se omiten**, como hace el extractor de T07.
-- Los **enlaces duros se archivan como ficheros independientes** (el tamaño crece si hay muchos).
-- **Propietarios:** todas las entradas se escriben como `root`. En el dispositivo todos los ficheros son del usuario de la app y proot presenta la propiedad por su cuenta, así que no hay un propietario real que conservar.
-- Un fichero del rootfs sin permiso de lectura para el propietario hace fallar la exportación con un error claro y sin dejar un archivo a medias (no se ha tratado de forzar el permiso). Es una hipótesis: si aparece en distros reales, habrá que cambiarlo.
+### D-T15-7 · 2026-10-04 · What is kept and what is not of the rootfs
 
-### D-T15-8 · 2026-10-04 · Cobertura
+- The nine permission bits, symbolic links as links, dates, and directories are kept. **Sockets, pipes and devices are skipped**, as T07's extractor does.
+- **Hard links are archived as independent files** (the size grows if there are many).
+- **Owners:** all entries are written as `root`. On the device all files belong to the app's user and proot presents ownership by itself, so there is no real owner to keep.
+- A rootfs file without read permission for the owner makes the export fail with a clear error and without leaving a half-done file (forcing the permission was not attempted). It is a hypothesis: if it appears in real distros, it will have to be changed.
 
-- `data.backup` está medido por el umbral crítico de Kover: **100 % de línea y de rama (749/749 y 362/362)**. Para llegar se eliminaron ramas defensivas inalcanzables, y se añadieron al filtro de exclusión de Kover las clases `@Serializable` y los `$$serializer`: son datos puros con código generado cuyas ramas ningún test puede alcanzar, igual que ya se excluían Hilt y Room.
-- `TarGzExtractor` ganó la sobrecarga que extrae desde un flujo (para leer la parte de una distro sin copiarla); su comportamiento sobre ficheros no cambia y sus tests siguen en verde.
+### D-T15-8 · 2026-10-04 · Coverage
 
-### D-T15-9 · 2026-10-04 · Qué NO está validado (sin dispositivo)
+- `data.backup` is measured by Kover's critical threshold: **100 % of line and branch (749/749 and 362/362)**. To get there, unreachable defensive branches were removed, and the `@Serializable` classes and the `$$serializer`s were added to Kover's exclusion filter: they are pure data with generated code whose branches no test can reach, just as Hilt and Room were already excluded.
+- `TarGzExtractor` gained the overload that extracts from a stream (to read a distro's part without copying it); its behavior on files does not change and its tests stay green.
 
-1. El selector de archivos del sistema (`ACTION_CREATE_DOCUMENT` y `ACTION_OPEN_DOCUMENT`) con proveedores reales (Drive, tarjeta SD), y que `openOutputStream(uri, "wt")` trunque en todos ellos.
-2. Una exportación y restauración de una distro **real** (cientos de MB) en un móvil: tiempos, uso de memoria, y que PBKDF2 con 600 000 iteraciones no tarde demasiado en un móvil de gama baja.
-3. Que el rootfs restaurado arranque con proot (depende de la validación de T02/T08b).
-4. Si una exportación larga sobrevive con la app en segundo plano: corre en el ámbito del ViewModel, **no** en el servicio en primer plano, así que Android puede matarla.
-5. La interfaz (diálogos, contraseña, progreso) y su accesibilidad con TalkBack.
-6. `mkfifo` hace falta en el host para uno de los tests (hay `mkfifo` en Linux y macOS).
+### D-T15-9 · 2026-10-04 · What is NOT validated (without a device)
 
-## Requisitos añadidos tras las primeras pruebas en hardware (2026-10-04)
+1. The system file picker (`ACTION_CREATE_DOCUMENT` and `ACTION_OPEN_DOCUMENT`) with real providers (Drive, SD card), and that `openOutputStream(uri, "wt")` truncates in all of them.
+2. An export and restore of a **real** distro (hundreds of MB) on a phone: times, memory use, and that PBKDF2 with 600,000 iterations does not take too long on a low-end phone.
+3. That the restored rootfs boots with proot (it depends on T02/T08b's validation).
+4. Whether a long export survives with the app in the background: it runs in the ViewModel's scope, **not** in the foreground service, so Android may kill it.
+5. The interface (dialogs, password, progress) and its accessibility with TalkBack.
+6. `mkfifo` is needed on the host for one of the tests (there is `mkfifo` on Linux and macOS).
 
-El usuario probó la app en un Pixel 8 y pidió tres cosas. Se anotan aquí qué requisito se tocó y por qué.
+## Requirements added after the first tests on hardware (2026-10-04)
 
-### D-REQ-1 · 2026-10-04 · La fila de teclas extra sigue al teclado en pantalla
-- **Decisión:** `ExtraKeysConfig.onlyWithKeyboard` (por defecto `true`): la fila se dibuja solo mientras el teclado está visible (`WindowInsets.ime`), y su altura deja de reservarse en el cálculo de la rejilla cuando no se ve. SPEC RF-08 actualizado.
-- **Motivo:** con el teclado cerrado la fila (dos filas de 48 dp) comía terminal sin servir para escribir.
-- **Alternativas:** ocultarla siempre y mostrarla con un botón (más toques); atarla a "hay teclado físico" (no es fiable en Android). Se deja la opción para verla siempre.
-- **Impacto:** el cambio de tamaño del pty al abrir y cerrar el teclado ya estaba debounced (D-T04-2); la fila entra y sale con el teclado. El formato de texto guardado añade la línea `onlyWithKeyboard=`; un texto antiguo sin ella cuenta como `true`.
-- **Sin validar en el dispositivo:** que no haya parpadeo de la rejilla al animarse el teclado.
+The user tried the app on a Pixel 8 and asked for three things. It is noted here which requirement was touched and why.
 
-### D-REQ-2 · 2026-10-04 · Arranque en la distro predeterminada: ya cumplido, con requisito explícito (RF-13)
-- **Comprobado en un Pixel 8:** con Alpine instalada, cerrar la app del todo y reabrirla deja `localhost:~#` (proot) en la primera pestaña.
-- **Decisión:** se convierte en el requisito RF-13 y se añade T09b para lo que falta: nombrar las pestañas con su distro y el repintado de pestañas nuevas.
+### D-REQ-1 · 2026-10-04 · The extra-keys row follows the on-screen keyboard
+- **Decision:** `ExtraKeysConfig.onlyWithKeyboard` (default `true`): the row is drawn only while the keyboard is visible (`WindowInsets.ime`), and its height is no longer reserved in the grid computation when it is not seen. SPEC RF-08 updated.
+- **Reason:** with the keyboard closed the row (two rows of 48 dp) ate terminal without being useful for typing.
+- **Alternatives:** always hiding it and showing it with a button (more taps); tying it to "there is a physical keyboard" (not reliable on Android). The option to always see it is left.
+- **Impact:** the pty resize when opening and closing the keyboard was already debounced (D-T04-2); the row enters and leaves with the keyboard. The saved text format adds the `onlyWithKeyboard=` line; an old text without it counts as `true`.
+- **Not validated on the device:** that there is no grid flicker while the keyboard animates.
 
-### D-REQ-3 · 2026-10-04 · La pantalla de Ajustes pasa a ser un requisito de acceso, no solo de contenido
-- **Hallazgo:** no existía ninguna forma de llegar a unos ajustes (T12, T13, T14 y T15 dejaron cada uno su tarjeta en la pantalla de distros). T16 era una tarea del final del plan.
-- **Decisión:** RF-11 exige un icono ⚙ permanente y secciones definidas; T16 se amplía con ellas y sube de prioridad.
-- **Motivo:** sin ajustes visibles, T12c (apariencia) y todas las opciones de T11–T15 no se pueden usar.
+### D-REQ-2 · 2026-10-04 · Starting in the default distro: already fulfilled, with an explicit requirement (RF-13)
+- **Checked on a Pixel 8:** with Alpine installed, closing the app completely and reopening it leaves `localhost:~#` (proot) in the first tab.
+- **Decision:** it becomes requirement RF-13 and T09b is added for what is missing: naming the tabs with their distro and repainting new tabs.
 
-## T22a — Sistema de diseño estilo iOS: componentes base
+### D-REQ-3 · 2026-10-04 · The Settings screen becomes an access requirement, not just a content one
+- **Finding:** there was no way to reach a settings screen (T12, T13, T14 and T15 each left their card on the distros screen). T16 was a task at the end of the plan.
+- **Decision:** RF-11 requires a permanent ⚙ icon and defined sections; T16 is extended with them and goes up in priority.
+- **Reason:** without visible settings, T12c (appearance) and all the options of T11–T15 cannot be used.
 
-### D-T22a-1 · 2026-10-04 · Componentes propios sobre `foundation`, sin Material 3 ni librería de widgets
-- **Decisión:** los componentes (`ui/ios`) se escriben sobre `compose.foundation` y `compose.ui`, sin usar los componentes de Material 3. El tema Material de las pantallas actuales no se toca hasta T22b y T22c.
-- **Motivo:** Material pone su propio ripple, formas, estados y tipografía; para parecer iOS habría que desactivarlos casi todos. La accesibilidad (roles, estados, 48 dp, escala de fuente) se hace a mano y queda cubierta en cada componente.
-- **Alternativas:** *compose-cupertino* (Apache-2.0, 1 659 estrellas): su último cambio es de octubre de 2025 y está construido sobre Compose Multiplatform 1.6.1, muy anterior a nuestro BOM; añadiría dependencias de Multiplatform a un proyecto solo Android. *Material 3 tematizado*: ver arriba.
-- **Impacto:** sin dependencias nuevas ni cambios en `verification-metadata.xml`.
+## T22a — iOS-style design system: base components
 
-### D-T22a-2 · 2026-10-04 · Tipografía: Inter (SIL OFL-1.1), cuatro pesos sin modificar
-- **Decisión:** Inter 4.1 (Regular, Medium, SemiBold, Bold), copiada sin cambios del `extras/ttf` de la release oficial (`Inter-4.1.zip`, SHA-256 `9883fdd4a49d4fb66bd8177ba6625ef9a64aa45899767dde3d36aa425756b11e`). Licencia y créditos en `THIRD_PARTY_NOTICES.md` y `assets/licenses/Inter-OFL-1.1.txt`.
-- **Motivo:** SF Pro no se puede usar. Inter es la alternativa libre más cercana en forma y tiene los pesos que pide la escala de iOS (Large Title 34 a Caption 12).
-- **Alternativas:** la fuente variable de Inter (menos ficheros, pero API de variaciones más delicada y más peso por uso); la fuente del sistema (Roboto, que no se parece a iOS).
-- **Impacto:** el APK crece unos 1,6 MB. La fuente del terminal sigue siendo JetBrains Mono (T12).
+### D-T22a-1 · 2026-10-04 · Own components on top of `foundation`, without Material 3 or a widget library
+- **Decision:** the components (`ui/ios`) are written on top of `compose.foundation` and `compose.ui`, without using Material 3's components. The Material theme of the current screens is not touched until T22b and T22c.
+- **Reason:** Material brings its own ripple, shapes, states and typography; to look like iOS almost all of them would have to be disabled. Accessibility (roles, states, 48 dp, font scale) is done by hand and covered in each component.
+- **Alternatives:** *compose-cupertino* (Apache-2.0, 1,659 stars): its last change is from October 2025 and it is built on Compose Multiplatform 1.6.1, much older than our BOM; it would add Multiplatform dependencies to an Android-only project. *Themed Material 3*: see above.
+- **Impact:** no new dependencies or changes in `verification-metadata.xml`.
 
-### D-T22a-2b · 2026-10-04 · Iconos: Lucide (ISC), 16 vectores con las rutas sin cambiar
-- **Decisión:** 16 iconos de Lucide 1.52.0 (chevrones, check, plus, x, search, ellipsis, settings, trash, folder, download, terminal, info, copy, key) convertidos a `res/drawable/ic_ios_*.xml`; una enumeración `IosGlyph` los nombra.
-- **Motivo:** SF Symbols no se puede usar. Lucide es ISC (compatible con GPL-3.0) y su trazo redondeado de 2 px se parece al de iOS. Algunos iconos heredan de Feather (MIT): se acreditan los dos.
-- **Cómo se convirtió:** cada elemento SVG (`path`, `line`, `circle`, `rect`, `polyline`, `ellipse`) pasó a una ruta de vector con el mismo trazo; el color se pone al dibujar (`ColorFilter.tint`).
-- **Nota:** `trash-2` no existe en 1.52.0; se usa `trash`.
+### D-T22a-2 · 2026-10-04 · Typography: Inter (SIL OFL-1.1), four weights unmodified
+- **Decision:** Inter 4.1 (Regular, Medium, SemiBold, Bold), copied unchanged from the `extras/ttf` of the official release (`Inter-4.1.zip`, SHA-256 `9883fdd4a49d4fb66bd8177ba6625ef9a64aa45899767dde3d36aa425756b11e`). License and credits in `THIRD_PARTY_NOTICES.md` and `assets/licenses/Inter-OFL-1.1.txt`.
+- **Reason:** SF Pro cannot be used. Inter is the closest free alternative in shape and has the weights the iOS scale asks for (Large Title 34 to Caption 12).
+- **Alternatives:** Inter's variable font (fewer files, but a more delicate variations API and more weight per use); the system font (Roboto, which does not look like iOS).
+- **Impact:** the APK grows about 1.6 MB. The terminal's font is still JetBrains Mono (T12).
 
-### D-T22a-3 · 2026-10-04 · Barras translúcidas: desenfoque real del fondo con `GraphicsLayer`, sin librería
-- **Decisión:** el contenido que se desplaza se graba una vez en una capa (`GraphicsLayer`); la barra dibuja una copia desenfocada de la parte que tiene detrás (`RenderEffect`, desde Android 12) con un tinte encima. Antes de Android 12 la barra es casi sólida (97 %). La política es lógica pura (`BarStyle.forSdk`, con tests).
-- **Motivo:** `Modifier.blur` solo desenfoca el propio contenido, no lo de detrás; el efecto de iOS necesita desenfocar lo que hay debajo.
-- **Alternativa:** *Haze* (Apache-2.0, activo): hace lo mismo con más pulido. Queda como plan B si el nuestro da problemas, a cambio de una dependencia nueva.
-- **Riesgo (sin validar):** coste de volver a desenfocar en cada fotograma de un scroll, sobre todo en gama baja. Hay que medirlo en el dispositivo.
+### D-T22a-2b · 2026-10-04 · Icons: Lucide (ISC), 16 vectors with the paths unchanged
+- **Decision:** 16 icons from Lucide 1.52.0 (chevrons, check, plus, x, search, ellipsis, settings, trash, folder, download, terminal, info, copy, key) converted to `res/drawable/ic_ios_*.xml`; an `IosGlyph` enumeration names them.
+- **Reason:** SF Symbols cannot be used. Lucide is ISC (compatible with GPL-3.0) and its rounded 2 px stroke looks like iOS's. Some icons inherit from Feather (MIT): both are credited.
+- **How it was converted:** each SVG element (`path`, `line`, `circle`, `rect`, `polyline`, `ellipse`) became a vector path with the same stroke; the color is set when drawing (`ColorFilter.tint`).
+- **Note:** `trash-2` does not exist in 1.52.0; `trash` is used.
 
-### D-T22a-4 · 2026-10-04 · Paleta: colores de iOS con el texto subido a 4,5:1, y el tinte sale del esquema de T12
-- **Decisión:** `iosPalette(decisión, esquema)` da fondos, celdas, etiquetas, separador, tinte y rojo destructivo en claro, oscuro y OLED. El tinte parte del azul ANSI (índice 4) del esquema; el tinte, el rojo y la etiqueta secundaria se acercan a negro o blanco solo lo justo para llegar a 4,5:1 sobre la celda y sobre la página (`ColorAdjust.ensureContrast`).
-- **Motivo:** el azul del sistema de iOS (≈4,0:1) y su etiqueta secundaria (≈3,3:1) no llegan a AA en claro. RF-14 exige 4,5:1.
-- **OLED:** fondo y página en negro puro; las celdas en `#111113` (no `#000000`) para que se distingan, y separador `#2A2A2D`.
-- **Prueba:** un test recorre los 3 temas × (sin esquema + todos los incluidos) y exige 7:1 para la etiqueta y 4,5:1 para el resto.
+### D-T22a-3 · 2026-10-04 · Translucent bars: real background blur with `GraphicsLayer`, no library
+- **Decision:** the scrolling content is recorded once into a layer (`GraphicsLayer`); the bar draws a blurred copy of the part behind it (`RenderEffect`, from Android 12) with a tint on top. Before Android 12 the bar is almost solid (97 %). The policy is pure logic (`BarStyle.forSdk`, with tests).
+- **Reason:** `Modifier.blur` only blurs its own content, not what is behind it; the iOS effect needs to blur what is underneath.
+- **Alternative:** *Haze* (Apache-2.0, active): does the same with more polish. It stays as plan B if ours gives problems, in exchange for a new dependency.
+- **Risk (not validated):** the cost of blurring again on every frame of a scroll, especially on low-end devices. It has to be measured on the device.
 
-### D-T22a-5 · 2026-10-04 · Hoja inferior: un `Dialog` arrastrable por el asa, con detents por proyección de velocidad
-- **Decisión:** la hoja es un `Dialog` a pantalla completa con fondo propio; se arrastra por el asa (48 dp de alto) y, al soltar, `SheetDetents.snap` proyecta la velocidad 0,15 s y elige el detent más cercano (medio 0,5, grande 0,94) o la cierra si queda por debajo de la mitad del más bajo. Toque en el fondo, botón atrás y una acción de accesibilidad también la cierran.
-- **Motivo:** un `Dialog` da gratis el modo modal y el botón atrás.
-- **Límite conocido:** el contenido de la hoja se desplaza por su cuenta; no arrastra la hoja (como mucho, el asa). Es más simple y no pelea con el scroll.
+### D-T22a-4 · 2026-10-04 · Palette: iOS colors with the text raised to 4.5:1, and the tint comes from T12's scheme
+- **Decision:** `iosPalette(decision, scheme)` gives backgrounds, cells, labels, separator, tint and destructive red in light, dark and OLED. The tint starts from the scheme's ANSI blue (index 4); the tint, the red and the secondary label approach black or white just enough to reach 4.5:1 on the cell and on the page (`ColorAdjust.ensureContrast`).
+- **Reason:** iOS's system blue (≈4.0:1) and its secondary label (≈3.3:1) do not reach AA in light. RF-14 requires 4.5:1.
+- **OLED:** background and page in pure black; cells in `#111113` (not `#000000`) so they can be told apart, and separator `#2A2A2D`.
+- **Test:** a test goes through the 3 themes × (no scheme + all the bundled ones) and requires 7:1 for the label and 4.5:1 for the rest.
 
-### D-T22a-6 · 2026-10-04 · Alertas y hojas de acciones: `Dialog` con ventana propia
-- **Decisión:** `IosAlert` (270 dp, dos acciones lado a lado) e `IosActionSheet` (pegada abajo, cancelar en tarjeta aparte) son `Dialog`. Cada acción cierra el diálogo tras ejecutarse; todas miden al menos 48 dp.
+### D-T22a-5 · 2026-10-04 · Bottom sheet: a `Dialog` draggable by the handle, with detents by velocity projection
+- **Decision:** the sheet is a full-screen `Dialog` with its own background; it is dragged by the handle (48 dp tall) and, on release, `SheetDetents.snap` projects the velocity 0.15 s and chooses the nearest detent (medium 0.5, large 0.94) or closes it if it ends up below half of the lowest one. A tap on the background, the back button and an accessibility action also close it.
+- **Reason:** a `Dialog` gives modal mode and the back button for free.
+- **Known limit:** the sheet's content scrolls on its own; it does not drag the sheet (at most, the handle). It is simpler and does not fight with the scroll.
 
-### D-T22a-7 · 2026-10-04 · Lo que el catálogo enseña y dónde vive
-- **Decisión:** `IosCatalog` y su actividad están en el *source set* `debug` (con sus cadenas en inglés y español), así que no entran en el APK de producción. Se abre con `adb shell am start -n com.qtekfun.ultimateterminal/.ui.ios.IosCatalogActivity`. Un segmentado cambia entre claro, oscuro y OLED, y una fila recorre los esquemas.
+### D-T22a-6 · 2026-10-04 · Alerts and action sheets: `Dialog` with its own window
+- **Decision:** `IosAlert` (270 dp, two actions side by side) and `IosActionSheet` (stuck to the bottom, cancel on a separate card) are `Dialog`s. Each action closes the dialog after running; all measure at least 48 dp.
 
-### D-T22a-8 · 2026-10-04 · Lo que Lint y detekt obligaron a cambiar (sin relajar nada)
-- `Modifier.offset` con valores de estado debe usar la sobrecarga con lambda (el interruptor y el segmentado).
-- Un recurso de cadenas sin usar (se usa como título de la sección de tema del catálogo).
-- Constructores con más de 7 parámetros (`IosColors`, `IosTypography`): ahora reciben la paleta o un mapa de roles de texto.
-- Ficheros que no coinciden con su única declaración (`IosGlyph`, `IosAccessory`, `IosButtonStyle`, `BackdropState`): renombrados o separados.
+### D-T22a-7 · 2026-10-04 · What the catalog shows and where it lives
+- **Decision:** `IosCatalog` and its activity are in the `debug` *source set* (with their strings in English and Spanish), so they do not enter the production APK. It is opened with `adb shell am start -n com.qtekfun.ultimateterminal/.ui.ios.IosCatalogActivity`. A segmented control switches between light, dark and OLED, and a row goes through the schemes.
 
-### D-T22a-9 · 2026-10-04 · Qué NO está validado (sin dispositivo)
-- Cómo se ve cada componente en el dispositivo y en la tablet, y que el catálogo abre.
-- **El desenfoque de las barras**: que se vea bien y que el scroll siga fluido (D-T22a-3).
-- La respuesta háptica (los tipos `SegmentTick`, `ToggleOn`/`ToggleOff`, `Confirm` dependen de la versión de Android y de si el usuario la desactivó).
-- TalkBack con roles y estados (interruptor, segmentos, hoja con acciones personalizadas).
-- La hoja inferior: tacto del arrastre, velocidad de proyección y que el `Dialog` sin atenuación de ventana se vea bien con el teclado.
-- El campo de búsqueda con el teclado (foco, IME, botón de borrar).
-- Rendimiento y consumo de memoria de las capas de desenfoque.
+### D-T22a-8 · 2026-10-04 · What Lint and detekt forced to change (without relaxing anything)
+- `Modifier.offset` with state values must use the lambda overload (the switch and the segmented control).
+- An unused string resource (it is used as the title of the catalog's theme section).
+- Constructors with more than 7 parameters (`IosColors`, `IosTypography`): they now receive the palette or a map of text roles.
+- Files that do not match their single declaration (`IosGlyph`, `IosAccessory`, `IosButtonStyle`, `BackdropState`): renamed or split.
 
-## T20-T21 — Metadatos F-Droid y documentación
+### D-T22a-9 · 2026-10-04 · What is NOT validated (without a device)
+- How each component looks on the device and on the tablet, and that the catalog opens.
+- **The bars' blur**: that it looks good and that scrolling stays smooth (D-T22a-3).
+- Haptic feedback (the `SegmentTick`, `ToggleOn`/`ToggleOff`, `Confirm` types depend on the Android version and on whether the user disabled it).
+- TalkBack with roles and states (switch, segments, sheet with custom actions).
+- The bottom sheet: the feel of the drag, the projection velocity and that the `Dialog` without window dimming looks good with the keyboard.
+- The search field with the keyboard (focus, IME, clear button).
+- Performance and memory consumption of the blur layers.
 
-Trabajo de texto: no se compiló, no se tocó código ni ninguna pantalla y no se usó ningún dispositivo. Lo
-que se afirma sobre qué está verificado en un dispositivo sale de lo que el orquestador anotó en
-`DECISIONS.md` (sección T08c y siguientes) y en `PLAN.md`; no se ha comprobado de nuevo.
+## T20-T21 — F-Droid metadata and documentation
 
-### D-T20-1 · 2026-10-04 · Los textos de fastlane se reescriben; el changelog es el de `10001`
+Text work: nothing was compiled, no code or screen was touched and no device was used. What
+is claimed about what is verified on a device comes from what the orchestrator noted in
+`DECISIONS.md` (section T08c and following) and in `PLAN.md`; it has not been checked again.
 
-- **Qué había:** un borrador de un agente anterior, de cuando solo existía T03 ("hoy la app muestra un
-  terminal con el shell de Android; las distros y las pestañas son futuro"). Ya no es verdad.
-- **Decisión:** se reescribieron `title`, `short_description`, `full_description` y el changelog, en
-  `en-US` y `es-ES`, con lo que existe en `master` y diciendo expresamente qué está probado solo en un
-  ordenador. Límites comprobados con un script: título 16/30, resumen 64 y 65/80, descripción 2442 y
-  2570/4000, changelog 320 y 358/500.
-- **Changelog `10001`:** `0.1.0-rc.1` da `(0*10000 + 1*100 + 0)*100 + 1 = 10001`, que es el fichero. **No** se
-  crea `10099` (el `0.1.0` final) porque esa versión aún no existe: lo pide `RELEASING.md` al cortar la release.
-- **Por qué decirlo en la ficha:** una ficha de F-Droid que prometiera tablets, paneles o copias de seguridad
-  "funcionando" sería falsa hoy: solo se ha probado en un móvil. Se dice "versión preliminar temprana".
+### D-T20-1 · 2026-10-04 · The fastlane texts are rewritten; the changelog is `10001`'s
 
-### D-T20-2 · 2026-10-04 · Icono
+- **What there was:** a draft from a previous agent, from when only T03 existed ("today the app shows a
+  terminal with the Android shell; distros and tabs are future"). It is no longer true.
+- **Decision:** `title`, `short_description`, `full_description` and the changelog were rewritten, in
+  `en-US` and `es-ES`, with what exists in `master` and saying expressly what is tested only on a
+  computer. Limits checked with a script: title 16/30, summary 64 and 65/80, description 2442 and
+  2570/4000, changelog 320 and 358/500.
+- **Changelog `10001`:** `0.1.0-rc.1` gives `(0*10000 + 1*100 + 0)*100 + 1 = 10001`, which is the file. `10099`
+  (the final `0.1.0`) is **not** created because that version does not exist yet: `RELEASING.md` asks for it when cutting the release.
+- **Why say it in the listing:** an F-Droid listing that promised tablets, panes or backups
+  "working" would be false today: it has only been tested on a phone. It says "early preliminary version".
 
-- Se reutiliza `images/icon.png` (512×512, RGB) que dejó el agente anterior: el prompt `>_` verde sobre el
-  fondo oscuro del icono del launcher. Se miró a mano y coincide con `ic_launcher_foreground.xml`/el color
-  de fondo; no se regeneró. Es la misma imagen en las dos localizaciones.
-- **Pendiente:** si se rediseña el icono del launcher (T22b/c), regenerar este.
+### D-T20-2 · 2026-10-04 · Icon
 
-### D-T20-3 · 2026-10-04 · Capturas: pendientes, no inventadas
+- `images/icon.png` (512×512, RGB) left by the previous agent is reused: the green `>_` prompt on the
+  launcher icon's dark background. It was looked at by hand and matches `ic_launcher_foreground.xml`/the background
+  color; it was not regenerated. It is the same image in both locales.
+- **Pending:** if the launcher icon is redesigned (T22b/c), regenerate this one.
 
-- No hay `phoneScreenshots/` ni `sevenInchScreenshots/`: una captura tiene que ser real y de la build actual, y
-  no se puede hacer sin un dispositivo. `fastlane/README.md` lista las que convienen.
-- **Pendiente (orquestador, en un dispositivo):** hacerlas, sobre todo una en tablet, que es el caso por el que
-  existe el proyecto.
+### D-T20-3 · 2026-10-04 · Screenshots: pending, not invented
 
-### D-T20-4 · 2026-10-04 · Receta `fdroid/com.qtekfun.ultimateterminal.yml`: lo que cuadra y lo que no
+- There is no `phoneScreenshots/` or `sevenInchScreenshots/`: a screenshot has to be real and of the current build, and
+  it cannot be taken without a device. `fastlane/README.md` lists the ones that are advisable.
+- **Pending (orchestrator, on a device):** taking them, above all one on a tablet, which is the case for which
+  the project exists.
 
-- **Coherente con el repo:** `submodules: true` (proot sale del submódulo), `ndk: 28.2.13676358` (igual que
-  `ndkVersion` de `app` y de `terminal-emulator`), `subdir: app`, JDK 21, `UpdateCheckMode: Tags` con solo
-  versiones finales, `Binaries` para el build reproducible, `License: GPL-3.0-or-later`.
-- **Riesgos que no se pueden comprobar sin ejecutar `fdroid build`:**
-  1. **CMake 3.31.6** está fijado en `app/build.gradle.kts` (`externalNativeBuild.cmake.version`) y la receta no
-     lo instala. Si el servidor de F-Droid no lo tiene, Gradle intenta bajarlo con `sdkmanager` y puede fallar. Hay
-     que probarlo y, si hace falta, añadir un `prebuild`/`sudo` que lo instale.
-  2. `AllowedAPKSigningKeys` es un marcador: se rellena con la huella del certificado de release (ver `RELEASING.md`).
-  3. `versionName`/`versionCode`/`commit` (`0.1.0`, `10099`, `v0.1.0`) son los de la primera versión final, no los del
-     árbol (`0.1.0-rc.1`, `10001`); las `-rc.N` no se ofrecen en F-Droid a propósito.
-  4. `targetSdk 28`: no se ha comprobado cómo lo trata la política de inclusión de F-Droid (no lo prohíbe, pero puede
-     avisar). Verificarlo al presentar la receta.
-- **No se cambió la receta:** cada cambio sería una suposición sobre el servidor de F-Droid que no puedo comprobar.
+### D-T20-4 · 2026-10-04 · Recipe `fdroid/com.qtekfun.ultimateterminal.yml`: what fits and what does not
 
-### D-T20-5 · 2026-10-04 · Anti-características: ninguna segura, una a consultar
+- **Consistent with the repo:** `submodules: true` (proot comes from the submodule), `ndk: 28.2.13676358` (same as
+  `app`'s and `terminal-emulator`'s `ndkVersion`), `subdir: app`, JDK 21, `UpdateCheckMode: Tags` with only
+  final versions, `Binaries` for the reproducible build, `License: GPL-3.0-or-later`.
+- **Risks that cannot be checked without running `fdroid build`:**
+  1. **CMake 3.31.6** is pinned in `app/build.gradle.kts` (`externalNativeBuild.cmake.version`) and the recipe does not
+     install it. If F-Droid's server does not have it, Gradle tries to download it with `sdkmanager` and may fail. It
+     has to be tried and, if needed, a `prebuild`/`sudo` that installs it added.
+  2. `AllowedAPKSigningKeys` is a placeholder: it is filled with the release certificate's fingerprint (see `RELEASING.md`).
+  3. `versionName`/`versionCode`/`commit` (`0.1.0`, `10099`, `v0.1.0`) are those of the first final version, not those of the
+     tree (`0.1.0-rc.1`, `10001`); the `-rc.N` are not offered on F-Droid on purpose.
+  4. `targetSdk 28`: how F-Droid's inclusion policy treats it has not been checked (it does not forbid it, but it may
+     warn). Verify it when submitting the recipe.
+- **The recipe was not changed:** each change would be an assumption about F-Droid's server that I cannot check.
 
-- **No aplican:** `Ads`, `Tracking`, `NonFreeAdd`, `NonFreeAssets` (la fuente y los iconos son libres: OFL/ISC),
-  `NonFreeDep` (sin servicios de Google ni blobs; lo vigila `checkForbiddenDependencies` y `licensee`),
+### D-T20-5 · 2026-10-04 · Anti-features: none for sure, one to ask about
+
+- **Do not apply:** `Ads`, `Tracking`, `NonFreeAdd`, `NonFreeAssets` (the font and the icons are free: OFL/ISC),
+  `NonFreeDep` (no Google services or blobs; `checkForbiddenDependencies` and `licensee` watch it),
   `UpstreamNonFree`, `KnownVuln`, `NoSourceSince`.
-- **A consultar con F-Droid, sin afirmar:** `NonFreeNet`. Para instalar **Debian** la app descarga el manifiesto y
-  el `rootfs.tar.gz` de `raw.githubusercontent.com/debuerreotype/docker-debian-artifacts` (D-T06-3). GitHub es un
-  servicio alojado propietario, aunque lo que se baja es software libre; no sé si F-Droid lo cuenta como
-  "depende de un servicio de red no libre" para una descarga opcional que el usuario inicia. Ubuntu
-  (`cdimage.ubuntu.com`) y Alpine (`dl-cdn.alpinelinux.org`) salen de los mirrors de los propios proyectos.
-- **Descargar y ejecutar software de terceros** (las distros) no tiene anti-característica propia que yo conozca;
-  se menciona en la descripción y en `PRIVACY.md`. Confirmarlo al presentar la receta.
-
-### D-T20-6 · 2026-10-04 · Licencia declarada y un punto que sigue abierto
-
-- **Declarada:** GPL-3.0-or-later. Compatible con lo que lleva: Apache-2.0 (Termux emulator, AndroidX, Kotlin…),
-  OFL-1.1 (JetBrains Mono, Inter), ISC (Lucide), MIT (esquemas), GPL-2.0-or-later (PRoot), LGPL-3.0-or-later
-  (talloc); todo está en `THIRD_PARTY_NOTICES.md`.
-- **Abierto, no resuelto aquí (D-T03-2):** los ficheros de `terminal-emulator` de Termux no llevan cabecera de
-  licencia y Apache-2.0 solo consta en el `LICENSE.md` raíz de upstream. Hay que **confirmarlo con los
-  mantenedores de Termux antes de presentar la app a F-Droid**. No es asesoría legal.
-
-### D-T21-1 · 2026-10-04 · El README distingue "verificado en un dispositivo" de "solo en un ordenador"
-
-- **Decisión:** una tabla con dos columnas (dispositivo / solo host). Verificado en un Pixel 8: arranque, shell con
-  PTY, entrada y redimensionado con el teclado (`stty size`), servicio en primer plano, instalar Alpine desde la app,
-  abrirla con proot en una pestaña, `apk add` con red, `ssh` y `python3` en esa pestaña, `nmap` instalado, y que al
-  arrancar se abre la distro predeterminada. Todo lo demás, solo host.
-- **Motivo:** el proyecto se ha hecho casi sin dispositivo y un README optimista es peor que uno que dice qué falta.
-  Lo que se arregló y aún no se ha vuelto a mirar (la fila que se oculta con el teclado, el texto que llega al shell
-  mientras se escribe, el diálogo de batería directo, el `/proc` falso) se lista aparte como "en el código, no mirado".
-- **Dato desfasado que no se tocó:** la sección "Pendiente de validar en hardware", al principio de este fichero, empieza
-  diciendo que "el usuario ha prohibido probar en el Pixel 8". Es cierto de cuando se escribió, pero el usuario lo
-  autorizó después para el orquestador. No se edita aquí para no chocar con los demás agentes que añaden a este
-  fichero; conviene actualizarla cuando se cierre la validación en dispositivo.
-
-### D-T21-2 · 2026-10-04 · `PRIVACY.md`: cada permiso con su motivo, en inglés y español
-
-- **Contenido:** sin telemetría ni cuentas; qué se guarda y dónde (almacenamiento privado, `allowBackup=false`, claves
-  cifradas con el Keystore); los **tres dominios** a los que se conecta para bajar distros (`dl-cdn.alpinelinux.org`,
-  `cdimage.ubuntu.com`, `raw.githubusercontent.com`) y que solo se usa HTTPS; el DNS de respaldo público
-  (`1.1.1.1`/`9.9.9.9`) como **último recurso** y su efecto en la privacidad; una tabla con los nueve permisos
-  del manifiesto (`INTERNET`, `ACCESS_NETWORK_STATE`, `FOREGROUND_SERVICE(_SPECIAL_USE)`, `POST_NOTIFICATIONS`,
-  `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, `WAKE_LOCK`, `READ/WRITE_EXTERNAL_STORAGE`) y los que **no** pide; la
-  contraseña de las copias de seguridad (no se guarda, no se recupera); y por qué `targetSdk 28` y no Google Play.
-- **Matiz que se quiso evitar:** "no escribe contenido en registros" se redactó como "por diseño", porque es una regla
-  del código (`CLAUDE.md`) y no algo que este trabajo haya auditado.
-- **El permiso de almacenamiento** se describe tal cual está: declarado siempre, pedido solo al activar `~/storage`,
-  y con la salvedad de que en Android 13 o posterior puede concederse solo para multimedia (D-T13-3, sin verificar).
-- **Hay que revisarlo cuando cambie:** el manifiesto (cualquier permiso nuevo), T16 (los DNS pasarán a ser un ajuste),
-  y si se añade cualquier otro dominio al que se conecte la app.
-
-### D-T21-3 · 2026-10-04 · `CONTRIBUTING.md` recoge lo aprendido en esta etapa
-
-- Rama principal `master`; Conventional Commits; PR con **todos** los checks, incluido GitGuardian (que puede
-  marcar falsos positivos: se lee y se explica, no se ignora); **no fusionar `master` dentro de la rama** (GitGuardian
-  releyó código de T15 en PRs ajenas) sino rebasar; `lintDebug` en local antes de abrir la PR (Lint con avisos como
-  errores); tests deterministas (el reloj en los fixtures de tar dejó la cobertura crítica fallando 2 de cada 6
-  ejecuciones); cobertura 85 % y 100 % crítica; `targetSdk` 28 intocable; créditos en `THIRD_PARTY_NOTICES.md`.
-- **No afirma** nada que no se haya hecho: no promete reporte privado de vulnerabilidades de GitHub (no sé si está
-  activado), solo "contacta en privado con el mantenedor".
-
-### Pendiente de este trabajo
-
-- Capturas reales (D-T20-3). Huella `AllowedAPKSigningKeys`, comprobar CMake en el servidor de F-Droid y consultar
-  `NonFreeNet`, el `targetSdk` 28 y el punto de licencia de Termux (D-T20-4 a D-T20-6) al presentar la receta.
-- No se ejecutó `fdroid lint` ni `fdroid readmeta`: no están en esta máquina. Hay que pasarlos antes de enviar la receta.
-
-## T09b — Pestañas: repintado de las nuevas y nombre de distro
-
-### D-T09b-1 · 2026-10-04 · Causa raíz de la pestaña en blanco: `activeHost` se calculaba antes de que existiera el host
-- **Hallazgo (Pixel 8):** una pestaña nueva salía en blanco hasta cambiar de pestaña y volver, y con el teclado visible lo escrito no se repintaba hasta ocultarlo. Se reprodujo en cold start y en pestañas creadas con "+".
-- **Causa:** `SessionManager.activeHost` era `state.map { factory.host(it.activeId) }.distinctUntilChanged()`. El estado publica la pestaña nueva **antes** de arrancar su sesión (el planificador lee la distro del estado ya publicado), y el host se registra en la fábrica después. En ese instante `factory.host(...)` devolvía `null`, `distinctUntilChanged` impedía repetir la consulta y el ViewModel retransmitía `flowOf(0)`: ningún aviso de cambio del emulador llegaba a la vista. Cualquier cosa que cambiara el estado (cambiar de pestaña, el cambio de tamaño al ocultar el teclado) repetía la consulta y "arreglaba" la pantalla, lo que explica los síntomas.
-- **Decisión:** `HostRegistry<T>` (dominio, genérico) guarda los hosts y expone un contador observable; `follow(activeId)` repite la consulta cada vez que un host se registra o se quita. `AndroidSessionFactory` lo usa en lugar de un `mutableMapOf`, `SessionManager.activeHost` es `registry.follow(...)`, y los paneles no activos (`InactivePane`) releen su host cuando cambia el registro (`hostChanges`), porque tenían el mismo defecto.
-- **Alternativas:** forzar un repintado periódico (esconde el fallo y gasta batería); registrar el host antes de publicar el estado (cambia el orden de arranque de T08, más riesgo).
-- **Prueba:** `HostRegistryTest` reproduce el orden del fallo (estado primero, host después) y comprueba que se sigue el host, que no hay emisiones repetidas y que un host cerrado deja de seguirse.
-- **Sin validar en dispositivo:** que la pestaña nueva se dibuje al instante y que lo escrito se repinte sin cambiar de pestaña.
-
-### D-T09b-2 · 2026-10-04 · Nombre de pestaña: la distro, numerada si se repite (RF-13)
-- **Decisión:** `tabNames` (dominio, puro) da `Custom` si el usuario renombró, `InDistro(distro, ordinal)` si no ("Alpine", "Alpine 2"...), y `Plain(n)` ("Shell n") para el shell de Android. Una pestaña renombrada no consume número de su distro.
-- **Motivo:** con varias pestañas en una distro, "Shell 1/2/3" no dice nada; el nombre del usuario siempre gana.
-
-### D-T09b-3 · 2026-10-04 · El círculo oscuro con "⋮" sobre el prompt no lo dibuja la app (sin confirmar)
-- **Hallazgo:** en las capturas del Pixel 8 hay un círculo oscuro con tres puntos en la esquina superior izquierda del terminal. Ninguna parte del código lo dibuja allí: el menú de paneles (`PaneMenu`) está arriba a la derecha y solo aparece con paneles divididos. Está anclado al origen de la vista de entrada (`TerminalInputView`, 1 dp), así que parece una función del sistema para editores con foco.
-- **Mitigación aplicada, sin confirmar:** `importantForAutofill = NO`, `setAutoHandwritingEnabled(false)` desde Android 14 y `IME_FLAG_NO_PERSONALIZED_LEARNING`. T08c ya lo había atribuido al menú de paneles sin mirar en el dispositivo y el círculo siguió ahí; no doy por resuelto este punto hasta verlo en un dispositivo.
-
-## T22b — Cromo del terminal estilo iOS
-
-### D-T22b-1 · 2026-10-04 · El cromo usa `ui/ios` (T22a) con los colores del esquema del terminal
-- **Decisión:** `TerminalScreen` envuelve el contenido en `IosTheme(decision, scheme)`, con `dark` y `oled` sacados del esquema (no del tema del sistema): la pantalla se dibuja en los colores del esquema y su cromo tiene que combinar con ellos. Las barras siguen usando `ChromePalette` (T12c) para superficies y texto.
-
-### D-T22b-2 · 2026-10-04 · Barra de pestañas: cápsulas, y el menú de la pestaña activa
-- **Decisión:** cada pestaña es una cápsula (`capsule`, dibujada con 6 dp de margen vertical dentro de un objetivo táctil de 48 dp, así que la cápsula es más baja que lo que se toca). La activa lleva el relleno `selected`, el texto en seminegrita y un botón `⋯` (menú con renombrar y cerrar, `IosContextMenu`); las demás, solo texto. Línea fina (0,5 dp) entre la barra y el terminal. Todas las pestañas ofrecen renombrar y cerrar como **acciones de accesibilidad**, así que ninguna función depende de ver el botón.
-- **Gestos:** se conservan (tocar selecciona, doble toque renombra, pulsación larga y arrastre reordena).
-- **Alternativas:** menú contextual por pulsación larga en todas (choca con el arrastre para reordenar).
-
-### D-T22b-3 · 2026-10-04 · Sin desenfoque en la barra de pestañas
-- **Decisión:** la barra usa el color `surface` del esquema, sin `backdropBar`. El desenfoque de T22a necesita contenido que pase *por debajo* de la barra, y aquí la barra no se solapa con el terminal (el cálculo de la rejilla la excluye). Solaparlas cambiaría el cálculo del tamaño del pty y no se puede validar sin dispositivo.
-- **Pendiente:** decidir en T22c / una vez probado en dispositivo si el terminal se dibuja bajo la barra.
-
-### D-T22b-4 · 2026-10-04 · Teclas extra como teclas de teclado
-- **Decisión:** cada tecla es una tecla redondeada con una línea inferior (el filo de una tecla), sobre una bandeja del color `surface`. Los colores salen del dominio (`ChromeColorsFor`: `key`, `keyPressed`, `onKey`): la tecla es **más clara que la bandeja** en esquemas claros y oscuros, y más oscura al pulsarla; el texto cumple contraste ≥ 4,5:1 en todos los esquemas incluidos (test). Ctrl/Alt armados y bloqueados siguen con el acento. `onlyWithKeyboard` se mantiene.
-- **Háptica:** la de `IosPressable` en cada tecla, como el clic de un teclado.
-
-### D-T22b-5 · 2026-10-04 · Menús y avisos con los componentes iOS
-- **"+" y paneles:** `IosContextMenu` con iconos Lucide a la derecha (D-T22a). Las entradas se construyen como lista para que la última no lleve separador. **Renombrar:** alerta iOS con campo de texto (`NamePrompt`: título, campo, nota y dos botones lado a lado), que toma el teclado sola; **cerrar:** `IosAlert` con el botón destructivo en rojo. **Aviso de lanzamiento:** tarjeta redondeada con sombra sobre las primeras filas; el icono va en rojo si es un problema.
-- **Botón de paneles:** objetivo de 48 dp con una cápsula de 30 dp dentro (cubre menos texto) y solo con paneles divididos.
-- **No tocado (T22c):** los diálogos de `SessionPrompts` (permisos), Distros, SSH, Apariencia y Ajustes.
-
-### D-T22b-6 · 2026-10-04 · Refactor forzado por detekt
-- `NamePrompt` recibe sus textos agrupados (`NamePromptTexts`), `TabChip` se parte en `TabChip`, `TabLabel` y `tabSemantics` con dos clases de contexto, los avisos y alertas de pestañas viven en `TabPrompts.kt`, y `TerminalScreen` agrupa lo que pasa a `TerminalContent`. Ninguna regla se relajó.
-
-### D-T22b-7 · 2026-10-04 · Qué NO está validado (sin dispositivo)
-- El aspecto real de las cápsulas, las teclas y los menús en un móvil y una tablet, en claro, oscuro y OLED.
-- La alerta de renombrar con el teclado (que el campo se vea y no lo tape), y el foco automático del campo.
-- Que el menú contextual salga en el sitio que se espera desde el borde de la pantalla (se ancla a la esquina superior derecha de su botón).
-- Los gestos de las pestañas con la cápsula, y TalkBack con las acciones personalizadas.
-- Que el círculo con "⋮" desaparezca (D-T09b-3).
-
-### D-T22b-8 · 2026-10-04 · Lección: pruebas deterministas
-- Esta rama no añade tests que dependan del reloj, del azar ni del tamaño de archivos comprimidos (la cobertura crítica fue intermitente por eso; ver D-T15-*/la PR de fixtures deterministas).
-
-## Primeras pruebas en hardware (Pixel 8, 2026-10-04)
-
-Pruebas manuales del orquestador en un **Pixel 8** (Android 17, API 37, arm64, app debug con `targetSdk` 28), con `adb` y capturas de pantalla. Los agentes de desarrollo no tocan dispositivos.
-
-### Verificado en el dispositivo
-- **Arranque y PTY (T03):** la app arranca en ~540 ms; la primera pestaña es un shell con PTY real (`uname -a` devuelve el kernel real, aarch64).
-- **Redimensionado (T04):** con el teclado abierto, `stty size` da 18×49 y coincide con lo visible (la vista se encoge sobre el teclado).
-- **Servicio en primer plano (T08):** corre con `targetSdk` 28 en Android 17 (`isForeground=true`, tipo `specialUse`, canal `sessions` con 2 acciones).
-- **Pestañas (T09):** crear y cambiar de pestaña funcionan.
-- **Distros (T06/T07):** instalar Alpine 3.24.2 desde la app (descarga, SHA-256, extracción) tarda ~3 s y la deja lista y predeterminada.
-- **proot (T02/T08b):** una pestaña nueva abre `localhost:~#`, un shell root de Alpine bajo proot; al cerrar del todo la app y reabrirla, la primera pestaña vuelve a ser la distro (6 de 6 arranques).
-- **Herramientas dentro de la distro:** `apk update` (28 553 paquetes) y `apk add` de 41 paquetes con red y DNS del dispositivo; OpenSSH 10.3, Python 3.14.8 y nmap 7.99 funcionan. `free -m` y `uptime` funcionan.
-
-### Fallos encontrados (y su estado)
-- **Crash al instalar una distro:** `SecurityException: getFileStore` (Android prohíbe leer `/proc/mounts` a las apps). Corregido con `StatFs` (PR #19).
-- **Lo escrito no aparecía hasta ocultar el teclado:** `setComposingText` no enviaba el texto hasta `finishComposingText`. Corregido enviando la composición al momento (`ComposingText`, PR #23). **Pendiente de comprobar en el dispositivo.**
-- **Pestaña nueva en blanco hasta cambiar de pestaña y volver:** causa raíz en `SessionManager.activeHost` (T09b). Corregido en T22b; pendiente de comprobar.
-- **Diálogo de batería** abría una lista general de Ajustes: se cambia al diálogo del sistema (T08c).
-- **Título de Distros solapado con el botón de instalar:** T08c y T22c.
-- **La fila de teclas seguía visible con el teclado oculto:** corregido (`onlyWithKeyboard`, PR #22); pendiente de comprobar.
-- **`/proc` parcial:** `stat`, `loadavg` y otros dan `Permission denied` dentro de proot (SELinux), como en Termux; `top` y `htop` pueden fallar sin ficheros falsos montados encima (T08c).
-
-### Sin probar todavía
-Paneles divididos (T10), colores y fuentes (T12/T12c), montaje de `~/storage` (T13), hosts y claves SSH (T14), copias de seguridad (T15), gestos y teclado físico, y **todo lo de la tablet** (redimensionado, multiventana, paneles anchos).
-
-### Segunda ronda (Pixel 8, 2026-10-04, APK de `master` con T22b y T09b)
-
-Verificado en el dispositivo con el APK de `master` en `b6e3475`:
-
-- **Entrada con el teclado abierto (arreglo #23):** lo escrito aparece al instante, antes de pulsar Enter (`echo primero`, `echo segundo` y su salida, y `echo tercero` mientras se teclea). Ya no hay que ocultar el teclado.
-- **La fila de teclas sigue al teclado (RF-08):** con el teclado abierto se ve (teclas redondeadas en gris derivado del esquema) y al ocultarlo desaparece y el terminal ocupa toda la pantalla.
-- **Pestaña nueva (T09b):** pulsar "+" crea "Alpine Linux 2" y dibuja su prompt a la primera, sin cambiar de pestaña. Las pestañas se nombran con su distro (RF-13).
-- **Paneles divididos (T10):** "Dividir a la derecha" crea un segundo panel con su propio shell de Alpine (3 procesos proot en total); el borde morado marca el foco, la entrada va al panel con foco y las líneas largas hacen wrap.
-- **Apariencia (T12 y T12c):** la pantalla se abre desde el menú del "+"; muestra una vista previa con colores ANSI, el tema (sistema/claro/oscuro), el interruptor de Negro OLED, los colores dinámicos y la lista de esquemas. Elegir Solarized Dark repinta al instante todos los paneles y la barra de pestañas toma el acento del esquema; devolver Dracula restaura el fondo `#282A36`.
-- **Menú del "+" (T22b):** menú contextual oscuro con esquinas redondeadas e iconos de línea: Shell de Android, la distro, dividir a la derecha y hacia abajo, SSH, Gestionar distros y Apariencia.
-
-Defectos vistos (sin corregir todavía):
-- **El botón `⋯` del panel con foco tapa el final de la primera línea** cuando el texto llega al borde derecho.
-- **El diálogo "Mantener las sesiones activas" y la pantalla de Apariencia siguen con el aspecto de Material;** las rehacen T22c y T16.
-- **No comprobado todavía:** el rendimiento al desplazar con la barra translúcida, el repaso de TalkBack, la rotación y todo lo de la tablet.
-
-### D-REQ-4 · 2026-10-04 · Fedora pasa del backlog a tarea (T24)
-- **Decisión:** el usuario dijo que su distro fetiche es Fedora y preguntó por qué no estaba. En la entrevista inicial se dejaron Arch y Fedora en el backlog (SPEC §2); ahora Fedora entra en el plan como T24. Arch sigue en el backlog.
-- **Por qué no era trivial:** las imágenes de Fedora vienen en tar.xz y el extractor de T07 solo lee gzip (D-T07-3), así que T24 incluye descompresión xz con las mismas reglas de seguridad.
-- **Impacto:** SPEC §2 y PLAN actualizados. Se acreditará `org.tukaani:xz` en `THIRD_PARTY_NOTICES.md`.
-
-## T12b — Perfiles, layouts, emisión y atajos (solo dominio, sin interfaz)
-
-Todo vive en `domain/profile`, `domain/broadcast` y `domain/terminal/ShortcutConflicts.kt`, sin tocar ninguna pantalla,
-`SessionController` ni `TabsController`. 51 tests de host nuevos, deterministas (sin reloj ni azar). Sin validar en
-dispositivo: no hay nada que ejecutar todavía, falta la interfaz.
-
-### D-T12b-1 · 2026-10-04 · En un perfil, los valores por defecto guardados significan "usar el ajuste global"
-- **Decisión:** `Profile` conserva `colorSchemeId = "default"`, `fontFamily = "monospace"` y `fontSizeSp = 14` como "no
-  personalizado". `PaneSpecResolver` los traduce a `null` en `PaneLook` y solo un valor distinto sustituye al global.
-  Así cambiar el esquema o la fuente globales (T12/T12c) sigue llegando a los paneles que no los personalizaron.
-- **Motivo:** el perfil se guardó en T05, antes de que existiera la apariencia global; cambiar su esquema de Room para
-  admitir `null` obligaba a una migración. El coste es que un perfil no puede pedir "exactamente 14 sp" cuando el
-  global es otro: si hiciera falta, habrá que migrar el campo a anulable (la clave del problema está en `Profile.kt`).
-- **Un esquema o fuente que ya no existen** (uno importado y borrado) no rompen el panel: se usa el global y sale un
-  `PaneNotice.SchemeMissing`/`FontMissing`. Un número fuera de rango se acerca a su rango con `ValueAdjusted`.
-
-### D-T12b-2 · 2026-10-04 · El comando de arranque se escribe en el shell, no se ejecuta en su lugar
-- **Decisión:** `PaneSpec.startupInput` es el comando seguido de Enter (`\r`), que la sesión teclea cuando el shell ya
-  corre. No se lanza `sh -c <comando>`.
-- **Motivo:** el shell sigue siendo interactivo (si el comando termina o falla queda un prompt), no hay nada que
-  entrecomillar, y la entrada no pasa por la línea de comandos de proot. El coste: el comando se ve en pantalla y
-  depende de que el prompt esté listo (la UI debe teclearlo tras el primer prompt o con un breve margen).
-- **Qué se acepta** (`StartupCommand`): una sola línea, sin saltos (se ejecutarían varios comandos desde un campo
-  pensado para uno), sin caracteres de control (un Tab pediría completar; un Escape manejaría el shell) y de hasta
-  1000 caracteres. En blanco significa "ninguno"; el comando de un panel de un layout sustituye al del perfil, y uno en
-  blanco lo anula.
-
-### D-T12b-3 · 2026-10-04 · Un layout guardado siempre se abre: lo que falla se degrada y avisa
-- **Decisión:** `PaneSpecResolver.resolve` rechaza con un `ProfileProblem` sellado (distro inexistente, distro no lista,
-  usuario no válido, comando no válido), nunca con una excepción. `resolveOrDegrade`, que usa la restauración, abre ese
-  panel como el perfil por defecto y **sin comando de arranque**, con `PaneNotice.Degraded(motivo)`; un perfil
-  borrado da el perfil por defecto, conserva el comando del propio layout y avisa con `ProfileMissing`.
-- **Motivo:** un layout viene del disco, de una copia o de otro dispositivo, y no debe perderse entero porque una
-  distro ya no esté. Un comando escrito para una distro que no existe podría hacer daño en otra, así que no se
-  conserva al degradar.
-- **Alternativa descartada:** negarse a abrir el layout. Se pierde la estructura por un solo panel roto.
-
-### D-T12b-4 · 2026-10-04 · Un layout es un dato no fiable: tamaño acotado y proporciones saneadas
-- **Decisión:** `LayoutRestorePlanner` rechaza (`LayoutRefusal`) un árbol de más de 16 paneles (`TOO_MANY_PANES`) o de más
-  de 8 niveles de división (`TOO_DEEP`; la comprobación se detiene en el límite, así que su recursión está acotada
-  aunque el JSON sea malicioso). Una división cuya parte sea menor que el 10 % se lleva al 10 % con un aviso
-  `RatioAdjusted`; una cercana al 50 % (±3 %) se ajusta a la mitad sin avisar, como al arrastrar el separador.
-- **Compatibilidad:** se probó con `LayoutCodec` (T05) la ida y vuelta y la lectura de un JSON antiguo, con paneles sin
-  perfil ni comando y con una clave que una versión futura podría añadir.
-- **Números:** 16 paneles y 8 niveles son límites de seguridad, no de diseño; se pueden subir sin migrar nada.
-
-### D-T12b-5 · 2026-10-04 · Emisión a varios paneles: solo en memoria y con frenos
-- **Decisión:** `BroadcastState` (`Off`, `AllPanes`, `Group(nombre)`) no se guarda: una emisión que sobreviviera a un
-  reinicio escribiría en servidores por sorpresa. `targets(activo, paneles, tipo)` devuelve a qué paneles va lo escrito,
-  en el orden de la pestaña y nunca vacío. Frenos:
-  - con un solo panel no hay a quién emitir;
-  - con `textOnly` (por defecto) las teclas de control (Ctrl/Alt, Esc, flechas) solo van al panel activo, de modo que un
-    Ctrl+C o una flecha pensados para un servidor no llegan a los demás; texto pegado o tecleado sí se emite;
-  - un panel fuera del grupo no se cuela en él, y un panel que no está en la pestaña solo se recibe a sí mismo.
-- `pruned(vivos)` olvida los paneles cerrados (el número de un panel cerrado no debe coincidir con uno nuevo) y apaga una
-  emisión a un grupo que se quedó sin paneles. `isEmitting(paneles)` permite a la interfaz mostrar de forma clara que
-  teclear llegará a otros: es el aviso que no debe faltar.
-- **Alternativa descartada:** un modo "todos los paneles de todas las pestañas": demasiado peligroso para el primer
-  corte; se puede añadir como otro `BroadcastMode`.
-
-### D-T12b-6 · 2026-10-04 · Atajos: tres acciones nuevas y los conflictos son avisos
-- **Acciones nuevas** en `AppShortcut` (los `when` de `ShortcutHandler` tienen `else`, así que quedan sin efecto hasta
-  que la interfaz las conecte): `ToggleBroadcast` (`Ctrl+Shift+B`), `SaveLayout` (`Ctrl+Shift+S`) y `OpenLayouts`
-  (`Ctrl+Shift+L`). Terminator usa Alt+letra, pero Alt+letra es el Meta de readline (Alt+b y Alt+f mueven por palabras),
-  así que van con Ctrl+Shift, como el resto de los de paneles (D-T11-4).
-- **Detección** (`ShortcutConflicts.kt`): `terminalConflict()` marca Ctrl+letra sin más modificadores
-  (`StealsControlKey`: Ctrl+C interrumpe, Ctrl+D cierra la entrada) y Alt+letra o Alt+dígito sin Ctrl
-  (`StealsReadlineMeta`). Son avisos, no rechazos: la SPEC pide Alt+dígito para elegir pestaña (D-T11-4), y los únicos
-  atajos por defecto que chocan son esos nueve. `bindChecked` devuelve el mapa nuevo, lo que reemplazó y el coste, o
-  `Refused` si la combinación robaría teclado normal (antes lanzaba una excepción). `ShortcutText.analyze` detecta una
-  combinación que el texto guardado da a dos acciones distintas (gana la última línea, como en `parse`).
-- **Una combinación para dos acciones** no puede darse dentro de `ShortcutMap` (es un mapa por combinación); varias
-  combinaciones para una acción sí (Copiar tiene dos por defecto).
-
-### D-T12b-7 · 2026-10-04 · Lo que NO se hizo: persistir los atajos y meterlos en la copia de seguridad
-- **Hallazgo:** los atajos no se guardan en ninguna parte hoy (`InputRouter` arranca con `ShortcutMap.defaults()`), y
-  `ConfigSnapshot` (T15) no lleva atajos, ni las teclas extra, ni la apariencia de T12c. Los perfiles y los layouts **sí**
-  van ya en la copia: los layouts refieren a los perfiles por posición, no por id, así que viajan bien.
-- **Decisión:** no tocar `data.backup`. Su cobertura crítica exige el 100 % de ramas y no existe aún un almacén de
-  atajos, así que añadirlo allí sin almacén sería código muerto o sin probar. Queda definida la interfaz `ShortcutStore`
-  (como `ExtraKeysStore`) y el formato de texto ya existente (`ShortcutMap.serialize/parse`).
-- **Actualización (2026-10-05):** hecho, ver D-T12b-8. La lista "Lo que debe hacer la interfaz posterior" de abajo está
-  hecha, salvo lo que D-T12b-9 y D-T12b-16 dejan fuera.
-- **Para completarlo:** una clave en el repositorio de ajustes con el texto de `ShortcutMap.serialize()`; añadirla a
-  `SettingsDto` o a un campo nuevo de `ConfigSnapshot` (la lectura es indulgente: un campo que falta no rompe una copia
-  antigua); `ConfigCollector` la lee y `ConfigApplier` la aplica con `ShortcutText.analyze` para no perder las líneas
-  buenas; test de ida y vuelta, y mantener el 100 % de `data.backup`.
-
-### Lo que debe hacer la interfaz posterior
-1. **Abrir un panel con un perfil:** llamar a `PaneSpecResolver.resolve(perfil)` con las distros, los esquemas y las
-   fuentes conocidos; mostrar un `Rejected` con un mensaje por cada `ProfileProblem`, y los `PaneNotice` como aviso
-   no bloqueante. Construir la sesión con el lanzamiento que ya existe a partir de `PaneSpec.target`, aplicar `look` a
-   ese panel (hoy el esquema y la fuente son globales: el pintor debe admitir un `PaneLook` por panel) y teclear
-   `startupInput` tras el primer prompt.
-2. **Pantallas de perfiles** (lista, alta, edición, borrado con confirmación; `Profile` ya valida nombre y rangos) y de
-   **layouts** (lista, guardar con `LayoutSaving.build` desde el árbol de la pestaña y `PaneDescription` de cada panel,
-   renombrar, borrar, abrir).
-3. **Abrir un layout:** `LayoutRestorePlanner.plan` con los perfiles por id; si devuelve `Refused`, decirlo; si no, crear
-   una pestaña con `paneNodeOf(...)`/las sesiones en orden de lectura (`LayoutRestorePlan.panes`) y mostrar los
-   `LayoutNotice`, que indican el panel por su posición.
-4. **Emisión:** un `BroadcastState` por pestaña en el ViewModel; enrutar lo tecleado por `targets(...)` (`TEXT` para
-   texto y pegado, `CONTROL` para el resto); un indicador siempre visible mientras `isEmitting` sea cierto; asignar
-   paneles a grupos desde el menú del panel; llamar a `pruned` al cerrar un panel y al cambiar de pestaña.
-5. **Atajos:** conectar `ToggleBroadcast`, `SaveLayout` y `OpenLayouts` en `ShortcutHandler`; una pantalla de atajos que use
-   `bindChecked` y muestre los `ShortcutConflict`; persistirlos y llevarlos a la copia (D-T12b-7).
-6. **Sin validar:** tecleado del comando de arranque tras el primer prompt en un shell real, rendimiento de la emisión con
-   varios paneles y la restauración de un layout de 16 paneles con proot en un dispositivo.
-
-### D-T12b-8 · 2026-10-05 · Atajos: persistidos como un ajuste más y en la copia con un campo versionado
-- **Decisión:** `AppSettings.shortcuts` (un `ShortcutMap`, ahora con igualdad por valor) se guarda en la tabla `setting` con la clave
-  `shortcuts` y el texto de `ShortcutMap.serialize()`; sin clave, los atajos por defecto; al leer, una línea ilegible se
-  salta y el resto se conserva. `TerminalViewModel` aplica el mapa al `InputRouter` en cuanto cambia.
-- **Copia de seguridad:** `SettingsDto.shortcuts: ShortcutsDto?` (`version = 1`, `bindings` en el mismo texto). Es opcional y
-  `ConfigCodec.VERSION` no cambia, como hizo D-T16-6. Al restaurar (`ConfigApplier`) se **conservan los atajos del
-  dispositivo** si la copia no los trae, si su `version` no es la que esta app sabe leer (no se adivina un formato de una
-  versión posterior) o si ninguna línea es utilizable; si trae algunas válidas, `ShortcutText.analyze` descarta las
-  malas y se aplican las buenas. Todas esas ramas tienen test, y `data.backup` sigue al 100 % de línea y de rama.
-- **`ShortcutStore`** (la interfaz que dejó D-T12b-7) se elimina: los atajos van por `SettingsRepository`, como las teclas extra.
-
-### D-T12b-9 · 2026-10-05 · El esquema, la fuente y el tamaño de un perfil se guardan pero no se aplican por panel
-- **Hallazgo:** los colores iniciales de un emulador se leen de `TerminalColors.COLOR_SCHEME`, un objeto **compartido por toda la
-  librería** (`TerminalSessionHost.applyScheme` escribe ahí), y el pintor (`TerminalPainter`) es único para todos los paneles
-  y toma la fuente y el tamaño globales. Un esquema por panel exige cambios en el emulador de Termux y un pintor por panel.
-- **Decisión:** el formulario de perfil edita nombre, distro, usuario, historial y comando inicial, que sí se aplican
-  por panel. El esquema, la fuente y el tamaño siguen en el modelo, se conservan al editar y viajan en la copia, pero no se
-  editan ni se aplican; el formulario lo dice en una nota. Cuando el pintor admita un `PaneLook`, bastará con añadir los campos.
-- **Por qué no fingirlo:** una lista de ajustes que no hacen nada sería engañosa (misma razón que D-T16-7).
-
-### D-T12b-10 · 2026-10-05 · Cada panel recuerda con qué se abrió; el comando se teclea 0,8 s después de lanzar el shell
-- **Decisión:** `SessionController` guarda un `PaneOpening` (el `PaneSpec` y el comando que le dio su layout) por sesión, hasta que se
-  cierra. `PaneEditor` gana `openTab(PlannedNode)` (una pestaña con todos sus paneles, `Sessions.openedTab`),
-  `splitActive(orientación, opening)` y `openingOf(id)`. `AndroidSessionFactory` lo lee al empezar: el historial del panel,
-  el usuario (`ProotSessionPlanner.plan(distro, user)`, que revalida el nombre) y el comando.
-- **Comando inicial:** `AndroidSessionFactory` escribe `startupInput` 800 ms después de lanzar el shell, solo si hubo lanzamiento
-  (no con un fallo). La pty guarda lo escrito hasta que el shell lo lee, así que un proot lento no lo pierde; la pausa evita que caiga
-  en medio de la salida de arranque. **Sin validar con un shell real.**
-- **Guardar:** un panel se describe con su perfil y su comando propio, no con el del perfil (`PlannedNode.Pane.command`), de modo que
-  guardar de nuevo un layout restaurado lo deja igual. Un panel sin perfil se guarda sin distro (`LayoutNode.Pane` solo tiene
-  perfil y comando): al reabrirlo usa la distro predeterminada, aunque se hubiera abierto en otra. Se anota como límite.
-- **Dividir con un perfil** abre el panel nuevo en la distro del perfil, no en la del panel dividido; sin perfil sigue siendo la del origen.
-
-### D-T12b-11 · 2026-10-05 · Abrir un layout siempre abre una pestaña nueva y avisa de lo que cambió
-- **Decisión:** `PaneOpener.restore` planifica con `LayoutRestorePlanner` y abre **una pestaña nueva** (nunca reemplaza la actual ni sus
-  paneles); la pantalla de layouts se cierra sola si no hubo cambios y, si los hubo (perfil borrado, distro no lista, división
-  corregida), los lista en una alerta antes de cerrar (`LayoutNotice`, panel y división contados desde 1). Un layout rechazado
-  (`TOO_MANY_PANES`, `TOO_DEEP`) no abre nada y lo dice.
-- **Perfiles:** abrir un perfil (en pestaña, o en una división a la derecha o debajo) usa `PaneSpecResolver.resolve`; si lo rechaza
-  (distro borrada o no lista, usuario o comando no válidos) se explica y no se abre nada.
-
-### D-T12b-12 · 2026-10-05 · Guardar un layout: nombre único, reemplazo con confirmación, siempre el árbol completo
-- **Decisión:** `LayoutSaver.save(nombre, reemplazar)` guarda el árbol de la pestaña activa (entero, aunque un panel esté ampliado) con
-  `LayoutSaving.build`. Un nombre en uso (sin distinguir mayúsculas) falla con `NameTaken` y la hoja pregunta "¿Reemplazar?"; solo
-  entonces se llama con `reemplazar = true`. Desde la lista, "Reemplazar con los paneles de esta pestaña" sobrescribe sin hoja.
-  `asLayoutSaveProblem` traduce el error al mensaje (nombre, en uso, sin pestaña, comando, límite de 100, otro).
-
-### D-T12b-13 · 2026-10-05 · Emisión: interruptor en el menú del panel, indicador rojo y qué teclas se emiten
-- **Decisión:** `BroadcastController` (uno por proceso, estado por pestaña, solo en memoria) decide a qué paneles va lo tecleado.
-  `TerminalOutput` gana `write(texto, InputKind)` y `writeCodePoint(…, InputKind)` (con implementación por defecto que ignora el
-  tipo); `ActiveSessionOutput` reparte a `targets(tipo)` y el pegado va por `pasteFromClipboard`.
-- **Qué teclas:** `KeyInput.inputKind()`: Ctrl o Alt, Esc, flechas, Inicio, Fin, Re/Av Pág, Insertar, Suprimir y F1 a F12 son `CONTROL`
-  (solo al panel activo); letras, Enter, Tab, Retroceso y texto son `TEXT` (a todos). Así Enter, Tab y Retroceso, que se necesitan para
-  escribir una orden en varios servidores, sí llegan, y Ctrl+C no.
-- **Frenos añadidos:** con un solo panel no se puede activar (`toggle` no hace nada) y una pestaña que se queda con un panel olvida su
-  emisión, para que dividir de nuevo más tarde no teclee en el panel nuevo sin que el usuario lo pida.
-- **Indicador (obligatorio):** una cápsula roja arriba a la izquierda, "Lo que escribes llega a N paneles", mientras `isEmitting`; tocarla
-  detiene la emisión (48 dp, con descripción para TalkBack). Los paneles que reciben llevan un borde rojo.
-- **Grupos:** tres nombres fijos (Grupo A, B, C) desde "Grupo de este panel…" y "Escribir en el grupo de este panel"; no se expone
-  `textOnly` (queda en `true`). El menú del panel solo aparece con la pestaña dividida (T10), que es cuando la emisión tiene sentido;
-  el atajo `Ctrl+Shift+B` funciona siempre (sin efecto con un panel).
-
-### D-T12b-14 · 2026-10-05 · Atajos editables: una hoja por acción, con vista previa de lo que cuesta
-- **Decisión:** Ajustes > Teclado > Atajos lista todas las acciones (también las que se quedaron sin combinación); tocar una abre una
-  hoja con sus combinaciones (tocar una pide quitarla) y un campo donde se **pulsan las teclas** en un teclado físico
-  (`onPreviewKeyEvent`, solo con Ctrl o Alt) o se **escribe** (`ctrl+shift+t`). Antes de añadir, `ShortcutEditing.preview` dice si es
-  ilegible, si falta Ctrl o Alt, si ya la tiene la acción, qué otra acción la pierde y si roba una tecla de control o la Meta de
-  readline (avisos, no rechazos, D-T12b-6). "Restaurar los atajos por defecto" pide confirmación.
-- **Los números de pestaña** (Alt+1 a 9) siguen siendo una fila de solo lectura; hacerlos configurables exige un modelo de "prefijo +
-  1 a 9" que no está. `ShortcutDisplay.allRows` lista todas las filas; `rows` solo las que tienen combinación.
-- **Sin validar:** la captura con un teclado físico real y con el IME (una combinación que el sistema se queda no llega a la app).
-
-### D-T12b-15 · 2026-10-05 · Dónde se llega a cada pantalla
-- **Perfiles y layouts:** filas en la raíz de Ajustes, entradas en el menú "+" de la barra de pestañas (con "Guardar el layout…") y en el
-  menú del panel; `Ctrl+Shift+S` pide el nombre y `Ctrl+Shift+L` abre los layouts (`TerminalRequest`, que el `TerminalViewModel`
-  emite y la pantalla convierte en abrir una hoja de la actividad). `ScreenLinks` agrupa estos tres enlaces en `ProfileLinks`, y
-  `TabBarLinks` lleva el `ScreenLinks` entero, por el límite de parámetros de detekt.
-- **Pantallas** con los componentes de `ui/ios` (T22a/c) y cadenas en `values/` y `values-es/`; las alertas y hojas siguen la
-  convención de que la hoja de acciones se cierra sola tras la acción (`closeActions` mira el estado actual).
-
-### D-T12b-16 · 2026-10-05 · Qué queda por validar en un dispositivo
-- Comando inicial tecleado tras arrancar el shell (incluido con proot lento); emisión con varios paneles de proot y el rendimiento;
-  restaurar un layout de 16 paneles; el aspecto de las hojas (perfil, layouts, atajos) y de la cápsula roja, y que no tape texto;
-  la captura de teclas en un teclado físico; y TalkBack en las pantallas nuevas.
-- **Cobertura:** la lógica nueva está en `domain` (`PaneOpener`, `LayoutSaver`, `ProfileForm`, `BroadcastController`, `ShortcutEditing`,
-  `Sessions.openedTab`) con tests de host; los ViewModels y las pantallas Compose no entran en la cobertura, como el resto de la UI.
-
-## T23 — Limpieza pendiente
-
-### D-T23-1 · 2026-10-04 · Tests con base de datos real: `runDatabaseTest` con margen de 5 minutos
-- **Problema:** `MigrationTest` y `LayoutAndSettingsRepositoryTest` (y otros seis ficheros de tests de T05, T08b, T12 y T12c) fallaban a veces con `UncompletedCoroutinesError: After waiting for 1m` cuando la máquina estaba cargada (carga de 90 en 14 núcleos; pasaban solos en 47 s). Room abre SQLite en un hilo real y cargar su librería nativa y tocar el disco puede pasar de 1 minuto, que es lo que `runTest` espera por defecto.
-- **Decisión:** `runDatabaseTest` en `data/local/TestDatabase.kt`, un `runTest(timeout = 5.minutes)`, usado en los **ocho** ficheros y en el contrato `DistroRepositoryContract` que abren una base de datos real. No se cambia el dispatcher: la espera sigue siendo de pared, porque lo que se prueba es la E/S real.
-- **Alternativas descartadas:** un dispatcher de prueba que no espere (los tests dejarían de ejercitar Room de verdad); subir el timeout de todos los `runTest` (taparía un bloqueo real en tests que no usan base de datos y no tienen ese problema).
-- **Impacto:** un test realmente colgado sigue acabando a los 5 minutos con el mismo error. Ningún test depende del reloj.
-
-### D-T23-2 · 2026-10-04 · Avisos de licencia Apache: medidos, no supuestos
-- **Medido en el APK de release y en los jars de la clasepath de ejecución (245 dependencias):** solo **cinco** publican su propio `NOTICE`/`LICENSE` en `META-INF`: Commons Compress, IO, Codec y Lang, y Jakarta Inject. El resto (OkHttp, Okio, kotlinx, AndroidX, Hilt, Room, Compose…) no trae ningún `NOTICE` propio; solo AndroidX deja un `LICENSE.txt` con la Apache-2.0 estándar, que sí llega al APK.
-- **Estado en el APK:** de esas cinco, el empaquetado solo conserva por casualidad el `NOTICE.md` de Jakarta; las cuatro de Commons no llegan. T07 (D-T07-8) ya las empaquetó a mano en `res/raw`.
-- **Decisión:** el mismo fichero (renombrado a `res/raw/third_party_notices_apache`) lleva ahora también el `NOTICE` y la licencia de Jakarta Inject, copiados sin modificar de su jar. Con esto queda **cerrado** el punto abierto de D-T07-8 sobre OkHttp/Okio: no publican aviso, así que no hay nada que conservar de ellas más allá de su mención en `THIRD_PARTY_NOTICES.md`.
-- **API para la pantalla "Acerca de" (T16):** `LicenseTexts` en `domain/license` (inyectable con Hilt, ya hay `LicenseModule`). `entries` lista los avisos (`id`, título y licencia SPDX), `read(id)` devuelve el texto y `missing()` los que no estén. `Z`/T16 solo tiene que mostrar `entries` y, al tocar una, abrir `read(id)`. Tests de host: leen los ficheros reales del árbol de fuentes y fallan si un texto desaparece o un recurso se renombra.
-- **Sin validar en dispositivo:** que `AndroidLicenseSource` encuentre los recursos en el APK de release con el *shrinker* (se comprobó con `aapt2` que `raw/third_party_notices_apache` existe en el APK; la lectura en ejecución no).
-- **No es asesoría legal:** se cumple lo que las licencias piden (conservar el aviso al redistribuir en binario); conviene que alguien lo revise antes de publicar.
-
-### D-T23-3 · 2026-10-04 · GitGuardian: frase de prueba renombrada y `.gitguardian.yaml` documentado
-- **Hallazgo:** dos falsos positivos de "Generic Password" (el literal `"s3cret"` de `BackupExportTest` y el campo `passwordFor` de `BackupViewModel`) bloquearon varias PRs. No son credenciales.
-- **Decisión:** el literal pasa a ser una constante con un comentario (`TEST_PHRASE = "open sesame"`), sin cambiar el comportamiento del test, y se añade `.gitguardian.yaml` que excluye **solo** `data/backup/**` de los tests, con la razón escrita en el propio fichero. `passwordFor` se deja como está: es un nombre de campo, no un valor.
-- **Límite:** la exclusión no cubre código de producción ni otros tests; una credencial real en cualquier sitio seguiría marcándose. Si GitGuardian no lee ese fichero en este plan, los incidentes se descartan en su panel (incidentes 37863678 y 37863679).
-
-## T22d — Estilo de las teclas extra
-
-El usuario probó la app en un Pixel 8 y dijo que las teclas especiales (Esc, Tab, Ctrl, flechas…) tenían "un acabado muy feo". Eran cápsulas del color `surfaceVariant` de Material con una línea de sombra inferior de 1 dp: un efecto de bisel que contradice el estilo plano de iOS, y un gris que no pertenece ni al esquema ni al teclado azul marino de Gboard que queda justo debajo. Pidió **elegir el estilo en Ajustes, con las planas por defecto**.
-
-### D-T22d-1 · 2026-10-04 · Tres estilos, `FLAT` por defecto
-- **Decisión:** `ExtraKeyStyle { FLAT, CAPSULE, CLASSIC }`, con `FLAT` por defecto; lo que no se reconoce o falta se lee como `FLAT`.
-  - **FLAT:** sin fondo por tecla; solo el símbolo (peso medio), separadores finos (0,5 dp, 20 % de opacidad) entre teclas y filas, y un óvalo tintado con el acento (18 %) al pulsar. Ctrl/Alt armados son una cápsula rellena con el acento; **bloqueados**, la misma más un subrayado bajo la etiqueta, para que la diferencia no dependa solo del color.
-  - **CAPSULE:** cada tecla es una cápsula del color del texto al 10 % de opacidad, sin sombra, con 6 dp de separación entre teclas; armada, el acento al 28 %.
-  - **CLASSIC:** el aspecto anterior (cápsula con filo inferior), pero con los colores del **esquema**: tecla = fondo mezclado con el primer plano al 12 %, filo = fondo oscurecido al 40 %. Ya no sale de `surfaceVariant`.
-- **Motivo:** que el usuario elija, y que ninguna variante sea un gris ajeno.
-- **Impacto:** `TerminalAppearance.extraKeyStyle`; se guarda en `appearance_extra_key_style` (mismo patrón que el resto de la apariencia de T12c).
-
-### D-T22d-2 · 2026-10-04 · La lógica de color es pura y está probada con todos los esquemas
-- **Decisión:** `ExtraKeyPaletteFor.of(KeyChromeInputs, style)` en `domain/appearance` devuelve colores ARGB opacos (mezclas precompuestas, no transparencias), y `ExtraKeyPalette.look(latch, pressed)` dice cómo se ve una tecla según su estado. Las entradas son el fondo y el primer plano del esquema y los colores de las barras, tomados del esquema o del tema del sistema (`ChromeStyle.SYSTEM`), para que el mismo estilo valga con los dos.
-- **Pruebas:** contraste WCAG ≥ 4,5:1 de la etiqueta sobre su fondo en reposo y pulsada, de la etiqueta de una tecla armada y de una bloqueada, para **todos los esquemas incluidos y su variante OLED, por cada uno de los tres estilos**. El texto de Solarized, de contraste bajo por diseño, se empuja hacia negro o blanco solo lo necesario (`readableOn`).
-- **Cambio:** los colores `key`, `keyPressed` y `onKey` de `ChromeColors` y `ChromePalette` desaparecen (solo los usaba la fila y habrían quedado muertos); sus tres tests los sustituyen los nuevos.
-
-### D-T22d-3 · 2026-10-04 · Desviación: la bandeja no es translúcida ni se desenfoca
-- **Pedido:** barra translúcida con desenfoque desde la API 31 y color sólido en 26–30, reutilizando T22a y T22b.
-- **Qué pasa:** el desenfoque de T22a (`BackdropState`) desenfoca el contenido que pasa **por debajo** de la barra. Esta fila va debajo del terminal, sin solaparlo, así que no hay nada que desenfocar.
-- **Decisión:** la bandeja de `FLAT` es el fondo del terminal mezclado un 4 % con el primer plano (los otros estilos, un 7 %), con la línea fina superior de siempre. Así se lee como parte del terminal y no como una losa gris. Si algún día la fila se superpone al contenido, se puede pasar a `BackdropState`.
-
-### D-T22d-4 · 2026-10-04 · Selector reutilizable: `ExtraKeyStylePicker`
-- **API:** `ExtraKeyStylePicker(settings: AppSettings, onStyle: (ExtraKeyStyle) -> Unit, modifier)` en `ui/ExtraKeyStylePicker.kt`. Muestra un `IosSegmentedControl` con las tres opciones y debajo **una vista previa real** (Esc, Tab, Ctrl armado y dos flechas) en los colores del esquema actual; la vista previa es la propia `ExtraKeysRow` sobre el fondo del terminal.
-- **No guarda nada:** lee `settings` y avisa con `onStyle`. La pantalla de Apariencia la muestra en la sección "Teclas especiales" (`KeysSection`); **Z puede enlazarla desde Ajustes > Teclado** llamándola igual, con el mismo `update { it.copy(appearance = it.appearance.copy(extraKeyStyle = style)) }`.
-- **Accesibilidad:** las opciones miden 48 dp; la vista previa lleva una descripción y no expone sus teclas, que no hacen nada.
-
-### D-T22d-5 · 2026-10-04 · Copia de seguridad
-- `SettingsDto.extraKeyStyle` (texto, por defecto `FLAT`). Una copia anterior, sin el campo, se lee como `FLAT`; un valor desconocido también. Se aplica al restaurar. Con ida y vuelta probada.
-- **Lo que esta tarea no resuelve:** el backup de T15 **tampoco guarda el resto de la apariencia de T12c** (fuente, márgenes, cursor, estilo de barras), a pesar de lo que dice D-T12c. Solo he añadido mi campo; el resto es trabajo aparte.
-
-### D-T22d-6 · 2026-10-04 · Geometría
-- Cada fila mide 48 dp, el objetivo táctil de siempre; la separación entre teclas va dentro de la celda. `FLAT` deja 4 dp de aire por lado, las otras 3 dp (6 dp entre dos cápsulas). La háptica y las acciones de accesibilidad (nombre de la tecla y estado armada/bloqueada) son las de T22b.
-
-### D-T22d-7 · 2026-10-04 · Qué NO está validado (sin dispositivo)
-- Cómo se ve cada estilo de verdad (sobre todo `FLAT` frente al teclado del sistema), el espesor de los separadores en pantallas de distinta densidad, el óvalo de pulsación, el subrayado de una tecla bloqueada, la vista previa en la pantalla de Apariencia y TalkBack. El orquestador lo prueba en el Pixel 8.
-
-## T16 / T22c — Ajustes por secciones y pantallas en estilo iOS
-
-Hecha en un clon aparte, sin dispositivos. Lo que solo puede decir el dispositivo está en la lista del final.
-
-### D-T16-1 · 2026-10-04 · La pantalla de Ajustes es una pila de páginas, con la navegación como dato puro
-- **Decisión:** `SettingsNavigation` (`domain/settings`) guarda la pila de `SettingsPage` con la raíz siempre abajo; "atrás" saca una página y desde la raíz cierra la pantalla. Se guarda con un `Saver` (nombres de página), así que sobrevive a girar el móvil. Cada página conoce a su padre (`parent`) para rotular el botón de volver.
-- **Motivo:** la lógica de moverse entre páginas se prueba en host (no hay que ver la pantalla), y la UI solo la dibuja.
-- **Alternativa descartada:** Navigation Compose: una dependencia nueva para 11 páginas sin argumentos.
-- **Apariencia y Distribuciones** no son páginas de Ajustes: abren sus pantallas propias encima (T12c y T22c), y al cerrarlas se vuelve a Ajustes.
-
-### D-T16-2 · 2026-10-04 · Dónde está el acceso: un ⚙ permanente junto al "+" y la primera entrada de su menú
-- **Decisión:** `TabBar` pone un botón ⚙ de 48 dp, con `contentDescription`, en la ranura del final de la barra, siempre a la vista (en la barra superior y en la lateral). El menú del "+" lleva "Ajustes" como primera entrada que no es una pestaña ni una división; "Apariencia…" y "Gestionar distros…" siguen ahí y además se abren desde dentro de Ajustes.
-- **Motivo:** el usuario no veía cómo entrar a Ajustes; el acceso solo estaba tras una pulsación larga del "+". RF-11 lo exige permanente.
-- **Alcance:** esto toca `ScreenLinks`, `TabBarLinks`, `TabBar` y `NewTabMenu` (cada uno, unas líneas). Primero se hizo de forma aditiva para no pisar a T22b; al mergearse T22b, el icono se colocó directamente en su barra.
-
-### D-T16-3 · 2026-10-04 · Los ajustes nuevos viven en la misma tabla clave-valor y las teclas extra pasan a guardarse
-- **Hallazgo:** `ExtraKeysStore` era una interfaz sin implementación, así que la configuración de la fila de teclas no se guardaba nunca (`TerminalViewModel` arrancaba siempre con la de por defecto) y no había forma de cambiarla.
-- **Decisión:** `AppSettings` gana `extraKeys` y `dnsFallbackServers`; se guardan en la tabla `setting` (`extra_keys` en su texto `visible=`/`onlyWithKeyboard=`/filas, y `dns_fallback` con las direcciones separadas por comas). Un valor ilegible da el de por defecto. `TerminalViewModel` lee las teclas del repositorio de ajustes (cambian en vivo); `ExtraKeysStore` se elimina.
-- **Límites de edición** (`ExtraKeysEditing`): hasta 3 filas de 8 teclas, cada tecla del catálogo una sola vez. Quitar la última tecla de una fila quita la fila.
-
-### D-T16-4 · 2026-10-04 · El historial (scrollback) era un ajuste que no hacía nada; ahora se aplica
-- **Hallazgo:** `AppSettings.defaultScrollbackLines` existía, pero `TerminalSessionHost` usaba una constante de 10 000.
-- **Decisión:** el host tiene `transcriptRows` y `AndroidSessionFactory` lo fija antes de lanzar el shell leyendo el ajuste (`SessionManager` lo inyecta). Se aplica a las pestañas que se abran después. Opciones: 1 000, 2 000, 5 000, 10 000, 20 000 y 50 000, que es el máximo que admite el emulador; un valor guardado fuera de rango se acerca al más cercano al mostrarse y se recorta (100–50 000) al usarse.
-- **Sin validar:** el efecto en una sesión real y el consumo de memoria en 50 000 líneas.
-
-### D-T16-5 · 2026-10-04 · DNS de respaldo editables, con validación estricta
-- **Decisión:** `ResolvConf.render(servidores, respaldo)` usa el respaldo del usuario cuando el dispositivo no da ninguno, y los de siempre (1.1.1.1 y 9.9.9.9) si el suyo no tiene nada utilizable. Lo escrito en la hoja se lee con `DnsServers`: direcciones IP separadas por comas, espacios o `;`, máximo tres; una zona escrita a mano (`fe80::1%wlan0`) se rechaza, no se descarta en silencio. Vacío significa los de siempre.
-- **Aviso en la pantalla:** los de siempre son resolutores públicos de terceros (Cloudflare y Quad9), como ya recogía D-T08b-6.
-
-### D-T16-6 · 2026-10-04 · La copia de seguridad lleva ahora toda la configuración que le faltaba
-- **Hallazgo:** T15 no incluía la apariencia de T12c, el modo de compatibilidad de proot, el DNS ni las teclas extra, que RF-06 exige.
-- **Decisión:** `SettingsDto` gana cuatro campos **opcionales** (`prootCompatibilityMode`, `dnsFallbackServers`, `extraKeys`, `appearance`). La versión del formato no cambia: el lector ya ignora campos desconocidos y estos tienen valor por defecto. Una copia anterior que no los trae **deja lo que el dispositivo ya tiene**, no lo reinicia. Lo restaurado se valida: DNS por `DnsServers`, teclas por `ExtraKeysConfig.parse` (sin teclas útiles, las de por defecto) y números y nombres de la apariencia por `sanitized()`.
-- **Fuentes importadas:** sus ficheros no viajan (son binarios de terceros, de los que la licencia es responsabilidad del usuario); si la fuente de la copia no existe en este dispositivo, se usa la incluida.
-
-### D-T16-7 · 2026-10-04 · Atajos: una lista de consulta, no editable todavía
-- **Decisión:** la página muestra los atajos por defecto en orden fijo, con las teclas con nombre legible (`Ctrl+Shift+T`) y los números de pestaña en una sola línea (`Alt+1–9`), y avisa de que no se pueden cambiar.
-- **Motivo:** cambiarlos exige capturar combinaciones de un teclado físico y gestionar choques entre atajos; no se puede validar sin dispositivo y es el alcance de T12b. Mostrar una lista es veraz; fingir una edición no lo sería.
-
-### D-T16-8 · 2026-10-04 · "Acerca de" lee `THIRD_PARTY_NOTICES.md` copiado al APK por Gradle
-- **Decisión:** una tarea `copyNotices` copia el fichero de la raíz a los assets de cada variante en cada compilación (`addGeneratedSourceDirectory`), y `Notices` lo convierte en secciones (cabeceras `##`, tablas en una línea, sin marcas Markdown). Un test lee el fichero real, así que un cambio de su formato que rompa la pantalla se ve en el CI.
-- **Motivo:** una sola fuente que mantener; una copia en el repositorio se desincronizaría y el APK llevaría créditos viejos.
-
-### D-T16-9 · 2026-10-04 · Distros y copias en estilo iOS, y el error de encadenar diálogos
-- **Decisión (T22c):** la pantalla de Distros es una lista con título grande; tocar una fila abre una hoja de acciones (predeterminada, renombrar, duplicar, eliminar), instalar y renombrar son hojas con campos y eliminar es una alerta. Las tarjetas de almacenamiento, copias y modo de compatibilidad salen de ahí y pasan a Ajustes. Los diálogos de exportar y de contraseña de las copias son hojas.
-- **Error evitado:** `IosActionSheet` ejecuta la acción y **después** llama a `onDismiss`. Si la acción abre otro diálogo (renombrar), ese cierre lo deshacía. El cierre de la hoja solo cierra si lo vigente sigue siendo la hoja, leyendo el estado en el momento, no el capturado.
-- **Componentes nuevos en `ui/ios`:** `IosTextField` (fila de formulario), `IosSheetHeader` (Cancelar, título y confirmar, con el botón inerte mientras no es válido) e `IosProgress`.
-- **Sin migrar:** los diálogos de SSH (T14) y de apariencia (T12c) siguen en Material.
-
-### D-T16-10 · 2026-10-04 · Lo que NO está validado (sin dispositivo)
-- El aspecto y el tacto de todas las pantallas nuevas: listas agrupadas, hojas, alertas, el ⚙ en la barra superior y en la lateral.
-- Las hojas con teclado: `imePadding` dentro de un `Dialog`, que el campo se vea con el teclado abierto y el comportamiento de los campos de contraseña.
-- Los flujos del sistema: permiso de notificaciones, exención de batería, pantalla de la app, selector de archivos de las copias y apertura del enlace al código fuente.
-- Que "atrás" del sistema se apile bien cuando Apariencia o Distribuciones se abren encima de Ajustes.
-- TalkBack: orden de lectura, rol y estado de los interruptores, y las filas de teclas.
-- El efecto real del historial, las teclas extra y el DNS en una sesión.
-
-## T17 — Accesibilidad y rendimiento
-
-### D-T17-1 · 2026-10-05 · Método: auditoría de código y lógica pura, sin pruebas de Compose en la JVM
-- **Contexto:** el repositorio no tiene `ui-test` ni Robolectric (y añadir dependencias exige licencia y `THIRD_PARTY_NOTICES.md`). Las pruebas de diseño con `fontScale` 2,0 no se pueden hacer en el host sin ellas.
-- **Decisión:** se auditaron a mano todos los composables (cromo del terminal, pestañas, teclas extra, menú de paneles, Ajustes, Apariencia, Distros, copias, SSH, `ui/ios`) buscando roles, estados, encabezados, semántica fusionada, acciones personalizadas, objetivos < 48 dp y texto con `maxLines = 1` o filas fijas que se cortan con fuente grande; lo que se pudo expresar como lógica va a `domain` con test. El contraste ya estaba cubierto (`IosPaletteTest`, `ChromeColorsTest`, `BuiltInSchemesTest` en todos los temas y esquemas).
-- **Pendiente en dispositivo:** TalkBack de verdad y fuente 2,0 (Ajustes > Accesibilidad > Tamaño de fuente) en cada pantalla; ver D-T17-8.
-
-### D-T17-2 · 2026-10-05 · Componentes `ui/ios`: semántica y fuente grande
-- `IosSection`: la cabecera es un encabezado (`heading`). `IosListRow` sin acción fusiona título, subtítulo y valor en un solo elemento. El título pequeño de la barra de navegación se oculta a TalkBack (el grande ya es el encabezado y se leía dos veces).
-- `IosBarButton` e `IosBarIconButton`: mínimo 48 × 48 dp (antes solo 48 de alto: "OK" medía menos de ancho).
-- `IosAlert`: título como encabezado y cuerpo desplazable. `IosButton`, `ActionButton` e `IosMenuItem` dejan de forzar `maxLines = 1`: con fuente 2,0 el texto pasa a otra línea en vez de cortarse con puntos suspensivos.
-- `IosSegmentedControl`: alto mínimo de 48 dp que crece si una etiqueta se parte; la pista dibujada sigue siendo de 32 dp. `IosSheetHeader`: con escala de fuente > 1,3 los botones toman el ancho que necesitan y el título se parte en lo que queda (el reparto fijo 1:2:1 cortaba "Cancelar").
-
-### D-T17-3 · 2026-10-05 · Pestañas: todo gesto tiene una acción de accesibilidad
-- Tocar una pestaña era un gesto de puntero sin acción de clic: se añade `onClick` ("Seleccionar"). Reordenar por arrastre era el único camino: se añaden las acciones "Mover antes" y "Mover después" (solo si hay hueco). Los botones "+" y "⋯" declaran `Role.Button`.
-
-### D-T17-4 · 2026-10-05 · Terminal y paneles
-- **Vista del terminal:** `contentDescription` "Terminal" y acción de clic "Mostrar el teclado". **Decisión: no se expone el texto de la pantalla** (SPEC: "la terminal en sí expone texto" queda como el contenido que el usuario puede copiar con la selección): leer cada redibujado en voz alta es ruido, un nodo con cientos de caracteres que cambia con cada byte es caro, y el contenido de la terminal no debe llegar a ningún registro. Si hace falta lectura, el diseño correcto es una región en vivo con las líneas nuevas, y es trabajo aparte.
-- El panel sin foco tiene la misma acción de clic. El separador de paneles, que solo se movía arrastrando, ofrece "Mover el separador hacia atrás/adelante" (pasos de 48 dp). El botón del menú de paneles declara rol y clic.
-- Comprobado por búsqueda: ningún `Log.*` ni `println` toca el contenido del terminal.
-
-### D-T17-5 · 2026-10-05 · Fila de teclas extra: la fuente se frena en 1,2
-- La fila mide 48 dp por fila y cada tecla es una fracción del ancho: el rótulo no puede crecer sin límite. `ExtraKeyFit.MAX_FONT_SCALE` = 1,2: los rótulos dibujados siguen la fuente del sistema solo hasta ahí (el nombre hablado de cada tecla no cambia). `ExtraKeyFitTest` comprueba, con una estimación conservadora del ancho (0,65 em por letra), que todas las teclas por defecto caben en 360 dp con los tres estilos a escala 2,0.
-- **Alternativa descartada:** dejar crecer las filas con la fuente. Rompe el cálculo del alto del pty (D de T12/T22b: fila × 48 dp) y comería el terminal.
-
-### D-T17-6 · 2026-10-05 · Pantallas de Material (SSH, Apariencia): filas que se parten y encabezados
-- Las filas de botones de SSH (cabecera, tarjetas de host y de clave) y de esquemas pasan a `FlowRow`: con fuente grande los botones bajan a otra línea en vez de salirse de la pantalla. Los títulos de pantalla y `SectionTitle` son encabezados. `LabeledSlider` anuncia su valor (`stateDescription`) además de la etiqueta. Cambios pequeños a propósito: T22c y T12b editan esas pantallas.
-
-### D-T17-7 · 2026-10-05 · Rendimiento: guarda en el host y procedimiento en el dispositivo
-- `FeedThroughputTest` (módulo `terminal-emulator`) alimenta el emulador con la salida de `seq 1 200000`, con 20 000 líneas de color que se parten y con Unicode ancho/combinante, en trozos de 4 KiB como el lector del pty. Comprueba el resultado (última línea, historial acotado) y un límite de **30 s**, dos órdenes de magnitud sobre lo que tarda un portátil (milisegundos): solo falla con una regresión de complejidad, no por una máquina lenta ni por el reloj. No mide dibujo ni el dispositivo.
-- `docs/PERFORMANCE.md`: procedimiento reproducible para el arranque en frío hasta el prompt (el propio `PS1` escribe la hora del primer prompt; `am start -W` da el primer frame) y para `seq 1 200000` (`time`, `dumpsys gfxinfo`, interfaz viva durante la salida, paneles y fuente grande). Objetivo SPEC: < 1,5 s.
-
-### D-T17-8 · 2026-10-05 · Lo que NO está validado (sin dispositivo)
-1. TalkBack: orden de lectura y anuncios de las pestañas (acciones Seleccionar/Renombrar/Cerrar/Mover), del terminal, del separador de paneles, de los encabezados y de las filas fusionadas de Ajustes.
-2. Fuente 2,0 en: barra de pestañas (48 dp fijos arriba: una pestaña con nombre largo se recorta a una línea), fila de teclas, hoja de formulario (`IosSheetHeader`), alertas, `NamePrompt` (no se tocó: es de T22c), control segmentado de Apariencia y pantallas SSH.
-3. El rendimiento: ninguna cifra del dispositivo; los objetivos de la SPEC siguen sin comprobarse hasta ejecutar `docs/PERFORMANCE.md`.
-
-## T24 — Fedora como distro
-
-Petición del usuario (Fedora es su distro habitual). Hecho sin dispositivo: probado en host con muestras sintéticas y con las respuestas reales de Fedora (listados y `CHECKSUM`) copiadas a los tests. **Pendiente de la prueba real en el Pixel 8.**
-
-### D-T24-1 · 2026-10-04 · Origen: la imagen de contenedor `Base` del release oficial, con su `CHECKSUM` firmado
-- **Decisión:** se usa `https://dl.fedoraproject.org/pub/fedora/linux/releases/<versión>/Container/<arq>/images/Fedora-Container-Base-Generic-<versión>-<compose>.<arq>.oci.tar.xz` (63 MB en Fedora 44, aarch64) y el hash SHA-256 de `Fedora-Container-<versión>-<compose>-<arq>-CHECKSUM`, que Fedora firma con PGP y que trae también el tamaño.
-- **Por qué esa imagen y no otra:** la capa trae `dnf5` (`usr/bin/dnf -> dnf5`, visto en su listado), que es lo que el usuario va a usar. La `Minimal` (49 MB) lleva una palabra más en el nombre y no se elige.
-- **Alternativa descartada:** `fedora-cloud/docker-brew-fedora` (rama `44`, `aarch64/fedora-<fecha>.tar`). Es más sencilla —su "`.tar`" es en realidad un gzip (empieza por `1f8b`), el extractor actual la leería—, pero el repositorio **no publica ningún SHA-256** (solo el SHA-1 de blob de git), así que no habría una verificación a la altura de las otras distros. Además su fecha cambia con cada actualización.
-- **Impacto:** el hash lo verifica `Sha256Verifier` como en las demás (T06), sobre el `.oci.tar.xz` entero.
-
-### D-T24-2 · 2026-10-04 · Qué versión: la más reciente que tenga imagen, sin URLs fijas
-- **Decisión:** el catálogo lee el listado de `releases/`, ordena los números de mayor a menor y prueba los tres primeros hasta dar con uno con `Container/<arq>/images/` y su `CHECKSUM`. Hoy (2026-10-04) 45 aparece listado pero no tiene directorio de contenedores (404), así que se elige **Fedora 44**.
-- **Motivo:** como D-T06-1: ninguna URL ni hash en el código, y una versión nueva se recoge sin actualizar la app. Probar solo la última fallaría justo cuando se abre una rama nueva.
-- **Riesgo aceptado:** la **firma PGP del `CHECKSUM` no se comprueba**: se lee el texto claro, que llega por HTTPS desde el servidor del proyecto. Es el mismo riesgo que D-T06-2. Mejora posible: llevar las claves de publicación de Fedora y verificar la firma (haría falta una biblioteca OpenPGP, hoy no justificada).
-- **Impacto:** las imágenes del release están congeladas en su fecha (la de Fedora 44 es del 2026-04-22); la distro se actualiza después con `dnf upgrade`.
-
-### D-T24-3 · 2026-10-04 · ABIs: arm64 y x86_64; Fedora no publica 32 bits de ARM
-- **Comprobado:** en Fedora 44 el directorio `armhfp`/`armv7hl` está vacío. El catálogo devuelve `CatalogUnavailable("Fedora has no image for armv7")` **sin tocar la red**.
-- **Pendiente:** el diálogo de instalación sigue listando Fedora en un dispositivo armv7 y falla al intentarlo con ese mensaje. Ocultar la opción por arquitectura queda para la pantalla de Distros nueva (T22c).
-
-### D-T24-4 · 2026-10-04 · Dos niveles de archivo: xz, tar OCI y capa gzip; la capa se halla por su contenido
-- **Hecho comprobado leyendo la imagen real en flujo:** el `.oci.tar.xz` contiene, en este orden, `blobs/`, `blobs/sha256/`, un blob JSON (config), **la capa de 66,8 MB** (gzip), otro blob JSON (manifiesto), `index.json` y `oci-layout`. **El manifiesto llega después de la capa**, así que no se puede localizar la capa leyéndolo.
-- **Decisión:** `OciArchive` reconoce una imagen OCI por su primera entrada y toma como capa el blob de `blobs/sha256/<64 hex>` cuyo contenido es un tar comprimido o plano (por la cabecera: gzip, xz, zstd, bzip2 o `ustar`), no JSON. La extrae en flujo con las mismas reglas de seguridad de T07 (`TarPass` y `SafeTreeWriter` no cambian).
-- **Integridad de la capa:** los blobs OCI se llaman como su propio SHA-256. Se calcula el de los bytes de la capa a medida que se leen (incluidos los que el descompresor no pide) y se compara con su nombre al terminar; si no coincide, `Corrupt("the OCI layer does not match its digest")` y el instalador descarta el directorio temporal (D-T07-1). Sirve de segunda comprobación sobre el hash del archivo entero.
-- **Una sola capa**, como Debian (D-T06-3): tras la capa se recorre el resto del archivo y otra capa daría `UnsupportedFormat("an OCI image with several layers")` en lugar de instalar medio sistema.
-- **Detalle técnico:** el flujo de la capa no admite `mark`/`reset` y rehace `skip` con `read`, porque cualquiera de las dos cosas esquivaría el cálculo del hash.
-
-### D-T24-5 · 2026-10-04 · Biblioteca xz: `org.tukaani:xz` 1.12 (0BSD), con límite de memoria
-- **Licencia:** 0BSD, comprobada en el POM de Maven Central y en `COPYING` del repositorio oficial (`tukaani-project/xz-java`); compatible con GPL-3.0-or-later. 0BSD no exige conservar ningún aviso; se acredita igualmente en `THIRD_PARTY_NOTICES.md`. `licensee` permite ahora `0BSD`.
-- **Aviso en el APK:** el jar de xz-java no trae `NOTICE` ni `LICENSE` (solo `META-INF/MANIFEST.MF` y el módulo), y 0BSD no obliga a conservar ningún aviso, así que, con el criterio de D-T23-2 (se empaquetan los textos de las dependencias que publican el suyo), no se añade nada a `res/raw` ni a `assets/licenses`. Queda acreditada en `THIRD_PARTY_NOTICES.md`.
-- **Verificación de dependencias:** el `jar` y el `pom` (Maven Central no publica `.module`) se descargaron y sus SHA-256 coinciden con los `.sha256` que publica Maven Central; se insertaron en `verification-metadata.xml` sin reformatear el fichero.
-- **Memoria:** `XZInputStream` se abre con un límite de **64 MiB** (el diccionario de un `xz -9`; el de Fedora pide del orden de 1 MiB). xz-java reserva el diccionario en el heap de Java, y un flujo que pida más se rechaza (`TooLarge`) en vez de arriesgar un `OutOfMemoryError`. Los demás errores del descompresor se clasifican como `Corrupt`.
-- **Bombas:** el xz comprime mucho más que gzip, así que la defensa no es el tamaño comprimido: la cuentan los límites que ya había sobre lo que se **escribe** (16 GiB y 2 millones de entradas) y se añade un tope de 8 GiB para el tamaño declarado de una capa.
-
-### D-T24-6 · 2026-10-04 · El formato se decide siempre por los primeros bytes, nunca por la extensión
-- `ArchiveFormat.open` ya miraba la cabecera mágica; ahora además lee xz. El instalador guarda el archivo descargado con un nombre fijo (`archive`) y los tests lo comprueban con un gzip llamado `.tar.xz` y un xz llamado `.tar.gz`. zstd y bzip2 siguen sin soporte y se nombran en el error.
-
-### D-T24-7 · 2026-10-04 · Espacio: la regla de T07 ya cubre Fedora
-- `InstallSpace` exige 5 veces el tamaño del archivo: unos 330 MB para los 66 MB de Fedora (el archivo más lo descomprimido, que se estima en unos 200 MB). **El tamaño descomprimido real no se ha medido**: se medirá en el dispositivo.
-
-### D-T24-8 · 2026-10-04 · Lo que Fedora necesita del lanzamiento de proot: nada nuevo, con tres cosas por vigilar
-- **`/etc/resolv.conf`:** la capa no lo trae y T08b lo resuelve con un bind de proot, no escribiendo en el rootfs: sirve igual.
-- **`PATH`:** el genérico (`/usr/local/sbin:…:/bin`) vale; `/bin` y `/sbin` son enlaces **relativos** a `usr/…` y proot los resuelve dentro de la distro. No hay ninguna comprobación de `bin/sh` en el lado del anfitrión (el repositorio de ficheros no sigue enlaces y la daría por inexistente).
-- **Enlaces relativos** (`etc/os-release -> ../usr/lib/os-release`, `usr/sbin -> bin`, `usr/local/sbin -> bin`): el extractor los guarda tal cual, y la regla de no escribir a través de un enlace sigue vigente.
-- **Por vigilar en el dispositivo:** `dnf5` bajo proot (seccomp, `ptrace`, `/proc` parcial, la base de datos de `rpm`) y el tiempo de la primera descarga.
-
-### D-T24-9 · 2026-10-04 · Qué se probó y qué no
-- **Tests de host (sin red real):** xz válido, truncado, dañado, con solo su magia, bomba y exceso de memoria (editando el diccionario de la cabecera del bloque y recalculando su CRC); imagen OCI de Fedora (capa única, envoltorio gzip o plano, nombres con `./`, capa tar plano, digest que no coincide, sin capa, varias capas, capa hostil con `..` y con escritura a través de enlace, bomba dentro de la capa); el flujo de la capa (lectura, `skip`, `mark`/`reset`, cierre); parsers y catálogo de Fedora con las respuestas reales (la nueva rama sin imagen, armv7, tres versiones sin imagen, `CHECKSUM` sin entrada); y el instalador registra `DistroType.FEDORA`. Las fechas de los tars son fijas y ningún test depende del reloj ni de los tamaños comprimidos.
-- **No cubierto por tests:** el tope de 8 GiB de una capa (hace falta una cabecera de tar con un tamaño absurdo escrita a mano).
-- **Sin validar en hardware, y criterios de la prueba real en el Pixel 8:**
-  1. Instalar Fedora desde la app: descarga de ~63 MB con progreso, comprobación de hash, extracción sin error y la distro "lista"; anotar el tiempo y el tamaño descomprimido.
-  2. Abrir una pestaña: `cat /etc/fedora-release` (debe decir Fedora Linux 44) y `echo $0`.
-  3. `dnf --version` y `dnf install -y nano` (red, DNS del dispositivo, escritura en `/var/lib` y `/var/cache`); `nano --version`.
-  4. Si `dnf` falla: probar el modo de compatibilidad (proot sin seccomp) y apuntar el error exacto.
-
-### Tercera ronda (Pixel 8, 2026-10-04, APK de `master` con T16, T22d y T24)
-
-**Fedora (T24), verificado de extremo a extremo en el dispositivo.**
-- **Instalación desde la app:** "Fedora" aparece en la hoja "Instalar una distro", junto a Debian, Ubuntu y Alpine. Descarga con barra de progreso y botón de cancelar, verifica y extrae el tar.xz: Fedora 44 queda "lista", con **195 MB** descomprimidos.
-- **Pestaña:** el menú del "+" ofrece "Fedora" y abre un bash propio (`[root@localhost ~]#`) bajo proot.
-- **`dnf` bajo proot (el mayor riesgo de T24): funciona.** `dnf --version` da dnf5 5.4.1 con sus plugins; `dnf install -y nano` carga los repositorios de Fedora 44 (65,4 MiB y 11,6 MiB de metadatos), descarga 724 KiB y la transacción de `rpm` termina en "Complete!". Después `nano --version` da 8.7.1 y `rpm -q nano bash` responde con `nano-8.7.1-2.fc44.aarch64` y `bash-5.3.9-3.fc44.aarch64`, así que la base de datos de `rpm` es válida.
-- `clear` no existe en la imagen mínima de Fedora: no es un fallo de la app.
-
-**Ajustes (T16) y Distros (T22c).**
-- El ⚙ se ve siempre junto al "+" y abre la pantalla de Ajustes (título grande, listas agrupadas con chevrons, "Listo"), con las nueve secciones. La página de Red muestra los DNS de respaldo con su explicación; la de Distribuciones enlaza "Gestionar distribuciones" y el modo de compatibilidad.
-- La pantalla de Distribuciones rehecha (lista agrupada, "+" para instalar, hoja modal con asa) ya no choca el título con el botón.
-- **No probado todavía:** las páginas Terminal, Teclado, Sesiones, Almacenamiento, Copias de seguridad y Acerca de; el diálogo de segundo plano, que sigue con aspecto de Material.
-
-**Teclas especiales (T22d):** las tres variantes funcionan y se eligen en Apariencia con vista previa en vivo. Planas (por defecto): símbolos con separadores finos, sin cápsulas; Cápsulas: cápsulas tenues con Ctrl armado en acento; Clásicas: teclas con filo inferior en grises derivados del esquema.
-
-**Fallo hallado y corregido: el botón/gesto de "atrás" no hacía nada en ninguna pantalla** (ni en Ajustes, ni en Apariencia, ni desde el terminal). Causa: `MainActivity` no declaraba `android:enableOnBackInvokedCallback` y, con `targetSdk` 28 en Android 17, los `BackHandler` de Compose no recibían el evento. Una línea en el manifiesto lo arregla (PR #44) y está verificado en el dispositivo: atrás vuelve de una página de Ajustes a la raíz, cierra Ajustes y vuelve de Apariencia. Un test del manifiesto lo protege. Observación de la versión anterior: pulsar "atrás" varias veces dentro del terminal acababa mostrando "Display all 395 possibilities?" de bash, lo que sugiere que la tecla llegaba al shell como un tabulador; **hay que comprobar con la build nueva que "atrás" en el terminal ya no escribe nada en el shell.**
-
-**Retirado: el supuesto fallo de "Negro OLED activado y ningún esquema seleccionado".** No era de la app: el esquema seleccionado era "OLED Black" (el sexto de la lista, fuera de pantalla en mi captura) y Negro OLED estaba activado, coherente entre sí. Casi seguro lo cambié yo con toques de prueba mientras desplazaba la pantalla de Apariencia. Restauré Dracula con OLED apagado.
-
-
-**Comprobado en el Pixel 8 con la build de `master` (2026-10-04): "atrás" en el terminal no escribe nada en el shell.** Con el teclado visible y `echo prueba` sin enviar, una pulsación de "atrás" oculta el teclado (y con él la fila de teclas especiales) y la línea queda intacta, sin "Display all … possibilities?". Una pulsación más, sin teclado, deja la app en segundo plano, como se espera. La sospecha de la versión anterior queda cerrada. El diálogo "Mantener las sesiones activas" sigue con aspecto de Material (pendiente).
-
-### Cuarta ronda (2026-10-05, build de `master` en el Pixel 8 y en la tablet Huawei MRO-W09)
-
-**Corrección del usuario:** el requisito original sí era la tablet (el redimensionado de Termux); mi frase de que no lo era fue un error de lectura.
-
-**Tablet Huawei MRO-W09 (Android 12, 2800×1840, arm64): primera validación real de T04/T10.**
-- Con ninguna distro instalada, la app abre una pestaña "Shell 1" con el shell del sistema y la barra lateral de pestañas (pantalla ancha) con "+" y ⚙ abajo.
-- `stty size` coincide con lo visible: apaisado 41 filas × 123 columnas (unas 125 × 42 con márgenes); vertical (rotación 0) 64 × 72 sin teclado y 58 × 72 con la fila de teclas extra, que aparece y desaparece con el teclado (RF-08 también aquí).
-- Multiventana (ventana flotante forzada con `--windowingMode 5` y `am task resize`): ventana pequeña 23 × 45 y ventana grande 49 × 60; cada cambio de tamaño actualiza el PTY y coincide con lo visible.
-- No probado: pantalla dividida (`--windowingMode 3/4` falla en este EMUI con una excepción del sistema), paneles divididos, distro instalada, teclado físico.
-- La captura de esta tablet no incluye el teclado en pantalla (`mInputShown=true` confirma que está abierto).
-- Ajustes del sistema que toqué para probar (rotación fija, `enable_freeform_support`, `force_resizable_activities`) restaurados al terminar.
+- **To ask F-Droid about, without asserting:** `NonFreeNet`. To install **Debian** the app downloads the manifest and
+  the `rootfs.tar.gz` from `raw.githubusercontent.com/debuerreotype/docker-debian-artifacts` (D-T06-3). GitHub is a
+  proprietary hosted service, although what is downloaded is free software; I do not know whether F-Droid counts it as
+  "depends on a non-free network service" for an optional download the user initiates. Ubuntu
+  (`cdimage.ubuntu.com`) and Alpine (`dl-cdn.alpinelinux.org`) come from the projects' own mirrors.
+- **Downloading and running third-party software** (the distros) has no anti-feature of its own that I know of;
+  it is mentioned in the description and in `PRIVACY.md`. Confirm it when submitting the recipe.
+
+### D-T20-6 · 2026-10-04 · Declared license and a point that remains open
+
+- **Declared:** GPL-3.0-or-later. Compatible with what it carries: Apache-2.0 (Termux emulator, AndroidX, Kotlin…),
+  OFL-1.1 (JetBrains Mono, Inter), ISC (Lucide), MIT (schemes), GPL-2.0-or-later (PRoot), LGPL-3.0-or-later
+  (talloc); everything is in `THIRD_PARTY_NOTICES.md`.
+- **Open, not resolved here (D-T03-2):** the files of Termux's `terminal-emulator` carry no license header and
+  Apache-2.0 only appears in upstream's root `LICENSE.md`. It has to be **confirmed with the Termux
+  maintainers before submitting the app to F-Droid**. This is not legal advice.
+
+### D-T21-1 · 2026-10-04 · The README distinguishes "verified on a device" from "only on a computer"
+
+- **Decision:** a table with two columns (device / host only). Verified on a Pixel 8: startup, shell with
+  PTY, input and resizing with the keyboard (`stty size`), foreground service, installing Alpine from the app,
+  opening it with proot in a tab, `apk add` with network, `ssh` and `python3` in that tab, `nmap` installed, and that on
+  startup the default distro opens. Everything else, host only.
+- **Reason:** the project has been made almost without a device and an optimistic README is worse than one that says what is missing.
+  What was fixed and has not been looked at again (the row that hides with the keyboard, the text that reaches the shell
+  while typing, the direct battery dialog, the fake `/proc`) is listed apart as "in the code, not looked at".
+- **Outdated fact that was not touched:** the "Pending hardware validation" section, at the start of this file, begins
+  by saying that "the user has forbidden testing on the Pixel 8". It was true when written, but the user
+  authorized it later for the orchestrator. It is not edited here so as not to clash with the other agents who add to this
+  file; it should be updated when the validation on a device is closed.
+
+### D-T21-2 · 2026-10-04 · `PRIVACY.md`: each permission with its reason, in English and Spanish
+
+- **Content:** no telemetry or accounts; what is stored and where (private storage, `allowBackup=false`, keys
+  encrypted with the Keystore); the **three domains** it connects to in order to download distros (`dl-cdn.alpinelinux.org`,
+  `cdimage.ubuntu.com`, `raw.githubusercontent.com`) and that only HTTPS is used; the public fallback DNS
+  (`1.1.1.1`/`9.9.9.9`) as a **last resort** and its effect on privacy; a table with the nine manifest
+  permissions (`INTERNET`, `ACCESS_NETWORK_STATE`, `FOREGROUND_SERVICE(_SPECIAL_USE)`, `POST_NOTIFICATIONS`,
+  `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, `WAKE_LOCK`, `READ/WRITE_EXTERNAL_STORAGE`) and the ones it does **not** ask for; the
+  backups' password (it is not stored, it is not recoverable); and why `targetSdk 28` and not Google Play.
+- **Nuance that was meant to be avoided:** "does not write content to logs" was worded as "by design", because it is a rule
+  of the code (`CLAUDE.md`) and not something this work has audited.
+- **The storage permission** is described as it is: always declared, requested only when turning on `~/storage`,
+  and with the caveat that on Android 13 or later it may be granted for media only (D-T13-3, unverified).
+- **It must be reviewed when it changes:** the manifest (any new permission), T16 (DNS will become a setting),
+  and if any other domain the app connects to is added.
+
+### D-T21-3 · 2026-10-04 · `CONTRIBUTING.md` collects what was learned in this stage
+
+- Main branch `master`; Conventional Commits; PR with **all** checks, including GitGuardian (which may
+  flag false positives: it is read and explained, not ignored); **do not merge `master` into the branch** (GitGuardian
+  re-read T15's code in other people's PRs) but rebase; `lintDebug` locally before opening the PR (Lint with warnings as
+  errors); deterministic tests (the clock in the tar fixtures left critical coverage failing 2 out of 6
+  runs); coverage 85 % and 100 % critical; `targetSdk` 28 untouchable; credits in `THIRD_PARTY_NOTICES.md`.
+- **It does not claim** anything that has not been done: it does not promise GitHub's private vulnerability reporting (I do not know if it is
+  enabled), only "contact the maintainer privately".
+
+### Pending from this work
+
+- Real screenshots (D-T20-3). `AllowedAPKSigningKeys` fingerprint, check CMake on F-Droid's server and ask about
+  `NonFreeNet`, `targetSdk` 28 and the Termux license point (D-T20-4 to D-T20-6) when submitting the recipe.
+- `fdroid lint` and `fdroid readmeta` were not run: they are not on this machine. They have to be run before sending the recipe.
+
+## T09b — Tabs: repainting the new ones and distro name
+
+### D-T09b-1 · 2026-10-04 · Root cause of the blank tab: `activeHost` was computed before the host existed
+- **Finding (Pixel 8):** a new tab came out blank until switching tab and coming back, and with the keyboard visible what was typed was not repainted until hiding it. It was reproduced on cold start and in tabs created with "+".
+- **Cause:** `SessionManager.activeHost` was `state.map { factory.host(it.activeId) }.distinctUntilChanged()`. The state publishes the new tab **before** starting its session (the planner reads the distro from the already published state), and the host is registered in the factory afterwards. At that moment `factory.host(...)` returned `null`, `distinctUntilChanged` prevented repeating the query and the ViewModel rebroadcast `flowOf(0)`: no change notification from the emulator reached the view. Anything that changed the state (switching tab, the resize when hiding the keyboard) repeated the query and "fixed" the screen, which explains the symptoms.
+- **Decision:** `HostRegistry<T>` (domain, generic) keeps the hosts and exposes an observable counter; `follow(activeId)` repeats the query each time a host is registered or removed. `AndroidSessionFactory` uses it instead of a `mutableMapOf`, `SessionManager.activeHost` is `registry.follow(...)`, and the inactive panes (`InactivePane`) re-read their host when the registry changes (`hostChanges`), because they had the same defect.
+- **Alternatives:** forcing a periodic repaint (hides the bug and spends battery); registering the host before publishing the state (changes T08's startup order, more risk).
+- **Test:** `HostRegistryTest` reproduces the order of the failure (state first, host after) and checks that the host is followed, that there are no repeated emissions and that a closed host stops being followed.
+- **Not validated on a device:** that the new tab is drawn instantly and that what is typed is repainted without switching tab.
+
+### D-T09b-2 · 2026-10-04 · Tab name: the distro, numbered if repeated (RF-13)
+- **Decision:** `tabNames` (domain, pure) gives `Custom` if the user renamed it, `InDistro(distro, ordinal)` if not ("Alpine", "Alpine 2"...), and `Plain(n)` ("Shell n") for the Android shell. A renamed tab does not consume a number of its distro.
+- **Reason:** with several tabs in a distro, "Shell 1/2/3" says nothing; the user's name always wins.
+
+### D-T09b-3 · 2026-10-04 · The dark circle with "⋮" over the prompt is not drawn by the app (unconfirmed)
+- **Finding:** in the Pixel 8 screenshots there is a dark circle with three dots in the top-left corner of the terminal. No part of the code draws it there: the panes menu (`PaneMenu`) is at the top right and only appears with split panes. It is anchored to the origin of the input view (`TerminalInputView`, 1 dp), so it looks like a system feature for focused editors.
+- **Mitigation applied, unconfirmed:** `importantForAutofill = NO`, `setAutoHandwritingEnabled(false)` from Android 14 and `IME_FLAG_NO_PERSONALIZED_LEARNING`. T08c had already attributed it to the panes menu without looking on the device and the circle stayed there; I do not consider this point resolved until it is seen on a device.
+
+## T22b — iOS-style terminal chrome
+
+### D-T22b-1 · 2026-10-04 · The chrome uses `ui/ios` (T22a) with the terminal scheme's colors
+- **Decision:** `TerminalScreen` wraps the content in `IosTheme(decision, scheme)`, with `dark` and `oled` taken from the scheme (not from the system theme): the screen is drawn in the scheme's colors and its chrome has to match them. The bars keep using `ChromePalette` (T12c) for surfaces and text.
+
+### D-T22b-2 · 2026-10-04 · Tab bar: capsules, and the active tab's menu
+- **Decision:** each tab is a capsule (`capsule`, drawn with a 6 dp vertical margin inside a 48 dp touch target, so the capsule is shorter than what is touched). The active one carries the `selected` fill, the text in semibold and a `⋯` button (menu with rename and close, `IosContextMenu`); the others, text only. A thin (0.5 dp) line between the bar and the terminal. All tabs offer rename and close as **accessibility actions**, so no function depends on seeing the button.
+- **Gestures:** they are kept (tap selects, double tap renames, long press and drag reorders).
+- **Alternatives:** a context menu by long press on all of them (it clashes with the drag to reorder).
+
+### D-T22b-3 · 2026-10-04 · No blur on the tab bar
+- **Decision:** the bar uses the scheme's `surface` color, without `backdropBar`. T22a's blur needs content that passes *under* the bar, and here the bar does not overlap the terminal (the grid computation excludes it). Overlapping them would change the pty size computation and it cannot be validated without a device.
+- **Pending:** decide in T22c / once tested on a device whether the terminal is drawn under the bar.
+
+### D-T22b-4 · 2026-10-04 · Extra keys as keyboard keys
+- **Decision:** each key is a rounded key with a bottom line (a key's edge), on a tray of the `surface` color. The colors come from the domain (`ChromeColorsFor`: `key`, `keyPressed`, `onKey`): the key is **lighter than the tray** in light and dark schemes, and darker when pressed; the text meets contrast ≥ 4.5:1 in all the bundled schemes (test). Armed and locked Ctrl/Alt keep the accent. `onlyWithKeyboard` is kept.
+- **Haptics:** `IosPressable`'s on each key, like a keyboard's click.
+
+### D-T22b-5 · 2026-10-04 · Menus and notices with the iOS components
+- **"+" and panes:** `IosContextMenu` with Lucide icons on the right (D-T22a). The entries are built as a list so that the last one carries no separator. **Rename:** an iOS alert with a text field (`NamePrompt`: title, field, note and two buttons side by side), which takes the keyboard by itself; **close:** `IosAlert` with the destructive button in red. **Launch notice:** a rounded card with a shadow over the first rows; the icon is red if it is a problem.
+- **Panes button:** a 48 dp target with a 30 dp capsule inside (covers less text) and only with split panes.
+- **Not touched (T22c):** the `SessionPrompts` dialogs (permissions), Distros, SSH, Appearance and Settings.
+
+### D-T22b-6 · 2026-10-04 · Refactor forced by detekt
+- `NamePrompt` receives its texts grouped (`NamePromptTexts`), `TabChip` is split into `TabChip`, `TabLabel` and `tabSemantics` with two context classes, the tab notices and alerts live in `TabPrompts.kt`, and `TerminalScreen` groups what it passes to `TerminalContent`. No rule was relaxed.
+
+### D-T22b-7 · 2026-10-04 · What is NOT validated (without a device)
+- The real look of the capsules, the keys and the menus on a phone and a tablet, in light, dark and OLED.
+- The rename alert with the keyboard (that the field is seen and not covered), and the field's automatic focus.
+- That the context menu appears in the expected place from the screen's edge (it is anchored to its button's top-right corner).
+- The tabs' gestures with the capsule, and TalkBack with the custom actions.
+- That the circle with "⋮" disappears (D-T09b-3).
+
+### D-T22b-8 · 2026-10-04 · Lesson: deterministic tests
+- This branch adds no tests that depend on the clock, on chance or on compressed file sizes (critical coverage was intermittent because of that; see D-T15-*/the deterministic fixtures PR).
+
+## First tests on hardware (Pixel 8, 2026-10-04)
+
+Manual tests by the orchestrator on a **Pixel 8** (Android 17, API 37, arm64, debug app with `targetSdk` 28), with `adb` and screenshots. The development agents do not touch devices.
+
+### Verified on the device
+- **Startup and PTY (T03):** the app starts in ~540 ms; the first tab is a shell with a real PTY (`uname -a` returns the real kernel, aarch64).
+- **Resizing (T04):** with the keyboard open, `stty size` gives 18×49 and matches what is visible (the view shrinks above the keyboard).
+- **Foreground service (T08):** it runs with `targetSdk` 28 on Android 17 (`isForeground=true`, type `specialUse`, channel `sessions` with 2 actions).
+- **Tabs (T09):** creating and switching tabs work.
+- **Distros (T06/T07):** installing Alpine 3.24.2 from the app (download, SHA-256, extraction) takes ~3 s and leaves it ready and default.
+- **proot (T02/T08b):** a new tab opens `localhost:~#`, an Alpine root shell under proot; when closing the app completely and reopening it, the first tab is the distro again (6 out of 6 starts).
+- **Tools inside the distro:** `apk update` (28,553 packages) and `apk add` of 41 packages with the device's network and DNS; OpenSSH 10.3, Python 3.14.8 and nmap 7.99 work. `free -m` and `uptime` work.
+
+### Failures found (and their status)
+- **Crash when installing a distro:** `SecurityException: getFileStore` (Android forbids apps from reading `/proc/mounts`). Fixed with `StatFs` (PR #19).
+- **What was typed did not appear until hiding the keyboard:** `setComposingText` did not send the text until `finishComposingText`. Fixed by sending the composition immediately (`ComposingText`, PR #23). **Pending verification on the device.**
+- **New tab blank until switching tab and coming back:** root cause in `SessionManager.activeHost` (T09b). Fixed in T22b; pending verification.
+- **Battery dialog** opened a general Settings list: changed to the system dialog (T08c).
+- **Distros title overlapping the install button:** T08c and T22c.
+- **The keys row stayed visible with the keyboard hidden:** fixed (`onlyWithKeyboard`, PR #22); pending verification.
+- **Partial `/proc`:** `stat`, `loadavg` and others give `Permission denied` inside proot (SELinux), as in Termux; `top` and `htop` may fail without fake files mounted over them (T08c).
+
+### Not tested yet
+Split panes (T10), colors and fonts (T12/T12c), `~/storage` mount (T13), SSH hosts and keys (T14), backups (T15), gestures and physical keyboard, and **everything on the tablet** (resizing, multi-window, wide panes).
+
+### Second round (Pixel 8, 2026-10-04, `master` APK with T22b and T09b)
+
+Verified on the device with the `master` APK at `b6e3475`:
+
+- **Input with the keyboard open (fix #23):** what is typed appears instantly, before pressing Enter (`echo primero`, `echo segundo` and its output, and `echo tercero` while typing). The keyboard no longer has to be hidden.
+- **The keys row follows the keyboard (RF-08):** with the keyboard open it is seen (rounded keys in a gray derived from the scheme) and when hiding it it disappears and the terminal takes the whole screen.
+- **New tab (T09b):** pressing "+" creates "Alpine Linux 2" and draws its prompt the first time, without switching tab. Tabs are named with their distro (RF-13).
+- **Split panes (T10):** "Split right" creates a second pane with its own Alpine shell (3 proot processes in total); the purple border marks the focus, input goes to the focused pane and long lines wrap.
+- **Appearance (T12 and T12c):** the screen is opened from the "+" menu; it shows a preview with ANSI colors, the theme (system/light/dark), the OLED Black switch, the dynamic colors and the list of schemes. Choosing Solarized Dark repaints all the panes instantly and the tab bar takes the scheme's accent; going back to Dracula restores the `#282A36` background.
+- **"+" menu (T22b):** a dark context menu with rounded corners and line icons: Android shell, the distro, split right and down, SSH, Manage distros and Appearance.
+
+Defects seen (not fixed yet):
+- **The focused pane's `⋯` button covers the end of the first line** when the text reaches the right edge.
+- **The "Keep sessions active" dialog and the Appearance screen still have the Material look;** T22c and T16 redo them.
+- **Not checked yet:** scroll performance with the translucent bar, the TalkBack pass, rotation and everything on the tablet.
+
+### D-REQ-4 · 2026-10-04 · Fedora moves from the backlog to a task (T24)
+- **Decision:** the user said their favorite distro is Fedora and asked why it was not there. In the initial interview Arch and Fedora were left in the backlog (SPEC §2); now Fedora enters the plan as T24. Arch stays in the backlog.
+- **Why it was not trivial:** Fedora's images come as tar.xz and T07's extractor only reads gzip (D-T07-3), so T24 includes xz decompression with the same security rules.
+- **Impact:** SPEC §2 and PLAN updated. `org.tukaani:xz` will be credited in `THIRD_PARTY_NOTICES.md`.
+
+## T12b — Profiles, layouts, broadcast and shortcuts (domain only, no interface)
+
+Everything lives in `domain/profile`, `domain/broadcast` and `domain/terminal/ShortcutConflicts.kt`, without touching any screen,
+`SessionController` or `TabsController`. 51 new deterministic host tests (no clock or chance). Not validated on a
+device: there is nothing to run yet, the interface is missing.
+
+### D-T12b-1 · 2026-10-04 · In a profile, the saved default values mean "use the global setting"
+- **Decision:** `Profile` keeps `colorSchemeId = "default"`, `fontFamily = "monospace"` and `fontSizeSp = 14` as "not
+  customized". `PaneSpecResolver` translates them to `null` in `PaneLook` and only a different value replaces the global one.
+  This way changing the global scheme or font (T12/T12c) still reaches the panes that did not customize them.
+- **Reason:** the profile was saved in T5, before the global appearance existed; changing its Room schema to
+  admit `null` forced a migration. The cost is that a profile cannot ask for "exactly 14 sp" when the
+  global one is another: if needed, the field will have to be migrated to nullable (the heart of the problem is in `Profile.kt`).
+- **A scheme or font that no longer exists** (an imported one that was deleted) does not break the pane: the global one is used and a
+  `PaneNotice.SchemeMissing`/`FontMissing` is emitted. A number out of range is brought to its range with `ValueAdjusted`.
+
+### D-T12b-2 · 2026-10-04 · The startup command is typed into the shell, not run in its place
+- **Decision:** `PaneSpec.startupInput` is the command followed by Enter (`\r`), which the session types when the shell is
+  already running. `sh -c <command>` is not launched.
+- **Reason:** the shell stays interactive (if the command ends or fails a prompt remains), there is nothing to
+  quote, and the input does not go through proot's command line. The cost: the command is seen on screen and
+  depends on the prompt being ready (the UI must type it after the first prompt or with a short margin).
+- **What is accepted** (`StartupCommand`): a single line, no line breaks (several commands would run from a field
+  meant for one), no control characters (a Tab would ask for completion; an Escape would drive the shell) and up to
+  1000 characters. Blank means "none"; the command of a layout's pane replaces the profile's, and a blank
+  one cancels it.
+
+### D-T12b-3 · 2026-10-04 · A saved layout always opens: what fails is degraded and reported
+- **Decision:** `PaneSpecResolver.resolve` rejects with a sealed `ProfileProblem` (nonexistent distro, distro not ready,
+  invalid user, invalid command), never with an exception. `resolveOrDegrade`, which restoration uses, opens that
+  pane as the default profile and **without a startup command**, with `PaneNotice.Degraded(reason)`; a deleted profile
+  gives the default profile, keeps the layout's own command and reports it with `ProfileMissing`.
+- **Reason:** a layout comes from disk, from a backup or from another device, and must not be lost entirely because a
+  distro is no longer there. A command written for a distro that does not exist could do harm in another, so it is not
+  kept when degrading.
+- **Alternative discarded:** refusing to open the layout. The structure is lost for a single broken pane.
+
+### D-T12b-4 · 2026-10-04 · A layout is untrusted data: bounded size and sanitized proportions
+- **Decision:** `LayoutRestorePlanner` rejects (`LayoutRefusal`) a tree of more than 16 panes (`TOO_MANY_PANES`) or more
+  than 8 levels of splitting (`TOO_DEEP`; the check stops at the limit, so its recursion is bounded
+  even if the JSON is malicious). A split whose part is smaller than 10 % is brought to 10 % with a
+  `RatioAdjusted` notice; one close to 50 % (±3 %) is set to half without notice, as when dragging the separator.
+- **Compatibility:** the round trip and reading an old JSON were tested with `LayoutCodec` (T05), with panes without
+  profile or command and with a key a future version might add.
+- **Numbers:** 16 panes and 8 levels are safety limits, not design ones; they can be raised without migrating anything.
+
+### D-T12b-5 · 2026-10-04 · Broadcasting to several panes: in memory only and with brakes
+- **Decision:** `BroadcastState` (`Off`, `AllPanes`, `Group(name)`) is not saved: a broadcast that survived a
+  restart would write to servers by surprise. `targets(active, panes, kind)` returns to which panes what is typed goes,
+  in the tab's order and never empty. Brakes:
+  - with a single pane there is nobody to broadcast to;
+  - with `textOnly` (default) control keys (Ctrl/Alt, Esc, arrows) only go to the active pane, so that a
+    Ctrl+C or an arrow meant for one server does not reach the others; pasted or typed text is broadcast;
+  - a pane outside the group does not sneak into it, and a pane that is not in the tab only receives itself.
+- `pruned(alive)` forgets closed panes (a closed pane's number must not coincide with a new one) and turns off a
+  broadcast to a group that was left without panes. `isEmitting(panes)` lets the interface show clearly that
+  typing will reach others: it is the notice that must not be missing.
+- **Alternative discarded:** an "all panes of all tabs" mode: too dangerous for the first
+  cut; it can be added as another `BroadcastMode`.
+
+### D-T12b-6 · 2026-10-04 · Shortcuts: three new actions and conflicts are warnings
+- **New actions** in `AppShortcut` (`ShortcutHandler`'s `when`s have `else`, so they have no effect until
+  the interface connects them): `ToggleBroadcast` (`Ctrl+Shift+B`), `SaveLayout` (`Ctrl+Shift+S`) and `OpenLayouts`
+  (`Ctrl+Shift+L`). Terminator uses Alt+letter, but Alt+letter is readline's Meta (Alt+b and Alt+f move by words),
+  so they go with Ctrl+Shift, like the rest of the pane ones (D-T11-4).
+- **Detection** (`ShortcutConflicts.kt`): `terminalConflict()` flags Ctrl+letter without other modifiers
+  (`StealsControlKey`: Ctrl+C interrupts, Ctrl+D closes the input) and Alt+letter or Alt+digit without Ctrl
+  (`StealsReadlineMeta`). They are warnings, not rejections: the SPEC asks for Alt+digit to choose a tab (D-T11-4), and the only
+  default shortcuts that clash are those nine. `bindChecked` returns the new map, what it replaced and the cost, or
+  `Refused` if the combination would steal normal keyboard input (before it threw an exception). `ShortcutText.analyze` detects a
+  combination that the saved text gives to two different actions (the last line wins, as in `parse`).
+- **One combination for two actions** cannot happen within `ShortcutMap` (it is a map by combination); several
+  combinations for one action can (Copy has two by default).
+
+### D-T12b-7 · 2026-10-04 · What was NOT done: persisting the shortcuts and putting them in the backup
+- **Finding:** shortcuts are not saved anywhere today (`InputRouter` starts with `ShortcutMap.defaults()`), and
+  `ConfigSnapshot` (T15) carries no shortcuts, nor the extra keys, nor T12c's appearance. Profiles and layouts **are** already
+  in the backup: layouts refer to profiles by position, not by id, so they travel well.
+- **Decision:** not touching `data.backup`. Its critical coverage requires 100 % of branches and there is no shortcut store
+  yet, so adding it there without a store would be dead or untested code. The `ShortcutStore` interface is defined
+  (like `ExtraKeysStore`) and the already existing text format (`ShortcutMap.serialize/parse`).
+- **Update (2026-10-05):** done, see D-T12b-8. The "What the later interface must do" list below is
+  done, except what D-T12b-9 and D-T12b-16 leave out.
+- **To complete it:** a key in the settings repository with the text of `ShortcutMap.serialize()`; adding it to
+  `SettingsDto` or to a new field of `ConfigSnapshot` (reading is lenient: a missing field does not break an old
+  backup); `ConfigCollector` reads it and `ConfigApplier` applies it with `ShortcutText.analyze` so as not to lose the good
+  lines; a round-trip test, and keeping `data.backup` at 100 %.
+
+### What the later interface must do
+1. **Open a pane with a profile:** call `PaneSpecResolver.resolve(profile)` with the known distros, schemes and
+   fonts; show a `Rejected` with a message for each `ProfileProblem`, and the `PaneNotice`s as a non-blocking
+   notice. Build the session with the launch that already exists from `PaneSpec.target`, apply `look` to
+   that pane (today the scheme and the font are global: the painter must admit a `PaneLook` per pane) and type
+   `startupInput` after the first prompt.
+2. **Profile screens** (list, create, edit, delete with confirmation; `Profile` already validates name and ranges) and
+   **layouts** (list, save with `LayoutSaving.build` from the tab's tree and each pane's `PaneDescription`,
+   rename, delete, open).
+3. **Open a layout:** `LayoutRestorePlanner.plan` with the profiles by id; if it returns `Refused`, say so; if not, create
+   a tab with `paneNodeOf(...)`/the sessions in reading order (`LayoutRestorePlan.panes`) and show the
+   `LayoutNotice`s, which indicate the pane by its position.
+4. **Broadcast:** one `BroadcastState` per tab in the ViewModel; route what is typed through `targets(...)` (`TEXT` for
+   text and paste, `CONTROL` for the rest); an indicator always visible while `isEmitting` is true; assign
+   panes to groups from the pane menu; call `pruned` when closing a pane and when switching tab.
+5. **Shortcuts:** connect `ToggleBroadcast`, `SaveLayout` and `OpenLayouts` in `ShortcutHandler`; a shortcuts screen that uses
+   `bindChecked` and shows the `ShortcutConflict`s; persist them and carry them to the backup (D-T12b-7).
+6. **Not validated:** typing the startup command after the first prompt in a real shell, broadcast performance with
+   several panes and restoring a 16-pane layout with proot on a device.
+
+### D-T12b-8 · 2026-10-05 · Shortcuts: persisted as one more setting and in the backup with a versioned field
+- **Decision:** `AppSettings.shortcuts` (a `ShortcutMap`, now with value equality) is saved in the `setting` table with the key
+  `shortcuts` and the text of `ShortcutMap.serialize()`; without a key, the default shortcuts; when reading, an unreadable line is
+  skipped and the rest is kept. `TerminalViewModel` applies the map to the `InputRouter` as soon as it changes.
+- **Backup:** `SettingsDto.shortcuts: ShortcutsDto?` (`version = 1`, `bindings` in the same text). It is optional and
+  `ConfigCodec.VERSION` does not change, as D-T16-6 did. When restoring (`ConfigApplier`) the **device's shortcuts are kept**
+  if the backup does not carry them, if its `version` is not the one this app knows how to read (a format from a later
+  version is not guessed) or if no line is usable; if it carries some valid ones, `ShortcutText.analyze` discards the
+  bad ones and the good ones are applied. All those branches have a test, and `data.backup` stays at 100 % of line and branch.
+- **`ShortcutStore`** (the interface D-T12b-7 left) is removed: the shortcuts go through `SettingsRepository`, like the extra keys.
+
+### D-T12b-9 · 2026-10-05 · A profile's scheme, font and size are saved but not applied per pane
+- **Finding:** an emulator's initial colors are read from `TerminalColors.COLOR_SCHEME`, an object **shared by the whole
+  library** (`TerminalSessionHost.applyScheme` writes there), and the painter (`TerminalPainter`) is single for all the panes
+  and takes the global font and size. A scheme per pane requires changes in Termux's emulator and a painter per pane.
+- **Decision:** the profile form edits name, distro, user, history and initial command, which do apply
+  per pane. The scheme, font and size stay in the model, are kept when editing and travel in the backup, but are neither
+  edited nor applied; the form says so in a note. When the painter admits a `PaneLook`, it will be enough to add the fields.
+- **Why not fake it:** a list of settings that do nothing would be misleading (same reason as D-T16-7).
+
+### D-T12b-10 · 2026-10-05 · Each pane remembers what it was opened with; the command is typed 0.8 s after launching the shell
+- **Decision:** `SessionController` keeps a `PaneOpening` (the `PaneSpec` and the command its layout gave it) per session, until it is
+  closed. `PaneEditor` gains `openTab(PlannedNode)` (a tab with all its panes, `Sessions.openedTab`),
+  `splitActive(orientation, opening)` and `openingOf(id)`. `AndroidSessionFactory` reads it at the start: the pane's history,
+  the user (`ProotSessionPlanner.plan(distro, user)`, which revalidates the name) and the command.
+- **Initial command:** `AndroidSessionFactory` writes `startupInput` 800 ms after launching the shell, only if there was a launch
+  (not on a failure). The pty keeps what was written until the shell reads it, so a slow proot does not lose it; the pause avoids it falling
+  in the middle of the startup output. **Not validated with a real shell.**
+- **Saving:** a pane is described with its profile and its own command, not the profile's (`PlannedNode.Pane.command`), so that
+  saving a restored layout again leaves it the same. A pane without a profile is saved without a distro (`LayoutNode.Pane` only has
+  profile and command): when reopened it uses the default distro, even if it had been opened in another. It is noted as a limit.
+- **Splitting with a profile** opens the new pane in the profile's distro, not in the split pane's; without a profile it is still the origin's.
+
+### D-T12b-11 · 2026-10-05 · Opening a layout always opens a new tab and reports what changed
+- **Decision:** `PaneOpener.restore` plans with `LayoutRestorePlanner` and opens **a new tab** (it never replaces the current one or its
+  panes); the layouts screen closes by itself if there were no changes and, if there were (deleted profile, distro not ready, split
+  corrected), lists them in an alert before closing (`LayoutNotice`, pane and split counted from 1). A rejected layout
+  (`TOO_MANY_PANES`, `TOO_DEEP`) opens nothing and says so.
+- **Profiles:** opening a profile (in a tab, or in a split to the right or below) uses `PaneSpecResolver.resolve`; if it rejects it
+  (deleted or not-ready distro, invalid user or command) it is explained and nothing is opened.
+
+### D-T12b-12 · 2026-10-05 · Saving a layout: unique name, replacement with confirmation, always the whole tree
+- **Decision:** `LayoutSaver.save(name, replace)` saves the active tab's tree (whole, even if a pane is zoomed) with
+  `LayoutSaving.build`. A name in use (case-insensitive) fails with `NameTaken` and the sheet asks "Replace?"; only
+  then is it called with `replace = true`. From the list, "Replace with this tab's panes" overwrites without a sheet.
+  `asLayoutSaveProblem` translates the error to the message (name, in use, no tab, command, limit of 100, other).
+
+### D-T12b-13 · 2026-10-05 · Broadcast: switch in the pane menu, red indicator and which keys are broadcast
+- **Decision:** `BroadcastController` (one per process, state per tab, in memory only) decides to which panes what is typed goes.
+  `TerminalOutput` gains `write(text, InputKind)` and `writeCodePoint(…, InputKind)` (with a default implementation that ignores the
+  kind); `ActiveSessionOutput` distributes to `targets(kind)` and paste goes through `pasteFromClipboard`.
+- **Which keys:** `KeyInput.inputKind()`: Ctrl or Alt, Esc, arrows, Home, End, PgUp/PgDn, Insert, Delete and F1 to F12 are `CONTROL`
+  (only to the active pane); letters, Enter, Tab, Backspace and text are `TEXT` (to all). This way Enter, Tab and Backspace, which are needed to
+  type a command on several servers, do arrive, and Ctrl+C does not.
+- **Added brakes:** with a single pane it cannot be activated (`toggle` does nothing) and a tab that is left with one pane forgets its
+  broadcast, so that splitting again later does not type into the new pane without the user asking for it.
+- **Indicator (mandatory):** a red capsule at the top left, "What you type reaches N panes", while `isEmitting`; tapping it
+  stops the broadcast (48 dp, with a TalkBack description). The panes that receive carry a red border.
+- **Groups:** three fixed names (Group A, B, C) from "Group of this pane…" and "Type in this pane's group"; `textOnly` is not
+  exposed (it stays `true`). The pane menu only appears with the tab split (T10), which is when broadcasting makes sense;
+  the `Ctrl+Shift+B` shortcut always works (no effect with one pane).
+
+### D-T12b-14 · 2026-10-05 · Editable shortcuts: one sheet per action, with a preview of what it costs
+- **Decision:** Settings > Keyboard > Shortcuts lists all the actions (also the ones left without a combination); tapping one opens a
+  sheet with its combinations (tapping one asks to remove it) and a field where the keys are **pressed** on a physical keyboard
+  (`onPreviewKeyEvent`, only with Ctrl or Alt) or **typed** (`ctrl+shift+t`). Before adding, `ShortcutEditing.preview` says whether it is
+  unreadable, whether Ctrl or Alt is missing, whether the action already has it, which other action loses it and whether it steals a control key or
+  readline's Meta (warnings, not rejections, D-T12b-6). "Restore default shortcuts" asks for confirmation.
+- **The tab numbers** (Alt+1 to 9) remain a read-only row; making them configurable requires a "prefix +
+  1 to 9" model that is not there. `ShortcutDisplay.allRows` lists all the rows; `rows` only those with a combination.
+- **Not validated:** capture with a real physical keyboard and with the IME (a combination the system keeps does not reach the app).
+
+### D-T12b-15 · 2026-10-05 · Where each screen is reached from
+- **Profiles and layouts:** rows at the root of Settings, entries in the "+" menu of the tab bar (with "Save layout…") and in the
+  pane menu; `Ctrl+Shift+S` asks for the name and `Ctrl+Shift+L` opens the layouts (`TerminalRequest`, which the `TerminalViewModel`
+  emits and the screen converts into opening an activity sheet). `ScreenLinks` groups these three links in `ProfileLinks`, and
+  `TabBarLinks` carries the whole `ScreenLinks`, because of detekt's parameter limit.
+- **Screens** with the `ui/ios` components (T22a/c) and strings in `values/` and `values-es/`; the alerts and sheets follow the
+  convention that the action sheet closes by itself after the action (`closeActions` looks at the current state).
+
+### D-T12b-16 · 2026-10-05 · What remains to be validated on a device
+- The initial command typed after starting the shell (including with a slow proot); broadcast with several proot panes and performance;
+  restoring a 16-pane layout; the look of the sheets (profile, layouts, shortcuts) and of the red capsule, and that it does not cover text;
+  key capture on a physical keyboard; and TalkBack on the new screens.
+- **Coverage:** the new logic is in `domain` (`PaneOpener`, `LayoutSaver`, `ProfileForm`, `BroadcastController`, `ShortcutEditing`,
+  `Sessions.openedTab`) with host tests; the ViewModels and Compose screens do not enter coverage, like the rest of the UI.
+
+## T23 — Pending cleanup
+
+### D-T23-1 · 2026-10-04 · Tests with a real database: `runDatabaseTest` with a 5-minute margin
+- **Problem:** `MigrationTest` and `LayoutAndSettingsRepositoryTest` (and six other test files from T05, T08b, T12 and T12c) sometimes failed with `UncompletedCoroutinesError: After waiting for 1m` when the machine was loaded (load of 90 on 14 cores; they passed on their own in 47 s). Room opens SQLite on a real thread and loading its native library and touching the disk can take more than 1 minute, which is what `runTest` waits by default.
+- **Decision:** `runDatabaseTest` in `data/local/TestDatabase.kt`, a `runTest(timeout = 5.minutes)`, used in the **eight** files and in the `DistroRepositoryContract` contract that open a real database. The dispatcher is not changed: the wait is still wall-clock, because what is tested is the real I/O.
+- **Alternatives discarded:** a test dispatcher that does not wait (the tests would stop exercising Room for real); raising the timeout of all `runTest`s (it would hide a real hang in tests that do not use a database and do not have that problem).
+- **Impact:** a really hung test still ends at 5 minutes with the same error. No test depends on the clock.
+
+### D-T23-2 · 2026-10-04 · Apache license notices: measured, not assumed
+- **Measured on the release APK and on the jars of the runtime classpath (245 dependencies):** only **five** publish their own `NOTICE`/`LICENSE` in `META-INF`: Commons Compress, IO, Codec and Lang, and Jakarta Inject. The rest (OkHttp, Okio, kotlinx, AndroidX, Hilt, Room, Compose…) carry no `NOTICE` of their own; only AndroidX leaves a `LICENSE.txt` with the standard Apache-2.0, which does reach the APK.
+- **State in the APK:** of those five, the packaging only keeps Jakarta's `NOTICE.md` by chance; the four Commons ones do not arrive. T07 (D-T07-8) already packaged them by hand in `res/raw`.
+- **Decision:** the same file (renamed to `res/raw/third_party_notices_apache`) now also carries Jakarta Inject's `NOTICE` and license, copied unmodified from its jar. With this the open point of D-T07-8 about OkHttp/Okio is **closed**: they publish no notice, so there is nothing to keep from them beyond their mention in `THIRD_PARTY_NOTICES.md`.
+- **API for the "About" screen (T16):** `LicenseTexts` in `domain/license` (injectable with Hilt, there is already a `LicenseModule`). `entries` lists the notices (`id`, title and SPDX license), `read(id)` returns the text and `missing()` those that are not there. T16 only has to show `entries` and, on tapping one, open `read(id)`. Host tests: they read the real files of the source tree and fail if a text disappears or a resource is renamed.
+- **Not validated on a device:** that `AndroidLicenseSource` finds the resources in the release APK with the *shrinker* (it was checked with `aapt2` that `raw/third_party_notices_apache` exists in the APK; reading at run time was not).
+- **It is not legal advice:** what the licenses ask for is met (keeping the notice when redistributing in binary form); it is advisable for someone to review it before publishing.
+
+### D-T23-3 · 2026-10-04 · GitGuardian: test phrase renamed and `.gitguardian.yaml` documented
+- **Finding:** two "Generic Password" false positives (the `"s3cret"` literal in `BackupExportTest` and the `passwordFor` field of `BackupViewModel`) blocked several PRs. They are not credentials.
+- **Decision:** the literal becomes a constant with a comment (`TEST_PHRASE = "open sesame"`), without changing the test's behavior, and a `.gitguardian.yaml` is added that excludes **only** the tests under `data/backup/**`, with the reason written in the file itself. `passwordFor` is left as is: it is a field name, not a value.
+- **Limit:** the exclusion does not cover production code or other tests; a real credential anywhere would still be flagged. If GitGuardian does not read that file on this plan, the incidents are dismissed in its dashboard (incidents 37863678 and 37863679).
+
+## T22d — Extra keys style
+
+The user tried the app on a Pixel 8 and said the special keys (Esc, Tab, Ctrl, arrows…) had "a very ugly finish". They were capsules in Material's `surfaceVariant` color with a 1 dp bottom shadow line: a bevel effect that contradicts iOS's flat style, and a gray that belongs neither to the scheme nor to the navy-blue Gboard keyboard right below. They asked to **choose the style in Settings, with the flat ones by default**.
+
+### D-T22d-1 · 2026-10-04 · Three styles, `FLAT` by default
+- **Decision:** `ExtraKeyStyle { FLAT, CAPSULE, CLASSIC }`, with `FLAT` by default; what is not recognized or missing is read as `FLAT`.
+  - **FLAT:** no background per key; only the symbol (medium weight), thin separators (0.5 dp, 20 % opacity) between keys and rows, and an oval tinted with the accent (18 %) when pressed. Armed Ctrl/Alt are a capsule filled with the accent; **locked**, the same plus an underline under the label, so that the difference does not depend only on color.
+  - **CAPSULE:** each key is a capsule in the text color at 10 % opacity, without a shadow, with 6 dp of separation between keys; armed, the accent at 28 %.
+  - **CLASSIC:** the previous look (a capsule with a bottom edge), but with the **scheme's** colors: key = background mixed with the foreground at 12 %, edge = background darkened by 40 %. It no longer comes from `surfaceVariant`.
+- **Reason:** so that the user chooses, and that no variant is an alien gray.
+- **Impact:** `TerminalAppearance.extraKeyStyle`; it is saved in `appearance_extra_key_style` (same pattern as the rest of T12c's appearance).
+
+### D-T22d-2 · 2026-10-04 · The color logic is pure and tested with all the schemes
+- **Decision:** `ExtraKeyPaletteFor.of(KeyChromeInputs, style)` in `domain/appearance` returns opaque ARGB colors (precomposed mixes, not transparencies), and `ExtraKeyPalette.look(latch, pressed)` says how a key looks according to its state. The inputs are the scheme's background and foreground and the bars' colors, taken from the scheme or from the system theme (`ChromeStyle.SYSTEM`), so that the same style works with both.
+- **Tests:** WCAG contrast ≥ 4.5:1 of the label on its background at rest and pressed, of an armed key's label and a locked one's, for **all the bundled schemes and their OLED variant, for each of the three styles**. Solarized's text, of low contrast by design, is pushed towards black or white just as much as needed (`readableOn`).
+- **Change:** the `key`, `keyPressed` and `onKey` colors of `ChromeColors` and `ChromePalette` disappear (only the row used them and they would have been left dead); their three tests are replaced by the new ones.
+
+### D-T22d-3 · 2026-10-04 · Deviation: the tray is neither translucent nor blurred
+- **Request:** a translucent bar with blur from API 31 and a solid color on 26–30, reusing T22a and T22b.
+- **What happens:** T22a's blur (`BackdropState`) blurs the content that passes **under** the bar. This row goes below the terminal, without overlapping it, so there is nothing to blur.
+- **Decision:** the `FLAT` tray is the terminal's background mixed 4 % with the foreground (the other styles, 7 %), with the usual thin top line. This way it reads as part of the terminal and not as a gray slab. If some day the row overlaps the content, it can be moved to `BackdropState`.
+
+### D-T22d-4 · 2026-10-04 · Reusable picker: `ExtraKeyStylePicker`
+- **API:** `ExtraKeyStylePicker(settings: AppSettings, onStyle: (ExtraKeyStyle) -> Unit, modifier)` in `ui/ExtraKeyStylePicker.kt`. It shows an `IosSegmentedControl` with the three options and below **a real preview** (Esc, Tab, armed Ctrl and two arrows) in the current scheme's colors; the preview is the `ExtraKeysRow` itself over the terminal's background.
+- **It saves nothing:** it reads `settings` and notifies with `onStyle`. The Appearance screen shows it in the "Special keys" section (`KeysSection`); **Z can link it from Settings > Keyboard** by calling it the same way, with the same `update { it.copy(appearance = it.appearance.copy(extraKeyStyle = style)) }`.
+- **Accessibility:** the options measure 48 dp; the preview carries a description and does not expose its keys, which do nothing.
+
+### D-T22d-5 · 2026-10-04 · Backup
+- `SettingsDto.extraKeyStyle` (text, default `FLAT`). An earlier backup, without the field, is read as `FLAT`; an unknown value too. It is applied when restoring. With a tested round trip.
+- **What this task does not solve:** T15's backup **does not save the rest of T12c's appearance either** (font, margins, cursor, bar style), despite what D-T12c says. I only added my field; the rest is separate work.
+
+### D-T22d-6 · 2026-10-04 · Geometry
+- Each row measures 48 dp, the usual touch target; the separation between keys goes inside the cell. `FLAT` leaves 4 dp of air per side, the others 3 dp (6 dp between two capsules). Haptics and the accessibility actions (key name and armed/locked state) are T22b's.
+
+### D-T22d-7 · 2026-10-04 · What is NOT validated (without a device)
+- How each style really looks (above all `FLAT` against the system keyboard), the thickness of the separators on screens of different density, the press oval, the underline of a locked key, the preview on the Appearance screen and TalkBack. The orchestrator tests it on the Pixel 8.
+
+## T16 / T22c — Settings by sections and iOS-style screens
+
+Done in a separate clone, without devices. What only the device can say is in the list at the end.
+
+### D-T16-1 · 2026-10-04 · The Settings screen is a stack of pages, with navigation as pure data
+- **Decision:** `SettingsNavigation` (`domain/settings`) keeps the stack of `SettingsPage`s with the root always at the bottom; "back" pops a page and from the root it closes the screen. It is saved with a `Saver` (page names), so it survives rotating the phone. Each page knows its parent (`parent`) to label the back button.
+- **Reason:** the logic of moving between pages is tested on the host (the screen does not have to be seen), and the UI only draws it.
+- **Alternative discarded:** Navigation Compose: a new dependency for 11 pages without arguments.
+- **Appearance and Distributions** are not Settings pages: they open their own screens on top (T12c and T22c), and when closing them it goes back to Settings.
+
+### D-T16-2 · 2026-10-04 · Where the access is: a permanent ⚙ next to the "+" and the first entry of its menu
+- **Decision:** `TabBar` puts a 48 dp ⚙ button, with `contentDescription`, in the bar's last slot, always in view (in the top bar and in the side one). The "+" menu carries "Settings" as the first entry that is neither a tab nor a split; "Appearance…" and "Manage distros…" are still there and are also opened from inside Settings.
+- **Reason:** the user did not see how to get into Settings; the access was only behind a long press on the "+". RF-11 requires it to be permanent.
+- **Scope:** this touches `ScreenLinks`, `TabBarLinks`, `TabBar` and `NewTabMenu` (a few lines each). It was first done additively so as not to step on T22b; when T22b was merged, the icon was placed directly in its bar.
+
+### D-T16-3 · 2026-10-04 · The new settings live in the same key-value table and the extra keys start being saved
+- **Finding:** `ExtraKeysStore` was an interface without an implementation, so the key row's configuration was never saved (`TerminalViewModel` always started with the default one) and there was no way to change it.
+- **Decision:** `AppSettings` gains `extraKeys` and `dnsFallbackServers`; they are saved in the `setting` table (`extra_keys` in its `visible=`/`onlyWithKeyboard=`/rows text, and `dns_fallback` with the addresses separated by commas). An unreadable value gives the default. `TerminalViewModel` reads the keys from the settings repository (they change live); `ExtraKeysStore` is removed.
+- **Editing limits** (`ExtraKeysEditing`): up to 3 rows of 8 keys, each key of the catalog only once. Removing the last key of a row removes the row.
+
+### D-T16-4 · 2026-10-04 · The history (scrollback) was a setting that did nothing; now it is applied
+- **Finding:** `AppSettings.defaultScrollbackLines` existed, but `TerminalSessionHost` used a constant of 10,000.
+- **Decision:** the host has `transcriptRows` and `AndroidSessionFactory` sets it before launching the shell by reading the setting (`SessionManager` injects it). It applies to tabs opened afterwards. Options: 1,000, 2,000, 5,000, 10,000, 20,000 and 50,000, which is the maximum the emulator admits; a saved value out of range is brought to the nearest one when displayed and clamped (100–50,000) when used.
+- **Not validated:** the effect on a real session and the memory consumption at 50,000 lines.
+
+### D-T16-5 · 2026-10-04 · Editable fallback DNS, with strict validation
+- **Decision:** `ResolvConf.render(servers, fallback)` uses the user's fallback when the device gives none, and the usual ones (1.1.1.1 and 9.9.9.9) if theirs has nothing usable. What is typed in the sheet is read with `DnsServers`: IP addresses separated by commas, spaces or `;`, at most three; a hand-written zone (`fe80::1%wlan0`) is rejected, not silently discarded. Empty means the usual ones.
+- **Notice on the screen:** the usual ones are third-party public resolvers (Cloudflare and Quad9), as D-T08b-6 already recorded.
+
+### D-T16-6 · 2026-10-04 · The backup now carries all the configuration it was missing
+- **Finding:** T15 did not include T12c's appearance, proot's compatibility mode, the DNS or the extra keys, which RF-06 requires.
+- **Decision:** `SettingsDto` gains four **optional** fields (`prootCompatibilityMode`, `dnsFallbackServers`, `extraKeys`, `appearance`). The format's version does not change: the reader already ignores unknown fields and these have a default value. An earlier backup that does not carry them **leaves what the device already has**, it does not reset it. What is restored is validated: DNS by `DnsServers`, keys by `ExtraKeysConfig.parse` (without useful keys, the default ones) and the appearance's numbers and names by `sanitized()`.
+- **Imported fonts:** their files do not travel (they are third-party binaries, whose license is the user's responsibility); if the backup's font does not exist on this device, the bundled one is used.
+
+### D-T16-7 · 2026-10-04 · Shortcuts: a reference list, not editable yet
+- **Decision:** the page shows the default shortcuts in fixed order, with the keys with a readable name (`Ctrl+Shift+T`) and the tab numbers on a single line (`Alt+1–9`), and warns that they cannot be changed.
+- **Reason:** changing them requires capturing combinations from a physical keyboard and handling clashes between shortcuts; it cannot be validated without a device and it is T12b's scope. Showing a list is truthful; faking an edit would not be.
+
+### D-T16-8 · 2026-10-04 · "About" reads `THIRD_PARTY_NOTICES.md` copied to the APK by Gradle
+- **Decision:** a `copyNotices` task copies the root file to each variant's assets on every build (`addGeneratedSourceDirectory`), and `Notices` converts it into sections (`##` headings, tables on one line, no Markdown marks). A test reads the real file, so a change to its format that breaks the screen is seen in CI.
+- **Reason:** a single source to maintain; a copy in the repository would go out of sync and the APK would carry old credits.
+
+### D-T16-9 · 2026-10-04 · Distros and backups in iOS style, and the error of chaining dialogs
+- **Decision (T22c):** the Distros screen is a list with a large title; tapping a row opens an action sheet (default, rename, duplicate, delete), install and rename are sheets with fields and delete is an alert. The storage, backups and compatibility mode cards leave there and move to Settings. The export and password dialogs of the backups are sheets.
+- **Error avoided:** `IosActionSheet` runs the action and **afterwards** calls `onDismiss`. If the action opens another dialog (rename), that closing undid it. The sheet's closing only closes if what is current is still the sheet, reading the state at that moment, not the captured one.
+- **New components in `ui/ios`:** `IosTextField` (form row), `IosSheetHeader` (Cancel, title and confirm, with the button inert while it is not valid) and `IosProgress`.
+- **Not migrated:** the SSH (T14) and appearance (T12c) dialogs are still in Material.
+
+### D-T16-10 · 2026-10-04 · What is NOT validated (without a device)
+- The look and feel of all the new screens: grouped lists, sheets, alerts, the ⚙ in the top bar and in the side one.
+- The sheets with a keyboard: `imePadding` inside a `Dialog`, that the field is seen with the keyboard open and the behavior of password fields.
+- The system flows: notification permission, battery exemption, the app's screen, the backups' file picker and opening the source code link.
+- That the system's "back" stacks properly when Appearance or Distributions are opened on top of Settings.
+- TalkBack: reading order, role and state of the switches, and the key rows.
+- The real effect of the history, the extra keys and the DNS on a session.
+
+## T17 — Accessibility and performance
+
+### D-T17-1 · 2026-10-05 · Method: code audit and pure logic, without Compose tests on the JVM
+- **Context:** the repository has no `ui-test` or Robolectric (and adding dependencies requires a license and `THIRD_PARTY_NOTICES.md`). Layout tests with `fontScale` 2.0 cannot be done on the host without them.
+- **Decision:** all the composables were audited by hand (terminal chrome, tabs, extra keys, panes menu, Settings, Appearance, Distros, backups, SSH, `ui/ios`) looking for roles, states, headings, merged semantics, custom actions, targets < 48 dp and text with `maxLines = 1` or fixed rows that get cut with a large font; what could be expressed as logic goes to `domain` with a test. Contrast was already covered (`IosPaletteTest`, `ChromeColorsTest`, `BuiltInSchemesTest` in all themes and schemes).
+- **Pending on a device:** real TalkBack and font 2.0 (Settings > Accessibility > Font size) on each screen; see D-T17-8.
+
+### D-T17-2 · 2026-10-05 · `ui/ios` components: semantics and large font
+- `IosSection`: the header is a heading (`heading`). `IosListRow` without an action merges title, subtitle and value into a single element. The navigation bar's small title is hidden from TalkBack (the large one is already the heading and it was read twice).
+- `IosBarButton` and `IosBarIconButton`: minimum 48 × 48 dp (before only 48 tall: "OK" measured less in width).
+- `IosAlert`: title as a heading and scrollable body. `IosButton`, `ActionButton` and `IosMenuItem` stop forcing `maxLines = 1`: with font 2.0 the text wraps to another line instead of being cut with an ellipsis.
+- `IosSegmentedControl`: minimum height of 48 dp that grows if a label wraps; the drawn track is still 32 dp. `IosSheetHeader`: with font scale > 1.3 the buttons take the width they need and the title wraps in what is left (the fixed 1:2:1 split cut "Cancel").
+
+### D-T17-3 · 2026-10-05 · Tabs: every gesture has an accessibility action
+- Tapping a tab was a pointer gesture without a click action: `onClick` ("Select") is added. Reordering by dragging was the only path: the "Move before" and "Move after" actions are added (only if there is room). The "+" and "⋯" buttons declare `Role.Button`.
+
+### D-T17-4 · 2026-10-05 · Terminal and panes
+- **Terminal view:** `contentDescription` "Terminal" and click action "Show keyboard". **Decision: the screen's text is not exposed** (SPEC: "the terminal itself exposes text" remains as the content the user can copy with the selection): reading every redraw aloud is noise, a node with hundreds of characters that changes with every byte is expensive, and the terminal's content must not reach any log. If reading is needed, the correct design is a live region with the new lines, and it is separate work.
+- The unfocused pane has the same click action. The pane separator, which could only be moved by dragging, offers "Move the separator back/forward" (48 dp steps). The panes menu button declares role and click.
+- Checked by searching: no `Log.*` or `println` touches the terminal's content.
+
+### D-T17-5 · 2026-10-05 · Extra keys row: the font is capped at 1.2
+- The row measures 48 dp per row and each key is a fraction of the width: the label cannot grow without limit. `ExtraKeyFit.MAX_FONT_SCALE` = 1.2: the drawn labels follow the system font only up to there (each key's spoken name does not change). `ExtraKeyFitTest` checks, with a conservative width estimate (0.65 em per letter), that all the default keys fit in 360 dp with the three styles at scale 2.0.
+- **Alternative discarded:** letting the rows grow with the font. It breaks the pty height computation (T12/T22b's D: row × 48 dp) and would eat the terminal.
+
+### D-T17-6 · 2026-10-05 · Material screens (SSH, Appearance): rows that wrap and headings
+- The SSH button rows (header, host and key cards) and the schemes' ones become `FlowRow`: with a large font the buttons drop to another line instead of going off the screen. Screen titles and `SectionTitle` are headings. `LabeledSlider` announces its value (`stateDescription`) as well as the label. Small changes on purpose: T22c and T12b edit those screens.
+
+### D-T17-7 · 2026-10-05 · Performance: a guard on the host and a procedure on the device
+- `FeedThroughputTest` (`terminal-emulator` module) feeds the emulator with the output of `seq 1 200000`, with 20,000 colored lines that wrap and with wide/combining Unicode, in 4 KiB chunks like the pty reader. It checks the result (last line, bounded history) and a limit of **30 s**, two orders of magnitude above what a laptop takes (milliseconds): it only fails on a complexity regression, not because of a slow machine or the clock. It measures neither drawing nor the device.
+- `docs/PERFORMANCE.md`: a reproducible procedure for cold start to the prompt (the `PS1` itself writes the first prompt's time; `am start -W` gives the first frame) and for `seq 1 200000` (`time`, `dumpsys gfxinfo`, live interface during the output, panes and large font). SPEC target: < 1.5 s.
+
+### D-T17-8 · 2026-10-05 · What is NOT validated (without a device)
+1. TalkBack: reading order and announcements of the tabs (Select/Rename/Close/Move actions), the terminal, the pane separator, the headings and the merged rows of Settings.
+2. Font 2.0 in: the tab bar (48 dp fixed on top: a tab with a long name is clipped to one line), the keys row, the form sheet (`IosSheetHeader`), alerts, `NamePrompt` (not touched: it is T22c's), Appearance's segmented control and the SSH screens.
+3. Performance: no figure from the device; the SPEC's targets remain unchecked until `docs/PERFORMANCE.md` is run.
+
+## T24 — Fedora as a distro
+
+A request from the user (Fedora is their usual distro). Done without a device: tested on the host with synthetic samples and with Fedora's real responses (listings and `CHECKSUM`) copied into the tests. **Pending the real test on the Pixel 8.**
+
+### D-T24-1 · 2026-10-04 · Source: the official release's `Base` container image, with its signed `CHECKSUM`
+- **Decision:** `https://dl.fedoraproject.org/pub/fedora/linux/releases/<version>/Container/<arch>/images/Fedora-Container-Base-Generic-<version>-<compose>.<arch>.oci.tar.xz` is used (63 MB on Fedora 44, aarch64) and the SHA-256 hash from `Fedora-Container-<version>-<compose>-<arch>-CHECKSUM`, which Fedora signs with PGP and which also carries the size.
+- **Why that image and not another:** the layer carries `dnf5` (`usr/bin/dnf -> dnf5`, seen in its listing), which is what the user is going to use. The `Minimal` one (49 MB) carries one more word in the name and is not chosen.
+- **Alternative discarded:** `fedora-cloud/docker-brew-fedora` (branch `44`, `aarch64/fedora-<date>.tar`). It is simpler —its "`.tar`" is actually a gzip (it starts with `1f8b`), the current extractor would read it—, but the repository **publishes no SHA-256** (only git's blob SHA-1), so there would be no verification on par with the other distros. Besides, its date changes with each update.
+- **Impact:** the hash is verified by `Sha256Verifier` as for the others (T06), over the whole `.oci.tar.xz`.
+
+### D-T24-2 · 2026-10-04 · Which version: the most recent one that has an image, no fixed URLs
+- **Decision:** the catalog reads the `releases/` listing, sorts the numbers from highest to lowest and tries the first three until finding one with `Container/<arch>/images/` and its `CHECKSUM`. Today (2026-10-04) 45 appears listed but has no containers directory (404), so **Fedora 44** is chosen.
+- **Reason:** like D-T06-1: no URL or hash in the code, and a new version is picked up without updating the app. Trying only the latest would fail exactly when a new branch is opened.
+- **Accepted risk:** the **`CHECKSUM`'s PGP signature is not checked**: the clear text is read, which arrives over HTTPS from the project's server. It is the same risk as D-T06-2. Possible improvement: carrying Fedora's publication keys and verifying the signature (an OpenPGP library would be needed, not justified today).
+- **Impact:** the release images are frozen at their date (Fedora 44's is from 2026-04-22); the distro is updated afterwards with `dnf upgrade`.
+
+### D-T24-3 · 2026-10-04 · ABIs: arm64 and x86_64; Fedora does not publish 32-bit ARM
+- **Checked:** on Fedora 44 the `armhfp`/`armv7hl` directory is empty. The catalog returns `CatalogUnavailable("Fedora has no image for armv7")` **without touching the network**.
+- **Pending:** the install dialog still lists Fedora on an armv7 device and fails when trying with that message. Hiding the option by architecture is left for the new Distros screen (T22c).
+
+### D-T24-4 · 2026-10-04 · Two levels of archive: xz, OCI tar and gzip layer; the layer is found by its content
+- **Fact checked by reading the real image as a stream:** the `.oci.tar.xz` contains, in this order, `blobs/`, `blobs/sha256/`, a JSON blob (config), **the 66.8 MB layer** (gzip), another JSON blob (manifest), `index.json` and `oci-layout`. **The manifest comes after the layer**, so the layer cannot be located by reading it.
+- **Decision:** `OciArchive` recognizes an OCI image by its first entry and takes as the layer the `blobs/sha256/<64 hex>` blob whose content is a compressed or plain tar (by the header: gzip, xz, zstd, bzip2 or `ustar`), not JSON. It extracts it as a stream with the same security rules of T07 (`TarPass` and `SafeTreeWriter` do not change).
+- **Layer integrity:** OCI blobs are named after their own SHA-256. The one of the layer's bytes is computed as they are read (including those the decompressor does not ask for) and compared with its name at the end; if it does not match, `Corrupt("the OCI layer does not match its digest")` and the installer discards the temporary directory (D-T07-1). It serves as a second check on top of the whole archive's hash.
+- **A single layer**, like Debian (D-T06-3): after the layer the rest of the archive is walked and another layer would give `UnsupportedFormat("an OCI image with several layers")` instead of installing half a system.
+- **Technical detail:** the layer's stream does not admit `mark`/`reset` and redoes `skip` with `read`, because either would bypass the hash computation.
+
+### D-T24-5 · 2026-10-04 · xz library: `org.tukaani:xz` 1.12 (0BSD), with a memory limit
+- **License:** 0BSD, checked in the Maven Central POM and in `COPYING` of the official repository (`tukaani-project/xz-java`); compatible with GPL-3.0-or-later. 0BSD does not require keeping any notice; it is credited anyway in `THIRD_PARTY_NOTICES.md`. `licensee` now allows `0BSD`.
+- **Notice in the APK:** the xz-java jar carries no `NOTICE` or `LICENSE` (only `META-INF/MANIFEST.MF` and the module), and 0BSD does not oblige keeping any notice, so, with D-T23-2's criterion (the texts of the dependencies that publish their own are packaged), nothing is added to `res/raw` or `assets/licenses`. It is credited in `THIRD_PARTY_NOTICES.md`.
+- **Dependency verification:** the `jar` and the `pom` (Maven Central does not publish `.module`) were downloaded and their SHA-256 match the `.sha256` that Maven Central publishes; they were inserted into `verification-metadata.xml` without reformatting the file.
+- **Memory:** `XZInputStream` is opened with a limit of **64 MiB** (the dictionary of an `xz -9`; Fedora's asks for about 1 MiB). xz-java reserves the dictionary in the Java heap, and a stream that asks for more is rejected (`TooLarge`) instead of risking an `OutOfMemoryError`. The decompressor's other errors are classified as `Corrupt`.
+- **Bombs:** xz compresses much more than gzip, so the defense is not the compressed size: the limits that already existed on what is **written** (16 GiB and 2 million entries) count, and a cap of 8 GiB is added for a layer's declared size.
+
+### D-T24-6 · 2026-10-04 · The format is always decided by the first bytes, never by the extension
+- `ArchiveFormat.open` already looked at the magic header; now it also reads xz. The installer saves the downloaded file with a fixed name (`archive`) and the tests check it with a gzip named `.tar.xz` and an xz named `.tar.gz`. zstd and bzip2 are still unsupported and are named in the error.
+
+### D-T24-7 · 2026-10-04 · Space: T07's rule already covers Fedora
+- `InstallSpace` requires 5 times the archive's size: about 330 MB for Fedora's 66 MB (the archive plus the decompressed, which is estimated at about 200 MB). **The real decompressed size has not been measured**: it will be measured on the device.
+
+### D-T24-8 · 2026-10-04 · What Fedora needs from the proot launch: nothing new, with three things to watch
+- **`/etc/resolv.conf`:** the layer does not carry it and T08b solves it with a proot bind, not by writing into the rootfs: it works the same.
+- **`PATH`:** the generic one (`/usr/local/sbin:…:/bin`) is fine; `/bin` and `/sbin` are **relative** links to `usr/…` and proot resolves them inside the distro. There is no check of `bin/sh` on the host side (the file repository does not follow links and would take it as nonexistent).
+- **Relative links** (`etc/os-release -> ../usr/lib/os-release`, `usr/sbin -> bin`, `usr/local/sbin -> bin`): the extractor stores them as they are, and the rule of not writing through a link is still in force.
+- **To watch on the device:** `dnf5` under proot (seccomp, `ptrace`, partial `/proc`, the `rpm` database) and the time of the first download.
+
+### D-T24-9 · 2026-10-04 · What was tested and what was not
+- **Host tests (no real network):** valid, truncated, damaged xz, with only its magic, bomb and memory excess (editing the block header's dictionary and recomputing its CRC); Fedora OCI image (single layer, gzip or plain wrapper, names with `./`, plain tar layer, digest that does not match, no layer, several layers, hostile layer with `..` and with writing through a link, bomb inside the layer); the layer's stream (read, `skip`, `mark`/`reset`, close); Fedora parsers and catalog with the real responses (the new branch without an image, armv7, three versions without an image, `CHECKSUM` without an entry); and the installer registers `DistroType.FEDORA`. The tars' dates are fixed and no test depends on the clock or on compressed sizes.
+- **Not covered by tests:** the 8 GiB cap of a layer (a hand-written tar header with an absurd size is needed).
+- **Not validated on hardware, and criteria of the real test on the Pixel 8:**
+  1. Installing Fedora from the app: download of ~63 MB with progress, hash check, extraction without error and the distro "ready"; note the time and the decompressed size.
+  2. Opening a tab: `cat /etc/fedora-release` (it must say Fedora Linux 44) and `echo $0`.
+  3. `dnf --version` and `dnf install -y nano` (network, device DNS, writing in `/var/lib` and `/var/cache`); `nano --version`.
+  4. If `dnf` fails: trying the compatibility mode (proot without seccomp) and noting the exact error.
+
+### Third round (Pixel 8, 2026-10-04, `master` APK with T16, T22d and T24)
+
+**Fedora (T24), verified end to end on the device.**
+- **Installation from the app:** "Fedora" appears in the "Install a distro" sheet, next to Debian, Ubuntu and Alpine. It downloads with a progress bar and a cancel button, verifies and extracts the tar.xz: Fedora 44 ends up "ready", with **195 MB** decompressed.
+- **Tab:** the "+" menu offers "Fedora" and opens its own bash (`[root@localhost ~]#`) under proot.
+- **`dnf` under proot (T24's biggest risk): it works.** `dnf --version` gives dnf5 5.4.1 with its plugins; `dnf install -y nano` loads Fedora 44's repositories (65.4 MiB and 11.6 MiB of metadata), downloads 724 KiB and the `rpm` transaction ends in "Complete!". Afterwards `nano --version` gives 8.7.1 and `rpm -q nano bash` answers `nano-8.7.1-2.fc44.aarch64` and `bash-5.3.9-3.fc44.aarch64`, so the `rpm` database is valid.
+- `clear` does not exist in Fedora's minimal image: it is not an app failure.
+
+**Settings (T16) and Distros (T22c).**
+- The ⚙ is always seen next to the "+" and opens the Settings screen (large title, grouped lists with chevrons, "Done"), with the nine sections. The Network page shows the fallback DNS with its explanation; the Distributions one links "Manage distributions" and the compatibility mode.
+- The redone Distributions screen (grouped list, "+" to install, modal sheet with a handle) no longer clashes the title with the button.
+- **Not tested yet:** the Terminal, Keyboard, Sessions, Storage, Backups and About pages; the background dialog, which still has the Material look.
+
+**Special keys (T22d):** the three variants work and are chosen in Appearance with a live preview. Flat (default): symbols with thin separators, no capsules; Capsules: faint capsules with armed Ctrl in accent; Classic: keys with a bottom edge in grays derived from the scheme.
+
+**Bug found and fixed: the "back" button/gesture did nothing on any screen** (neither in Settings, nor in Appearance, nor from the terminal). Cause: `MainActivity` did not declare `android:enableOnBackInvokedCallback` and, with `targetSdk` 28 on Android 17, Compose's `BackHandler`s did not receive the event. One line in the manifest fixes it (PR #44) and it is verified on the device: back goes from a Settings page to the root, closes Settings and goes back from Appearance. A manifest test protects it. Observation from the previous version: pressing "back" several times inside the terminal ended up showing bash's "Display all 395 possibilities?", which suggests that the key reached the shell as a tab; **it has to be checked with the new build that "back" in the terminal no longer writes anything to the shell.**
+
+**Withdrawn: the supposed bug of "OLED Black on and no scheme selected".** It was not the app's: the selected scheme was "OLED Black" (the sixth in the list, off-screen in my capture) and OLED Black was on, consistent with each other. I almost certainly changed it myself with test taps while scrolling the Appearance screen. I restored Dracula with OLED off.
+
+
+**Checked on the Pixel 8 with the `master` build (2026-10-04): "back" in the terminal writes nothing to the shell.** With the keyboard visible and `echo prueba` unsent, one press of "back" hides the keyboard (and with it the special keys row) and the line stays intact, without "Display all … possibilities?". One more press, without a keyboard, leaves the app in the background, as expected. The suspicion from the previous version is closed. The "Keep sessions active" dialog still has the Material look (pending).
+
+### Fourth round (2026-10-05, `master` build on the Pixel 8 and on the Huawei MRO-W09 tablet)
+
+**User correction:** the original requirement was indeed the tablet (Termux's resizing); my sentence saying it was not was a misreading.
+
+**Huawei MRO-W09 tablet (Android 12, 2800×1840, arm64): first real validation of T04/T10.**
+- With no distro installed, the app opens a "Shell 1" tab with the system shell and the tab side bar (wide screen) with "+" and ⚙ at the bottom.
+- `stty size` matches what is visible: landscape 41 rows × 123 columns (about 125 × 42 with margins); portrait (rotation 0) 64 × 72 without a keyboard and 58 × 72 with the extra keys row, which appears and disappears with the keyboard (RF-08 here too).
+- Multi-window (floating window forced with `--windowingMode 5` and `am task resize`): small window 23 × 45 and large window 49 × 60; each size change updates the PTY and matches what is visible.
+- Not tested: split screen (`--windowingMode 3/4` fails on this EMUI with a system exception), split panes, an installed distro, physical keyboard.
+- This tablet's capture does not include the on-screen keyboard (`mInputShown=true` confirms it is open).
+- System settings I touched to test (fixed rotation, `enable_freeform_support`, `force_resizable_activities`) restored when finished.
 
 **Pixel 8.**
-- "Atrás" en el terminal oculta el teclado y no escribe nada en el shell (verificado, sección anterior).
-- Páginas de Ajustes ahora probadas: Terminal (historial, 10.000 líneas marcado), Teclado, Sesiones (batería sin restricciones: "Permitido"; notificaciones: "No permitido"), Almacenamiento, Copias de seguridad, Acerca de (0.1.0-rc.1, GPL-3.0-or-later) y Créditos y licencias.
-- **Fallo 1:** el teclado en pantalla sigue abierto sobre Ajustes y tapa contenido al venir del terminal.
-- **Fallo 2:** "Créditos y licencias" muestra el texto con los saltos de línea duros del `.md` como filas separadas y la tabla como filas sueltas, en inglés. Legible pero feo; no se pierde ningún crédito.
-- Ambos fallos se pasan a un agente (rama `fix/ime-and-credits`).
+- "Back" in the terminal hides the keyboard and writes nothing to the shell (verified, previous section).
+- Settings pages now tested: Terminal (history, 10,000 lines marked), Keyboard, Sessions (battery unrestricted: "Allowed"; notifications: "Not allowed"), Storage, Backups, About (0.1.0-rc.1, GPL-3.0-or-later) and Credits and licenses.
+- **Bug 1:** the on-screen keyboard stays open over Settings and covers content when coming from the terminal.
+- **Bug 2:** "Credits and licenses" shows the text with the `.md`'s hard line breaks as separate rows and the table as loose rows, in English. Readable but ugly; no credit is lost.
+- Both bugs are handed to an agent (branch `fix/ime-and-credits`).
 
-## Correcciones tras pruebas en el Pixel 8
+## Fixes after tests on the Pixel 8
 
-### D-FIX-1 · 2026-10-05 · El teclado se oculta mientras otra pantalla cubre el terminal
+### D-FIX-1 · 2026-10-05 · The keyboard is hidden while another screen covers the terminal
 
-- **Hallazgo:** el terminal sigue compuesto bajo Ajustes, Apariencia, Distros y SSH (se dibujan encima), así que su `TerminalInputView` conservaba el foco y el teclado quedaba abierto sobre esas pantallas.
-- **Decisión:** `MainActivity` publica `LocalTerminalCovered` (true si alguna de esas pantallas está abierta). `TerminalOverlays` llama a `TerminalInputView.hideKeyboard()` (quita el foco y oculta el IME) al pasar a cubierto, y el teclado automático de la primera composición no se abre si ya empieza cubierto (p. ej. al girar con Ajustes abierto). Al volver, el teclado no se fuerza: lo abre un toque en el terminal.
-- **Sin test unitario:** es pegamento de vista e IME sin lógica pura; hay que comprobarlo en el dispositivo.
+- **Finding:** the terminal is still composed under Settings, Appearance, Distros and SSH (they are drawn on top), so its `TerminalInputView` kept the focus and the keyboard stayed open over those screens.
+- **Decision:** `MainActivity` publishes `LocalTerminalCovered` (true if any of those screens is open). `TerminalOverlays` calls `TerminalInputView.hideKeyboard()` (removes the focus and hides the IME) when it becomes covered, and the automatic keyboard of the first composition does not open if it already starts covered (e.g. when rotating with Settings open). On return, the keyboard is not forced: a tap on the terminal opens it.
+- **No unit test:** it is view and IME glue with no pure logic; it has to be checked on the device.
 
-- **Atrás en la tableta Huawei (Android 12):** el botón/gesto "atrás" no hacía nada en las subpáginas de Ajustes. Causa probable: la vista de entrada, aún con el foco bajo Ajustes, consumía **todas** las teclas (también `KEYCODE_BACK`) en `onKeyDown`, así que el `BackHandler` de Compose no se ejecutaba (y casa con el antiguo "atrás llega a bash como Tab"). Dos capas: `SystemKeys.isSystemKey` (Atrás, Inicio, Apps recientes, Menú, encendido y volumen) hace que `onKeyDown` y `sendKeyEvent` de la vista no consuman ni codifiquen esas teclas (con test), y la vista suelta el foco (`clearFocus`) cuando otra pantalla cubre el terminal (D-FIX-1). **Sin verificar en la tableta.**
+- **Back on the Huawei tablet (Android 12):** the "back" button/gesture did nothing in Settings' subpages. Probable cause: the input view, still with focus under Settings, consumed **all** keys (also `KEYCODE_BACK`) in `onKeyDown`, so Compose's `BackHandler` did not run (and it matches the old "back reaches bash as Tab"). Two layers: `SystemKeys.isSystemKey` (Back, Home, Recents, Menu, power and volume) makes the view's `onKeyDown` and `sendKeyEvent` neither consume nor encode those keys (with a test), and the view drops the focus (`clearFocus`) when another screen covers the terminal (D-FIX-1). **Not verified on the tablet.**
 
-### D-FIX-2 · 2026-10-05 · "Créditos y licencias": párrafos unidos y una fila por componente
+### D-FIX-2 · 2026-10-05 · "Credits and licenses": paragraphs joined and one row per component
 
-- **Hallazgo:** `Notices.parse` trataba cada línea del `.md` (cortada a mano) como una fila y las tablas salían como "Componente · Licencia · Notas".
-- **Decisión:** las líneas consecutivas se unen en un párrafo (los saltos en blanco y las viñetas separan); cada fila de tabla es un `NoticeItem` con el componente como título y el resto de celdas (licencia, notas) como texto secundario. Se omiten solo la fila de cabecera de las tablas (los nombres de columna) y el párrafo "This file must be updated…", que es una instrucción a los mantenedores. Ningún crédito, aviso ni texto de licencia se pierde (los textos de licencia van aparte, en `LicenseTexts`).
-- **Pendiente:** el contenido de `THIRD_PARTY_NOTICES.md` sigue en inglés (texto legal fuente); la interfaz que lo rodea sí está localizada.
+- **Finding:** `Notices.parse` treated each line of the `.md` (cut by hand) as a row and the tables came out as "Component · License · Notes".
+- **Decision:** consecutive lines are joined into a paragraph (blank lines and bullets separate); each table row is a `NoticeItem` with the component as the title and the remaining cells (license, notes) as secondary text. Only the tables' header row (the column names) and the paragraph "This file must be updated…", which is an instruction to the maintainers, are omitted. No credit, notice or license text is lost (the license texts go separately, in `LicenseTexts`).
+- **Pending:** the content of `THIRD_PARTY_NOTICES.md` is still in English (source legal text); the interface around it is localized.
 
-## T22c (resto) — Diálogos de sesiones, SSH y Apariencia en estilo iOS
+## T22c (rest) — Session, SSH and Appearance dialogs in iOS style
 
-Hecha en un clon aparte, sin tocar ningún dispositivo. Todo probado solo en host.
+Done in a separate clone, without touching any device. Everything tested on the host only.
 
-### D-T22c-1 · 2026-10-05 · «Mantener las sesiones activas»: `IosAlert`, y «Permitir» ya pedía el diálogo del sistema
-- **Decisión:** los dos avisos de `SessionPrompts` (notificaciones y batería) son un `IosAlert` de dos botones: «Ahora no» (cancelar, en negrita) y «Permitir». El comportamiento no cambia.
-- **Ruta de «Permitir» (comprobada en el código):** el aviso de batería llama a `requestBatteryExemption`, que prueba en orden `BatteryExemption.intentsFor` (`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` con `package:<app>` y, solo si falta o se rechaza, la lista general). No abre la lista salvo como respaldo, así que no había nada que corregir; solo se abre la lista general desde Ajustes cuando la app ya está exenta (para poder revocarla). Eso sigue como en D-T08c-1.
-- **Tema:** estos avisos y las pantallas de SSH y Apariencia estaban fuera de `IosTheme` en `MainActivity`; ahora están dentro (sin ello `IosAlert` usaba la paleta clara por defecto).
-- **Sin validar en dispositivo:** que el diálogo del sistema aparezca tras «Permitir» en Android 17 con `targetSdk` 28 (ya pendiente en D-T08c-1).
+### D-T22c-1 · 2026-10-05 · "Keep sessions active": `IosAlert`, and "Allow" already requested the system dialog
+- **Decision:** the two notices of `SessionPrompts` (notifications and battery) are a two-button `IosAlert`: "Not now" (cancel, in bold) and "Allow". The behavior does not change.
+- **"Allow" path (checked in the code):** the battery notice calls `requestBatteryExemption`, which tries in order `BatteryExemption.intentsFor` (`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` with `package:<app>` and, only if missing or rejected, the general list). It does not open the list except as a fallback, so there was nothing to fix; the general list is only opened from Settings when the app is already exempt (to be able to revoke it). That stays as in D-T08c-1.
+- **Theme:** these notices and the SSH and Appearance screens were outside `IosTheme` in `MainActivity`; now they are inside (without that `IosAlert` used the default light palette).
+- **Not validated on a device:** that the system dialog appears after "Allow" on Android 17 with `targetSdk` 28 (already pending in D-T08c-1).
 
-### D-T22c-2 · 2026-10-05 · SSH (T14): lista de anfitriones y claves como listas agrupadas, formularios en hojas
-- **Decisión:** `SshScreen` y `SshKeysScreen` son `IosLargeTitleScreen`. Un anfitrión o una clave se pulsa y abre una `IosActionSheet` (conectar/editar/borrar; copiar pública/guardar privada/borrar). Añadir un anfitrión es el «+» de la barra; añadir una clave abre una hoja de acciones (generar/importar). Los formularios (anfitrión, generar, importar) son `IosBottomSheet` con `IosSheetHeader` y `IosTextField`; la clave y la distro del anfitrión son listas con marca (`IosAccessory.Check`). Borrar y la advertencia de guardar la clave privada son `IosAlert` (la advertencia no va en rojo). Mensajes y «Trabajando…» son filas, como en Distros.
-- **Componentes nuevos en `ui/ios`:** `IosTextArea` (texto de varias líneas, para pegar una clave), el hueco `detail` de `IosListRow` y `IosAccessory.Swatch` (recuadro de color con su código).
-- **Cadenas:** `ssh_key_add` (EN/ES); se quitan `ssh_connect_to` (no se usa ya).
+### D-T22c-2 · 2026-10-05 · SSH (T14): host and key lists as grouped lists, forms in sheets
+- **Decision:** `SshScreen` and `SshKeysScreen` are `IosLargeTitleScreen`s. A host or a key is tapped and opens an `IosActionSheet` (connect/edit/delete; copy public/save private/delete). Adding a host is the bar's "+"; adding a key opens an action sheet (generate/import). The forms (host, generate, import) are `IosBottomSheet`s with `IosSheetHeader` and `IosTextField`; the host's key and distro are lists with a mark (`IosAccessory.Check`). Deleting and the warning when saving the private key are `IosAlert`s (the warning is not in red). Messages and "Working…" are rows, as in Distros.
+- **New components in `ui/ios`:** `IosTextArea` (multi-line text, for pasting a key), the `detail` slot of `IosListRow` and `IosAccessory.Swatch` (a color box with its code).
+- **Strings:** `ssh_key_add` (EN/ES); `ssh_connect_to` is removed (no longer used).
 
-### D-T22c-3 · 2026-10-05 · Apariencia (T12c): pantalla con título grande, controles iOS y `IosSlider`
-- **Decisión:** la pantalla, el editor de esquemas y el selector de color dejan Material. Tema, cursor y estilo de barras son `IosSegmentedControl`; los interruptores, filas con `IosAccessory.Toggle`; fuentes y esquemas, listas con marca y una `IosActionSheet` por elemento (usar, editar, duplicar, exportar, borrar; borrar un esquema pide confirmación con `IosAlert`). Las fuentes propias se quitan desde su hoja. El editor y el selector son `IosBottomSheet` grandes (Cancelar/Guardar y Cancelar/OK).
-- **`IosSlider`:** no existía y Material no era una opción. Es de `foundation` (pista, relleno y pulgar con gestos de toque y arrastre, 48 dp de alto, `setProgress` para TalkBack). La aritmética (posición del dedo, valor, pasos de TalkBack) es pura y está probada (`SliderMath`, `SliderMathTest`). Se guarda al soltar, como antes.
-- **Cadenas:** nuevas `appearance_scheme_use` y `appearance_font_use`; se quitan `appearance_scheme_menu`, `appearance_font_delete` y `appearance_color_row` (ya sin uso; Lint falla con recursos sin usar). TalkBack lee ahora título + código hex de cada fila de color por la fila agrupada.
-- **No cambia:** la vista previa del terminal sigue con `Text` de Material, porque es una muestra de texto con fuente propia, no un diálogo; `ChromePalette` sigue leyendo `MaterialTheme` (D-T12c). El texto de «Colores dinámicos» habla de menús y diálogos: ahora afecta sobre todo a las barras y teclas en modo «del sistema» (a revisar con el usuario).
+### D-T22c-3 · 2026-10-05 · Appearance (T12c): large-title screen, iOS controls and `IosSlider`
+- **Decision:** the screen, the scheme editor and the color picker leave Material. Theme, cursor and bar style are `IosSegmentedControl`s; the switches, rows with `IosAccessory.Toggle`; fonts and schemes, lists with a mark and an `IosActionSheet` per element (use, edit, duplicate, export, delete; deleting a scheme asks for confirmation with `IosAlert`). Own fonts are removed from their sheet. The editor and the picker are large `IosBottomSheet`s (Cancel/Save and Cancel/OK).
+- **`IosSlider`:** it did not exist and Material was not an option. It is from `foundation` (track, fill and thumb with tap and drag gestures, 48 dp tall, `setProgress` for TalkBack). The arithmetic (finger position, value, TalkBack steps) is pure and tested (`SliderMath`, `SliderMathTest`). It saves on release, as before.
+- **Strings:** new `appearance_scheme_use` and `appearance_font_use`; `appearance_scheme_menu`, `appearance_font_delete` and `appearance_color_row` are removed (no longer used; Lint fails with unused resources). TalkBack now reads title + hex code of each color row through the grouped row.
+- **Does not change:** the terminal preview still uses Material's `Text`, because it is a text sample with its own font, not a dialog; `ChromePalette` still reads `MaterialTheme` (D-T12c). The "Dynamic colors" text speaks of menus and dialogs: it now mostly affects bars and keys in "system" mode (to review with the user).
 
-### D-T22c-4 · 2026-10-05 · El botón «⋯» de paneles va en una franja propia, no encima del texto
-- **Qué se vio:** con la pestaña dividida, el botón (en la esquina superior derecha del panel enfocado) tapaba el final de la primera línea.
-- **Decisión:** en una pestaña dividida **cada** panel reserva una franja de 40 dp arriba (`PaneHeaderHeight`), enfocado o no, para que mover el foco no cambie el tamaño de ningún pty. El PTY de cada panel se dimensiona con el rectángulo menos esa franja (`paneLayouts(..., headerPx)` y `belowHeader`, puros y probados), el texto se dibuja debajo, y el botón está en la franja. Su zona táctil sigue siendo de 48 dp: sobresale 8 dp por debajo de la franja, solo en la esquina derecha, donde no hay texto visible que se tape. `canSplit` y el mínimo al arrastrar un divisor cuentan la franja (cada mitad necesita la franja más 4 filas). Una pestaña de un solo panel no cambia (sin franja, sin botón). El botón «Copiar» de la selección baja por debajo de la franja.
-- **Alternativa descartada:** encoger solo la primera fila del panel enfocado: cambia el tamaño del pty al mover el foco y provoca un `SIGWINCH` en cada toque.
-- **Coste:** 40 dp menos de alto por panel en una división. Sin validar en dispositivo: que 40 dp se vean bien, que la zona de 48 dp no moleste y la tablet.
+### D-T22c-4 · 2026-10-05 · The panes' "⋯" button goes in a strip of its own, not over the text
+- **What was seen:** with the tab split, the button (in the focused pane's top-right corner) covered the end of the first line.
+- **Decision:** in a split tab **each** pane reserves a 40 dp strip at the top (`PaneHeaderHeight`), focused or not, so that moving the focus does not change the size of any pty. Each pane's PTY is sized with the rectangle minus that strip (`paneLayouts(..., headerPx)` and `belowHeader`, pure and tested), the text is drawn below, and the button is in the strip. Its touch zone is still 48 dp: it protrudes 8 dp below the strip, only at the right corner, where there is no visible text to cover. `canSplit` and the minimum when dragging a divider count the strip (each half needs the strip plus 4 rows). A single-pane tab does not change (no strip, no button). The selection's "Copy" button moves down below the strip.
+- **Alternative discarded:** shrinking only the first row of the focused pane: it changes the pty's size when moving the focus and causes a `SIGWINCH` on every tap.
+- **Cost:** 40 dp less height per pane in a split. Not validated on a device: that 40 dp looks good, that the 48 dp zone does not get in the way and the tablet.
 
-### D-T22c-5 · 2026-10-05 · Los botones de Material que quedaban en el terminal
-- «Copiar» (selección) y «Sesión terminada, toca para reiniciar» eran `TextButton`/`Button` de Material sobre el terminal; ahora son `IosButton` (tintado y relleno). No quedan `AlertDialog`, `ModalBottomSheet` ni `DropdownMenu` fuera de `ui/ios`, ni imports sin usar de ellos en `PaneViews`.
+### D-T22c-5 · 2026-10-05 · The Material buttons that remained in the terminal
+- "Copy" (selection) and "Session ended, tap to restart" were Material `TextButton`/`Button`s over the terminal; now they are `IosButton`s (tinted and filled). No `AlertDialog`, `ModalBottomSheet` or `DropdownMenu` remain outside `ui/ios`, nor unused imports of them in `PaneViews`.
 
-### D-T22c-6 · 2026-10-05 · Qué NO está validado (sin dispositivo)
-- Aspecto real de las pantallas de SSH y Apariencia y de las hojas de formulario (teclado, desplazamiento dentro de la hoja con el deslizador), el arrastre del `IosSlider` dentro de una hoja que también se desplaza en vertical, TalkBack en filas de color y deslizadores, y la franja de los paneles en móvil y tablet (D-T22c-4).
+### D-T22c-6 · 2026-10-05 · What is NOT validated (without a device)
+- The real look of the SSH and Appearance screens and of the form sheets (keyboard, scrolling inside the sheet with the slider), dragging the `IosSlider` inside a sheet that also scrolls vertically, TalkBack on color rows and sliders, and the panes' strip on phone and tablet (D-T22c-4).
 
-## Usuario no root sin `su` (fix/non-root-user)
+## Non-root user without `su` (fix/non-root-user)
 
-Evidencia (tablet Huawei): Fedora 44 mínima no trae `su` y el usuario elegido no existía en `/etc/passwd`; `su -l <usuario>` terminaba con código 127. Sustituye a D-T08b-5. Hecho sin dispositivo.
+Evidence (Huawei tablet): the minimal Fedora 44 does not carry `su` and the chosen user did not exist in `/etc/passwd`; `su -l <user>` ended with code 127. It replaces D-T08b-5. Done without a device.
 
-### D-USER-1 · 2026-10-05 · Identidad con `-i uid:gid` de proot, sin `su`
-- **Decisión:** un usuario que no es root ejecuta directamente su shell de login (`<shell> -l`) con `-i uid:gid` en lugar de `-0`, y `env -i` con `HOME`, `USER`, `LOGNAME`, `SHELL`, `TERM`, `LANG`, `PATH`. Los ids, el home y el shell salen de `/etc/passwd` del rootfs (`GuestAccounts.find`, función pura; se salta comentarios y líneas rotas; con nombres duplicados vale la primera). Un shell `nologin`/`false`/vacío/relativo se cambia por `/bin/sh`.
-- **Comprobado en el código de proot (`third_party/proot`, fork de Termux):** `-i, --change-id=uid:gid` hace que el usuario y grupo actuales aparezcan como uid:gid y que los ficheros del usuario real aparezcan con ese dueño; `-0` es `-i 0:0`. En el rootfs todos los ficheros son del uid de la app, así que dentro aparecen del usuario: no hace falta `chown`.
-- **Root y comandos:** root no cambia (`-0`, `/bin/sh -l`). Un comando (SSH) sigue corriendo con `-0`, ignorando el usuario.
-- **Sin validar en dispositivo:** que `-i` funcione con seccomp en Android 17 y que el prompt muestre el usuario (Pixel 8).
+### D-USER-1 · 2026-10-05 · Identity with proot's `-i uid:gid`, without `su`
+- **Decision:** a user that is not root runs their login shell directly (`<shell> -l`) with `-i uid:gid` instead of `-0`, and `env -i` with `HOME`, `USER`, `LOGNAME`, `SHELL`, `TERM`, `LANG`, `PATH`. The ids, the home and the shell come from the rootfs's `/etc/passwd` (`GuestAccounts.find`, a pure function; it skips comments and broken lines; with duplicate names the first one wins). A `nologin`/`false`/empty/relative shell is replaced with `/bin/sh`.
+- **Checked in proot's code (`third_party/proot`, Termux's fork):** `-i, --change-id=uid:gid` makes the current user and group appear as uid:gid and the real user's files appear with that owner; `-0` is `-i 0:0`. In the rootfs all files belong to the app's uid, so inside they appear as the user's: no `chown` is needed.
+- **Root and commands:** root does not change (`-0`, `/bin/sh -l`). A command (SSH) still runs with `-0`, ignoring the user.
+- **Not validated on a device:** that `-i` works with seccomp on Android 17 and that the prompt shows the user (Pixel 8).
 
-### D-USER-2 · 2026-10-05 · Si el usuario no existe, se crea (obligatorio por decisión del usuario)
-- **Decisión:** `GuestAccountResolver` crea el usuario si falta: uid libre desde 1000 (hasta 59999), grupo con su nombre (se reutiliza si existe, con su gid) y gid igual al uid si está libre, línea `nombre:x:uid:gid:nombre:/home/nombre:shell` en `/etc/passwd` (sin hash: no hay contraseña ni `/etc/shadow`, porque no se usa `su`), y `/home/<nombre>` por `FileSystemRepository`. Shell: `/bin/bash` si `/etc/shells` lo lista, si no `/bin/sh`. Nunca se sobrescribe una entrada existente ni se crea `root`; funciona con ficheros sin salto de línea final.
-- **Transaccional:** `FileSystemRepository` gana `readText` y `writeText` (escribe junto al destino y renombra con `ATOMIC_MOVE`; rechaza enlaces simbólicos finales y ficheros de más de 1 MiB). Primero se escribe `/etc/group` y al final `/etc/passwd`: un grupo sin usuario es inofensivo, así que un fallo entre medias no cambia el login de nadie.
-- **Propiedad y modo del home:** el directorio lo crea la app con el modo por defecto del repositorio; por `-i` aparece del usuario. No se fuerza 0700 (la abstracción no expone modos); queda pendiente si se quiere.
-- **Fallo:** si `/etc/passwd` no se puede leer, no se puede crear o hay un fallo al escribir, no se lanza una sesión condenada: `LaunchProblem.UserUnavailable` con aviso localizado (EN/ES) que sugiere usar root. Un home fuera de `/home` no se crea; la sesión empieza en `/`.
+### D-USER-2 · 2026-10-05 · If the user does not exist, it is created (mandatory by the user's decision)
+- **Decision:** `GuestAccountResolver` creates the user if missing: a free uid from 1000 (up to 59999), a group with their name (reused if it exists, with its gid) and gid equal to the uid if free, a line `name:x:uid:gid:name:/home/name:shell` in `/etc/passwd` (without a hash: there is no password or `/etc/shadow`, because `su` is not used), and `/home/<name>` through `FileSystemRepository`. Shell: `/bin/bash` if `/etc/shells` lists it, otherwise `/bin/sh`. An existing entry is never overwritten nor is `root` created; it works with files without a final line break.
+- **Transactional:** `FileSystemRepository` gains `readText` and `writeText` (it writes next to the destination and renames with `ATOMIC_MOVE`; it rejects final symbolic links and files larger than 1 MiB). `/etc/group` is written first and `/etc/passwd` last: a group without a user is harmless, so a failure in between does not change anyone's login.
+- **Home ownership and mode:** the directory is created by the app with the repository's default mode; through `-i` it appears as the user's. 0700 is not forced (the abstraction does not expose modes); it remains pending if wanted.
+- **Failure:** if `/etc/passwd` cannot be read, cannot be created or there is a failure when writing, a doomed session is not launched: `LaunchProblem.UserUnavailable` with a localized notice (EN/ES) that suggests using root. A home outside `/home` is not created; the session starts at `/`.
 
-### D-USER-3 · 2026-10-05 · Códigos 127 y 126
-- La tarjeta «Sesión terminada» muestra un texto distinto para 127 («no se encontró un programa») y 126 («no se pudo ejecutar»), vía `ExitHint` (puro, probado). Otros códigos como antes.
+### D-USER-3 · 2026-10-05 · Codes 127 and 126
+- The "Session ended" card shows a different text for 127 ("a program was not found") and 126 ("could not be executed"), through `ExitHint` (pure, tested). Other codes as before.
 
-### Quinta ronda (Pixel 8, 2026-10-05, build de `master` en `ec4bb2c`: T17, T12b, T22c, usuario sin `su`)
+### Fifth round (Pixel 8, 2026-10-05, `master` build at `ec4bb2c`: T17, T12b, T22c, user without `su`)
 
-**Rendimiento (SPEC §6; build de depuración, Fedora 44 bajo proot, `docs/PERFORMANCE.md`).**
-- **Arranque en frío hasta el prompt:** seis arranques con `am start -W` y un `PROMPT_COMMAND` que escribe la hora (reloj del dispositivo): 1.471, 1.653, 1.478, 1.585, 1.650 y 1.628 ms; mediana de las cinco últimas **1.628 ms** (rango 1.478–1.653). Primer fotograma (`TotalTime`): 467–508 ms. **El objetivo de 1,5 s se supera por unos 130 ms en una build de depuración**; falta medir una build de release.
-- **`seq 1 200000`:** `time` da `real 1,073 s` (`sys 0,352 s`); `gfxinfo` en tres pasadas: 98/126/127 fotogramas, 0–2,04 % con jank, p50 5 ms, p90 5–6 ms, p99 9–150 ms (el 150 ms sale en la primera pasada). La interfaz sigue fluida.
-- La primera tanda de medidas (mismo día) no vale: el Pixel estaba bloqueado con la pantalla apagada y el shell no arrancó; se repitió con la pantalla encendida. Una medida con la distro Alpine apuntaba en realidad a Fedora (la predeterminada); el gancho en `.profile` de Fedora funciona porque `/bin/sh -l` es bash en modo POSIX y no lee `.bash_profile`.
+**Performance (SPEC §6; debug build, Fedora 44 under proot, `docs/PERFORMANCE.md`).**
+- **Cold start to the prompt:** six starts with `am start -W` and a `PROMPT_COMMAND` that writes the time (device clock): 1,471, 1,653, 1,478, 1,585, 1,650 and 1,628 ms; median of the last five **1,628 ms** (range 1,478–1,653). First frame (`TotalTime`): 467–508 ms. **The 1.5 s target is exceeded by about 130 ms on a debug build**; a release build still has to be measured.
+- **`seq 1 200000`:** `time` gives `real 1.073 s` (`sys 0.352 s`); `gfxinfo` in three passes: 98/126/127 frames, 0–2.04 % janky, p50 5 ms, p90 5–6 ms, p99 9–150 ms (the 150 ms comes from the first pass). The interface stays smooth.
+- The first batch of measurements (same day) is not valid: the Pixel was locked with the screen off and the shell did not start; it was repeated with the screen on. A measurement with the Alpine distro actually pointed to Fedora (the default one); the hook in Fedora's `.profile` works because `/bin/sh -l` is bash in POSIX mode and does not read `.bash_profile`.
 
-**Usuario no root (D-USER-1..3).** En Alpine, instalar una distro con usuario por defecto `ops` (que no existía) crea el usuario: `id` da `uid=1000(ops) gid=1000(ops) groups=3003,9997,20399,50399` y `pwd` es `/home/ops`. Los grupos 3003, 9997 y los de aplicación vienen de Android (proot los hereda); no son un fallo, pero un usuario "no root" los conserva. Pendiente de repetir en Fedora (la causa del código 127 era la falta de `su`, que ya no se usa).
+**Non-root user (D-USER-1..3).** On Alpine, installing a distro with default user `ops` (which did not exist) creates the user: `id` gives `uid=1000(ops) gid=1000(ops) groups=3003,9997,20399,50399` and `pwd` is `/home/ops`. Groups 3003, 9997 and the application ones come from Android (proot inherits them); they are not a bug, but a "non-root" user keeps them. Pending to repeat on Fedora (the cause of code 127 was the lack of `su`, which is no longer used).
 
-**Fallos hallados.**
-1. **Cierre de la app (T12b):** "Perfiles" > "+" y Ajustes > Teclado > Atajos > una fila cierran la app con `IllegalStateException: Vertically scrollable component was measured with an infinity maximum height constraints` (scroll vertical anidado en una hoja). Las listas de Perfiles y de Layouts se abren bien. En manos de un agente (`fix/profile-form-crash`).
-2. **Distros ya instaladas:** la hoja de acciones solo ofrece Renombrar, Duplicar y Eliminar. No hay forma de cambiar el usuario por defecto ni de elegir la distro predeterminada (SPEC §5 y RF-13); el usuario solo se fija al instalar.
-3. **Barra de pestañas:** con tres pestañas el botón "⋯" de la pestaña activa queda recortado por el borde del "+".
-4. **Pendiente de probar:** guardar y abrir un layout (la hoja de "Guardar los paneles"), el formulario de perfil y la difusión; dependen del arreglo 1.
+**Bugs found.**
+1. **App crash (T12b):** "Profiles" > "+" and Settings > Keyboard > Shortcuts > a row close the app with `IllegalStateException: Vertically scrollable component was measured with an infinity maximum height constraints` (nested vertical scroll in a sheet). The Profiles and Layouts lists open fine. In an agent's hands (`fix/profile-form-crash`).
+2. **Already installed distros:** the action sheet only offers Rename, Duplicate and Delete. There is no way to change the default user or to choose the default distro (SPEC §5 and RF-13); the user is only set at install time.
+3. **Tab bar:** with three tabs the active tab's "⋯" button is clipped by the "+" edge.
+4. **Pending to test:** saving and opening a layout (the "Save the panes" sheet), the profile form and broadcast; they depend on fix 1.
 
-**Bien en el dispositivo:** el diálogo "Mantener las sesiones activas" ya es una alerta iOS; "+" abre una pestaña de la distro predeterminada y la pulsación larga muestra el menú (distros, dividir, perfiles, layouts, ajustes, SSH, gestionar distros, apariencia); Ajustes tiene "Perfiles" y "Layouts".
+**Good on the device:** the "Keep sessions active" dialog is now an iOS alert; "+" opens a tab of the default distro and a long press shows the menu (distros, split, profiles, layouts, settings, SSH, manage distros, appearance); Settings has "Profiles" and "Layouts".
 
-## Fallo al abrir la hoja de perfil (fix/profile-form-crash)
+## Failure when opening the profile sheet (fix/profile-form-crash)
 
-Evidencia (Pixel 8, Android 17): Ajustes > Perfiles > «+» cerraba la app con `IllegalStateException: Vertically scrollable component was measured with an infinity maximum height constraints`. Hecho sin dispositivo.
+Evidence (Pixel 8, Android 17): Settings > Profiles > "+" closed the app with `IllegalStateException: Vertically scrollable component was measured with an infinity maximum height constraints`. Done without a device.
 
-### D-FIX-1 · 2026-10-05 · El contenido de `IosBottomSheet` se desplaza una sola vez, y lo vigila un test
-- **Causa:** `IosBottomSheet` ya envuelve su contenido en un `Column` con `verticalScroll` (altura acotada por el detent). `ProfileEditorSheet` y `ShortcutSheet` (T12b) añadían otro `verticalScroll` dentro, que recibe altura infinita y lanza la excepción.
-- **Decisión:** se quita el `verticalScroll` interior de ambas hojas; el desplazamiento y el límite de altura son responsabilidad de la hoja. Revisadas todas las demás hojas (SSH, Apariencia: editor de esquemas y selector de color, distros, copias, DNS, guardar disposición): no anidan ningún scroll ni `LazyColumn`.
-- **Protección:** `SheetScrollNestingTest` (sin dependencias nuevas) lee las fuentes y falla si un fichero que abre un `IosBottomSheet` usa `verticalScroll`, `LazyColumn` o cuadrículas verticales perezosas, y comprueba que la hoja desplaza una sola vez. Regla: contenido de hoja = columna simple; si hace falta una lista larga, hacerla con `Column` o dar a la hoja una altura acotada explícita.
-- **Sin validar en dispositivo:** que «+» y editar perfil, y editar un atajo, abran la hoja y se desplacen con el teclado abierto (Pixel 8).
+### D-FIX-1 · 2026-10-05 · `IosBottomSheet`'s content scrolls only once, and a test watches it
+- **Cause:** `IosBottomSheet` already wraps its content in a `Column` with `verticalScroll` (height bounded by the detent). `ProfileEditorSheet` and `ShortcutSheet` (T12b) added another `verticalScroll` inside, which receives infinite height and throws the exception.
+- **Decision:** the inner `verticalScroll` is removed from both sheets; scrolling and the height limit are the sheet's responsibility. All the other sheets (SSH, Appearance: scheme editor and color picker, distros, backups, DNS, save layout) were reviewed: none nests a scroll or a `LazyColumn`.
+- **Protection:** `SheetScrollNestingTest` (no new dependencies) reads the sources and fails if a file that opens an `IosBottomSheet` uses `verticalScroll`, `LazyColumn` or lazy vertical grids, and checks that the sheet scrolls only once. Rule: sheet content = a simple column; if a long list is needed, build it with `Column` or give the sheet an explicit bounded height.
+- **Not validated on a device:** that "+" and editing a profile, and editing a shortcut, open the sheet and scroll with the keyboard open (Pixel 8).
 
-## Distros: usuario y predeterminada desde la lista (feat/distro-user-default)
+## Distros: user and default from the list (feat/distro-user-default)
 
-Evidencia (Pixel 8): la hoja de acciones de una distro instalada no permitía cambiar su usuario por defecto ni elegir otra distro predeterminada. Hecho sin dispositivo.
+Evidence (Pixel 8): the action sheet of an installed distro did not allow changing its default user or choosing another default distro. Done without a device.
 
-### D-DISTRO-1 · 2026-10-05 · Cambiar el usuario de una distro
-- **Decisión:** nueva acción «Cambiar usuario…» (solo distros `READY`) que abre una hoja con un campo de texto (`UserSheet`, mismo patrón que `NameSheet`, sin desplazamiento propio). `DistroManager.setDefaultUser` recorta el nombre y lo valida con `GuestUser.isValid` (root permitido) antes de llamar al repositorio, que ya tenía `setDefaultUser`; el `Validation.user` del repositorio es más laxo y se mantiene como segunda red. Un nombre inválido da `InvalidValue("user")` y el botón OK de la hoja queda desactivado mientras no sea válido.
-- **Usuario inexistente:** la hoja avisa de que se crea al empezar la siguiente sesión (D-USER-2) y de que root evita crear nada. No se crea nada al guardar.
+### D-DISTRO-1 · 2026-10-05 · Changing a distro's user
+- **Decision:** a new "Change user…" action (only `READY` distros) that opens a sheet with a text field (`UserSheet`, same pattern as `NameSheet`, without its own scrolling). `DistroManager.setDefaultUser` trims the name and validates it with `GuestUser.isValid` (root allowed) before calling the repository, which already had `setDefaultUser`; the repository's `Validation.user` is laxer and is kept as a second net. An invalid name gives `InvalidValue("user")` and the sheet's OK button stays disabled while it is not valid.
+- **Nonexistent user:** the sheet warns that it is created when the next session starts (D-USER-2) and that root avoids creating anything. Nothing is created when saving.
 
-### D-DISTRO-2 · 2026-10-05 · Distro predeterminada
-- **Decisión:** la acción ya existía en el código (`setDefault`, solo si es `READY` y no es ya la predeterminada; la repo la hace exclusiva en una transacción). Se renombra a «Establecer como predeterminada» / «Set as default». En el Pixel la fila mostraba «Predeterminada» y por eso la acción estaba oculta; con una sola distro no hay otra a la que cambiar.
-- **Backup:** sin cambios de formato. El manifiesto ya guarda `defaultUser` e `isDefault` por distro y la configuración `DistroRefDto(name, isDefault)`; la restauración los aplica como antes.
+### D-DISTRO-2 · 2026-10-05 · Default distro
+- **Decision:** the action already existed in the code (`setDefault`, only if `READY` and not already the default; the repository makes it exclusive in a transaction). It is renamed to "Set as default". On the Pixel the row showed "Default" and that is why the action was hidden; with a single distro there is no other to switch to.
+- **Backup:** no format changes. The manifest already stores `defaultUser` and `isDefault` per distro and the configuration `DistroRefDto(name, isDefault)`; restoring applies them as before.
 
-### D-DISTRO-3 · 2026-10-05 · La pestaña activa siempre se ve entera
-- **Decisión:** el «⋯» solo existe en la pestaña activa, que crece al activarse y podía quedar bajo el «+» al final de la barra. Cada pestaña lleva un `BringIntoViewRequester` y, cuando pasa a activa (o cambia el número de pestañas), espera un fotograma (ya con el nuevo tamaño) y se desplaza a la vista. Sin cálculo propio, así que no hay lógica pura que probar.
-- **Por validar en dispositivo:** con 3 o más pestañas en móvil, el «⋯» de la activa queda completo y tocable.
+### D-DISTRO-3 · 2026-10-05 · The active tab is always seen whole
+- **Decision:** the "⋯" only exists on the active tab, which grows when activated and could end up under the "+" at the end of the bar. Each tab carries a `BringIntoViewRequester` and, when it becomes active (or the number of tabs changes), it waits a frame (already with the new size) and scrolls into view. No computation of its own, so there is no pure logic to test.
+- **To validate on a device:** with 3 or more tabs on a phone, the active one's "⋯" is complete and tappable.
 
-### Sexta ronda (Pixel 8, 2026-10-05, build de `master` en `e2f115a`: arreglo del cierre de las hojas de T12b)
+### Sixth round (Pixel 8, 2026-10-05, `master` build at `e2f115a`: fix for the T12b sheets crash)
 
-**Verificado en el dispositivo.**
-- **El cierre de T12b está arreglado (#58):** "Perfiles" > "+", editar un perfil y la hoja de un atajo (Ajustes > Teclado > Atajos) abren sin cerrar la app y se guardan.
-- **Perfil con usuario inexistente en Fedora:** perfil "dev" (distro predeterminada = Fedora, usuario `ops`, comando `echo hola`) → "Abrir en una pestaña nueva": el prompt es `[ops@localhost ~]$` y el comando se ejecuta. La causa del 127 de la tablet (falta de `su`, usuario inexistente) queda resuelta también en Fedora.
-- **División y difusión:** "Dividir a la derecha" funciona; el botón `⋯` está ahora en una franja sobre el panel y no pisa el texto. "Escribir en todos los paneles" muestra el aviso rojo "Lo que escribes llega a 2 paneles", con marco rojo en ambos paneles, y el texto llega a los dos shells (uno como `ops`, otro como `root`).
-- **Layouts:** guardar los paneles ("dos · 2 paneles"), listarlo y abrirlo reproduce los dos paneles con sus usuarios.
+**Verified on the device.**
+- **T12b's crash is fixed (#58):** "Profiles" > "+", editing a profile and a shortcut's sheet (Settings > Keyboard > Shortcuts) open without closing the app and are saved.
+- **Profile with a nonexistent user on Fedora:** profile "dev" (default distro = Fedora, user `ops`, command `echo hola`) → "Open in a new tab": the prompt is `[ops@localhost ~]$` and the command runs. The cause of the tablet's 127 (missing `su`, nonexistent user) is resolved on Fedora too.
+- **Split and broadcast:** "Split right" works; the `⋯` button is now in a strip above the pane and does not cover the text. "Type in all panes" shows the red notice "What you type reaches 2 panes", with a red frame on both panes, and the text reaches both shells (one as `ops`, the other as `root`).
+- **Layouts:** saving the panes ("two · 2 panes"), listing it and opening it reproduces the two panes with their users.
 
-**Fallos de uso hallados (no cierran la app).**
-1. **Ajustes se queda abierto tras abrir un perfil o un layout:** al elegir "Abrir en una pestaña nueva" o "Abrir" el usuario sigue en la raíz de Ajustes y tiene que pulsar "Listo" para ver la pestaña.
-2. **El nombre de la pestaña ignora el del perfil:** la pestaña abierta desde el perfil "dev" se llama "Fedora 2".
-3. **Los campos de texto de los formularios solo toman el foco al tocar su parte derecha:** tocar la etiqueta ("Nombre", "Usuario") no hace nada. Además, al escribir en el primero, el texto de ayuda en rojo desaparece y el formulario se desplaza, así que un segundo toque posterior cae en otro campo.
-4. **El aviso rojo de difusión tapa el comienzo de la primera línea del panel.**
-5. **El comando inicial se ve dos veces:** se escribe 800 ms tras arrancar el shell, antes de que dibuje el prompt, y el eco del terminal lo repite (una vez sin prompt y otra con él). Es solo estético.
-6. El panel nuevo de una división no lleva el perfil del panel original (usa la distro predeterminada).
+**Usability bugs found (they do not close the app).**
+1. **Settings stays open after opening a profile or a layout:** when choosing "Open in a new tab" or "Open" the user stays at Settings' root and has to press "Done" to see the tab.
+2. **The tab name ignores the profile's:** the tab opened from profile "dev" is called "Fedora 2".
+3. **The forms' text fields only take focus when tapping their right part:** tapping the label ("Name", "User") does nothing. Besides, when typing in the first one, the red help text disappears and the form scrolls, so a later second tap lands on another field.
+4. **The red broadcast notice covers the start of the pane's first line.**
+5. **The initial command is seen twice:** it is typed 800 ms after the shell starts, before it draws the prompt, and the terminal's echo repeats it (once without a prompt and once with it). It is only cosmetic.
+6. The new pane of a split does not carry the original pane's profile (it uses the default distro).
 
-**Pendiente de verificar con la build siguiente:** "Cambiar usuario…" (#59) y el recorte del `⋯` con tres pestañas, que ya están en `master` pero no en la build probada.
+**Pending to verify with the next build:** "Change user…" (#59) and the `⋯` clipping with three tabs, which are already in `master` but not in the tested build.
 
 
 ---
 
-## Correcciones de usabilidad de T12b (sexta ronda, rama `fix/t12b-usability`)
+## T12b usability fixes (sixth round, branch `fix/t12b-usability`)
 
-Seis fallos de uso hallados en el Pixel 8 (ninguno era un cierre). Numeración continuada desde D-FIX-2.
+Six usability bugs found on the Pixel 8 (none was a crash). Numbering continued from D-FIX-2.
 
-### D-FIX-3 · 2026-10-05 · Abrir un perfil o un layout cierra Ajustes entero
-- **Decisión:** `ProfilesScreen` y `LayoutsScreen` ganan `onOpened` (por defecto igual a `onClose`). `MainActivity` lo conecta a un cierre
-  de Perfiles, Layouts y Ajustes a la vez; "Cerrar" (y Atrás) siguen cerrando solo la pantalla propia. La pestaña o el panel nuevo ya
-  tomaban el foco al abrirse (`openTab`/`splitActive`), así que se ve de inmediato. Los tres indicadores de pantallas de perfil son un
-  solo estado (`ProfileOverlay`, con su `listSaver`) para que `Screens` no crezca más.
+### D-FIX-3 · 2026-10-05 · Opening a profile or a layout closes the whole of Settings
+- **Decision:** `ProfilesScreen` and `LayoutsScreen` gain `onOpened` (by default equal to `onClose`). `MainActivity` connects it to a closing
+  of Profiles, Layouts and Settings at once; "Close" (and Back) still close only their own screen. The new tab or pane already
+  took focus when opened (`openTab`/`splitActive`), so it is seen immediately. The three indicators of profile screens are a
+  single state (`ProfileOverlay`, with its `listSaver`) so that `Screens` does not grow further.
 
-### D-FIX-4 · 2026-10-05 · La pestaña de un perfil se llama como el perfil
-- **Decisión:** `PaneSpec.profileName` (solo si el perfil está guardado) pasa a `SessionInfo.profileName` y a `TabItem.profileName`;
-  `tabNames` da `TabName.InProfile(nombre, n)`. Orden: nombre escrito por el usuario, nombre del perfil, nombre de la distro (RF-13),
-  "Shell N". Varias pestañas del mismo perfil se numeran ("dev", "dev 2"), como las de una distro.
+### D-FIX-4 · 2026-10-05 · A profile's tab is named after the profile
+- **Decision:** `PaneSpec.profileName` (only if the profile is saved) goes to `SessionInfo.profileName` and to `TabItem.profileName`;
+  `tabNames` gives `TabName.InProfile(name, n)`. Order: name typed by the user, profile name, distro name (RF-13),
+  "Shell N". Several tabs of the same profile are numbered ("dev", "dev 2"), like those of a distro.
 
-### D-FIX-5 · 2026-10-05 · Toda la fila de un campo de texto lo enfoca; los avisos no mueven el formulario
-- **Decisión:** `IosTextField` e `IosTextArea` envuelven la fila en un `clickable` sin onda que pide el foco (`FocusRequester`) y
-  muestra el teclado, así tocar la etiqueta sirve y vale para todos los formularios. En el formulario de perfil los pies de
-  "Nombre" y "Historial" reservan una línea en blanco (`RESERVED_FOOTER`) cuando no hay error, para que el aviso al aparecer o
-  desaparecer no desplace las filas de abajo. Un aviso de dos líneas sí lo haría crecer; es raro y se acepta.
+### D-FIX-5 · 2026-10-05 · A text field's whole row focuses it; notices do not move the form
+- **Decision:** `IosTextField` and `IosTextArea` wrap the row in a `clickable` without a ripple that requests focus (`FocusRequester`) and
+  shows the keyboard, so tapping the label works and it applies to all forms. In the profile form the footers of
+  "Name" and "History" reserve a blank line (`RESERVED_FOOTER`) when there is no error, so that the notice appearing or
+  disappearing does not move the rows below. A two-line notice would make it grow; it is rare and accepted.
 
-### D-FIX-6 · 2026-10-05 · La cápsula roja de emisión va en la franja de cabecera del primer panel
-- **Decisión:** la franja de cabecera de los paneles pasa de 40 a 48 dp (el alto del objetivo táctil de la cápsula, que antes tapaba
-  8 dp de texto). La cápsula se coloca en la franja del primer panel, a la izquierda del botón "⋯", con el ancho del panel menos
-  48 dp (el texto se recorta con puntos suspensivos si no cabe). Siempre visible mientras se emite; tocarla detiene la emisión.
-  Coste: 8 dp menos de texto por panel en pestañas divididas.
-- **Sin validar** en dispositivo con 4 paneles o más (texto recortado).
+### D-FIX-6 · 2026-10-05 · The red broadcast capsule goes in the first pane's header strip
+- **Decision:** the panes' header strip goes from 40 to 48 dp (the capsule's touch target height, which used to cover
+  8 dp of text). The capsule is placed in the first pane's strip, to the left of the "⋯" button, with the pane's width minus
+  48 dp (the text is clipped with an ellipsis if it does not fit). Always visible while broadcasting; tapping it stops the broadcast.
+  Cost: 8 dp less text per pane in split tabs.
+- **Not validated** on a device with 4 panes or more (clipped text).
 
-### D-FIX-7 · 2026-10-05 · El comando inicial se teclea cuando el shell dibujó su primer prompt
-- **Decisión:** `StartupInputGate` (pura, con tiempos inyectados): lista cuando el shell ha escrito algo y lleva 300 ms en silencio
-  (el prompt está dibujado y esperando), o a los 5 s del arranque como máximo (un shell mudo o muy ruidoso no pierde el comando).
-  `TerminalSessionHost.outputCount` cuenta las salidas (`onTextChanged`); `AndroidSessionFactory` lo consulta cada 50 ms. Sustituye
-  el retardo fijo de 800 ms de D-T12b-10, que tecleaba antes del prompt y hacía que el eco se viera dos veces.
-- **Límite:** un shell cuya salida de arranque tenga pausas de más de 300 ms (proot lento, un `motd`) puede recibir el comando entre
-  dos ráfagas; no se pierde, pero el eco puede repetirse. **Sin validar con un shell real.**
+### D-FIX-7 · 2026-10-05 · The initial command is typed when the shell has drawn its first prompt
+- **Decision:** `StartupInputGate` (pure, with injected times): ready when the shell has written something and has been silent for 300 ms
+  (the prompt is drawn and waiting), or at 5 s from startup at most (a mute or very noisy shell does not lose the command).
+  `TerminalSessionHost.outputCount` counts the outputs (`onTextChanged`); `AndroidSessionFactory` queries it every 50 ms. It replaces
+  D-T12b-10's fixed 800 ms delay, which typed before the prompt and made the echo be seen twice.
+- **Limit:** a shell whose startup output has pauses of more than 300 ms (slow proot, a `motd`) may receive the command between
+  two bursts; it is not lost, but the echo may repeat. **Not validated with a real shell.**
 
-### D-FIX-8 · 2026-10-05 · Dividir un panel con perfil hereda su distro y su usuario
-- **Decisión:** `SessionController.splitActive` sin perfil explícito usa `PaneOpening.forSplit()` del panel activo: mismo destino
-  (distro, usuario), mismo aspecto y mismo perfil, pero **sin** el comando inicial (volvería a ejecutarse). Un panel sin perfil sigue
-  dividiéndose en la distro de origen, como antes.
-- **Efecto en guardar:** el panel heredado se guarda con el perfil (`LayoutNode.Pane(profileId)`), así que al reabrir ese layout
-  correrá el comando del perfil también en él. Mantiene la distro (D-T12b-10 la perdía) a cambio de eso.
+### D-FIX-8 · 2026-10-05 · Splitting a pane with a profile inherits its distro and user
+- **Decision:** `SessionController.splitActive` without an explicit profile uses the active pane's `PaneOpening.forSplit()`: same target
+  (distro, user), same look and same profile, but **without** the initial command (it would run again). A pane without a profile is still
+  split in the origin's distro, as before.
+- **Effect on saving:** the inherited pane is saved with the profile (`LayoutNode.Pane(profileId)`), so when reopening that layout
+  the profile's command will run in it too. It keeps the distro (D-T12b-10 lost it) in exchange for that.
 
-## T18 · Tests de integración y de dispositivo (feat/t18-integration-tests)
+## T18 · Integration and device tests (feat/t18-integration-tests)
 
-Hecho sin dispositivo: los tests de host corren en `./gradlew check`; los instrumentados solo se compilan (`assembleDebugAndroidTest`) y los ejecuta el orquestador en un Pixel 8. Guía de uso en `docs/TESTING.md`.
+Done without a device: the host tests run in `./gradlew check`; the instrumented ones are only compiled (`assembleDebugAndroidTest`) and the orchestrator runs them on a Pixel 8. Usage guide in `docs/TESTING.md`.
 
-### D-T18-1 · Tests de integración en host: piezas reales, solo los bordes simulados
-- **Decisión:** `app/src/test/.../integration/` une clases reales de `domain` y `data` con los únicos bordes que exigen un dispositivo como fakes (catálogo oficial, proceso, almacenamiento compartido, biblioteca nativa, pty). `InstallAndLaunchIntegrationTest` instala desde un `.tar.gz` servido por MockWebServer (descargador real con SHA-256, extracción transaccional real en un directorio real, Room real) y planifica la sesión con `ProotSessionPlanner`; `BackupRoundTripIntegrationTest` exporta (en claro y cifrado) y restaura en un segundo dispositivo vacío y compara ficheros, distro y usuario por defecto, perfiles, disposiciones, atajos, teclas extra, apariencia y ajustes; `ResizeIntegrationTest` sigue ventana, barras, teclado y margen hasta las llamadas al pty falso, con y sin paneles divididos.
-- **Sin código de producción nuevo:** los umbrales de Kover (85 % en `domain`/`data`, 100 % en `data.rootfs.verify` y `data.backup`) no cambian y siguen en verde. Los tests reutilizan `Device`, `TarBuilder` y los fakes ya existentes; no repiten lo que cubren los tests por piezas, sino la unión entre ellas (p. ej. que el usuario por defecto instalado acabe como `-i uid:gid` en la línea de proot, o que un hash falso no deje ni distro ni ficheros).
-- **Límite:** el catálogo oficial es un `FakeCatalog` (sus parsers ya tienen tests propios, T06); el proceso y el pty reales solo se prueban en dispositivo.
+### D-T18-1 · Host integration tests: real pieces, only the edges simulated
+- **Decision:** `app/src/test/.../integration/` joins real `domain` and `data` classes with the only edges that require a device as fakes (official catalog, process, shared storage, native library, pty). `InstallAndLaunchIntegrationTest` installs from a `.tar.gz` served by MockWebServer (real downloader with SHA-256, real transactional extraction in a real directory, real Room) and plans the session with `ProotSessionPlanner`; `BackupRoundTripIntegrationTest` exports (in the clear and encrypted) and restores on a second empty device and compares files, distro and default user, profiles, layouts, shortcuts, extra keys, appearance and settings; `ResizeIntegrationTest` follows window, bars, keyboard and margin down to the fake pty's calls, with and without split panes.
+- **No new production code:** Kover's thresholds (85 % in `domain`/`data`, 100 % in `data.rootfs.verify` and `data.backup`) do not change and stay green. The tests reuse the existing `Device`, `TarBuilder` and fakes; they do not repeat what the per-piece tests cover, but the join between them (e.g. that the installed default user ends up as `-i uid:gid` in proot's line, or that a fake hash leaves neither distro nor files).
+- **Limit:** the official catalog is a `FakeCatalog` (its parsers already have their own tests, T06); the real process and pty are only tested on a device.
 
-### D-T18-2 · Pruebas instrumentadas: sin rootfs fijado, el instalador de la app con su SHA-256
-- **Decisión:** `ProotGuestTest` y `BackupDeviceRoundTripTest` obtienen Alpine con `DistroInstaller` + `OfficialRootfsCatalog` + `HttpRootfsDownloader`: el índice oficial da URL y hash y la app verifica el archivo. No hay ninguna descarga ni binario fijados en el repositorio. Sin red (índice o descarga inalcanzables) el test se salta con `Assume`; un hash o un HTTP erróneos **fallan**, porque es lo que la verificación debe detectar.
-- **Pty y proot reales:** se usa `TerminalSessionHost` con el `ShellStart.proot` que produce el planificador, o sea el mismo camino que la app; se escribe por el pty y se lee la transcripción del emulador. Las comprobaciones evitan falsos positivos con el eco del comando (la línea `echo ok` tecleada no es igual a `ok`). El redimensionado se comprueba con `stty size` en el invitado (24 80, 30 100, 12 60).
-- **Copia de seguridad en dispositivo:** exporta una distro real cifrada a un fichero del almacenamiento del dispositivo, restaura en un almacenamiento vacío, compara cada fichero (hash de contenido y destino de los enlaces) y arranca la distro restaurada. Las claves SSH no entran (el almacén usa el Keystore): la ronda con claves queda cubierta en host.
+### D-T18-2 · Instrumented tests: no pinned rootfs, the app's installer with its SHA-256
+- **Decision:** `ProotGuestTest` and `BackupDeviceRoundTripTest` obtain Alpine with `DistroInstaller` + `OfficialRootfsCatalog` + `HttpRootfsDownloader`: the official index gives URL and hash and the app verifies the file. There is no pinned download or binary in the repository. Without a network (index or download unreachable) the test is skipped with `Assume`; a wrong hash or HTTP **fail**, because that is what the verification must detect.
+- **Real pty and proot:** `TerminalSessionHost` is used with the `ShellStart.proot` that the planner produces, i.e. the same path as the app; it is written through the pty and the emulator's transcript is read. The checks avoid false positives with the command's echo (the typed `echo ok` line is not equal to `ok`). Resizing is checked with `stty size` in the guest (24 80, 30 100, 12 60).
+- **Backup on a device:** it exports a real encrypted distro to a file on the device's storage, restores onto an empty storage, compares each file (content hash and links' targets) and boots the restored distro. SSH keys are not included (the store uses the Keystore): the round with keys is covered on the host.
 
-### D-T18-3 · Aislamiento: nunca se tocan las distros del usuario
-- **Decisión:** `TestStorage` crea `files/it-t18-<aleatorio>/` con su propio `NioFileSystemRepository` y una base de datos Room **en memoria**, y lo borra en `close()`. No abre `ultimateterminal.db` ni `files/storage`. `MainActivityLaunchTest` es la excepción obligada: lanza la actividad real con los datos reales, pero solo abre y cierra pantallas (el editor de perfil se descarta sin guardar).
-- **Aviso operativo:** por defecto el plugin de Android desinstala la app tras `connectedDebugAndroidTest`, lo que borraría los datos del usuario; por eso `docs/TESTING.md` manda pasar `-Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true`.
+### D-T18-3 · Isolation: the user's distros are never touched
+- **Decision:** `TestStorage` creates `files/it-t18-<random>/` with its own `NioFileSystemRepository` and an **in-memory** Room database, and deletes it on `close()`. It does not open `ultimateterminal.db` or `files/storage`. `MainActivityLaunchTest` is the mandatory exception: it launches the real activity with the real data, but only opens and closes screens (the profile editor is discarded without saving).
+- **Operational warning:** by default the Android plugin uninstalls the app after `connectedDebugAndroidTest`, which would delete the user's data; that is why `docs/TESTING.md` says to pass `-Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true`.
 
-### D-T18-4 · UI Automator en vez de Compose Test
-- **Decisión:** la prueba de la actividad usa UI Automator (Apache-2.0) y las cadenas de `strings.xml` (`R.string.*`), así sirve en inglés y en español. Compose Test exigiría `ui-test-manifest` como `debugImplementation`, que entraría en el APK de depuración; UI Automator es solo `androidTestImplementation`.
-- **Qué comprueba:** Atrás desde Ajustes vuelve a la terminal; Perfiles con su hoja de edición, y Atajos de teclado con su hoja, se abren sin cierre inesperado. Los toques por texto/descripción son la parte más frágil y no se han podido ejecutar aquí: si falla un selector tras un cambio de la interfaz, hay que ajustarlo en `MainActivityLaunchTest`.
+### D-T18-4 · UI Automator instead of Compose Test
+- **Decision:** the activity test uses UI Automator (Apache-2.0) and the `strings.xml` strings (`R.string.*`), so it works in English and Spanish. Compose Test would require `ui-test-manifest` as `debugImplementation`, which would enter the debug APK; UI Automator is only `androidTestImplementation`.
+- **What it checks:** Back from Settings returns to the terminal; Profiles with its edit sheet, and Keyboard shortcuts with its sheet, open without an unexpected close. Taps by text/description are the most fragile part and could not be run here: if a selector fails after an interface change, it has to be adjusted in `MainActivityLaunchTest`.
 
-### D-T18-5 · Dependencias de prueba
-- **Añadidas** (todas Apache-2.0, solo `androidTestImplementation`, no entran en ningún APK): `androidx.test:runner` 1.7.0, `androidx.test:core` 1.7.0, `androidx.test.ext:junit` 1.3.0 y `androidx.test.uiautomator:uiautomator` 2.4.0, con el runner `androidx.test.runner.AndroidJUnitRunner`.
-- **Verificación de dependencias:** `verification-metadata.xml` regenerado con un `GRADLE_USER_HOME` limpio y `--write-verification-metadata sha256`; solo se añadieron los componentes que faltaban (115 líneas, ninguna eliminada ni reformateada). Acreditadas en `THIRD_PARTY_NOTICES.md` en el mismo cambio.
-- **Por validar en dispositivo:** que las tres clases pasen en el Pixel 8 con red (`ProotGuestTest`, `BackupDeviceRoundTripTest`, `MainActivityLaunchTest`), en especial los selectores de la interfaz y que `stty` exista en el rootfs de Alpine.
+### D-T18-5 · Test dependencies
+- **Added** (all Apache-2.0, only `androidTestImplementation`, they do not enter any APK): `androidx.test:runner` 1.7.0, `androidx.test:core` 1.7.0, `androidx.test.ext:junit` 1.3.0 and `androidx.test.uiautomator:uiautomator` 2.4.0, with the `androidx.test.runner.AndroidJUnitRunner` runner.
+- **Dependency verification:** `verification-metadata.xml` regenerated with a clean `GRADLE_USER_HOME` and `--write-verification-metadata sha256`; only the missing components were added (115 lines, none removed or reformatted). Credited in `THIRD_PARTY_NOTICES.md` in the same change.
+- **To validate on a device:** that the three classes pass on the Pixel 8 with a network (`ProotGuestTest`, `BackupDeviceRoundTripTest`, `MainActivityLaunchTest`), especially the interface selectors and that `stty` exists in Alpine's rootfs.
 
-### Séptima ronda (Pixel 8, 2026-10-05, `master` en `f372372`): T18 instrumentados y comprobaciones manuales
+### Seventh round (Pixel 8, 2026-10-05, `master` at `f372372`): T18 instrumented and manual checks
 
-- **Tests instrumentados de T18 (`connectedDebugAndroidTest`, solo en el Pixel 8 con `ANDROID_SERIAL`): 7 de 7 pasan** tras corregir un fallo del propio test. `ProotGuestTest` (proot real en Alpine con el instalador de la app: `uname -a`, `echo ok`, `/etc/os-release`, y `stty size` tras dos redimensionados del PTY) y `BackupDeviceRoundTripTest` (copia cifrada de una distro real restaurada en un almacenamiento vacío, con contenido y enlaces idénticos, y contraseña incorrecta sin restaurar nada) pasaron a la primera. `MainActivityLaunchTest` (Atrás desde Ajustes, Perfiles con su hoja, Atajos con su hoja) fallaba con "the terminal screen did not appear": el aviso "Mantener las sesiones activas" aparece como alerta modal al arrancar y oculta lo de debajo a UI Automator; ahora el test pulsa "Ahora no" si aparece (`prompt_not_now`), sin cambiar ningún ajuste.
-- **Comprobaciones manuales de #59 y #61, todas bien:** abrir un perfil o un layout cierra Ajustes y enfoca la pestaña; la pestaña se llama como el perfil ("dev"); el comando inicial sale una sola vez; tocar la etiqueta de un campo enfoca el campo y el formulario no se mueve; el aviso de difusión no tapa texto (se recorta a "Lo que escri…" en un panel estrecho; mejorable); con cuatro pestañas el `⋯` de la activa se ve entero; un panel dividido desde un perfil hereda distro y usuario sin repetir el comando; "Cambiar usuario…" y "Establecer como predeterminada" aparecen en el menú de cada distro que no es la predeterminada (`dev2` en Alpine: `uid=1000(dev2)`).
-- **Corrección de la quinta ronda:** el hueco "no se puede elegir la predeterminada" era un error mío al mirar: la opción se oculta justo en la distro que ya lo es.
+- **T18 instrumented tests (`connectedDebugAndroidTest`, only on the Pixel 8 with `ANDROID_SERIAL`): 7 out of 7 pass** after fixing a failure in the test itself. `ProotGuestTest` (real proot on Alpine with the app's installer: `uname -a`, `echo ok`, `/etc/os-release`, and `stty size` after two PTY resizes) and `BackupDeviceRoundTripTest` (an encrypted backup of a real distro restored onto an empty storage, with identical content and links, and a wrong password restoring nothing) passed the first time. `MainActivityLaunchTest` (Back from Settings, Profiles with its sheet, Shortcuts with its sheet) failed with "the terminal screen did not appear": the "Keep sessions active" notice appears as a modal alert at startup and hides what is below from UI Automator; now the test presses "Not now" if it appears (`prompt_not_now`), without changing any setting.
+- **Manual checks of #59 and #61, all good:** opening a profile or a layout closes Settings and focuses the tab; the tab is named after the profile ("dev"); the initial command comes out only once; tapping a field's label focuses the field and the form does not move; the broadcast notice does not cover text (it is clipped to "What you typ…" in a narrow pane; improvable); with four tabs the active one's `⋯` is seen whole; a pane split from a profile inherits distro and user without repeating the command; "Change user…" and "Set as default" appear in the menu of each distro that is not the default (`dev2` on Alpine: `uid=1000(dev2)`).
+- **Correction to the fifth round:** the gap "the default cannot be chosen" was my mistake when looking: the option is hidden precisely on the distro that already is it.
 
-## T21 (segunda pasada) — Revisión de la documentación (docs/t21-review)
+## T21 (second pass) — Documentation review (docs/t21-review)
 
-Solo texto, sin tocar código ni dispositivos. Todo lo que dice estar verificado sale de las rondas de pruebas de este fichero.
+Text only, without touching code or devices. Everything that claims to be verified comes from the test rounds of this file.
 
-### D-T21-4 · 2026-10-05 · Convenciones de la documentación de cara al usuario
-- **Tabla del README:** cada fila dice en qué dispositivo se verificó (Pixel 8 o tablet Huawei) y, si la verificación es parcial, lo dice en la propia fila. Una corrección que está en `master` pero no se ha vuelto a ver en un dispositivo no sube a la tabla: va en el párrafo «Fixed in the code and not looked at on a device yet». Los números de rendimiento se citan con su contexto (build de depuración, Pixel 8, Fedora) y sin redondear a favor.
-- **Tests instrumentados:** se describen como «escritos y compilados, sin ejecución registrada» mientras ninguna ronda anote que se ejecutaron (D-T18-1 a 5).
-- **`CHANGELOG.md`:** se mantiene una sola sección `[Unreleased]`, agrupada en Added/Changed/Fixed/Known limitations; cada arreglo hallado en un dispositivo indica si se volvió a verificar allí.
-- **`PRIVACY.md`:** se revisó contra el manifiesto (sin cambios en los nueve permisos) y contra `OfficialRootfsCatalog` (`dl-cdn.alpinelinux.org`, `cdimage.ubuntu.com`, `raw.githubusercontent.com` y `dl.fedoraproject.org`). Cambios: el dominio de Fedora, y que los DNS de respaldo ya se editan en Ajustes > Red (T16).
-- **`fastlane`:** `changelogs/10002.txt` (en/es) se añade para el siguiente `versionCode` (`0.1.0-rc.2` daría `(0*10000 + 1*100 + 0)*100 + 2 = 10002`), siguiendo el nombre de `10001.txt`. `gradle.properties` sigue en `0.1.0-rc.1`: subir la versión es una decisión de release (`RELEASING.md`) que no se tomó aquí; mientras tanto el fichero 10002 no se usa. Límites comprobados con un script: título 16/30, resumen 72/80 (en y es), descripción 3112 y 3331/4000, changelogs 371 y 426/500.
-- **`CONTRIBUTING.md`:** recoge la inicialización del submódulo, los tests instrumentados (`ANDROID_SERIAL`, `leaveApksInstalledAfterRun`), la regeneración de `verification-metadata.xml` y la convención de añadir al final de `DECISIONS.md` (y cómo se resuelven los conflictos al rebasar).
+### D-T21-4 · 2026-10-05 · Conventions of the user-facing documentation
+- **README table:** each row says on which device it was verified (Pixel 8 or Huawei tablet) and, if the verification is partial, says so in the row itself. A fix that is in `master` but has not been seen again on a device does not go up to the table: it goes in the paragraph "Fixed in the code and not looked at on a device yet". Performance numbers are quoted with their context (debug build, Pixel 8, Fedora) and without rounding in our favor.
+- **Instrumented tests:** they are described as "written and compiled, no recorded run" while no round notes that they were run (D-T18-1 to 5).
+- **`CHANGELOG.md`:** a single `[Unreleased]` section is kept, grouped in Added/Changed/Fixed/Known limitations; each fix found on a device says whether it was verified again there.
+- **`PRIVACY.md`:** it was reviewed against the manifest (no changes in the nine permissions) and against `OfficialRootfsCatalog` (`dl-cdn.alpinelinux.org`, `cdimage.ubuntu.com`, `raw.githubusercontent.com` and `dl.fedoraproject.org`). Changes: Fedora's domain, and that the fallback DNS are now edited in Settings > Network (T16).
+- **`fastlane`:** `changelogs/10002.txt` (en/es) is added for the next `versionCode` (`0.1.0-rc.2` would give `(0*10000 + 1*100 + 0)*100 + 2 = 10002`), following `10001.txt`'s name. `gradle.properties` is still at `0.1.0-rc.1`: raising the version is a release decision (`RELEASING.md`) that was not taken here; meanwhile the 10002 file is not used. Limits checked with a script: title 16/30, summary 72/80 (en and es), description 3112 and 3331/4000, changelogs 371 and 426/500.
+- **`CONTRIBUTING.md`:** it collects the submodule initialization, the instrumented tests (`ANDROID_SERIAL`, `leaveApksInstalledAfterRun`), the regeneration of `verification-metadata.xml` and the convention of appending at the end of `DECISIONS.md` (and how conflicts are resolved when rebasing).
 
-### D-T21-5 · 2026-10-05 · Lo que no se pudo comprobar
-- **Redirecciones de Fedora:** `PRIVACY.md` nombra solo `dl.fedoraproject.org`, el host de las URLs del catálogo. No se comprobó si ese servidor redirige a otros mirrors al descargar; si lo hace, esos hosts también verían la IP.
-- **El aviso de notificaciones:** se describe como «un aviso propio antes del del sistema» (`SessionPrompts`) sin afirmar cuándo aparece.
-- **Atrás en la tablet Android 12:** el README y el changelog lo dejan como no verificado (D-FIX-1 de «Correcciones tras pruebas»).
-- **Dato desfasado que sigue sin tocarse:** la sección «Pendiente de validar en hardware», al principio de este fichero, aún dice que los agentes no prueban en dispositivos y no recoge las seis rondas; no se edita para no chocar con otras ramas (ver D-T21-1).
+### D-T21-5 · 2026-10-05 · What could not be checked
+- **Fedora redirects:** `PRIVACY.md` names only `dl.fedoraproject.org`, the host of the catalog's URLs. It was not checked whether that server redirects to other mirrors when downloading; if it does, those hosts would also see the IP.
+- **The notifications notice:** it is described as "a notice of its own before the system's" (`SessionPrompts`) without asserting when it appears.
+- **Back on the Android 12 tablet:** the README and the changelog leave it as not verified (D-FIX-1 of "Fixes after tests").
+- **Outdated fact that is still untouched:** the "Pending hardware validation" section, at the start of this file, still says that the agents do not test on devices and does not collect the six rounds; it is not edited so as not to clash with other branches (see D-T21-1).
 
-### D-T20-7 · 2026-10-05 · Capturas de F-Droid
-- **Decisión:** seis capturas de teléfono por idioma (`fastlane/metadata/android/{en-US,es-ES}/images/phoneScreenshots/1..6.png`), tomadas en el Pixel 8 con la app en cada idioma (`cmd locale set-app-locales`) y la barra de estado fija (modo demo del sistema, restaurado al acabar): terminal con Fedora, panel dividido, Ajustes, Apariencia, Distribuciones y Perfiles. Salen la distro de prueba "AlpineOps" y el perfil "dev" de las pruebas; se pueden retomar sin ellas más adelante.
-- **Pendiente:** una captura de tablet (`tenInchScreenshots`/`sevenInchScreenshots`) cuando la tablet esté disponible; la huella `AllowedAPKSigningKeys` y `fdroid lint` (D-T20-1..6).
+### D-T20-7 · 2026-10-05 · F-Droid screenshots
+- **Decision:** six phone screenshots per language (`fastlane/metadata/android/{en-US,es-ES}/images/phoneScreenshots/1..6.png`), taken on the Pixel 8 with the app in each language (`cmd locale set-app-locales`) and the status bar fixed (the system's demo mode, restored when finished): terminal with Fedora, split pane, Settings, Appearance, Distributions and Profiles. The test distro "AlpineOps" and the tests' profile "dev" appear; they can be retaken without them later.
+- **Pending:** a tablet screenshot (`tenInchScreenshots`/`sevenInchScreenshots`) when the tablet is available; the `AllowedAPKSigningKeys` fingerprint and `fdroid lint` (D-T20-1..6).
 
-### D-REL-1 · 2026-10-05 · Primera versión publicada: 0.1.0-rc.2
-- **Decisión:** el usuario pidió subir a rc.2 (la 0.1.0-rc.1 nunca se publicó: es solo la versión que había en el árbol). `appVersion=0.1.0-rc.2` (versionCode 10002, ya con su changelog de fastlane), notas en `## [0.1.0-rc.2]`. F-Droid no ofrece las `-rc.N` (`UpdateCheckMode: Tags` solo finales), así que de momento solo sale por GitHub Releases.
-- **Clave de firma:** el usuario prefiere hacer los pasos a mano (sin script): `keytool` en `~/keys/ultimateterminal-release.jks` y `gh secret set` de los cuatro `UT_*` (RELEASING.md, "Signing"). Una clave propia por app, como en las otras apps.
-- **Licencia de Termux:** el usuario decide no pedir confirmación a los mantenedores de Termux (D-T03-2 queda abierto y aceptado). **GitGuardian:** los dos incidentes los descarta el usuario en su panel.
+### D-REL-1 · 2026-10-05 · First published version: 0.1.0-rc.2
+- **Decision:** the user asked to go up to rc.2 (0.1.0-rc.1 was never published: it is just the version that was in the tree). `appVersion=0.1.0-rc.2` (versionCode 10002, already with its fastlane changelog), notes in `## [0.1.0-rc.2]`. F-Droid does not offer the `-rc.N` (`UpdateCheckMode: Tags` only final ones), so for now it is only released through GitHub Releases.
+- **Signing key:** the user prefers to do the steps by hand (without a script): `keytool` in `~/keys/ultimateterminal-release.jks` and `gh secret set` of the four `UT_*` (RELEASING.md, "Signing"). A key of its own per app, as in the other apps.
+- **Termux license:** the user decides not to ask the Termux maintainers for confirmation (D-T03-2 stays open and accepted). **GitGuardian:** the user dismisses the two incidents in their dashboard.
 
-### D-REL-2 · 2026-10-05 · Clave de firma creada
-- La clave de firma (`~/keys/ultimateterminal-release.jks`, alias `ultimateterminal`, RSA 4096) la creó el usuario a mano y subió los cuatro secretos `UT_*`. Huella SHA-256 del certificado: `19:73:00:45:28:24:46:33:3B:45:F8:72:B0:39:5C:D5:31:B4:A8:81:68:71:BE:6E:09:B7:8D:64:19:CD:21:2B`, puesta en `AllowedAPKSigningKeys` de la receta de F-Droid (en minúsculas y sin dos puntos). La huella es pública; la contraseña y el `.jks` no están en el repositorio.
-- Pendiente de F-Droid: `fdroid lint`, y que la receta use la primera versión final (las `-rc.N` no se ofrecen allí).
+### D-REL-2 · 2026-10-05 · Signing key created
+- The signing key (`~/keys/ultimateterminal-release.jks`, alias `ultimateterminal`, RSA 4096) was created by the user by hand and they uploaded the four `UT_*` secrets. SHA-256 fingerprint of the certificate: `19:73:00:45:28:24:46:33:3B:45:F8:72:B0:39:5C:D5:31:B4:A8:81:68:71:BE:6E:09:B7:8D:64:19:CD:21:2B`, put in the F-Droid recipe's `AllowedAPKSigningKeys` (in lowercase and without colons). The fingerprint is public; the password and the `.jks` are not in the repository.
+- Pending on F-Droid: `fdroid lint`, and that the recipe uses the first final version (the `-rc.N` are not offered there).
 
-### Octava ronda (Pixel 8, 2026-10-05): APK de release firmado (`0.1.0-rc.2`)
-- **Firma:** el APK publicado en GitHub Releases verifica con `apksigner` y su certificado tiene la huella SHA-256 de D-REL-2.
-- **Rendimiento en release (Alpine, distro instalada con la propia app):** arranque en frío hasta el prompt, seis arranques medidos con capturas de pantalla sucesivas (el prompt se detecta al aparecer texto en la primera línea; la medida lleva unos ±250 ms de la propia captura): 1.406, 1.245, 1.174, 1.201, 1.172 y 1.217 ms; mediana de las cinco últimas **1.200 ms**. Primer fotograma (`am start -W`) 124–229 ms. `seq 1 200000`: `real 1,09 s`; `gfxinfo` en tres pasadas: 124/143/141 fotogramas, 0–0,81 % con jank, p90 5 ms, p99 5–8 ms. **Cumple el objetivo de 1,5 s.** Fedora no se midió en release (es más pesada: 1,63 s en debug).
-- **Método:** la build de release no es depurable, así que no se pudo usar `run-as` ni el gancho de `PROMPT_COMMAND`; para medirla hubo que desinstalar la de debug (se perdieron las distros de pruebas del Pixel, no las de nadie más) y reinstalar Alpine desde la propia app.
-- **Petición del usuario durante la prueba:** si no hay ninguna distro, la app debe mostrar directamente un asistente de configuración inicial para instalar una (consistencia de experiencia). Hoy una instalación limpia abre un shell de Android sin distro. Pasa a ser la tarea T25 (en curso).
+### Eighth round (Pixel 8, 2026-10-05): signed release APK (`0.1.0-rc.2`)
+- **Signature:** the APK published on GitHub Releases verifies with `apksigner` and its certificate has the SHA-256 fingerprint of D-REL-2.
+- **Release performance (Alpine, distro installed with the app itself):** cold start to the prompt, six starts measured with successive screenshots (the prompt is detected when text appears on the first line; the measurement carries about ±250 ms from the capture itself): 1,406, 1,245, 1,174, 1,201, 1,172 and 1,217 ms; median of the last five **1,200 ms**. First frame (`am start -W`) 124–229 ms. `seq 1 200000`: `real 1.09 s`; `gfxinfo` in three passes: 124/143/141 frames, 0–0.81 % janky, p90 5 ms, p99 5–8 ms. **It meets the 1.5 s target.** Fedora was not measured on release (it is heavier: 1.63 s on debug).
+- **Method:** the release build is not debuggable, so `run-as` or the `PROMPT_COMMAND` hook could not be used; to measure it the debug one had to be uninstalled (the Pixel's test distros were lost, nobody else's) and Alpine reinstalled from the app itself.
+- **User's request during the test:** if there is no distro, the app must directly show an initial setup wizard to install one (consistency of experience). Today a clean install opens an Android shell without a distro. It becomes task T25 (in progress).
 
-## T25 · Primer arranque (feat/t25-first-run-setup)
+## T25 · First start (feat/t25-first-run-setup)
 
-### D-T25-1 · 2026-10-05 · La configuración inicial sustituye a la pestaña, no se superpone
-- **Decisión:** `MainActivity` no compone `TerminalScreen` hasta que la puerta (`SetupGate`) se cierra. Es necesario: la primera disposición de `TerminalViewModel` abre la primera pestaña (`newDefaultSession`, RF-13); con el terminal compuesto debajo ya habría arrancado un shell de Android. Al cerrarse la puerta (distro lista u omitir) se compone el terminal y esa misma ruta abre la distro predeterminada. Mientras no se han leído las distros (`UNDECIDED`) solo se pinta el fondo.
-- **Regla (`domain/setup/FirstRunSetup`):** se muestra si ya se leyeron las distros, no hay ninguna `READY`, no hay pestañas abiertas y no se omitió. Una instalación en curso no oculta la pantalla: su progreso es parte de ella (la regla «ninguna instalándose» de la petición se cumple porque quien instala desde Distribuciones ya tiene pestañas u omitió). Una vez en `SHOWING` solo se cierra con una distro `READY` o al omitir, aunque aparezca una pestaña (p. ej. la acción «nueva sesión» de la notificación); una vez `CLOSED` no vuelve en ese proceso, así que borrar la última distro con pestañas abiertas no la reabre sobre ellas.
+### D-T25-1 · 2026-10-05 · The initial setup replaces the tab, it is not overlaid
+- **Decision:** `MainActivity` does not compose `TerminalScreen` until the gate (`SetupGate`) closes. It is necessary: the first layout of `TerminalViewModel` opens the first tab (`newDefaultSession`, RF-13); with the terminal composed underneath an Android shell would already have started. When the gate closes (distro ready or skip) the terminal is composed and that same path opens the default distro. While the distros have not been read (`UNDECIDED`) only the background is painted.
+- **Rule (`domain/setup/FirstRunSetup`):** it is shown if the distros were already read, there is no `READY` one, there are no open tabs and it was not skipped. An installation in progress does not hide the screen: its progress is part of it (the request's "none being installed" rule is met because whoever installs from Distributions already has tabs or skipped). Once in `SHOWING` it only closes with a `READY` distro or on skipping, even if a tab appears (e.g. the notification's "new session" action); once `CLOSED` it does not come back in that process, so deleting the last distro with open tabs does not reopen it over them.
 
-### D-T25-2 · Se reutiliza el instalador y la restauración
-- `SetupScreen` usa el `DistroViewModel` (instalar, cancelar, descartar mensaje) y el `BackupViewModel` (selector SAF, contraseña, progreso) de las pantallas de Ajustes, que `viewModel()` comparte por Activity; se hicieron `internal` `InstallProgress`, `MessageRow` y `Working` para pintar progreso y errores con los mismos componentes. `SetupStep`/`setupStepOf` deriva el paso (elegir, instalando) del estado del instalador: un fallo no es un estado final, es «elegir» con el último error, de modo que el formulario sigue ahí para reintentar (el botón pasa a «Reintentar») o elegir otra distro.
-- Distro preseleccionada: Alpine (la descarga más pequeña, ~4 MB; la lista pone primero a las del catálogo con Alpine recomendada). El nombre sugerido sigue a la distro elegida hasta que el usuario escribe uno (como la hoja de instalar), y el usuario por defecto es `root`.
+### D-T25-2 · The installer and the restore are reused
+- `SetupScreen` uses the `DistroViewModel` (install, cancel, dismiss message) and the `BackupViewModel` (SAF picker, password, progress) of the Settings screens, which `viewModel()` shares per Activity; `InstallProgress`, `MessageRow` and `Working` were made `internal` to paint progress and errors with the same components. `SetupStep`/`setupStepOf` derives the step (choose, installing) from the installer's state: a failure is not a final state, it is "choose" with the last error, so the form is still there to retry (the button becomes "Retry") or to choose another distro.
+- Preselected distro: Alpine (the smallest download, ~4 MB; the list puts the catalog's first with Alpine recommended). The suggested name follows the chosen distro until the user types one (like the install sheet), and the default user is `root`.
 
-### D-T25-3 · Tamaños: notas fijas, no del catálogo
-- El catálogo (`RootfsCatalog`) solo resuelve la fuente con red al instalar y Debian/Ubuntu no publican un tamaño fiable, así que no hay tamaño que mostrar antes de elegir. Se ponen notas con las cifras medidas en D-T24 (Alpine ~4 MB, Fedora ~63 MB) y una nota general de que hace falta red, de que se verifica el SHA-256 y de que descomprimido ocupa más. No se inventan cifras para Debian y Ubuntu. La comprobación de espacio libre real sigue siendo la del instalador (`InsufficientSpace`).
+### D-T25-3 · Sizes: fixed notes, not from the catalog
+- The catalog (`RootfsCatalog`) only resolves the source with a network at install time and Debian/Ubuntu do not publish a reliable size, so there is no size to show before choosing. Notes are put with the figures measured in D-T24 (Alpine ~4 MB, Fedora ~63 MB) and a general note that a network is needed, that the SHA-256 is verified and that decompressed it takes more. No figures are made up for Debian and Ubuntu. The real free-space check is still the installer's (`InsufficientSpace`).
 
-### D-T25-4 · La distro nueva es la predeterminada antes de abrir la pestaña
-- El primer `add` ya marca como predeterminada la primera distro, pero un resto `FAILED` con el indicador la dejaría fuera y la primera pestaña caería al shell de Android. `SetupViewModel` comprueba, con la puerta en `SHOWING`, que haya una `READY` predeterminada (`distroToMakeDefault`) y si no la fija con `DistroManager.setDefault` antes de cerrar la puerta; si falla, cierra igualmente para no dejar a nadie atrapado.
+### D-T25-4 · The new distro is the default before the tab is opened
+- The first `add` already marks the first distro as default, but a `FAILED` leftover with the flag would leave it out and the first tab would fall to the Android shell. `SetupViewModel` checks, with the gate at `SHOWING`, that there is a default `READY` one (`distroToMakeDefault`) and if not it sets it with `DistroManager.setDefault` before closing the gate; if that fails, it closes anyway so as not to leave anyone trapped.
 
-### D-T25-5 · Omitir solo dura la sesión; aviso de sesiones activas
-- «Omitir» es un `MutableStateFlow` en el ViewModel: no se guarda en ajustes ni en `rememberSaveable`, así que al volver a abrir la app (proceso nuevo) sin distro vuelve a salir. Es un botón plano al final, deshabilitado mientras se instala o restaura.
-- `SessionPrompts` ya exigía una sesión en marcha (`hasRunningSession`); como la configuración no crea ninguna, el aviso de «Mantener las sesiones activas» no aparece sobre ella y sale tras la primera pestaña (o tras omitir). Sin cambios de comportamiento en el resto de casos.
+### D-T25-5 · Skip only lasts the session; sessions-active notice
+- "Skip" is a `MutableStateFlow` in the ViewModel: it is not saved in settings or in `rememberSaveable`, so when reopening the app (a new process) without a distro it comes up again. It is a flat button at the end, disabled while installing or restoring.
+- `SessionPrompts` already required a running session (`hasRunningSession`); since the setup creates none, the "Keep sessions active" notice does not appear over it and comes out after the first tab (or after skipping). No behavior changes in the other cases.
 
 ### D-T25-6 · Tests
-- Host: `FirstRunSetupTest` (puerta, distro recomendada, distro por defecto, validez del formulario) y `SetupViewModelTest` (con fakes: ver/omitir/relanzar, app con pestañas o con distro, fijar la predeterminada, fallo al fijarla, pasos del flujo). Cobertura de Kover intacta.
-- Instrumentados (solo compilan aquí): `MainActivityLaunchTest` se salta con una suposición si se muestra la configuración (dispositivo sin distros) y `FirstRunSetupScreenTest` comprueba la pantalla y se salta si el dispositivo ya tiene distros. Verificar en el Pixel 8 sin distros (o en un perfil/instalación limpia); ver T25 en `PLAN.md`.
+- Host: `FirstRunSetupTest` (gate, recommended distro, default distro, form validity) and `SetupViewModelTest` (with fakes: show/skip/relaunch, app with tabs or with a distro, setting the default, failure when setting it, flow steps). Kover coverage intact.
+- Instrumented (they only compile here): `MainActivityLaunchTest` is skipped with an assumption if the setup is shown (a device without distros) and `FirstRunSetupScreenTest` checks the screen and is skipped if the device already has distros. Verify on the Pixel 8 without distros (or in a clean profile/install); see T25 in `PLAN.md`.
 
-### Novena ronda (Pixel 8, 2026-10-05, `master` en `49842fd`): asistente de primer arranque (T25)
-- **Instalación limpia (desinstalar e instalar la build de depuración):** se muestra "Te damos la bienvenida" con Alpine preseleccionada y recomendada (unos 4 MB), Debian, Ubuntu y Fedora (unos 63 MB), nombre, usuario por defecto `root`, "Instalar", "Restaurar desde una copia de seguridad" y "Omitir, usar por ahora el shell de Android". Ya no hay shell de Android sin distro ni aviso de sesiones encima.
-- **Instalar Alpine:** el asistente se cierra, la primera pestaña se llama "Alpine Linux" y con su prompt, y solo entonces aparece "Mantener las sesiones activas".
-- **Sin red (DNS privado roto a propósito):** "No se pudo contactar con el servidor oficial. Revisa la conexión e inténtalo de nuevo." con "Descartar"; el formulario queda y el botón pasa a "Reintentar". Con la red restaurada, "Reintentar" instala y abre la pestaña.
-- **Omitir:** abre una pestaña "Shell 1" del shell de Android; tras cerrar del todo y relanzar sin distro, el asistente vuelve a mostrarse.
-- **Mejorable:** en un móvil "Instalar" queda al borde inferior y "Restaurar"/"Omitir" hay que desplazarlos para verlos; un botón de instalar fijo abajo lo arreglaría. Sin probar: restaurar una copia desde el asistente, girar la pantalla a mitad de instalación, TalkBack.
-- **Lección de método:** para simular "sin red" **no se apaga el Wi-Fi** (el Pixel va por depuración inalámbrica y se pierde la conexión de adb; además el puerto de adb cambia al reconectar). Se rompió solo el DNS privado (`private_dns_mode=hostname` con un host inexistente) y se borró después.
+### Ninth round (Pixel 8, 2026-10-05, `master` at `49842fd`): first-run wizard (T25)
+- **Clean install (uninstalling and installing the debug build):** "Welcome" is shown with Alpine preselected and recommended (about 4 MB), Debian, Ubuntu and Fedora (about 63 MB), name, default user `root`, "Install", "Restore from a backup" and "Skip, use the Android shell for now". There is no longer an Android shell without a distro nor a sessions notice on top.
+- **Installing Alpine:** the wizard closes, the first tab is called "Alpine Linux" and with its prompt, and only then does "Keep sessions active" appear.
+- **Without a network (private DNS broken on purpose):** "Could not reach the official server. Check the connection and try again." with "Dismiss"; the form stays and the button becomes "Retry". With the network restored, "Retry" installs and opens the tab.
+- **Skip:** opens a "Shell 1" tab of the Android shell; after closing completely and relaunching without a distro, the wizard is shown again.
+- **Improvable:** on a phone "Install" sits at the bottom edge and "Restore"/"Skip" have to be scrolled to be seen; a fixed install button at the bottom would fix it. Not tested: restoring a backup from the wizard, rotating the screen midway through an installation, TalkBack.
+- **Method lesson:** to simulate "no network" **the Wi-Fi is not turned off** (the Pixel goes through wireless debugging and the adb connection is lost; besides, the adb port changes on reconnecting). Only the private DNS was broken (`private_dns_mode=hostname` with a nonexistent host) and deleted afterwards.
 
 ### D-REL-3 · 2026-10-05 · 0.1.0-rc.3
-- A petición del usuario se publica otra pre-release (`0.1.0-rc.3`, versionCode 10003) con el asistente de primer arranque (T25) y las notas de rendimiento; **no** se hace aún la final `0.1.0`. GitGuardian: los últimos 15 PRs tienen el check en SUCCESS; los incidentes del panel los gestionó el usuario.
+- At the user's request another pre-release (`0.1.0-rc.3`, versionCode 10003) is published with the first-run wizard (T25) and the performance notes; the final `0.1.0` is **not** made yet. GitGuardian: the last 15 PRs have the check in SUCCESS; the dashboard's incidents were handled by the user.
 
-### Décima ronda (tablet Huawei MRO-W09, 2026-10-05, `master` en `cc39941`): paneles divididos
-- Instalada la build de depuración de `master` encima de la anterior (misma firma de depuración, sin perder datos). Con la distro del propio usuario (Fedora), en horizontal: barra lateral con "+" y ⚙; "Dividir a la derecha" (pulsación larga en "+") abre un segundo panel con su prompt y su marco de foco; el panel de la izquierda mide 38 filas × 61 columnas según `stty size` y coincide con el ancho visible. Solo se escribió `stty size`; no se tocó nada de las distros del usuario.
-- **Comprobado después:** el panel derecho también da 38 × 61 (división simétrica) y, al girar a vertical con los dos paneles, cada PTY sigue a su panel (derecho 61 × 36, izquierdo unas 56 × 36; la fila de teclas extra aparece con el teclado). Los paneles y su foco se mantienen al rotar.
-- **Sin comprobar:** pantalla dividida del sistema (`--windowingMode 3/4` falla en este EMUI) y la captura de tablet para F-Droid (la pantalla muestra el nombre de usuario real del usuario y "MyFedora"; se evita publicarla tal cual).
-- Ajustes del sistema que se tocaron (rotación fija, pantalla encendida) restaurados.
+### Tenth round (Huawei MRO-W09 tablet, 2026-10-05, `master` at `cc39941`): split panes
+- The `master` debug build was installed on top of the previous one (same debug signature, without losing data). With the user's own distro (Fedora), in landscape: side bar with "+" and ⚙; "Split right" (long press on "+") opens a second pane with its prompt and its focus frame; the left pane measures 38 rows × 61 columns according to `stty size` and matches the visible width. Only `stty size` was typed; nothing of the user's distros was touched.
+- **Checked afterwards:** the right pane also gives 38 × 61 (symmetric split) and, when rotating to portrait with both panes, each PTY follows its pane (right 61 × 36, left about 56 × 36; the extra keys row appears with the keyboard). The panes and their focus are kept when rotating.
+- **Not checked:** the system's split screen (`--windowingMode 3/4` fails on this EMUI) and the tablet screenshot for F-Droid (the screen shows the user's real user name and "MyFedora"; publishing it as is is avoided).
+- System settings that were touched (fixed rotation, screen on) restored.
 
-### D-T20-8 · 2026-10-05 · `fdroid lint` pasa
-- Con `fdroidserver` 2.4.5 (entorno aislado, solo herramienta de desarrollo) y la configuración de categorías de `fdroiddata`, `fdroid lint com.qtekfun.ultimateterminal` termina sin avisos tras quitar los espacios finales de la línea `Binaries:` y aplicar el orden canónico de `fdroid rewritemeta` (categorías ordenadas). La huella de firma ya está en `AllowedAPKSigningKeys` (D-REL-2).
-- **Pendiente para enviarla a fdroiddata:** que la receta apunte a la primera versión final (`0.1.0`; F-Droid no ofrece las `-rc.N`) y comprobar que CMake 3.31.6 y el NDK fijado están disponibles en su servidor de compilación (D-T20-1..6).
+### D-T20-8 · 2026-10-05 · `fdroid lint` passes
+- With `fdroidserver` 2.4.5 (isolated environment, development tool only) and `fdroiddata`'s categories configuration, `fdroid lint com.qtekfun.ultimateterminal` ends without warnings after removing the trailing spaces of the `Binaries:` line and applying the canonical order of `fdroid rewritemeta` (sorted categories). The signing fingerprint is already in `AllowedAPKSigningKeys` (D-REL-2).
+- **Pending to send it to fdroiddata:** that the recipe points to the first final version (`0.1.0`; F-Droid does not offer the `-rc.N`) and checking that CMake 3.31.6 and the pinned NDK are available on its build server (D-T20-1..6).
 
-### Undécima ronda (tablet Huawei MRO-W09, 2026-10-05): pantalla dividida del sistema
-- El usuario puso la pantalla dividida a mano (EMUI 14, Android 12; el arrastre desde la barra lateral con `input` no la consigue): navegador a la izquierda (`mBounds` 0–1392 px) y el terminal a la derecha (1409–2800 px, `split-screen-secondary`), 1391 px de ancho. El terminal se ve con su barra lateral de pestañas y un prompt; no hay fallo visible. **Sin comprobar** por interferencias: `stty size` en ese ancho y al mover el divisor.
-- **Efectos colaterales de mis pruebas (a revisar por el usuario):** el escritorio del launcher del usuario muestra ahora los iconos "Navegador" y "Calculadora" (arrastrados sin querer al soltar el icono del dock en el borde); no los quité para no tocar su launcher. La Calculadora quedó con texto escrito ("size"). `am force-stop` dio excepciones internas de EMUI en esta tablet tras forzar `--windowingMode 3`.
-- **Lección:** en esta tablet no volver a automatizar gestos del sistema por `input` mientras el usuario prueba su launcher; para pantalla dividida, que la ponga el usuario.
+### Eleventh round (Huawei MRO-W09 tablet, 2026-10-05): system split screen
+- The user set the split screen by hand (EMUI 14, Android 12; dragging from the side bar with `input` does not achieve it): browser on the left (`mBounds` 0–1392 px) and the terminal on the right (1409–2800 px, `split-screen-secondary`), 1391 px wide. The terminal is seen with its tab side bar and a prompt; there is no visible failure. **Not checked** because of interference: `stty size` at that width and when moving the divider.
+- **Side effects of my tests (to be reviewed by the user):** the user's launcher desktop now shows the "Browser" and "Calculator" icons (dragged accidentally when dropping the dock icon at the edge); I did not remove them so as not to touch their launcher. The Calculator was left with text typed in ("size"). `am force-stop` gave internal EMUI exceptions on this tablet after forcing `--windowingMode 3`.
+- **Lesson:** on this tablet do not automate system gestures through `input` again while the user tests their launcher; for split screen, let the user set it.
 
-### Duodécima ronda (tablet Huawei MRO-W09, 2026-10-05): pantalla dividida verificada
-- Tras reiniciar la tablet (la división dejó de poder crearse después de mis intentos con `--windowingMode`, D-ronda 11), el usuario puso la pantalla dividida a mano: terminal a la izquierda (0–1391 px) y navegador a la derecha. Solo se tocó dentro del terminal (`stty size`): **43 filas × 49 columnas**, coherente con el ancho de la ventana (1391 px menos la barra lateral de pestañas, unas 50 columnas con márgenes) y la altura de la pantalla. La app mantiene la barra lateral en esa ventana y no hubo fallos.
-- **Visto, no investigado:** en la primera línea del terminal se ve una pequeña barra gris sobre "host" de `localhost` (restos de pintado tras redimensionar o cursor viejo); el prompt es legible. Candidato a revisar con una captura a mayor tamaño tras un nuevo redimensionado.
-- **Pendiente:** mover el divisor y comprobar que el PTY sigue (lo debe mover el usuario; el arrastre por `input` quedó descartado).
+### Twelfth round (Huawei MRO-W09 tablet, 2026-10-05): split screen verified
+- After restarting the tablet (the split could no longer be created after my attempts with `--windowingMode`, round 11), the user set the split screen by hand: terminal on the left (0–1391 px) and browser on the right. Only inside the terminal was touched (`stty size`): **43 rows × 49 columns**, consistent with the window's width (1391 px minus the tab side bar, about 50 columns with margins) and the screen's height. The app keeps the side bar in that window and there were no failures.
+- **Seen, not investigated:** on the terminal's first line a small gray bar is seen over "host" of `localhost` (painting leftovers after resizing or an old cursor); the prompt is legible. A candidate to review with a larger capture after a new resize.
+- **Pending:** moving the divider and checking that the PTY follows (the user has to move it; dragging through `input` was ruled out).
 
-### D-REL-4 · 2026-10-05 · Primera versión final: 0.1.0
-- A petición del usuario ("pues venga, dale") se corta la `0.1.0` final (versionCode 10099) tras las tres pre-releases: `appVersion=0.1.0`, notas en `## [0.1.0]` del changelog (resumen y limitaciones conocidas), changelogs de fastlane `10099.txt` (en/es). La receta de F-Droid (`fdroid/com.qtekfun.ultimateterminal.yml`) ya apuntaba a `0.1.0`/10099 con la huella de firma y pasa `fdroid lint` (D-T20-8): el siguiente paso es enviarla a fdroiddata, que es una acción pública y la decide el usuario.
+### D-REL-4 · 2026-10-05 · First final version: 0.1.0
+- At the user's request ("pues venga, dale") the final `0.1.0` (versionCode 10099) is cut after the three pre-releases: `appVersion=0.1.0`, notes in the changelog's `## [0.1.0]` (summary and known limitations), fastlane changelogs `10099.txt` (en/es). The F-Droid recipe (`fdroid/com.qtekfun.ultimateterminal.yml`) already pointed to `0.1.0`/10099 with the signing fingerprint and passes `fdroid lint` (D-T20-8): the next step is sending it to fdroiddata, which is a public action and is decided by the user.
 
-### D-T26-1 · 2026-10-05 · Barra lateral dinámica: dos estados y un ajuste (RF-16)
-- Petición del usuario para 0.1.1: que la barra lateral en horizontal se encoja al pulsar en el terminal. Estados: **desplegada** (192 dp, como antes) y **contraída** (franja de 56 dp = 48 dp táctiles + 4 dp de relleno a cada lado). Solo cambia en la barra lateral (ancho de ventana >= 600 dp); la barra superior no se toca, así que el Pixel 8 en vertical queda igual (en horizontal mide más de 600 dp y sí usa la barra lateral dinámica).
-- La barra empieza **desplegada** al abrir la app (es lo que el usuario ya conoce) y se contrae solo con un toque en un panel (el del panel enfocado y el de uno inactivo, que además le da el foco). No hay contracción por tiempo ni al escribir: contraer sin que el usuario toque nada sería sorprendente. El estado se guarda con `rememberSaveable` (sobrevive a girar la pantalla) y no se persiste entre aperturas.
-- Los eventos que cambian el estado (`SidebarEvent`: `TERMINAL_USED`, `EXPAND`, `COLLAPSE`, `TAB_ACTIONS_NEEDED`) y el modo (`SidebarMode`: `AUTO_COLLAPSE` por defecto, `ALWAYS_EXPANDED`) están en `domain/session/Sidebar.kt` como funciones puras con tests; la UI solo los envía.
+### D-T26-1 · 2026-10-05 · Dynamic side bar: two states and a setting (RF-16)
+- A user request for 0.1.1: that the side bar in landscape shrinks when tapping on the terminal. States: **expanded** (192 dp, as before) and **collapsed** (a 56 dp strip = 48 dp touch + 4 dp padding on each side). It only changes in the side bar (window width >= 600 dp); the top bar is not touched, so the Pixel 8 in portrait stays the same (in landscape it measures more than 600 dp and does use the dynamic side bar).
+- The bar starts **expanded** when opening the app (it is what the user already knows) and collapses only with a tap on a pane (the focused pane's and an inactive one's, which also gives it focus). There is no collapsing by time or when typing: collapsing without the user touching anything would be surprising. The state is saved with `rememberSaveable` (it survives rotating the screen) and is not persisted between openings.
+- The events that change the state (`SidebarEvent`: `TERMINAL_USED`, `EXPAND`, `COLLAPSE`, `TAB_ACTIONS_NEEDED`) and the mode (`SidebarMode`: `AUTO_COLLAPSE` by default, `ALWAYS_EXPANDED`) are in `domain/session/Sidebar.kt` as pure functions with tests; the UI only sends them.
 
-### D-T26-2 · 2026-10-05 · El ajuste y la copia de configuración
-- `AppSettings.sidebarMode`, guardado en la tabla `setting` con la clave `sidebar_mode` (sin migración de Room: es clave-valor; un valor ilegible vuelve al defecto). En Ajustes > Terminal un solo interruptor, «Contraer la barra lateral al usar el terminal»: activado es `AUTO_COLLAPSE` y desactivado es la opción «siempre desplegada» (con el interruptor apagado no se muestra ningún control para contraer).
-- Copia de configuración: `SettingsDto.sidebar: SidebarDto(version = 1, mode)`, nulo en copias anteriores (el dispositivo conserva su modo). Una **versión desconocida** no se interpreta (se conserva el modo del dispositivo, como con los atajos); un nombre de modo desconocido en la versión 1 pasa al defecto. `data.backup` sigue al 100 % de línea y de rama (cuatro tests nuevos de restauración y el recorrido completo de exportar y restaurar).
+### D-T26-2 · 2026-10-05 · The setting and the configuration backup
+- `AppSettings.sidebarMode`, saved in the `setting` table with the key `sidebar_mode` (no Room migration: it is key-value; an unreadable value goes back to the default). In Settings > Terminal a single switch, "Collapse the side bar when using the terminal": on is `AUTO_COLLAPSE` and off is the "always expanded" option (with the switch off no control to collapse is shown).
+- Configuration backup: `SettingsDto.sidebar: SidebarDto(version = 1, mode)`, null in earlier backups (the device keeps its mode). An **unknown version** is not interpreted (the device's mode is kept, as with shortcuts); an unknown mode name in version 1 goes to the default. `data.backup` stays at 100 % of line and branch (four new restore tests and the full export and restore path).
 
-### D-T26-3 · 2026-10-05 · El PTY se redimensiona una vez por cambio, no por fotograma
-- Elección: el área del terminal se **maqueta una sola vez con el ancho de destino** (`padding(start = ancho final)`), y durante la animación solo se **desliza el dibujo** con `graphicsLayer { translationX = ancho_actual - ancho_final }` (`slideOffsetPx`); la barra se dibuja encima con el ancho animado (200 ms). Así `onSizeChanged` del área, y con él el controlador de paneles y `LayoutEffect`, ven un único tamaño por cambio: ni un `SIGWINCH` por fotograma ni parpadeo del shell. No hace falta un debounce nuevo; la tubería existente (`settled`, T04/T10) sigue amortiguando lo demás (teclado, arrastre de ventana).
-- Descartado: medir el área mientras se anima y retrasar el aviso (un debounce hace tarde el primer cambio y, además, `onSizeChanged` llega con un fotograma de retraso respecto al valor animado, así que cualquier resta de «ancho actual - ancho final» oscilaría).
-- Coste visible: durante los 200 ms de la animación la parte del terminal que aún no llegó a su sitio queda cortada por el borde de la ventana al contraer, o con un hueco del color del esquema al desplegar; el contenido ya está al tamaño final. Los tests de geometría (`SidebarTest`) comprueban el desplazamiento y que `terminalLayoutFor` da una sola cuadrícula por ancho de destino (más columnas contraída que desplegada).
-- Sin perder el scrollback: `onArea` solo cambia el tamaño del PTY (el mismo camino que girar o abrir el teclado). **El foco y el teclado** no se tocan: la barra solo usa gestos táctiles, no pide foco, y el panel enfocado (`TerminalInputView`) no se recompone ni se recrea; sin comprobar en dispositivo.
-- Con «Quitar animaciones» (`Settings.Global.ANIMATOR_DURATION_SCALE` a 0) el ancho cambia de golpe (`snap`).
+### D-T26-3 · 2026-10-05 · The PTY is resized once per change, not per frame
+- Choice: the terminal area is **laid out only once with the target width** (`padding(start = final width)`), and during the animation only the **drawing is slid** with `graphicsLayer { translationX = current_width - final_width }` (`slideOffsetPx`); the bar is drawn on top with the animated width (200 ms). This way the area's `onSizeChanged`, and with it the panes controller and `LayoutEffect`, see a single size per change: neither a `SIGWINCH` per frame nor shell flicker. No new debounce is needed; the existing pipeline (`settled`, T04/T10) still dampens the rest (keyboard, window dragging).
+- Discarded: measuring the area while animating and delaying the notice (a debounce makes the first change late and, besides, `onSizeChanged` arrives a frame late with respect to the animated value, so any subtraction of "current width - final width" would oscillate).
+- Visible cost: during the 200 ms of the animation the part of the terminal that has not yet reached its place is cut by the window's edge when collapsing, or with a gap in the scheme's color when expanding; the content is already at the final size. The geometry tests (`SidebarTest`) check the offset and that `terminalLayoutFor` gives a single grid per target width (more columns collapsed than expanded).
+- Without losing the scrollback: `onArea` only changes the PTY's size (the same path as rotating or opening the keyboard). **The focus and the keyboard** are not touched: the bar only uses touch gestures, does not ask for focus, and the focused pane (`TerminalInputView`) is neither recomposed nor recreated; not checked on a device.
+- With "Remove animations" (`Settings.Global.ANIMATOR_DURATION_SCALE` at 0) the width changes at once (`snap`).
 
-### D-T26-4 · 2026-10-05 · La franja y sus pestañas
-- La franja muestra la **inicial** de cada pestaña (primera letra o cifra en mayúscula, `?` si no hay; `tabInitial`), con el óvalo del color de selección en la activa, y debajo «+» y ⚙ como siempre, con un chevrón arriba para desplegar. Al desplegada se añade un chevrón abajo para contraer. La vista de la franja se cambia cuando el ancho animado pasa de la mitad entre los dos anchos (sin fundido: más simple y sin parpadeos de texto cortado).
-- Tocar la franja donde no hay botones la despliega (para llegar con un dedo ancho); una pulsación larga sobre una pestaña de la franja también (ahí están el menú de renombrar y cerrar y el arrastre para reordenar, que no se duplican en la franja). El menú del «+» (pulsación larga) se abre en la propia franja sin desplegarla: no necesita más ancho.
-- Accesibilidad: cada pestaña de la franja usa los mismos textos y acciones que la completa (nombre, «pestaña n de m», estado, seleccionada, renombrar, cerrar, mover antes o después) y suma la acción personalizada «Desplegar la barra lateral» o «Contraer la barra lateral» (la segunda solo si el ajuste lo permite); los chevrones son botones de 48 dp con etiqueta. Textos en `values/` y `values-es/`.
-- **No hecho:** el gesto de deslizar desde el borde izquierdo (opcional en la petición) ni un atajo de teclado para alternar la barra (añadir una `AppShortcut` toca el modelo, el editor, la visualización y los atajos de la copia de configuración; queda para una tarea aparte). Con un teclado físico se llega con el ratón o con TalkBack.
+### D-T26-4 · 2026-10-05 · The strip and its tabs
+- The strip shows each tab's **initial** (first letter or digit in uppercase, `?` if there is none; `tabInitial`), with the oval in the selection color on the active one, and below "+" and ⚙ as always, with a chevron on top to expand. When expanded a chevron is added at the bottom to collapse. The strip's view is switched when the animated width passes the midpoint between the two widths (no fade: simpler and without clipped-text flicker).
+- Tapping the strip where there are no buttons expands it (to be reachable with a wide finger); a long press on a strip tab also does (that is where the rename and close menu and the drag to reorder are, which are not duplicated in the strip). The "+" menu (long press) opens in the strip itself without expanding it: it does not need more width.
+- Accessibility: each strip tab uses the same texts and actions as the full one (name, "tab n of m", state, selected, rename, close, move before or after) and adds the custom action "Expand the side bar" or "Collapse the side bar" (the second only if the setting allows it); the chevrons are 48 dp buttons with a label. Texts in `values/` and `values-es/`.
+- **Not done:** the swipe gesture from the left edge (optional in the request) nor a keyboard shortcut to toggle the bar (adding an `AppShortcut` touches the model, the editor, the display and the configuration backup's shortcuts; it is left for a separate task). With a physical keyboard it is reached with the mouse or with TalkBack.
 
-### D-T26-5 · 2026-10-05 · Estructura
-- `ui/Sidebar.kt` (estado, ancho animado, `SidebarControl`), `ui/TabRail.kt` (pestaña de la franja, botón del chevron, `tabSpeech`) y la bifurcación en `ui/TabBar.kt`; `TerminalScreen` coloca la barra encima del terminal (`SideLayout`) y recibe `sidebarMode` de `MainActivity`. detekt obligó a repartir funciones en archivos y a agrupar parámetros (`GridReserve`); no se relajó ninguna regla.
+### D-T26-5 · 2026-10-05 · Structure
+- `ui/Sidebar.kt` (state, animated width, `SidebarControl`), `ui/TabRail.kt` (strip tab, chevron button, `tabSpeech`) and the branch in `ui/TabBar.kt`; `TerminalScreen` places the bar next to the terminal (`SideLayout`) and receives `sidebarMode` from `MainActivity`. detekt forced distributing functions into files and grouping parameters (`GridReserve`); no rule was relaxed.
 
-### D-T26-6 · 2026-10-05 · Qué falta comprobar en dispositivo
-- Todo lo de RF-16 está probado solo en host (estado, geometría, ajuste y copia). Falta ver en el Pixel 8 (horizontal; en vertical debe seguir igual) y en la tablet (horizontal y pantalla dividida): que contraer al tocar gana columnas (`stty size`), que desplegar las devuelve sin dañar el scrollback, que el teclado no se cierra durante la animación, el aspecto de la franja, TalkBack y «Quitar animaciones».
+### D-T26-6 · 2026-10-05 · What remains to be checked on a device
+- Everything in RF-16 is tested on the host only (state, geometry, setting and backup). Still to see on the Pixel 8 (landscape; in portrait it must stay the same) and on the tablet (landscape and split screen): that collapsing on tap gains columns (`stty size`), that expanding returns them without damaging the scrollback, that the keyboard does not close during the animation, the strip's look, TalkBack and "Remove animations".
 
-### D-T26-7 · 2026-10-05 · La barra lateral no se queda con el teclado (corrige D-T26-3)
-- **Fallo (Pixel 8, horizontal):** tras tocar el terminal la barra se contraía y el teclado se abría, pero lo escrito no llegaba al terminal, y una cadena con espacio volvía a desplegar la barra y cerraba el teclado. **D-T26-3 se equivocaba** al dar por hecho que la barra no toma el foco: los botones (`clickable`, `combinedClickable`) de la barra y de la franja son objetivos de foco de Compose, y, al entrar en modo teclado (las teclas de `adb input` o un teclado físico sacan a la ventana del modo táctil), el foco pasaba del `TerminalInputView` a un chevron o a una pestaña, que recibía las teclas: Espacio/Intro lo pulsaban (desplegar) y la vista de entrada dejaba de ser el editor, así que el teclado se cerraba. Causa exacta en el dispositivo sin confirmar; el arreglo cubre las dos rutas plausibles.
-- **Arreglo, 1:** la barra entera lleva `focusProperties { canFocus = false }` (`TabStrip`), y el chevron (`SidebarButton`) deja de usar `clickable`: gesto de toque más la acción semántica `onClick(label)`, con el mismo `contentDescription`, rol y 48 dp, así que TalkBack conserva sus acciones. **2:** `TerminalInputView` recuerda lo que pidió el usuario (`keyboardWanted`: `showKeyboard` sí, `hideKeyboard` no) y `restoreKeyboard()` devuelve el foco y el teclado si se querían y se perdieron; `TerminalScreen` lo llama al cambiar `sidebar.open` y otra vez cuando la animación ha terminado. Nunca oculta nada, y solo actúa con la ventana enfocada (un diálogo con campo de texto no pierde sus teclas).
-- La decisión es lógica pura (`KeyboardIntent`, con tests) y hay un test de código fuente (`SidebarFocusGuardTest`) que impide volver a poner un `clickable` en el chevron, quita el `canFocus = false`, hace que la barra oculte el teclado o que otra pantalla distinta de las cubiertas llame a `hideKeyboard`. Sin teclado cerrado por la barra: contraer y desplegar nunca lo ocultan.
-- **Falta en dispositivo:** Pixel 8 en horizontal y la tablet: tocar el terminal, escribir letras, espacio, Intro, Retroceso, Tab, flechas y Ctrl/Alt (con `adb input` o teclado físico) sin que la barra cambie ni el teclado se cierre; TalkBack sobre el chevron y las pestañas.
+### D-T26-7 · 2026-10-05 · The side bar does not keep the keyboard (corrects D-T26-3)
+- **Bug (Pixel 8, landscape):** after tapping the terminal the bar collapsed and the keyboard opened, but what was typed did not reach the terminal, and a string with a space expanded the bar again and closed the keyboard. **D-T26-3 was wrong** in assuming that the bar does not take focus: the buttons (`clickable`, `combinedClickable`) of the bar and the strip are Compose focus targets, and, when entering keyboard mode (`adb input` keys or a physical keyboard take the window out of touch mode), the focus passed from the `TerminalInputView` to a chevron or to a tab, which received the keys: Space/Enter pressed it (expand) and the input view stopped being the editor, so the keyboard closed. The exact cause on the device is unconfirmed; the fix covers the two plausible paths.
+- **Fix, 1:** the whole bar carries `focusProperties { canFocus = false }` (`TabStrip`), and the chevron (`SidebarButton`) stops using `clickable`: a tap gesture plus the semantic action `onClick(label)`, with the same `contentDescription`, role and 48 dp, so TalkBack keeps its actions. **2:** `TerminalInputView` remembers what the user asked for (`keyboardWanted`: `showKeyboard` yes, `hideKeyboard` no) and `restoreKeyboard()` gives back the focus and the keyboard if they were wanted and lost; `TerminalScreen` calls it when `sidebar.open` changes and again when the animation has finished. It never hides anything, and it only acts with the window focused (a dialog with a text field does not lose its keys).
+- The decision is pure logic (`KeyboardIntent`, with tests) and there is a source-code test (`SidebarFocusGuardTest`) that prevents putting a `clickable` on the chevron again, removing the `canFocus = false`, making the bar hide the keyboard or another screen other than the covering ones calling `hideKeyboard`. No keyboard closed by the bar: collapsing and expanding never hide it.
+- **Missing on a device:** Pixel 8 in landscape and the tablet: tapping the terminal, typing letters, space, Enter, Backspace, Tab, arrows and Ctrl/Alt (with `adb input` or a physical keyboard) without the bar changing or the keyboard closing; TalkBack on the chevron and the tabs.
 
-### D-FIX-9 · 2026-10-05 · El teclado ya no tapa el campo enfocado (hojas y pantallas)
-- Causa: `IosBottomSheet` es un diálogo con `decorFitsSystemWindows = false` y una altura fija (fracción de la ventana) pegada al borde inferior. El teclado se dibujaba encima de la hoja y el `imePadding()` que cada hoja ponía **dentro** del scroll solo añadía hueco al final del contenido: el campo seguía debajo del teclado. En la pantalla de configuración inicial el `LazyColumn` no usaba los insets del teclado y nadie pedía traer el campo a la vista.
-- Arreglo en un solo sitio (`ui/ios`): (1) la hoja se levanta sobre el teclado (`padding(bottom = ime)`) y su altura sale de `SheetDetents.heightAboveKeyboard`, función pura con tests: sin teclado conserva su detent; con teclado se recorta al 94 % del espacio que queda (en horizontal y en tablet, con teclado pequeño, no cambia nada). El relleno inferior de la barra de navegación excluye el teclado (`navigationBars.exclude(ime)`) para no contarlo dos veces. (2) `Modifier.bringIntoViewOnFocus()` (`ImeFocus.kt`), puesto en `IosTextField` e `IosTextArea`, pide traer el campo a la vista al enfocarse y de nuevo cada vez que cambia el alto del teclado (entra después del foco). Usa el único scroll de la hoja: no se anida ningún otro (`SheetScrollNestingTest` sigue pasando). (3) `IosLargeTitleScreen` (setup, perfiles, SSH, Apariencia, etc.) aplica `imePadding()` a su lista, así el campo y el botón principal quedan accesibles; el manifiesto ya tiene `adjustResize` y `enableEdgeToEdge()`.
-- Se quitaron los `Column(Modifier.imePadding())` de todas las hojas (ahora lo hace la hoja una vez; mantenerlos habría añadido un hueco duplicado).
-- Los avisos centrados (`NamePrompt`, `IosAlert`) no cambian: son diálogos pequeños con la ventana redimensionable por defecto.
-- Sin comprobar en dispositivo: falta el Pixel 8 con el teclado abierto en la hoja de instalar distro, la pantalla de configuración inicial, renombrar, el formulario de perfil, la hoja de guardar disposición y la de atajos.
+### D-FIX-9 · 2026-10-05 · The keyboard no longer covers the focused field (sheets and screens)
+- Cause: `IosBottomSheet` is a dialog with `decorFitsSystemWindows = false` and a fixed height (a fraction of the window) stuck to the bottom edge. The keyboard was drawn over the sheet and the `imePadding()` that each sheet put **inside** the scroll only added room at the end of the content: the field was still below the keyboard. In the initial setup screen the `LazyColumn` did not use the keyboard's insets and nobody asked to bring the field into view.
+- Fix in a single place (`ui/ios`): (1) the sheet is lifted above the keyboard (`padding(bottom = ime)`) and its height comes from `SheetDetents.heightAboveKeyboard`, a pure function with tests: without a keyboard it keeps its detent; with a keyboard it is clipped to 94 % of the space left (in landscape and on a tablet, with a small keyboard, nothing changes). The navigation bar's bottom padding excludes the keyboard (`navigationBars.exclude(ime)`) so as not to count it twice. (2) `Modifier.bringIntoViewOnFocus()` (`ImeFocus.kt`), put on `IosTextField` and `IosTextArea`, asks to bring the field into view when focused and again every time the keyboard's height changes (it comes in after the focus). It uses the sheet's single scroll: no other is nested (`SheetScrollNestingTest` still passes). (3) `IosLargeTitleScreen` (setup, profiles, SSH, Appearance, etc.) applies `imePadding()` to its list, so the field and the main button stay accessible; the manifest already has `adjustResize` and `enableEdgeToEdge()`.
+- The `Column(Modifier.imePadding())` were removed from all the sheets (now the sheet does it once; keeping them would have added a duplicated gap).
+- The centered notices (`NamePrompt`, `IosAlert`) do not change: they are small dialogs with the window resizable by default.
+- Not checked on a device: the Pixel 8 with the keyboard open in the install distro sheet, the initial setup screen, rename, the profile form, the save layout sheet and the shortcuts one.
 
-## D-KBD · Tipo de teclado en pantalla (fix/avoid-secure-keyboard)
+## D-KBD · On-screen keyboard type (fix/avoid-secure-keyboard)
 
-### D-KBD-1 · Causa y arreglo
-- `TerminalInputView.onCreateInputConnection` declaraba `TYPE_TEXT_VARIATION_VISIBLE_PASSWORD`. Los marcos de teclado de varios fabricantes (EMUI/HarmonyOS, MIUI/HyperOS, ColorOS y otros) tratan cualquier campo de contraseña como entrada segura y muestran su teclado seguro en lugar del normal. Es la causa por el código; **la hipótesis no se ha comprobado en un móvil de esas marcas**.
-- Se añade el ajuste «Tipo de teclado» (`KeyboardType`): **Normal** (por defecto: `TYPE_CLASS_TEXT or NO_SUGGESTIONS`, sin variación; `AUTO_COMPLETE` no se activa), **Compatible** (el comportamiento anterior, con la variación de contraseña visible) y **Sin procesar** (`TYPE_NULL`, como la opción `input-type` de Termux). Las `imeOptions` (`NO_FULLSCREEN`, `NO_EXTRACT_UI`, `NO_PERSONALIZED_LEARNING`) son las mismas en las tres.
-- El valor por defecto es Normal para todos los dispositivos: **no se detecta el fabricante** (frágil y inexacto). Quien note que su teclado autocorrige en el terminal, elige Compatible. Coste: en el Pixel 8 con Gboard hay que comprobar si Normal basta para que no autocorrija ni componga de más (por eso el ajuste existe).
+### D-KBD-1 · Cause and fix
+- `TerminalInputView.onCreateInputConnection` declared `TYPE_TEXT_VARIATION_VISIBLE_PASSWORD`. The keyboard frameworks of several manufacturers (EMUI/HarmonyOS, MIUI/HyperOS, ColorOS and others) treat any password field as secure input and show their secure keyboard instead of the normal one. It is the cause according to the code; **the hypothesis has not been checked on a phone of those brands**.
+- A "Keyboard type" setting is added (`KeyboardType`): **Normal** (default: `TYPE_CLASS_TEXT or NO_SUGGESTIONS`, no variation; `AUTO_COMPLETE` is not turned on), **Compatible** (the previous behavior, with the visible-password variation) and **Raw** (`TYPE_NULL`, like Termux's `input-type` option). The `imeOptions` (`NO_FULLSCREEN`, `NO_EXTRACT_UI`, `NO_PERSONALIZED_LEARNING`) are the same in the three.
+- The default value is Normal for all devices: **the manufacturer is not detected** (fragile and inexact). Whoever notices their keyboard autocorrects in the terminal, chooses Compatible. Cost: on the Pixel 8 with Gboard it has to be checked whether Normal is enough for it not to autocorrect or compose too much (that is why the setting exists).
 
-### D-KBD-2 · Estructura y persistencia
-- `domain/terminal/KeyboardType.kt`: el enum, `parse` (un nombre desconocido es el valor por defecto) y `KeyboardFlags.of`, que da `inputType` e `imeOptions` con constantes locales; un test las compara con las de `InputType`/`EditorInfo` y comprueba cada modo, así se prueba sin Android.
-- `AppSettings.keyboardType`, clave `keyboard_type` en Room (`RoomSettingsRepository`), `SettingsViewModel.setKeyboardType` y una sección de tres filas con marca en Ajustes > Teclado, con una línea de pie por opción (incluye que el teclado seguro de algunos fabricantes puede aparecer con Compatible). Textos en `values/` y `values-es/`.
-- Copia de configuración: `SettingsDto.keyboard: KeyboardDto?` con `version` (1) y `type`, igual que `SidebarDto`: null (copia anterior) o una versión que esta app no conoce deja el valor del dispositivo; un nombre desconocido es el valor por defecto. Tests en `ConfigRestoreSettingsTest` y `ConfigRestoreTest`; `data.backup` sigue al 100 %.
-- La vista lo recibe por `LocalKeyboardType` (`MainActivity` lo provee desde los ajustes, como `LocalTerminalCovered`) y `TerminalOverlays` lo asigna a `TerminalInputView.keyboardType`; el setter llama a `InputMethodManager.restartInput(view)` solo si el valor cambia, porque `onCreateInputConnection` se lee al conectar el teclado.
+### D-KBD-2 · Structure and persistence
+- `domain/terminal/KeyboardType.kt`: the enum, `parse` (an unknown name is the default value) and `KeyboardFlags.of`, which gives `inputType` and `imeOptions` with local constants; a test compares them with those of `InputType`/`EditorInfo` and checks each mode, so it is tested without Android.
+- `AppSettings.keyboardType`, key `keyboard_type` in Room (`RoomSettingsRepository`), `SettingsViewModel.setKeyboardType` and a three-row section with a mark in Settings > Keyboard, with a footer line per option (it includes that some manufacturers' secure keyboard may appear with Compatible). Texts in `values/` and `values-es/`.
+- Configuration backup: `SettingsDto.keyboard: KeyboardDto?` with `version` (1) and `type`, like `SidebarDto`: null (earlier backup) or a version this app does not know leaves the device's value; an unknown name is the default value. Tests in `ConfigRestoreSettingsTest` and `ConfigRestoreTest`; `data.backup` stays at 100 %.
+- The view receives it through `LocalKeyboardType` (`MainActivity` provides it from the settings, like `LocalTerminalCovered`) and `TerminalOverlays` assigns it to `TerminalInputView.keyboardType`; the setter calls `InputMethodManager.restartInput(view)` only if the value changes, because `onCreateInputConnection` is read when the keyboard connects.
 
-### D-KBD-3 · Flujo de texto con el teclado normal
-- `ComposingText` no cambia: envía la edición mínima (borrar lo que cambió, escribir lo nuevo) para `setComposingText`/`commitText`, y `deleteSurroundingText` pasa tal cual como Retroceso. Con el campo normal y `NO_SUGGESTIONS` el teclado no debería sugerir ni autocorregir, pero si compone, el resultado en la línea es el mismo. Nuevos tests en `ComposingTextTest` con una línea simulada: composición sustituida por otra, `commit` distinto de lo compuesto, borrar tras confirmar, borrar dentro de la composición y seguir, el espacio automático tras puntuación (borrar 1 y escribir «. »), escribir deslizando y sustituir la palabra, `\n` como texto (el teclado lo convierte en `\r`) y fin de composición. `newCursorPosition` se sigue ignorando (el terminal no tiene cursor de edición). Enter y Retroceso como eventos de tecla, Ctrl/Alt pegajosos y el teclado físico no se tocan.
-- En **Sin procesar** la conexión sigue existiendo y atiende `sendKeyEvent`; sin `TYPE_NULL` real no se puede saber qué teclado manda eventos de tecla y cuál texto: comprobar en dispositivo.
+### D-KBD-3 · Text flow with the normal keyboard
+- `ComposingText` does not change: it sends the minimal edit (delete what changed, write the new) for `setComposingText`/`commitText`, and `deleteSurroundingText` passes through as Backspace. With the normal field and `NO_SUGGESTIONS` the keyboard should not suggest or autocorrect, but if it composes, the result on the line is the same. New tests in `ComposingTextTest` with a simulated line: composition replaced by another, `commit` different from what was composed, deleting after confirming, deleting inside the composition and continuing, the automatic space after punctuation (delete 1 and write ". "), swipe typing and replacing the word, `\n` as text (the keyboard converts it into `\r`) and end of composition. `newCursorPosition` is still ignored (the terminal has no editing cursor). Enter and Backspace as key events, sticky Ctrl/Alt and the physical keyboard are not touched.
+- In **Raw** the connection still exists and serves `sendKeyEvent`; without a real `TYPE_NULL` it cannot be known which keyboard sends key events and which text: check on a device.
 
-### D-KBD-4 · Qué falta comprobar en dispositivo
-- Pixel 8 con Gboard en los tres modos: que escribir llega a la shell sin esperar a ocultar el teclado, que Normal no autocorrige, Retroceso y Enter, y que cambiar de modo con el teclado abierto lo reinicia. Un móvil Huawei/Honor, Xiaomi u OPPO: que con Normal sale el teclado normal y no el seguro, y qué pasa con Compatible.
+### D-KBD-4 · What remains to be checked on a device
+- Pixel 8 with Gboard in the three modes: that typing reaches the shell without waiting for the keyboard to be hidden, that Normal does not autocorrect, Backspace and Enter, and that switching mode with the keyboard open restarts it. A Huawei/Honor, Xiaomi or OPPO phone: that with Normal the normal keyboard comes out and not the secure one, and what happens with Compatible.
 
-### D-BAK-1 · 2026-10-05 · Los distros se quedan en el almacenamiento privado (no a la sdcard)
-- Informe: exportar una copia fallaba con «cannot read /data/user/0/.../files/storage/distros/<id>/...» y se sugería mover los distros a una carpeta de la sdcard «para poder leerlos».
-- **No se hace.** El almacenamiento compartido (FUSE/sdcardfs, tipo FAT) no tiene enlaces simbólicos, permisos ni propietarios POSIX ni bit de ejecución y se monta `noexec`: proot y los distros dejarían de funcionar. Además cualquier app lo leería (seguridad) y el almacenamiento con ámbito de Android 11 o posterior lo impide. Lo que el usuario quiere de verdad (llegar a sus copias y a sus archivos) lo cubren: (a) arreglar la exportación (D-BAK-2), (b) una ubicación visible para las copias (el selector del sistema, D-BAK-5) y (c) `~/storage`, que ya monta el almacenamiento compartido dentro del distro (D-T13-1). La razón y los pasos están en la FAQ del README y en la página Ajustes > Copias.
+### D-BAK-1 · 2026-10-05 · The distros stay in private storage (not on the sdcard)
+- Report: exporting a backup failed with "cannot read /data/user/0/.../files/storage/distros/<id>/..." and it was suggested to move the distros to a folder on the sdcard "so they can be read".
+- **It is not done.** Shared storage (FUSE/sdcardfs, FAT-like) has no symbolic links, permissions or POSIX owners or execute bit and is mounted `noexec`: proot and the distros would stop working. Besides, any app would read it (security) and Android 11 or later's scoped storage prevents it. What the user really wants (reaching their backups and their files) is covered by: (a) fixing the export (D-BAK-2), (b) a visible location for backups (the system picker, D-BAK-5) and (c) `~/storage`, which already mounts the shared storage inside the distro (D-T13-1). The reason and the steps are in the README's FAQ and on the Settings > Backups page.
 
-### D-BAK-2 · 2026-10-05 · Causa raíz y arreglo: la app abre para sí misma lo que ella posee
-- **Causa:** el extractor conserva los modos del archivo (D-T07-4) y los ficheros son de la app. Un distro como Fedora trae ficheros que solo root lee (`/etc/shadow`, `shadow-`, `gshadow`, `gshadow-` en modo 000, `usr/bin/sudo` y `sudoreplay` solo-ejecución). En un Linux real el kernel deja leer a root; bajo proot el invitado es root pero el **anfitrión** (la app) no, y `Files.newInputStream` falla. La hipótesis de D-T15-7 («si aparece en distros reales, habrá que cambiarlo») se confirmó: el exportador recorría el árbol y abría esos ficheros tal cual.
-- **Arreglo (`OwnerAccess`, `TreeWalker`):** la app es la dueña, así que antes de leer añade el bit de lectura del propietario (`u+r`; en un directorio, `u+rx`) con `chmod` por ruta (`File.setReadable(true, true)`: no abre el fichero, y `Files.setPosixFilePermissions` sí lo abre y falla con un fichero 000) y **lo deja como estaba** al terminar. La cabecera del tar lleva el modo original, leído antes de tocar nada (`unix:mode`, con respaldo a los nueve bits). Nunca se toca ni se sigue un enlace simbólico (`NOFOLLOW_LINKS`, y `addOwner` rechaza un enlace); los enlaces absolutos o rotos se guardan como enlaces. Los enlaces duros se archivan como ficheros independientes (D-T15-7): el contenido y el modo son idénticos, el enlace no.
-- `Files.walkFileTree` abre el directorio **antes** de avisar al visitante, demasiado tarde para arreglar su modo; por eso hay un recorrido propio (`TreeWalker`) que abre el directorio, lo lista **ordenado por nombre** (el tar es el mismo cada vez) y lo restaura. Lo usan la exportación, la duplicación (`FileTrees.copy`, que además conserva el modo 000 de la copia y pone la hora antes del modo), el borrado (abre `rwx`) y el tamaño (`FileTrees.size`, que además se salta lo que no se pueda listar: es una estimación).
-- Un fichero que no se puede leer ni así (desapareció, error de E/S) **hace fallar la exportación de forma atómica** con `BackupError.UnreadableFile(ruta, denegado)`: la ruta es relativa al distro, el mensaje está localizado (en/es) y no alarmista, no se escribe nada y el directorio de trabajo se borra (reglas transaccionales de CLAUDE.md). Se prefirió fallar a omitir en silencio: una copia incompleta que parece buena es peor.
+### D-BAK-2 · 2026-10-05 · Root cause and fix: the app opens for itself what it owns
+- **Cause:** the extractor keeps the archive's modes (D-T07-4) and the files belong to the app. A distro like Fedora carries files that only root reads (`/etc/shadow`, `shadow-`, `gshadow`, `gshadow-` in mode 000, `usr/bin/sudo` and `sudoreplay` execute-only). On a real Linux the kernel lets root read; under proot the guest is root but the **host** (the app) is not, and `Files.newInputStream` fails. D-T15-7's hypothesis ("if it appears in real distros, it will have to be changed") was confirmed: the exporter walked the tree and opened those files as they were.
+- **Fix (`OwnerAccess`, `TreeWalker`):** the app is the owner, so before reading it adds the owner's read bit (`u+r`; on a directory, `u+rx`) with a per-path `chmod` (`File.setReadable(true, true)`: it does not open the file, and `Files.setPosixFilePermissions` does open it and fails with a 000 file) and **leaves it as it was** when finished. The tar header carries the original mode, read before touching anything (`unix:mode`, falling back to the nine bits). A symbolic link is never touched or followed (`NOFOLLOW_LINKS`, and `addOwner` rejects a link); absolute or broken links are stored as links. Hard links are archived as independent files (D-T15-7): content and mode are identical, the link is not.
+- `Files.walkFileTree` opens the directory **before** notifying the visitor, too late to fix its mode; that is why there is a walker of our own (`TreeWalker`) that opens the directory, lists it **sorted by name** (the tar is the same every time) and restores it. It is used by export, duplication (`FileTrees.copy`, which also keeps the copy's 000 mode and sets the time before the mode), deletion (opens `rwx`) and size (`FileTrees.size`, which also skips what cannot be listed: it is an estimate).
+- A file that cannot be read even so (it disappeared, an I/O error) **makes the export fail atomically** with `BackupError.UnreadableFile(path, denied)`: the path is relative to the distro, the message is localized (en/es) and not alarmist, nothing is written and the working directory is deleted (CLAUDE.md's transactional rules). Failing was preferred to skipping silently: an incomplete backup that looks good is worse.
 
-### D-BAK-3 · 2026-10-05 · Qué se hace al instalar/restaurar con los modos (con la evidencia del código)
-- Elegido: **el disco conserva el modo del archivo** (un fichero 000 se queda 000) y los lectores del lado del anfitrión pasan por `OwnerAccess`. Evidencia: proot no lee los modos de ficheros de un archivo lateral ni de xattr, solo del disco; el kernel decide con el modo real, así que cambiar el modo en disco cambiaría lo que ve `ls -l` en el invitado y rompería la copia exacta de modos que se pide. Los directorios ya llevaban `rwx` de propietario añadido (D-T07-4: hace falta para moverlos y borrarlos), así que **en la copia un directorio sale con ese `u+rwx`** (p. ej. 000 -> 700); es la única diferencia de modo conocida.
-- **setuid, setgid y sticky siguen descartándose** al instalar y restaurar (decisión de seguridad de D-T07-4, sin cambiar: un archivo hostil no debe dejar bits especiales). El exportador sí lee los 12 bits si el sistema de ficheros los da. Por tanto un `sudo` 4111 original vuelve como 0111. Bajo proot no hace falta (el invitado ya es root falso); **si en el dispositivo se viera 4111 en el anfitrión habría que averiguar quién lo puso** (queda en la lista de D-BAK-6).
-- Limitación conocida, no nueva: bajo proot un fichero 000 tampoco lo lee el root del invitado (el kernel manda); un posible cambio futuro es dar `u+rw` a esos ficheros en disco, con el coste de que `ls -l` dejaría de coincidir. Sin evidencia de dispositivo no se toca.
+### D-BAK-3 · 2026-10-05 · What is done when installing/restoring with the modes (with the code's evidence)
+- Chosen: **the disk keeps the archive's mode** (a 000 file stays 000) and the host-side readers go through `OwnerAccess`. Evidence: proot does not read file modes from a side archive or from xattr, only from the disk; the kernel decides with the real mode, so changing the mode on disk would change what `ls -l` sees in the guest and would break the exact copy of modes that is asked for. Directories already carried the owner's `rwx` added (D-T07-4: it is needed to move and delete them), so **in the backup a directory comes out with that `u+rwx`** (e.g. 000 -> 700); it is the only known mode difference.
+- **setuid, setgid and sticky are still dropped** when installing and restoring (a security decision of D-T07-4, unchanged: a hostile archive must not leave special bits). The exporter does read all 12 bits if the file system gives them. Therefore an original 4111 `sudo` comes back as 0111. Under proot it is not needed (the guest is already fake root); **if 4111 were seen on the host on the device it would have to be found out who put it there** (it stays in D-BAK-6's list).
+- Known limitation, not new: under proot a 000 file is not read by the guest's root either (the kernel rules); a possible future change is giving `u+rw` to those files on disk, at the cost that `ls -l` would stop matching. Without evidence from a device it is not touched.
 
-### D-BAK-4 · 2026-10-05 · Restaurar en la configuración inicial no debe cerrarse con el primer distro
-- Hallado al revisar el camino completo: una restauración instala los distros uno a uno y aplica la configuración (y con ella el distro predeterminado y su usuario) al final. `FirstRunSetup` cerraba el asistente al primer distro listo y `SetupViewModel` forzaba como predeterminado el de mayor id, así que la primera pestaña podía abrirse con un distro equivocado mientras seguía la restauración.
-- Ahora `RestoreActivity` (singleton, la pone `BackupViewModel` alrededor de la restauración) alimenta `SetupInputs.restoring`: con una restauración en curso el asistente se queda (salvo «omitir») y no se fuerza ningún predeterminado; al terminar, la configuración ya fijó el suyo y el asistente se cierra, y la primera pestaña abre el distro predeterminado (RF-13) sin pasos manuales.
+### D-BAK-4 · 2026-10-05 · Restoring in the initial setup must not close with the first distro
+- Found when reviewing the full path: a restore installs the distros one by one and applies the configuration (and with it the default distro and its user) at the end. `FirstRunSetup` closed the wizard at the first ready distro and `SetupViewModel` forced the one with the highest id as default, so the first tab could open with a wrong distro while the restore continued.
+- Now `RestoreActivity` (a singleton, put by `BackupViewModel` around the restore) feeds `SetupInputs.restoring`: with a restore in progress the wizard stays (except "skip") and no default is forced; when it ends, the configuration has already set its own and the wizard closes, and the first tab opens the default distro (RF-13) with no manual steps.
 
-### D-BAK-5 · 2026-10-05 · Dónde va la copia y cómo se llama
-- El selector del sistema (SAF, `CreateDocument`) elige la ubicación: Descargas, una memoria USB, la nube. El nombre sugerido es `UltimateTerminal-<fecha>.utbackup` (todo), `UltimateTerminal-settings-<fecha>` o `UltimateTerminal-<distro>-<fecha>` (`BackupFileName`, puro y con tests; el nombre del distro se reduce a letras, cifras y `_`). Ajustes > Copias lo explica y el mensaje final da el nombre del archivo, su tamaño y la recomendación de copiarlo a un sitio seguro. FAQ en el README.
-- La copia se hace por flujos: cada distro se archiva a un fichero de trabajo privado y de ahí pasa al archivo final con buffers de 64 KiB, sin cargarlo en memoria; la restauración hace dos pasadas por el flujo (verificar y restaurar). Un fallo o cancelación borra el fichero de destino (`discard`) y el trabajo.
+### D-BAK-5 · 2026-10-05 · Where the backup goes and what it is called
+- The system picker (SAF, `CreateDocument`) chooses the location: Downloads, a USB drive, the cloud. The suggested name is `UltimateTerminal-<date>.utbackup` (everything), `UltimateTerminal-settings-<date>` or `UltimateTerminal-<distro>-<date>` (`BackupFileName`, pure and with tests; the distro's name is reduced to letters, digits and `_`). Settings > Backups explains it and the final message gives the file's name, its size and the recommendation to copy it to a safe place. FAQ in the README.
+- The backup is made through streams: each distro is archived to a private working file and from there it goes to the final file with 64 KiB buffers, without loading it into memory; restoring makes two passes through the stream (verify and restore). A failure or cancellation deletes the destination file (`discard`) and the work.
 
-### D-BAK-6 · 2026-10-05 · Lista de comprobación en un dispositivo real (Pixel 8): exportar todo -> desinstalar -> instalar -> asistente -> restaurar
-Con tests en el anfitrión (JVM): modos, enlaces (absolutos, relativos, rotos), ficheros 000 y solo-ejecución, directorio cerrado, fichero que cambia de modo durante la exportación, ruta base distinta, nombre de directorio nuevo, 2 MiB incompresibles, con contraseña y sin ella, contraseña errónea, archivo cortado, formato futuro, atomicidad, nombre sugerido, asistente que espera a la restauración. **No se puede comprobar sin dispositivo:**
-1. Con Fedora instalado (y Alpine), exportar «todo» con contraseña, guardando en Descargas y en una memoria USB: nombre sugerido, progreso, cancelar a mitad (no queda archivo), mensaje con nombre y tamaño. Fedora (~195 MB) sin errores de memoria y sin «cannot read».
-2. Copiar el archivo a un PC y de vuelta (o usar el de la memoria USB); desinstalar la app; instalarla; el asistente: «Restaurar de una copia», elegir el archivo, pedir la contraseña, esperar. Después: el asistente se cierra solo y la primera pestaña es el distro predeterminado con su usuario, sin pasos manuales.
-3. `ls -l /etc/shadow /usr/bin/sudo /etc/gshadow /etc/resolv.conf` iguales antes y después (salvo el setuid de D-BAK-3: anotar qué aparece en el origen y en el destino); `sudo` y `passwd` funcionan; los enlaces (`ls -l /etc/alternatives`) iguales; `sha256sum` de unos ficheros grandes igual.
-4. Perfiles, diseños, atajos, teclas extra, apariencia, DNS, barra lateral, hosts SSH y **claves SSH** (solo en copia cifrada: se exportan en el texto OpenSSH dentro del archivo cifrado y se guardan de nuevo con el Keystore del dispositivo nuevo) presentes; probar una conexión SSH con una clave restaurada. **Hueco documentado:** las fuentes importadas no viajan (D-T16): al restaurar se usa la incluida.
-5. Ajustes: `~/storage` hay que volver a activarlo (el permiso es del dispositivo). `/etc/resolv.conf` y las rutas de proot se reconstruyen al lanzar (no se guardan rutas absolutas).
-6. Errores en pantalla, localizados y sin dejar nada: contraseña errónea, archivo copiado a medias (cortarlo), archivo de una versión del formato más nueva.
-7. Dispositivo: comprobar con `find <rootfs> ! -type l ! -readable` (como el informe) que tras exportar **no** queda ningún modo cambiado (la lista debe ser la misma que antes).
+### D-BAK-6 · 2026-10-05 · Checklist on a real device (Pixel 8): export everything -> uninstall -> install -> wizard -> restore
+With tests on the host (JVM): modes, links (absolute, relative, broken), 000 and execute-only files, a closed directory, a file that changes mode during the export, a different base path, a new directory name, 2 MiB incompressible, with and without a password, wrong password, truncated file, future format, atomicity, suggested name, a wizard that waits for the restore. **It cannot be checked without a device:**
+1. With Fedora installed (and Alpine), export "everything" with a password, saving in Downloads and on a USB drive: suggested name, progress, cancelling midway (no file is left), message with name and size. Fedora (~195 MB) without memory errors and without "cannot read".
+2. Copy the file to a PC and back (or use the one on the USB drive); uninstall the app; install it; the wizard: "Restore from a backup", choose the file, ask for the password, wait. Afterwards: the wizard closes by itself and the first tab is the default distro with its user, without manual steps.
+3. `ls -l /etc/shadow /usr/bin/sudo /etc/gshadow /etc/resolv.conf` equal before and after (except the setuid of D-BAK-3: note what appears at the source and at the destination); `sudo` and `passwd` work; the links (`ls -l /etc/alternatives`) equal; `sha256sum` of some large files equal.
+4. Profiles, layouts, shortcuts, extra keys, appearance, DNS, side bar, SSH hosts and **SSH keys** (only in an encrypted backup: they are exported in OpenSSH text inside the encrypted file and saved again with the new device's Keystore) present; try an SSH connection with a restored key. **Documented gap:** imported fonts do not travel (D-T16): when restoring the bundled one is used.
+5. Settings: `~/storage` has to be turned on again (the permission belongs to the device). `/etc/resolv.conf` and proot's paths are rebuilt at launch (no absolute paths are saved).
+6. Errors on screen, localized and leaving nothing behind: wrong password, a half-copied file (cut it), a file of a newer format version.
+7. Device: check with `find <rootfs> ! -type l ! -readable` (like the report) that after exporting **no** mode is left changed (the list must be the same as before).
 
 ### D-REL-5 · 2026-10-05 · 0.1.1
-- A petición del usuario ("tan pronto tengas todo saca una release y vemos de probarla en el móvil real") se publica la `0.1.1` (versionCode 10199) con la barra lateral dinámica (T26) y sus correcciones, el tipo de teclado, el teclado que no tapa los campos y las copias de seguridad con archivos que solo lee root. Varias correcciones están probadas en el ordenador y **sin verificar aún en un móvil real**; el registro dice cuáles. La receta de F-Droid se actualiza a `0.1.1`/10199 (la huella no cambia).
+- At the user's request ("tan pronto tengas todo saca una release y vemos de probarla en el móvil real") `0.1.1` (versionCode 10199) is published with the dynamic side bar (T26) and its fixes, the keyboard type, the keyboard that does not cover fields and backups with files that only root reads. Several fixes are tested on the computer and **not yet verified on a real phone**; the log says which. The F-Droid recipe is updated to `0.1.1`/10199 (the fingerprint does not change).
 
-### Decimotercera ronda (móvil real del usuario, 2026-10-05, `0.1.1`): exportación verificada
-- El usuario confirma que **la exportación de la copia de seguridad ya funciona** en su móvil con la `0.1.1` (antes fallaba con "no se puede leer /data/user/0/…" por archivos que solo lee root: D-BAK-1..3). Sin detalles de la distro ni del tamaño.
-- **Pendiente de verificar (D-BAK-6):** copiar el archivo a un PC o USB, instalar en un móvil nuevo (o desinstalar/instalar), restaurar desde el asistente inicial y comprobar que distros, usuario, perfiles, layouts, atajos y ajustes vuelven y que la distro predeterminada se abre sola.
+### Thirteenth round (the user's real phone, 2026-10-05, `0.1.1`): export verified
+- The user confirms that **the backup export now works** on their phone with `0.1.1` (before it failed with "cannot read /data/user/0/…" because of files only root reads: D-BAK-1..3). No details about the distro or the size.
+- **Pending verification (D-BAK-6):** copying the file to a PC or USB, installing on a new phone (or uninstalling/installing), restoring from the initial wizard and checking that distros, user, profiles, layouts, shortcuts and settings come back and that the default distro opens by itself.
 
-### D-FONT-1 · 2026-10-05 · La importación de fuentes rechazaba todas
-- Móvil real (Pixel 8, Android 17): importar JetBrainsMono Nerd Font Mono daba "faltan letras" (`MissingGlyphs`). Causa: `Paint.hasGlyph(String)` solo devuelve true para una cadena de varios caracteres si toda ella forma UN glifo (ligadura o grupo de grafemas), no si cada carácter tiene glifo; `REQUIRED_GLYPHS` tiene 29 caracteres, así que fallaba cualquier fuente. Los tests con sonda falsa no lo detectaban.
-- Decisión: `FontChecker` pregunta por cada code point por separado, y `AndroidFontProbe.hasGlyphs` también itera code points (pares sustitutos juntos). El contrato `FontProbe` documenta que se pregunte de uno en uno. Tests con una sonda que imita a Android (cadenas largas no aceptadas) para fijar el contrato; una fuente a la que le falta un glifo sigue dando `MissingGlyphs`.
-- Monoespaciado: `advance` usa `measureText` por carácter de muestra y tolerancia del 1 %; sin cambios (Nerd Font Mono mide todo en una celda; una proporcional sigue dando `NotMonospaced`).
-- Hallazgo: `TerminalPainter` dibuja con `canvas.drawText` y el `Typeface` importado; Android solo recurre a la fuente del sistema para los glifos que la fuente no tiene, así que los glifos del Área de Uso Privado (U+E0B0, U+F015) de una Nerd Font se dibujan con ella. No se exigen en el comprobador. **Sin verificar en dispositivo.**
+### D-FONT-1 · 2026-10-05 · Font import rejected all of them
+- Real phone (Pixel 8, Android 17): importing JetBrainsMono Nerd Font Mono gave "letters are missing" (`MissingGlyphs`). Cause: `Paint.hasGlyph(String)` only returns true for a multi-character string if all of it forms ONE glyph (a ligature or grapheme cluster), not if each character has a glyph; `REQUIRED_GLYPHS` has 29 characters, so any font failed. The tests with a fake probe did not detect it.
+- Decision: `FontChecker` asks for each code point separately, and `AndroidFontProbe.hasGlyphs` also iterates code points (surrogate pairs together). The `FontProbe` contract documents that it is asked one by one. Tests with a probe that imitates Android (long strings not accepted) to pin the contract; a font that lacks a glyph still gives `MissingGlyphs`.
+- Monospace: `advance` uses `measureText` per sample character and a 1 % tolerance; unchanged (Nerd Font Mono measures everything in one cell; a proportional one still gives `NotMonospaced`).
+- Finding: `TerminalPainter` draws with `canvas.drawText` and the imported `Typeface`; Android only falls back to the system font for the glyphs the font does not have, so the Private Use Area glyphs (U+E0B0, U+F015) of a Nerd Font are drawn with it. They are not required in the checker. **Not verified on a device.**
 
-### D-SSH-1 · 2026-10-05 · Importar una clave desde un archivo propone el nombre del archivo
-- A petición del usuario: al elegir el archivo en «Añadir clave > Importar», el campo del nombre se rellena con el nombre del archivo (`OpenableColumns.DISPLAY_NAME`, leído en `KeyFiles` de la capa `ssh`, no en `domain`). La lógica pura es `DefaultKeyName.from(displayName, existingNames)` (con tests): recorta espacios y caracteres de control, quita una sola extensión final `.pem`/`.key`/`.txt` (sin importar mayúsculas; un archivo que se llama solo `.pem` conserva el nombre), corta a `Validation.MAX_NAME_LENGTH` y, si el nombre ya existe (sin distinguir mayúsculas, como al guardar), añade ` 2`, ` 3`... sin pasar del límite. Sin nombre usable devuelve `""`: el campo queda vacío, como antes.
-- Solo se rellena si el campo está vacío o aún tiene la sugerencia anterior: lo que el usuario escribió nunca se pisa; una segunda elección de archivo sí sustituye la sugerencia. `.pub` no se quita ni se acepta como clave privada: la validación del contenido (`PrivateKeyText`) no cambia. Pegar texto no tiene nombre de archivo (sin cambios) y «Generar» no cambia. **Sin verificar en dispositivo** (Pixel 8: importar `id_ed25519_homelab` desde Descargas y ver el nombre).
+### D-SSH-1 · 2026-10-05 · Importing a key from a file proposes the file's name
+- At the user's request: when choosing the file in "Add key > Import", the name field is filled with the file's name (`OpenableColumns.DISPLAY_NAME`, read in `KeyFiles` of the `ssh` layer, not in `domain`). The pure logic is `DefaultKeyName.from(displayName, existingNames)` (with tests): it trims spaces and control characters, removes a single final `.pem`/`.key`/`.txt` extension (case-insensitive; a file called just `.pem` keeps the name), cuts to `Validation.MAX_NAME_LENGTH` and, if the name already exists (case-insensitive, as when saving), adds ` 2`, ` 3`... without exceeding the limit. With no usable name it returns `""`: the field stays empty, as before.
+- It is only filled if the field is empty or still has the previous suggestion: what the user typed is never overwritten; a second file choice does replace the suggestion. `.pub` is neither removed nor accepted as a private key: the content validation (`PrivateKeyText`) does not change. Pasting text has no file name (unchanged) and "Generate" does not change. **Not verified on a device** (Pixel 8: importing `id_ed25519_homelab` from Downloads and seeing the name).
 
-### D-TAB-1 · 2026-10-05 · Pulsación larga en una pestaña pregunta antes de cerrar
-- **Petición:** «si mantengo pulsada una pestaña de la barra, que salga la confirmación de cierre». Se reutiliza la alerta de cierre existente (`CloseConfirm`, estado `TabsController.closeConfirmation`) con un punto de entrada nuevo, `askToClose(id)`, que **siempre** pregunta, también si el proceso terminó (`requestClose` sigue cerrando sin preguntar las pestañas terminadas: lo usan el menú «⋯», el atajo y la acción de TalkBack). La alerta nombra la pestaña («¿Cerrar %1$s?», mismo texto en las dos rutas) y añade el aviso de que se detendrá el programa solo si sigue vivo.
+### D-TAB-1 · 2026-10-05 · A long press on a tab asks before closing
+- **Request:** "if I hold down a tab in the bar, let the close confirmation come out". The existing close alert (`CloseConfirm`, `TabsController.closeConfirmation` state) is reused with a new entry point, `askToClose(id)`, which **always** asks, also if the process ended (`requestClose` still closes ended tabs without asking: the "⋯" menu, the shortcut and the TalkBack action use it). The alert names the tab ("Close %1$s?", the same text on both paths) and adds the notice that the program will be stopped only if it is still alive.
 
-### D-TAB-2 · 2026-10-05 · Pulsación larga: confirmar sin movimiento, arrastrar con movimiento
-- El reordenar ya era «pulsación larga y arrastre» (`detectDragGesturesAfterLongPress`), así que la pulsación larga no podía simplemente abrir la alerta sin pisarlo. Regla (`resolveLongPress`, lógica pura probada): al soltar, si el dedo no se alejó más del `touchSlop` desde el inicio de la pulsación larga (máximo en cualquier dirección, no el neto) se pide confirmar el cierre; si se movió más, es un arrastre y solo reordena, sin preguntar. La alerta sale al levantar el dedo, no al cumplirse el tiempo. Tocar y doble toque no cambian.
-- TalkBack: se mantienen las acciones personalizadas (renombrar, cerrar, mover antes/después, barra lateral); «Cerrar» ya existía y no se cambia (cierra sin preguntar si el proceso terminó, como antes).
+### D-TAB-2 · 2026-10-05 · Long press: confirm without movement, drag with movement
+- Reordering was already "long press and drag" (`detectDragGesturesAfterLongPress`), so the long press could not simply open the alert without stepping on it. Rule (`resolveLongPress`, pure tested logic): on release, if the finger did not move away more than the `touchSlop` from the start of the long press (the maximum in any direction, not the net) a close confirmation is asked; if it moved more, it is a drag and only reorders, without asking. The alert comes out when lifting the finger, not when the time is met. Tap and double tap do not change.
+- TalkBack: the custom actions are kept (rename, close, move before/after, side bar); "Close" already existed and is not changed (it closes without asking if the process ended, as before).
 
-### D-TAB-3 · 2026-10-05 · La franja pregunta también (cambia D-T26-4)
-- En la franja contraída, la pulsación larga sobre una pestaña ya no despliega la barra: abre la misma alerta de cierre (consistencia pedida por el usuario). Desplegar sigue siendo posible con el chevrón de arriba, tocando el fondo de la franja y con la acción de TalkBack. La franja no tiene arrastre, así que no hay conflicto. `SidebarFocusGuardTest` lo vigila.
-- **Pendiente de verificar en dispositivo:** Pixel 8 (vertical y horizontal) y tablet: que el gesto distingue bien pulsar largo y arrastrar, la alerta (nombre y botones), la franja, TalkBack.
+### D-TAB-3 · 2026-10-05 · The strip asks too (changes D-T26-4)
+- In the collapsed strip, a long press on a tab no longer expands the bar: it opens the same close alert (consistency requested by the user). Expanding is still possible with the chevron on top, tapping the strip's background and with the TalkBack action. The strip has no drag, so there is no conflict. `SidebarFocusGuardTest` watches it.
+- **Pending verification on a device:** Pixel 8 (portrait and landscape) and tablet: that the gesture distinguishes long press and drag well, the alert (name and buttons), the strip, TalkBack.
 
-### D-NEWTAB-1 · 2026-10-05 · El menú del "+" tiene un botón explícito
-- Problema: el menú de nueva pestaña (distros, división, perfiles, layouts, ajustes...) solo se abría con una pulsación larga en "+", que nadie descubría (ni el propietario).
-- Decisión: un botón "Más opciones" (glifo `ELLIPSIS`, 48 dp) junto al "+" en la barra superior y la lateral, y apilado debajo del "+" en el raíl (56 dp). Toque en "+" sigue abriendo una pestaña de la distro predeterminada; la pulsación larga en "+" se conserva como atajo al mismo menú. Un único estado `menuFrom` decide de qué control cuelga el menú.
-- Accesibilidad: el botón tiene `contentDescription` "More options"/"Más opciones", `stateDescription` (menú abierto/cerrado) y la acción `onClick` semántica; usa `detectTapGestures`, no `clickable`, y la barra mantiene `canFocus = false` (D-T26-7). La prueba de guarda por fuente (`SidebarFocusGuardTest`) lo fija.
-- Posición: `IosContextMenu` usa ahora `MenuPositionProvider` (función pura `menuPlacement`, con tests): esquina superior derecha sobre la del ancla; si no cabe a la izquierda (raíl pegado al borde) se abre al lado del ancla; siempre dentro de la ventana. Afecta también al menú de pestaña. **Sin verificar en dispositivo** (Pixel 8 vertical/horizontal, tablet con barra y raíl).
+### D-NEWTAB-1 · 2026-10-05 · The "+" menu has an explicit button
+- Problem: the new tab menu (distros, split, profiles, layouts, settings...) only opened with a long press on "+", which nobody discovered (not even the owner).
+- Decision: a "More options" button (`ELLIPSIS` glyph, 48 dp) next to the "+" in the top and side bars, and stacked below the "+" in the rail (56 dp). A tap on "+" still opens a tab of the default distro; the long press on "+" is kept as a shortcut to the same menu. A single `menuFrom` state decides which control the menu hangs from.
+- Accessibility: the button has `contentDescription` "More options"/"Más opciones", `stateDescription` (menu open/closed) and the semantic `onClick` action; it uses `detectTapGestures`, not `clickable`, and the bar keeps `canFocus = false` (D-T26-7). The source guard test (`SidebarFocusGuardTest`) pins it.
+- Position: `IosContextMenu` now uses `MenuPositionProvider` (pure function `menuPlacement`, with tests): top-right corner over the anchor's; if it does not fit to the left (rail stuck to the edge) it opens next to the anchor; always inside the window. It also affects the tab menu. **Not verified on a device** (Pixel 8 portrait/landscape, tablet with bar and rail).
 
 ### D-REL-6 · 2026-10-05 · 0.1.2
-- A petición del usuario se publica la `0.1.2` (versionCode 10299) con el botón de más opciones del "+", la pulsación larga en una pestaña para confirmar el cierre, el nombre de archivo como nombre de las claves SSH y el arreglo de la importación de fuentes. Se hizo antes una copia de seguridad del Pixel (148 MB, sin cifrar, una distro) para actualizar encima de la `0.1.1` firmada sin perder datos.
+- At the user's request `0.1.2` (versionCode 10299) is published with the more-options button of the "+", the long press on a tab to confirm closing, the file name as the SSH keys' name and the fix for font import. A backup of the Pixel was made beforehand (148 MB, unencrypted, one distro) to update on top of the signed `0.1.1` without losing data.
 
-### Decimocuarta ronda (Pixel 8 del usuario, 2026-10-05, `0.1.2` instalada encima de la `0.1.1`)
-- **Actualización:** la `0.1.2` firmada se instala encima de la `0.1.1` conservando datos (Fedora, hosts, prompt). Antes se exportó una copia (148 MB, sin cifrar, una distro): el archivo se lee como tar con `manifest.json`, `config.json` y `distros/0.tar.gz`, y se bajó al PC.
-- **Fedora a medida del usuario (pedido del usuario):** distro instalada desde el asistente de bienvenida con usuario `qtekfun`, que se crea solo (`uid=1000`). Se copiaron `~/.ssh/config` (sin claves ni `IdentityAgent`), los alias (`k`, `upg` sin `flatpak`, `sshrouter` con `ssh router`, sin el fichero de contraseña) y `dnf.conf`; se instaló `openssh-clients` y `starship` 1.26.0 (no está en los repos de Fedora: binario oficial `aarch64-unknown-linux-musl` de la release, con su SHA-256 comprobado), más el `~/.config/starship.toml` del usuario. El terminal arranca como `/bin/sh -l` (bash en modo POSIX, que no lee `~/.bashrc`): `~/.profile` hace `exec bash -l` y `~/.bash_profile` carga `~/.bashrc`. Todo se tecleó en el terminal por trozos y se verificó por suma de control; el script de root se ejecutó con el usuario temporalmente en `root`.
-- **Hosts SSH:** los 8 de `~/.ssh/config` creados en la app (ts-* con el nombre de Tailscale, que solo resuelve con Tailscale activo) y asociados a sus claves, que el usuario importó (los archivos privados de Descargas se borraron después). `router` va sin clave. El nombre por defecto de la clave sale del archivo (D-SSH-1): funcionó.
-- **Nerd Font:** el arreglo de D-FONT-1 funciona en el dispositivo: `JetBrainsMonoNerdFontMono-Regular.ttf` se importa y, seleccionada, el prompt de starship dibuja sus iconos (Powerline, SO, reloj, flecha). Antes de la corrección la app la rechazaba.
-- **Mejorable:** cuando se importa una fuente, no se selecciona sola (hay que tocarla y elegir "Usar esta fuente"); y la lista de hosts SSH no muestra qué clave tiene cada uno.
-- **Pruebas pendientes de la `0.1.2`:** pulsación larga en una pestaña para cerrar, y que el botón de tres puntos abre el menú en horizontal y en la tablet.
+### Fourteenth round (the user's Pixel 8, 2026-10-05, `0.1.2` installed on top of `0.1.1`)
+- **Update:** the signed `0.1.2` installs on top of `0.1.1` keeping data (Fedora, hosts, prompt). Beforehand a backup was exported (148 MB, unencrypted, one distro): the file is read as a tar with `manifest.json`, `config.json` and `distros/0.tar.gz`, and was downloaded to the PC.
+- **Fedora tailored to the user (the user's request):** a distro installed from the welcome wizard with user `qtekfun`, which is created by itself (`uid=1000`). `~/.ssh/config` was copied (without keys or `IdentityAgent`), the aliases (`k`, `upg` without `flatpak`, `sshrouter` with `ssh router`, without the password file) and `dnf.conf`; `openssh-clients` and `starship` 1.26.0 were installed (it is not in Fedora's repos: the release's official `aarch64-unknown-linux-musl` binary, with its SHA-256 checked), plus the user's `~/.config/starship.toml`. The terminal starts as `/bin/sh -l` (bash in POSIX mode, which does not read `~/.bashrc`): `~/.profile` does `exec bash -l` and `~/.bash_profile` loads `~/.bashrc`. Everything was typed into the terminal in chunks and verified by checksum; the root script was run with the user temporarily set to `root`.
+- **SSH hosts:** the 8 of `~/.ssh/config` created in the app (ts-* with the Tailscale name, which only resolves with Tailscale active) and associated with their keys, which the user imported (the private files in Downloads were deleted afterwards). `router` goes without a key. The key's default name comes from the file (D-SSH-1): it worked.
+- **Nerd Font:** D-FONT-1's fix works on the device: `JetBrainsMonoNerdFontMono-Regular.ttf` is imported and, once selected, starship's prompt draws its icons (Powerline, OS, clock, arrow). Before the fix the app rejected it.
+- **Improvable:** when a font is imported, it is not selected by itself (it has to be tapped and "Use this font" chosen); and the SSH host list does not show which key each one has.
+- **Tests pending for `0.1.2`:** the long press on a tab to close, and that the three-dot button opens the menu in landscape and on the tablet.
 
-### D-T20-9 · 2026-10-05 · Capturas renovadas (0.1.2)
-- Las capturas de F-Droid se repiten con la `0.1.2` en el Pixel 8 (inglés y español, barra de estado fija con el modo demo del sistema, restaurado después): terminal con Fedora y el prompt de starship con Nerd Font, panel dividido, el menú del botón de tres puntos, Ajustes, Apariencia y Distribuciones. No salen hosts SSH ni IPs; sí el nombre de usuario `qtekfun` del prompt (el mismo del GitHub del proyecto). El README muestra tres (`docs/images/`, copias de las de `fastlane` en inglés).
-- Pendiente: captura de tablet y la del asistente de bienvenida (necesita una instalación limpia).
+### D-T20-9 · 2026-10-05 · Renewed screenshots (0.1.2)
+- The F-Droid screenshots are repeated with `0.1.2` on the Pixel 8 (English and Spanish, status bar fixed with the system's demo mode, restored afterwards): terminal with Fedora and starship's prompt with Nerd Font, split pane, the three-dot button's menu, Settings, Appearance and Distributions. No SSH hosts or IPs appear; the prompt's user name `qtekfun` does (the same as the project's GitHub). The README shows three (`docs/images/`, copies of the English `fastlane` ones).
+- Pending: a tablet screenshot and the welcome wizard's (it needs a clean install).
 
-### D-NOTIF-1 · 2026-10-05 · «Salir» de la notificación y nunca cero pestañas
-- **Síntoma (Pixel 8, 0.1.2):** al cerrar la sesión desde la notificación, la app se reabre sin sesiones y hay que tocar dos veces.
-- **Causa (leída en el código, sin dispositivo):** la acción «Salir» es `PendingIntent.getService` -> `SessionService.onStartCommand(ACTION_EXIT)` -> `SessionManager.closeAll()` (cierra todas las sesiones, el servicio se para). La actividad, si seguía en recientes (parada), no recibía el cambio: `collectAsStateWithLifecycle` no recoge por debajo de STARTED. Al volver, el estado pasaba de «con sesiones» a vacío y `FinishWithSessions` hacía `finishAndRemoveTask()`: se veía la app abrirse y cerrarse, y el segundo toque era el arranque en frío. Además, con la actividad viva y sin sesiones, `TerminalViewModel.started` ya era true y nada abría una primera pestaña.
-- **Decisión:** (a) `SessionController.shutdownAll()` (expuesto como `SessionManager.shutdownAll()`, usado por el servicio) cierra todas las sesiones y pide parar el servicio aunque este proceso no lo creyera en marcha; no lanza la actividad. La intención se interpreta con `ServiceCommand.of(action)` (puro, probado). (b) Regla pura `StartupTabRule`: al reanudar con cero sesiones se abre una pestaña predeterminada; solo se cierra la app si la última pestaña se cierra con la pantalla reanudada (comportamiento de siempre con la X). Lo que ocurre con la pantalla parada no cierra nada. `SessionManager.newDefaultSession(onlyIfEmpty)()` comprueba que sigue sin haber sesiones tras leer la distro, para que el primer layout y el resume no abran dos pestañas. (c) Tocar una notificación vieja solo abre la actividad (SINGLE_TOP) o inicia el servicio, que se promueve y se para solo; sin cambios ni fallos.
-- **Pendiente de verificar en dispositivo:** Pixel 8: cerrar desde la notificación y abrir desde el icono y desde recientes: una pestaña, un toque.
+### D-NOTIF-1 · 2026-10-05 · "Exit" from the notification and never zero tabs
+- **Symptom (Pixel 8, 0.1.2):** when closing the session from the notification, the app reopens without sessions and has to be tapped twice.
+- **Cause (read in the code, without a device):** the "Exit" action is `PendingIntent.getService` -> `SessionService.onStartCommand(ACTION_EXIT)` -> `SessionManager.closeAll()` (closes all sessions, the service stops). The activity, if it was still in recents (stopped), did not receive the change: `collectAsStateWithLifecycle` does not collect below STARTED. On coming back, the state went from "with sessions" to empty and `FinishWithSessions` did `finishAndRemoveTask()`: the app was seen opening and closing, and the second tap was the cold start. Besides, with the activity alive and without sessions, `TerminalViewModel.started` was already true and nothing opened a first tab.
+- **Decision:** (a) `SessionController.shutdownAll()` (exposed as `SessionManager.shutdownAll()`, used by the service) closes all sessions and asks to stop the service even if this process did not think it was running; it does not launch the activity. The intent is interpreted with `ServiceCommand.of(action)` (pure, tested). (b) A pure `StartupTabRule` rule: on resuming with zero sessions a default tab is opened; the app only closes if the last tab is closed with the screen resumed (the usual behavior with the X). What happens with the screen stopped closes nothing. `SessionManager.newDefaultSession(onlyIfEmpty)()` checks that there are still no sessions after reading the distro, so that the first layout and the resume do not open two tabs. (c) Tapping an old notification only opens the activity (SINGLE_TOP) or starts the service, which promotes itself and stops by itself; no changes or failures.
+- **Pending verification on a device:** Pixel 8: closing from the notification and opening from the icon and from recents: one tab, one tap.
 
-### D-NOTIF-2 · 2026-10-05 · La notificación se quedaba con «0 sesiones activas»
-- **Síntoma (Pixel 8, 0.1.2):** con una sesión, «Salir» dejaba la notificación, ahora con «0 sesiones activas»: el servicio no terminaba del todo.
-- **Segunda causa (leída en el código):** `SessionService.observe()` lanzaba un colector en `Dispatchers.Default` que hace `notify(ID, build(runningCount))` en cada cambio de estado. `ACTION_EXIT` cerraba las sesiones y luego hacía `stopForeground(REMOVE)` + `stopSelf()` en el hilo principal, pero el colector, que seguía activo, recibía el estado de 0 sesiones un instante después y volvía a publicar la notificación como una notificación normal y en curso (no descartable). Era una carrera: según el hilo, a veces ganaba el `stopForeground` (lo que vio el orquestador) y a veces el `notify`.
-- **Decisión:** regla pura `ForegroundPolicy`: `notificationCount(sessions)` es null con cero sesiones en marcha (no hay notificación) y `step(sessions)` da `STOP_AND_REMOVE` cuando no hay shell. El servicio atiende cualquier comando promoviéndose antes (Android lo exige en pocos segundos tras `startForegroundService`, también si se va a parar) y después aplica `step`. El colector corre en el hilo principal (`Dispatchers.Main.immediate`, como los comandos) y, al ver cero sesiones, llama a `shutDown()`: cancela el colector primero, suelta el wake lock, `stopForeground(REMOVE)`, `cancel(ID)` y `stopSelf()`; `onDestroy` también cancela la notificación. Así nada puede volver a publicarla. «Nueva sesión» con cero sesiones: la sesión se abre de forma asíncrona, así que el servicio se promueve, se para y `SessionController` lo arranca de nuevo al publicarse la sesión (comportamiento anterior, sin cambios).
-- **Pendiente de verificar en dispositivo:** «Salir» con la app en primer plano y en segundo plano: la notificación desaparece y no vuelve.
+### D-NOTIF-2 · 2026-10-05 · The notification stayed with "0 active sessions"
+- **Symptom (Pixel 8, 0.1.2):** with one session, "Exit" left the notification, now with "0 active sessions": the service did not end completely.
+- **Second cause (read in the code):** `SessionService.observe()` launched a collector on `Dispatchers.Default` that does `notify(ID, build(runningCount))` on every state change. `ACTION_EXIT` closed the sessions and then did `stopForeground(REMOVE)` + `stopSelf()` on the main thread, but the collector, still active, received the zero-sessions state an instant later and published the notification again as a normal ongoing (non-dismissable) one. It was a race: depending on the thread, sometimes `stopForeground` won (what the orchestrator saw) and sometimes `notify`.
+- **Decision:** a pure `ForegroundPolicy` rule: `notificationCount(sessions)` is null with zero running sessions (there is no notification) and `step(sessions)` gives `STOP_AND_REMOVE` when there is no shell. The service handles any command by promoting itself first (Android requires it within a few seconds after `startForegroundService`, also if it is going to stop) and afterwards applies `step`. The collector runs on the main thread (`Dispatchers.Main.immediate`, like the commands) and, on seeing zero sessions, calls `shutDown()`: it cancels the collector first, releases the wake lock, `stopForeground(REMOVE)`, `cancel(ID)` and `stopSelf()`; `onDestroy` also cancels the notification. This way nothing can publish it again. "New session" with zero sessions: the session is opened asynchronously, so the service promotes itself, stops and `SessionController` starts it again when the session is published (previous behavior, unchanged).
+- **Pending verification on a device:** "Exit" with the app in the foreground and in the background: the notification disappears and does not come back.
 
-### D-NOTIF-3 · 2026-10-05 · Sin sesiones, la app se cierra (sustituye la regla de «abrir pestaña al reanudar» de D-NOTIF-1)
-- **Decisión del usuario:** «si no hay sesiones activas quiero que se cierre, y ya». Cuando `Sessions.items` queda vacío por cualquier vía, `SessionController.publish` para el servicio y llama a `onEmpty`, que en `SessionManager` es `AppTaskFinisher.finishAll()`: `ActivityManager.appTasks.forEach { finishAndRemoveTask() }`, que cierra la tarea aunque la actividad esté parada o en recientes (no depende de que una actividad parada recoja un flujo, que era el fallo original). `shutdownAll()` sigue siendo la vía única de «Salir» y también quita la tarea.
-- **Proceso:** no se llama a `exitProcess`: con el servicio parado y sin actividades Android lo recupera; matarlo a mano saltaría el ciclo de vida normal. Si en el dispositivo quedara algo vivo, sería el último recurso.
-- `StartupTabRule` solo conserva lo necesario: una pantalla que vio sesiones y vuelve (o ve) cero se cierra sola; un arranque en frío sin sesiones no (abre la primera pestaña por RF-13). Se elimina «al reanudar con cero sesiones abrir pestaña». Reiniciar una pestaña terminada abre la nueva antes de cerrar la vieja, para no pasar por cero sesiones. Una sesión terminada sigue listada, así que no cuenta como cero.
-- **Pendiente de verificar en dispositivo:** Pixel 8, con la app en primer plano, en segundo plano y en recientes: «Salir» -> la notificación desaparece, la tarea sale de recientes; abrir desde el icono -> una pestaña, un toque; cerrar la última pestaña con la X -> la app se cierra; reiniciar una pestaña terminada no cierra la app.
+### D-NOTIF-3 · 2026-10-05 · Without sessions, the app closes (replaces D-NOTIF-1's "open a tab on resume" rule)
+- **The user's decision:** "si no hay sesiones activas quiero que se cierre, y ya". When `Sessions.items` ends up empty by any path, `SessionController.publish` stops the service and calls `onEmpty`, which in `SessionManager` is `AppTaskFinisher.finishAll()`: `ActivityManager.appTasks.forEach { finishAndRemoveTask() }`, which closes the task even if the activity is stopped or in recents (it does not depend on a stopped activity collecting a flow, which was the original bug). `shutdownAll()` is still the only path of "Exit" and also removes the task.
+- **Process:** `exitProcess` is not called: with the service stopped and no activities Android recovers it; killing it by hand would skip the normal lifecycle. If something were left alive on the device, that would be the last resort.
+- `StartupTabRule` keeps only what is necessary: a screen that saw sessions and comes back to (or sees) zero closes by itself; a cold start without sessions does not (it opens the first tab because of RF-13). The "open a tab when resuming with zero sessions" rule is removed. Restarting an ended tab opens the new one before closing the old one, so as not to pass through zero sessions. An ended session is still listed, so it does not count as zero.
+- **Pending verification on a device:** Pixel 8, with the app in the foreground, in the background and in recents: "Exit" -> the notification disappears, the task leaves recents; opening from the icon -> one tab, one tap; closing the last tab with the X -> the app closes; restarting an ended tab does not close the app.
 
-### Decimoquinta ronda (OPPO PGEM10, Android 16, 2026-10-05, build de depuración de `master` con #101): cierre desde la notificación
-- **Antes (0.1.2, en el Pixel 8 y en el móvil del usuario):** "Salir" cerraba las sesiones y detenía el servicio, pero el usuario veía quedarse la notificación con "0 sesiones activas" y la app se reabría vacía; el proceso seguía vivo (D-NOTIF-1..3).
-- **Con #101, en el OPPO PGEM10:** con una sesión, pulsar "Salir" en la notificación (app en primer plano) quita la notificación, detiene el servicio (sin registro de servicio ni notificación), saca la tarea de recientes y vuelve al escritorio. Con la app en segundo plano, igual. Reabrir con el icono: una pestaña de Alpine y una sola pulsación, con el servicio y la notificación de nuevo.
-- **Sin comprobar aún:** "Salir" con la pantalla apagada, cerrar la última pestaña con su X (la app debe cerrarse), entrar desde recientes con la tarea viva, y la entrada "Salir" del menú (#102, pendiente de reconstruir sobre #101).
-- **Dispositivo:** el OPPO PGEM10 del usuario (se confundió antes con el CPH2841, que no se toca). Pantalla fija restaurada al terminar.
+### Fifteenth round (OPPO PGEM10, Android 16, 2026-10-05, `master` debug build with #101): closing from the notification
+- **Before (0.1.2, on the Pixel 8 and on the user's phone):** "Exit" closed the sessions and stopped the service, but the user saw the notification stay with "0 active sessions" and the app reopen empty; the process was still alive (D-NOTIF-1..3).
+- **With #101, on the OPPO PGEM10:** with one session, pressing "Exit" in the notification (app in the foreground) removes the notification, stops the service (no service record or notification), takes the task out of recents and returns to the home screen. With the app in the background, the same. Reopening with the icon: one Alpine tab and a single tap, with the service and the notification back.
+- **Not checked yet:** "Exit" with the screen off, closing the last tab with its X (the app must close), entering from recents with the task alive, and the menu's "Exit" entry (#102, pending rebuild on top of #101).
+- **Device:** the user's OPPO PGEM10 (earlier confused with the CPH2841, which is not touched). Fixed screen restored when finished.
 
-### D-EXIT-1 · 2026-10-05 · Entrada «Salir» en el menú «⋯»/«+» (RF-16)
-- **Petición:** «una entrada Salir en el menú para cerrar la app por completo». Es la última del menú (tinta destructiva, glifo `POWER` de Lucide, mismo conjunto ISC), así que sale igual en la barra superior, la lateral y el raíl (comparten `NewTabMenu`).
-- **Pregunta o no (`exitStep`, lógica pura probada):** con alguna sesión en ejecución, alerta `IosAlert` normal (TalkBack la lee como alerta) «¿Salir de UltimateTerminal?» con el número («Se cerrarán N sesiones…», plural) y Cancelar/Salir; las sesiones ya terminadas no cuentan. Sin ninguna en ejecución se sale sin preguntar.
+### D-EXIT-1 · 2026-10-05 · "Exit" entry in the "⋯"/"+" menu (RF-16)
+- **Request:** "an Exit entry in the menu to close the app completely". It is the last one in the menu (destructive tint, Lucide's `POWER` glyph, the same ISC set), so it comes out the same in the top bar, the side bar and the rail (they share `NewTabMenu`).
+- **Ask or not (`exitStep`, pure tested logic):** with any session running, a normal `IosAlert` (TalkBack reads it as an alert) "Exit UltimateTerminal?" with the number ("N sessions will be closed…", plural) and Cancel/Exit; sessions that already ended do not count. With none running it exits without asking.
 
-### D-EXIT-2 · 2026-10-05 · Cómo se sale: parar el servicio y `finishAndRemoveTask`, sin matar el proceso
-- Salir llama a `SessionManager.shutdownAll()`, el único camino de apagado (D-NOTIF-1): cierra todas las sesiones, para el servicio (notificación y wakelock) y, por el gancho `onEmpty` (`AppTaskFinisher.finishAll()`), quita la tarea aunque la actividad esté parada. Después `MainActivity.exitApp()` llama también a `finishAndRemoveTask()`: ese gancho no se dispara si no había ninguna sesión que cerrar, y en ese caso hace falta. `FinishWithSessions`/`StartupTabRule` no chocan: solo actúan al llegar a cero sesiones y terminan la misma tarea.
-- **No** se usa `Process.killProcess`: es el último recurso (salta los ciclos de vida y no deja a Hilt/Room cerrar). Android puede dejar el proceso vacío en caché un rato, pero sin servicio, hilos de sesión ni wakelock no ejecuta nada; abrir la app después crea una actividad nueva y, al no haber sesiones, `TerminalViewModel` abre la pestaña predeterminada, como un arranque en frío.
-- **Pendiente de verificar en dispositivo:** Pixel 8, Salir con y sin sesiones vivas, con la pantalla apagada y reabriendo; que no queda notificación ni proceso activo.
-
+### D-EXIT-2 · 2026-10-05 · How it exits: stop the service and `finishAndRemoveTask`, without killing the process
+- Exit calls `SessionManager.shutdownAll()`, the only shutdown path (D-NOTIF-1): it closes all sessions, stops the service (notification and wake lock) and, through the `onEmpty` hook (`AppTaskFinisher.finishAll()`), removes the task even if the activity is stopped. Afterwards `MainActivity.exitApp()` also calls `finishAndRemoveTask()`: that hook does not fire if there was no session to close, and in that case it is needed. `FinishWithSessions`/`StartupTabRule` do not clash: they only act on reaching zero sessions and end the same task.
+- `Process.killProcess` is **not** used: it is the last resort (it skips lifecycles and does not let Hilt/Room close). Android may leave the process empty in the cache for a while, but with no service, session threads or wake lock it runs nothing; opening the app afterwards creates a new activity and, since there are no sessions, `TerminalViewModel` opens the default tab, like a cold start.
+- **Pending verification on a device:** Pixel 8, Exit with and without live sessions, with the screen off and reopening; that no notification or active process is left.
 
 ### D-REL-7 · 2026-10-05 · 0.1.3
-- A petición del usuario ("si todo funciona saca la release") se publica la `0.1.3` (versionCode 10399) con el cierre fiable: "Salir" en el menú y el arreglo de "Salir" en la notificación (verificado en un OPPO PGEM10 con la build de depuración de `master`). La entrada "Salir" del menú no se ha probado todavía en un dispositivo; se prueba con esta release en el Pixel 8.
+- At the user's request ("si todo funciona saca la release") `0.1.3` (versionCode 10399) is published with reliable closing: "Exit" in the menu and the fix for "Exit" in the notification (verified on an OPPO PGEM10 with `master`'s debug build). The menu's "Exit" entry has not been tested on a device yet; it is tested with this release on the Pixel 8.
 
-### Decimosexta ronda (Pixel 8 del usuario, 2026-10-05, `0.1.3` firmada instalada encima de la `0.1.2`)
-- **Entrada "Salir" del menú, con una sesión viva:** aparece la última, en rojo y con el icono de apagado; pide confirmación ("¿Salir de UltimateTerminal? Se cerrará 1 sesión y se detendrá su programa."); al confirmar, el servicio y la notificación desaparecen, la app vuelve al escritorio y reabrirla es un arranque normal con una pestaña (Fedora) y una sola pulsación. El proceso sigue vivo un rato (Android lo recicla; D-EXIT-2, no se mata a mano) pero no queda tarea de la app en recientes.
-- **Sin comprobar:** "Salir" con cero sesiones (sale directo, sin alerta), con la pantalla apagada y con "mantener despierto" activado; "Salir" desde el menú en la barra lateral y la tira de la tablet.
-- Pantalla fija restaurada al terminar.
+### Sixteenth round (the user's Pixel 8, 2026-10-05, signed `0.1.3` installed on top of `0.1.2`)
+- **Menu's "Exit" entry, with a live session:** the last one appears, in red and with the power icon; it asks for confirmation ("Exit UltimateTerminal? 1 session will be closed and its program stopped."); on confirming, the service and the notification disappear, the app returns to the home screen and reopening it is a normal start with one tab (Fedora) and a single tap. The process stays alive for a while (Android recycles it; D-EXIT-2, it is not killed by hand) but no task of the app is left in recents.
+- **Not checked:** "Exit" with zero sessions (it exits directly, without an alert), with the screen off and with "keep awake" on; "Exit" from the menu in the tablet's side bar and strip.
+- Fixed screen restored when finished.
 
-### D-PASTE-1 · 2026-10-14 · Pegar con el dedo
-- **Hallazgo del usuario:** "se ha implementado el copiar de la terminal y no el pegar". Era cierto: el pegado (`TerminalSessionHost.pasteFromClipboard`, con el modo de pegado entre corchetes del emulador) solo se llegaba por los atajos de teclado físico; en pantalla táctil no había botón.
-- **Decisión:** la barra de la selección (aparece con una pulsación larga, que crea una selección de una celda) muestra "Copiar" y "Pegar". "Pegar" (`TerminalViewModel.paste`) quita la selección y pega en el panel activo y en los de una difusión. Se eligió esa barra por ser lo que ya hacía Copiar y como en Termux (pulsación larga → pegar), sin añadir otro botón permanente. Queda sin probar en dispositivo; una guarda de código fuente (`PasteButtonGuardTest`) impide que el botón desaparezca.
+### D-PASTE-1 · 2026-10-14 · Pasting with the finger
+- **The user's finding:** "copy has been implemented in the terminal and not paste". It was true: pasting (`TerminalSessionHost.pasteFromClipboard`, with the emulator's bracketed paste mode) was only reached through physical keyboard shortcuts; on a touch screen there was no button.
+- **Decision:** the selection bar (which appears with a long press, which creates a one-cell selection) shows "Copy" and "Paste". "Paste" (`TerminalViewModel.paste`) removes the selection and pastes into the active pane and into those of a broadcast. That bar was chosen because it is what Copy already did and as in Termux (long press → paste), without adding another permanent button. It remains untested on a device; a source-code guard (`PasteButtonGuardTest`) prevents the button from disappearing.
 
-### D-SSH-2 · 2026-10-14 · La clave del servidor en la que se confía la guarda la app
-- **Informe del usuario:** "aunque le dé a yes cuando me pregunta si confío en un host SSH, nunca lo guarda y las siguientes veces debo darle a yes". La pregunta es la de OpenSSH (`StrictHostKeyChecking=ask`, la app no tiene la suya); responde "yes" y debería escribir `~/.ssh/known_hosts`.
-- **Lo que se comprobó:** ninguna parte de la app toca `.ssh` ni `known_hosts` (ni la limpieza de la clave temporal de `/tmp`, ni el instalador, ni la copia de seguridad); el comando de una conexión corre como root con `HOME=/root`; el extractor deja `/root` con el rwx del propietario (Fedora lo trae en 0550), y `ssh` escribiría en `/root/.ssh`. **No se pudo reproducir:** sin ningún móvil conectado ese día, y un intento de compilar `proot` y de usar Fedora 44 en un contenedor no fue viable (Fedora 44 no empaqueta `proot`, y los mirrors daban tiempo de espera). La causa real queda **sin demostrar**.
-- **Decisión:** que la app sea dueña del archivo: carpeta `ssh-known-hosts` en el almacenamiento privado (fuera de cualquier distro, la crea la app, así que siempre es escribible), enlazada en el invitado como `/ut-ssh`, y `-o UserKnownHostsFile="/ut-ssh/known_hosts /root/.ssh/known_hosts"` (ssh añade al primero y lee los dos, así que lo que alguien confió a mano en la distro sigue valiendo). Además `-o UpdateHostKeys=no`: ssh solo añade líneas, sin el archivo temporal + `link` + `rename` que `proot --link2symlink` tiene que emular. No se desactiva la pregunta (`StrictHostKeyChecking` queda en su valor por defecto): se pregunta una vez y se recuerda.
-- **Límites:** solo cubre las conexiones que lanza la app desde "Servidores SSH". Un `ssh` escrito a mano en una pestaña de la distro sigue usando el `~/.ssh` de su usuario. **Hay que probarlo en un dispositivo:** conectar dos veces a un host nuevo (la segunda no debe preguntar) y mirar `known_hosts` en la carpeta de la app. Si la pregunta sigue volviendo, necesito la salida de `ssh -v` y `ls -la /root/.ssh`.
+### D-SSH-2 · 2026-10-14 · The server key that is trusted is kept by the app
+- **The user's report:** "even if I say yes when it asks whether I trust an SSH host, it never saves it and the following times I have to say yes". The question is OpenSSH's (`StrictHostKeyChecking=ask`, the app has none of its own); answering "yes" should write `~/.ssh/known_hosts`.
+- **What was checked:** no part of the app touches `.ssh` or `known_hosts` (neither the cleanup of the temporary key in `/tmp`, nor the installer, nor the backup); a connection's command runs as root with `HOME=/root`; the extractor leaves `/root` with the owner's rwx (Fedora ships it as 0550), and `ssh` would write to `/root/.ssh`. **It could not be reproduced:** with no phone connected that day, and an attempt to build `proot` and to use Fedora 44 in a container was not feasible (Fedora 44 does not package `proot`, and the mirrors timed out). The real cause remains **unproven**.
+- **Decision:** that the app owns the file: a `ssh-known-hosts` folder in private storage (outside any distro, created by the app, so it is always writable), bound in the guest as `/ut-ssh`, and `-o UserKnownHostsFile="/ut-ssh/known_hosts /root/.ssh/known_hosts"` (ssh adds to the first and reads both, so what someone trusted by hand in the distro is still valid). Additionally `-o UpdateHostKeys=no`: ssh only appends lines, without the temporary file + `link` + `rename` that `proot --link2symlink` has to emulate. The question is not disabled (`StrictHostKeyChecking` stays at its default): it is asked once and remembered.
+- **Limits:** it only covers the connections the app launches from "SSH servers". An `ssh` typed by hand in a distro tab still uses its user's `~/.ssh`. **It has to be tested on a device:** connecting twice to a new host (the second must not ask) and looking at `known_hosts` in the app's folder. If the question keeps coming back, I need the output of `ssh -v` and `ls -la /root/.ssh`.
 
 ### D-REL-8 · 2026-10-14 · 0.1.4
-- A petición del usuario se publica la `0.1.4` (versionCode 10499) con el botón Pegar y la clave de servidor SSH que recuerda la app. Ninguna de las dos está probada aún en un dispositivo (la segunda ni siquiera se pudo reproducir: D-SSH-2); el changelog lo dice.
+- At the user's request `0.1.4` (versionCode 10499) is published with the Paste button and the SSH server key that the app remembers. Neither of the two is tested on a device yet (the second could not even be reproduced: D-SSH-2); the changelog says so.
