@@ -62,7 +62,7 @@ been checked.
 - **Exit:** the last entry of the "..." / "+" menu closes every session, stops the background service and its notification and closes the app (it asks first if something is still running).
 - **Accessibility:** roles, actions for every gesture (select, move tab, move pane divider), 48 dp
   touch targets and large-font layouts were audited in the code; see below for what is not checked yet.
-- **Languages:** English and Spanish.
+- **Languages:** English and Spanish; the system's by default, or chosen in Settings > Terminal > Language.
 
 ## What is verified
 

@@ -110,7 +110,7 @@ A terminal for Android designed for **server maintainers** and the spiritual suc
 - **Criteria:** a saved layout is restored identical (structure, profiles and commands); shortcuts and profiles are included in the configuration backup (RF-06).
 
 ### RF-11 Settings and internationalization
-- English and Spanish; follows the system language.
+- English and Spanish. It follows the system language by default; Settings > Terminal > Language chooses one for the app only (and Android 13+ also lists the app in the system's per-app language settings). A new language is a `values-xx/strings.xml` plus one entry in `AppLanguage`.
 - **A Settings screen that is always reachable:** a permanent icon (⚙) in the tab bar and an entry in the "+" menu. That menu opens with a visible button (⋯, "More options") next to the "+" in the top bar, the sidebar and the rail; a long press on "+" is kept as a shortcut. It cannot depend on opening another screen first.
 - Sections: **Appearance** (theme, OLED mode, scheme, font, size, margins, cursor; RF-10 and T12c), **Terminal** (scrollback, bell), **Keyboard** (extra-key rows, hide with the keyboard, shortcuts), **Sessions** (wake lock, background permission), **Distros** (install, default, compatibility mode), **Storage** (`~/storage`), **Network** (fallback DNS), **Backups** (RF-06) and **About** (version, licenses and credits).
 - **Criteria:** all the MVP's settings are changed from that screen, without editing files or using adb; they are kept across restarts and travel in the configuration backup (RF-06).
