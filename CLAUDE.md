@@ -1,67 +1,67 @@
-# UltimateTerminal — instrucciones para Claude Code
+# UltimateTerminal — instructions for Claude Code
 
-Terminal moderna para Android (sucesora de Termux) con distros Linux vía **proot**, estilo WSL. Adaptativa en tablet, solo terminal, software libre (GPLv3), destino final: F-Droid.
+A modern terminal for Android (successor to Termux) with Linux distros through **proot**, WSL-style. Adaptive on tablets, terminal only, free software (GPLv3), final destination: F-Droid.
 
-Lee siempre `SPEC.md` (qué construir) y `PLAN.md` (en qué orden) antes de empezar. Si algo de este archivo contradice a la spec, para y pregunta.
+Always read `SPEC.md` (what to build) and `PLAN.md` (in what order) before starting. If anything in this file contradicts the spec, stop and ask.
 
-## Identidad del proyecto
-- Nombre: **UltimateTerminal**
+## Project identity
+- Name: **UltimateTerminal**
 - `applicationId`: `com.qtekfun.ultimateterminal`
-- Licencia: **GPL-3.0-or-later** (cabecera SPDX en cada archivo fuente). El código de Termux que se reutilice conserva su licencia original y se atribuye.
-- Idiomas de la UI: inglés (por defecto) y español. **Ninguna cadena visible va hardcodeada**: todo en `strings.xml` (`values/` y `values-es/`).
+- License: **GPL-3.0-or-later** (SPDX header in every source file). Any Termux code that is reused keeps its original license and is credited.
+- UI languages: English (default) and Spanish. **No visible string is hardcoded**: everything goes in `strings.xml` (`values/` and `values-es/`).
 
-## Stack (no cambiar sin preguntar)
-- Kotlin, Jetpack Compose, Material 3 (colores dinámicos + modo oscuro), `WindowSizeClass`/layouts adaptativos
-- `minSdk` 26, **`targetSdk` 28** (obligatorio: permite ejecutar binarios desde el almacenamiento de la app). No subirlo sin preguntar.
-- Arquitectura: MVVM + capas `ui` / `domain` / `data`, flujo unidireccional (StateFlow)
-- Inyección: Hilt · Persistencia: Room (metadatos) · Segundo plano: servicio en primer plano + WorkManager para descargas
-- Emulador: `terminal-emulator` de Termux (Apache-2.0) envuelto en la capa `terminal`; vista propia en Compose
-- proot y talloc: compilados desde fuente con NDK, fijados por hash
-- Gradle con Kotlin DSL y catálogo de versiones (`gradle/libs.versions.toml`)
+## Stack (do not change without asking)
+- Kotlin, Jetpack Compose, Material 3 (dynamic colors + dark mode), `WindowSizeClass`/adaptive layouts
+- `minSdk` 26, **`targetSdk` 28** (mandatory: it allows running binaries from the app's storage). Do not raise it without asking.
+- Architecture: MVVM + `ui` / `domain` / `data` layers, unidirectional flow (StateFlow)
+- Injection: Hilt · Persistence: Room (metadata) · Background: foreground service + WorkManager for downloads
+- Emulator: Termux's `terminal-emulator` (Apache-2.0) wrapped in the `terminal` layer; own view in Compose
+- proot and talloc: built from source with the NDK, pinned by hash
+- Gradle with the Kotlin DSL and a version catalog (`gradle/libs.versions.toml`)
 
-## Reglas de software libre (F-Droid) — innegociables
-- **Prohibido**: Firebase, Google Play Services, Crashlytics, analíticas, SDKs propietarios, cualquier dependencia no libre. **Prohibida** toda telemetría.
-- Antes de añadir una dependencia: comprueba su licencia (compatible con GPLv3) y pregunta al usuario.
-- No incluir binarios precompilados de terceros en el repo ni en el APK: proot se compila en el build; los rootfs se **descargan** de fuentes oficiales con verificación SHA-256.
-- **Créditos y licencias:** todo código, librería, fuente o recurso de terceros que se añada, actualice o quite actualiza `THIRD_PARTY_NOTICES.md` en el mismo cambio. Se conservan intactos los avisos de copyright y las cabeceras originales. Solo se reutiliza código compatible con GPL-3.0-or-later: de `termux-app` **solo** `terminal-emulator` y `terminal-view` (Apache-2.0); el resto es GPL-3.0-only y no se copia. No usar el nombre, logo ni marca de Termux, Debian, Ubuntu, Alpine ni otros de forma que sugiera afiliación.
-- Metadatos de publicación en formato fastlane: `fastlane/metadata/android/{en-US,es-ES}/`.
-- Builds reproducibles: sin timestamps ni valores no deterministas.
+## Free-software rules (F-Droid) — non-negotiable
+- **Forbidden**: Firebase, Google Play Services, Crashlytics, analytics, proprietary SDKs, any non-free dependency. **All telemetry is forbidden.**
+- Before adding a dependency: check its license (compatible with GPLv3) and ask the user.
+- Do not include third-party prebuilt binaries in the repo or in the APK: proot is built in the build; rootfs images are **downloaded** from official sources with SHA-256 verification.
+- **Credits and licenses:** any third-party code, library, font or resource that is added, updated or removed updates `THIRD_PARTY_NOTICES.md` in the same change. Copyright notices and original headers are kept intact. Only code compatible with GPL-3.0-or-later is reused: from `termux-app`, **only** `terminal-emulator` and `terminal-view` (Apache-2.0); the rest is GPL-3.0-only and is not copied. Do not use the name, logo or trademark of Termux, Debian, Ubuntu, Alpine or others in a way that suggests affiliation.
+- Release metadata in fastlane format: `fastlane/metadata/android/{en-US,es-ES}/`.
+- Reproducible builds: no timestamps or non-deterministic values.
 
-## Comandos
-- Build debug: `./gradlew assembleDebug`
-- Tests unitarios: `./gradlew testDebugUnitTest`
-- Tests instrumentados: `./gradlew connectedDebugAndroidTest`
-- Lint y estilo: `./gradlew detekt ktlintCheck lintDebug`
-- Cobertura: `./gradlew koverVerify koverHtmlReport`
-- Todo lo que corre la CI: `./gradlew check`
+## Commands
+- Debug build: `./gradlew assembleDebug`
+- Unit tests: `./gradlew testDebugUnitTest`
+- Instrumented tests: `./gradlew connectedDebugAndroidTest`
+- Lint and style: `./gradlew detekt ktlintCheck lintDebug`
+- Coverage: `./gradlew koverVerify koverHtmlReport`
+- Everything CI runs: `./gradlew check`
 
-## Calidad y tests
-- Cada tarea termina con `./gradlew check` en verde. No marques una tarea como hecha si falla.
-- Stack de tests: JUnit5 + MockK, Turbine, MockWebServer (descargas), Room en memoria; pruebas instrumentadas para PTY, proot y redimensionado.
-- **Cobertura (Kover):** ≥85 % en `domain` y `data`; **100 %** en verificación de rootfs/descargas y en el formato de backup (cifrado y restauración). Excluidos: código generado, `@Preview`, UI Compose pura.
-- **Nunca escribas tests vacíos o tautológicos** para subir el número.
-- Warnings de Kotlin y Lint tratados como errores.
+## Quality and tests
+- Every task ends with `./gradlew check` green. Do not mark a task as done if it fails.
+- Test stack: JUnit5 + MockK, Turbine, MockWebServer (downloads), in-memory Room; instrumented tests for the PTY, proot and resizing.
+- **Coverage (Kover):** ≥85 % in `domain` and `data`; **100 %** in rootfs/download verification and in the backup format (encryption and restore). Excluded: generated code, `@Preview`, pure Compose UI.
+- **Never write empty or tautological tests** to raise the number.
+- Kotlin and Lint warnings are treated as errors.
 
-## Flujo de trabajo
-- **Una tarea de `PLAN.md` cada vez**, en una rama `feat/<tarea>`.
-- Empieza en modo plan: propón el enfoque y espera confirmación antes de tocar código.
-- Commits **Conventional Commits** (`feat:`, `fix:`, `test:`, `chore:`, `docs:`...), pequeños y atómicos.
-- No hagas `git push --force`, no reescribas historia compartida, no toques `master` directamente.
-- Al terminar cada tarea: resume en 2-3 líneas qué se hizo y qué queda; marca la tarea en `PLAN.md`.
-- Si la spec es ambigua o falta información: **pregunta**, no inventes.
+## Workflow
+- **One `PLAN.md` task at a time**, on a `feat/<task>` branch.
+- Start in plan mode: propose the approach and wait for confirmation before touching code.
+- **Conventional Commits** (`feat:`, `fix:`, `test:`, `chore:`, `docs:`...), small and atomic.
+- Do not `git push --force`, do not rewrite shared history, do not touch `master` directly.
+- When finishing each task: summarize in 2-3 lines what was done and what is left; mark the task in `PLAN.md`.
+- If the spec is ambiguous or information is missing: **ask**, do not invent.
 
-## Convenciones de código
-- Un archivo por clase pública relevante; paquetes por feature dentro de cada capa.
-- Sin lógica de negocio en composables ni en ViewModels pesados: va en `domain`.
-- Inmutabilidad por defecto. Errores de red/IO con tipos sellados, no excepciones sueltas hacia la UI.
-- **Todo I/O fuera del hilo principal** (Dispatchers inyectables). Operaciones largas (descarga, extracción, backup, restauración) en servicio con notificación y reanudables o transaccionales: nunca dejar una distro a medias.
-- **El acceso a rootfs y ficheros pasa por una abstracción** (`DistroRepository`/`FileSystemRepository`); sin `java.io.File` suelto en `ui` ni `domain`.
-- Los PTY y procesos los gestiona el servicio, no la Activity: la UI se reconecta a sesiones vivas.
-- Los secretos (claves SSH, contraseñas de backup) se cifran con Android Keystore; nunca en logs ni en texto plano. Nunca se registra el contenido de la terminal.
-- Accesibilidad: `contentDescription`, tamaños táctiles ≥ 48 dp, fuente grande.
+## Code conventions
+- One file per relevant public class; packages by feature inside each layer.
+- No business logic in composables or in heavy ViewModels: it goes in `domain`.
+- Immutability by default. Network/IO errors with sealed types, not loose exceptions towards the UI.
+- **All I/O off the main thread** (injectable Dispatchers). Long operations (download, extraction, backup, restore) in a service with a notification and either resumable or transactional: never leave a distro half done.
+- **Access to rootfs and files goes through an abstraction** (`DistroRepository`/`FileSystemRepository`); no loose `java.io.File` in `ui` or `domain`.
+- PTYs and processes are managed by the service, not the Activity: the UI reconnects to live sessions.
+- Secrets (SSH keys, backup passwords) are encrypted with the Android Keystore; never in logs or in plain text. The terminal's content is never logged.
+- Accessibility: `contentDescription`, touch targets ≥ 48 dp, large font.
 
-## Qué NO hacer
-- No implementes nada marcado como "Fuera de alcance" en `SPEC.md` (sobre todo: entorno gráfico, bootstrap/`pkg` propio, SAF).
-- No dependas del prefijo `com.termux` ni de binarios de Termux.
-- No cambies versiones de dependencias a mano: lo gestiona Dependabot.
-- No desactives ni relajes detekt, ktlint, Lint o Kover para que pase la CI.
+## What NOT to do
+- Do not implement anything marked "Out of scope" in `SPEC.md` (above all: graphical environment, own bootstrap/`pkg`, SAF).
+- Do not depend on the `com.termux` prefix or on Termux binaries.
+- Do not change dependency versions by hand: Dependabot manages them.
+- Do not disable or relax detekt, ktlint, Lint or Kover to make CI pass.

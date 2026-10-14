@@ -1,213 +1,213 @@
-# UltimateTerminal — Especificación (SPEC)
+# UltimateTerminal — Specification (SPEC)
 
-Versión del documento: 0.1 · Estado: borrador para implementación del MVP
+Document version: 0.1 · Status: draft for the MVP implementation
 
-Los puntos marcados **(DEFECTO)** son decisiones por defecto no confirmadas por el usuario: revisar antes de implementar.
+Points marked **(DEFAULT)** are default decisions not confirmed by the user: review them before implementing.
 
-## 1. Objetivo
+## 1. Goal
 
-Terminal para Android pensada para **mantenedores de servidores** y sucesora espiritual de Termux: UI moderna, **adaptativa de verdad en tablet** (ocupa toda la pantalla y se redimensiona con multiventana, teclado y plegables) y entornos Linux completos tipo **WSL** mediante `proot`. Solo terminal: sin entorno gráfico. Debe ser útil para otras personas y publicarse en F-Droid.
+A terminal for Android designed for **server maintainers** and the spiritual successor of Termux: a modern UI, **truly adaptive on tablets** (it fills the whole screen and resizes with multi-window, the keyboard and foldables) and complete **WSL-style** Linux environments through `proot`. Terminal only: no graphical environment. It must be useful to other people and be published on F-Droid.
 
-### Problemas que resuelve (Termux)
-1. La UI es anticuada.
-2. En tablets no redimensiona bien y no se ve a pantalla completa.
-3. Gestionar entornos, copias de seguridad y cambio de dispositivo es manual y frágil.
+### Problems it solves (Termux)
+1. The UI is outdated.
+2. On tablets it does not resize well and does not show full screen.
+3. Managing environments, backups and changing device is manual and fragile.
 
-## 2. Alcance y supuestos
+## 2. Scope and assumptions
 
-| Tema | Decisión |
+| Topic | Decision |
 |---|---|
-| Plataforma | Android, `minSdk` 26. **Tablet y móvil a la par**; diseño adaptativo desde el MVP |
-| `targetSdk` | **28**, igual que Termux. Android 10+ prohíbe ejecutar binarios del almacenamiento de la app con `targetSdk` ≥ 29. Consecuencia: **no apto para Google Play** (ya descartado por política) |
-| Distribución | F-Droid y GitHub Releases |
-| Emulador de terminal | Reutilizar `terminal-emulator` de Termux (Apache-2.0, PTY por JNI), con vista y UI propias en Compose |
-| Userland | **Solo distros con proot**, estilo WSL. Sin bootstrap/paquetes propios tipo `pkg` ni prefijo `com.termux` |
-| Distros del MVP | Debian, Ubuntu y Alpine; **Fedora se añade como T24** (petición del usuario: es su distro habitual). Rootfs oficiales descargados al instalar, verificados con SHA-256. Arch, en backlog |
-| proot | **Compilado desde fuente** en el build (NDK; fuentes de proot y talloc fijadas por hash), empaquetado como `.so`. Reproducible y compatible con F-Droid |
-| Entorno gráfico | Ninguno. Ni X11 ni Wayland ni VNC |
-| Licencia | GPL-3.0-or-later |
-| Idiomas | Inglés y español; arquitectura preparada para más |
-| Cuentas/servidores | Todo local. No hay backend ni cuenta propia |
+| Platform | Android, `minSdk` 26. **Tablet and phone on a par**; adaptive design from the MVP |
+| `targetSdk` | **28**, like Termux. Android 10+ forbids running binaries from the app's storage with `targetSdk` ≥ 29. Consequence: **not suitable for Google Play** (already ruled out by policy) |
+| Distribution | F-Droid and GitHub Releases |
+| Terminal emulator | Reuse Termux's `terminal-emulator` (Apache-2.0, PTY through JNI), with our own view and UI in Compose |
+| Userland | **proot distros only**, WSL-style. No own bootstrap/packages like `pkg` and no `com.termux` prefix |
+| MVP distros | Debian, Ubuntu and Alpine; **Fedora is added as T24** (user request: it is their usual distro). Official rootfs images downloaded at install time, verified with SHA-256. Arch, in the backlog |
+| proot | **Built from source** in the build (NDK; proot and talloc sources pinned by hash), packaged as `.so`. Reproducible and F-Droid compatible |
+| Graphical environment | None. No X11, no Wayland, no VNC |
+| License | GPL-3.0-or-later |
+| Languages | English and Spanish; architecture ready for more |
+| Accounts/servers | Everything local. There is no backend and no account of our own |
 | `applicationId` | `com.qtekfun.ultimateterminal` |
 
-## 3. Requisitos funcionales (MVP)
+## 3. Functional requirements (MVP)
 
-### RF-01 Terminal y emulación
-- Emulación xterm completa (colores 256/truecolor, unicode y emoji, ratón, bracketed paste, alternate screen).
-- **Criterios:** `vim`, `tmux`, `htop`, `less`, `nano` y `mc` se ven y responden correctamente. El scrollback es configurable (por defecto 10 000 líneas).
+### RF-01 Terminal and emulation
+- Full xterm emulation (256/truecolor colors, unicode and emoji, mouse, bracketed paste, alternate screen).
+- **Criteria:** `vim`, `tmux`, `htop`, `less`, `nano` and `mc` look and respond correctly. The scrollback is configurable (10 000 lines by default).
 
-### RF-02 Multitab y paneles
-- Varias pestañas, renombrables y reordenables; cada una es una sesión independiente de una distro.
-- En pantallas anchas, **paneles divididos** (varias terminales a la vez), además de pestañas.
-- **Criterios:** crear, cerrar, mover y cambiar de pestaña no interrumpe el resto de procesos. Al cerrar una sesión con procesos en curso se pide confirmación.
+### RF-02 Multitab and panes
+- Several tabs, renamable and reorderable; each one is an independent session of a distro.
+- On wide screens, **split panes** (several terminals at once), in addition to tabs.
+- **Criteria:** creating, closing, moving and switching tabs does not interrupt the other processes. Closing a session with running processes asks for confirmation.
 
-### RF-03 Pantalla adaptativa (requisito principal)
-- Edge-to-edge. El área de terminal **se redimensiona** al cambiar la ventana (multiventana, split-screen, ventana flotante, plegables, rotación) y al mostrar/ocultar el teclado, y el PTY recibe el nuevo tamaño (`SIGWINCH`).
-- Layout por clases de tamaño de ventana (`WindowSizeClass`): barra de pestañas lateral o superior según el ancho.
-- **Criterios:**
-  - En una tablet la terminal ocupa el 100 % del área disponible, sin bandas ni huecos.
-  - Tras redimensionar, `stty size` coincide con lo que se ve.
-  - Rotar o entrar en multiventana no cierra ni reinicia las sesiones.
+### RF-03 Adaptive screen (main requirement)
+- Edge-to-edge. The terminal area **resizes** when the window changes (multi-window, split screen, floating window, foldables, rotation) and when the keyboard is shown/hidden, and the PTY receives the new size (`SIGWINCH`).
+- Layout by window size classes (`WindowSizeClass`): a side or top tab bar depending on the width.
+- **Criteria:**
+  - On a tablet the terminal takes 100 % of the available area, with no bands or gaps.
+  - After resizing, `stty size` matches what is seen.
+  - Rotating or entering multi-window does not close or restart the sessions.
 
-### RF-04 Distros (estilo WSL)
-- Instalar, listar, **renombrar, duplicar** y eliminar distros desde la app. Varias instaladas a la vez.
-- Descarga del rootfs oficial con **verificación SHA-256**, progreso, reanudación y reintento.
-- Usuario por defecto configurable (root o usuario normal) y distro predeterminada.
-- Dentro de la distro funcionan `apt`/`apk`, `ssh`, `nmap`, `python`, etc.
-- **Criterios:** instalar Debian desde cero lleva a un prompt operativo sin pasos manuales; un fallo de red a mitad no deja una distro corrupta.
+### RF-04 Distros (WSL-style)
+- Install, list, **rename, duplicate** and delete distros from the app. Several installed at once.
+- Download of the official rootfs with **SHA-256 verification**, progress, resume and retry.
+- Configurable default user (root or a normal user) and default distro.
+- Inside the distro `apt`/`apk`, `ssh`, `nmap`, `python`, etc. work.
+- **Criteria:** installing Debian from scratch leads to a working prompt with no manual steps; a network failure half way does not leave a corrupt distro.
 
-### RF-05 Acceso a archivos del dispositivo
-- Bind-mount del almacenamiento compartido (`/sdcard`, Descargas) dentro de la distro, p. ej. en `~/storage`, para usar `cp`/`mv` y bajar logs.
-- Se solicita el permiso de almacenamiento solo cuando el usuario activa la función.
-- **Criterios:** `cp /var/log/syslog ~/storage/downloads/` aparece en la carpeta Descargas del dispositivo.
-- Proveedor SAF (la distro visible en la app Archivos) queda fuera del MVP (ver sección 4).
+### RF-05 Access to the device's files
+- Bind-mount of the shared storage (`/sdcard`, Downloads) inside the distro, e.g. at `~/storage`, to use `cp`/`mv` and pull logs.
+- The storage permission is requested only when the user turns the feature on.
+- **Criteria:** `cp /var/log/syslog ~/storage/downloads/` shows up in the device's Downloads folder.
+- A SAF provider (the distro visible in the Files app) is out of the MVP (see section 4).
 
-### RF-06 Copias de seguridad y migración
-- Exportar **una distro** (rootfs completo), **solo la configuración** o **todo** a un archivo `.tar.zst`.
-- La **configuración de la app** incluye todos los ajustes: tema y modo OLED, fuentes, perfiles, esquemas de color, teclas extra, atajos, layouts guardados, hosts SSH y claves, distro predeterminada, etc. Se exporta como un archivo pequeño e independiente de los rootfs, para dejar un dispositivo nuevo igual que el anterior en un momento.
-- Las rutas y valores específicos del dispositivo (p. ej. permiso de almacenamiento) se re-solicitan al restaurar, no se copian.
-- **Cifrado opcional** AES-256-GCM con clave derivada (PBKDF2) de una contraseña del usuario, como en UltimateDeck: la clave del Keystore no puede salir del dispositivo.
-- Restaurar en un dispositivo nuevo, también desde la pantalla de bienvenida.
-- **Criterios:**
-  - Exportar solo la configuración en un dispositivo y restaurarla en otro deja la app con el mismo aspecto, atajos, perfiles y layouts, sin pasos manuales.
-  - Exportar y restaurar conserva permisos, propietarios, enlaces simbólicos y bits ejecutables del rootfs.
-  - Una copia cifrada con contraseña errónea falla de forma clara y sin escribir nada.
+### RF-06 Backups and migration
+- Export **one distro** (the complete rootfs), **only the configuration** or **everything** to a `.tar.zst` file.
+- The **app configuration** includes every setting: theme and OLED mode, fonts, profiles, color schemes, extra keys, shortcuts, saved layouts, SSH hosts and keys, default distro, etc. It is exported as a small file independent of the rootfs images, to leave a new device like the previous one at a given moment.
+- Device-specific paths and values (e.g. the storage permission) are requested again on restore, not copied.
+- **Optional encryption** AES-256-GCM with a key derived (PBKDF2) from a user password, as in UltimateDeck: the Keystore key cannot leave the device.
+- Restore on a new device, also from the welcome screen.
+- **Criteria:**
+  - Exporting only the configuration on one device and restoring it on another leaves the app with the same look, shortcuts, profiles and layouts, with no manual steps.
+  - Exporting and restoring keeps the rootfs's permissions, owners, symbolic links and executable bits.
+  - An encrypted backup with the wrong password fails clearly and writes nothing.
 
-### RF-07 Persistencia de sesiones
-- **Servicio en primer plano** con notificación persistente que mantiene vivas las sesiones con la app en segundo plano.
-- Wakelock opcional. Aviso guiado sobre la optimización de batería.
-- **Criterios:** un `ssh` o una tarea larga sobreviven al cambiar de app y a apagar la pantalla.
-- Restaurar pestañas tras un cierre real (no procesos): **(DEFECTO) backlog**.
+### RF-07 Session persistence
+- A **foreground service** with a persistent notification that keeps sessions alive with the app in the background.
+- Optional wake lock. Guided notice about battery optimization.
+- **Criteria:** an `ssh` or a long task survives switching apps and turning the screen off.
+- Restoring tabs after a real close (not processes): **(DEFAULT) backlog**.
 
-### RF-16 Salir de la app
-- Última entrada del menú «⋯»/«+» (barra superior, lateral y raíl): **Salir**, con icono de apagado. Con sesiones vivas pide confirmar («¿Salir de UltimateTerminal?», con el número de sesiones que se cerrarán); sin ninguna, sale directamente.
-- Salir cierra todas las sesiones (mata sus procesos), detiene el servicio en primer plano (quita la notificación y libera el wakelock) y cierra la tarea (`finishAndRemoveTask`).
-- **Criterios:** tras Salir no queda servicio ni notificación; abrir la app después es un arranque normal (una pestaña nueva).
+### RF-16 Exit the app
+- Last entry of the "⋯"/"+" menu (top bar, sidebar and rail): **Exit**, with a power icon. With live sessions it asks to confirm ("Exit UltimateTerminal?", with the number of sessions that will be closed); with none, it exits directly.
+- Exit closes every session (kills their processes), stops the foreground service (removes the notification and releases the wake lock) and closes the task (`finishAndRemoveTask`).
+- **Criteria:** after Exit no service or notification remains; opening the app afterwards is a normal start (one new tab).
 
-### RF-08 Entrada
-- **Fila de teclas extra** (Esc, Tab, Ctrl, Alt, flechas, etc.), configurable, con Ctrl/Alt pegajosos. **Solo se muestra mientras el teclado en pantalla está visible**: al ocultarlo desaparece y devuelve su espacio al terminal (opción "ocultar con el teclado", activa por defecto, para quien prefiera verla siempre).
-- **Teclado físico completo:** F1–F12, combinaciones Ctrl/Alt, atajos de la app (**(DEFECTO)** `Ctrl+Shift+T` nueva pestaña, `Alt+n` cambiar de pestaña), ratón y rueda.
-- **Tipo de teclado en pantalla:** ajuste en Ajustes > Teclado con tres opciones: **Normal** (**(DEFECTO)**, campo de texto sin sugerencias ni variación de contraseña, para que cada móvil muestre su teclado de siempre y no el «teclado seguro» de algunos fabricantes), **Compatible** (campo de contraseña visible, que algunos teclados necesitan para no autocorregir en un terminal) y **Sin procesar** (sin tipo de entrada, como la opción `input-type` de Termux: solo pulsaciones de teclas). Se guarda y entra en la copia de configuración; cambiarlo reinicia la entrada del teclado. (Pendiente de comprobar en dispositivo.)
-- Copiar/pegar, selección táctil con asas, zoom con pellizco.
+### RF-08 Input
+- **Extra-keys row** (Esc, Tab, Ctrl, Alt, arrows, etc.), configurable, with sticky Ctrl/Alt. **It is only shown while the on-screen keyboard is visible**: when the keyboard is hidden it disappears and gives its space back to the terminal (a "hide with the keyboard" option, on by default, for those who prefer to always see it).
+- **Full hardware keyboard:** F1–F12, Ctrl/Alt combinations, app shortcuts (**(DEFAULT)** `Ctrl+Shift+T` new tab, `Alt+n` switch tab), mouse and wheel.
+- **On-screen keyboard type:** a setting in Settings > Keyboard with three options: **Normal** (**(DEFAULT)**, a text field with no suggestions and no password variation, so each phone shows its usual keyboard and not the "secure keyboard" of some manufacturers), **Compatible** (a visible-password field, which some keyboards need so they do not autocorrect in a terminal) and **Raw** (no input type, like Termux's `input-type` option: only key presses). It is saved and goes in the configuration backup; changing it restarts the keyboard input. (Still to be checked on a device.)
+- Copy/paste, touch selection with handles, pinch zoom.
 
-### RF-09 Gestor de hosts SSH
-- Lista de servidores guardados (nombre, host, puerto, usuario, clave) que abre una pestaña con `ssh` ya lanzado en la distro elegida.
-- Gestión de claves: generar, importar y exportar. **Las claves privadas se cifran en reposo con Android Keystore** y nunca van a logs.
-- **Criterios:** conectar a un host guardado requiere un toque; la clave privada no aparece en texto plano fuera de la distro.
+### RF-09 SSH host manager
+- A list of saved servers (name, host, port, user, key) that opens a tab with `ssh` already started in the chosen distro.
+- Key management: generate, import and export. **Private keys are encrypted at rest with the Android Keystore** and never go to logs.
+- **Criteria:** connecting to a saved host takes one tap; the private key does not appear in plain text outside the distro.
 
-### RF-10 Temas, modo OLED y fuentes
-- Tema claro, oscuro, del sistema y **modo OLED**: negro puro (#000000) en fondo de terminal e interfaz para ahorrar batería en pantallas OLED. Se activa por separado del tema oscuro.
-- Esquemas de color de terminal (incluye Solarized, Dracula, etc.), editables y con importación/exportación.
-- Fuentes monoespaciadas incluidas (**(DEFECTO)** una Nerd Font libre) y tamaño ajustable.
+### RF-10 Themes, OLED mode and fonts
+- Light, dark, system theme and **OLED mode**: pure black (#000000) in the terminal background and the interface to save battery on OLED screens. It is turned on separately from the dark theme.
+- Terminal color schemes (including Solarized, Dracula, etc.), editable and with import/export.
+- Bundled monospaced fonts (**(DEFAULT)** a free Nerd Font) and an adjustable size.
 
-### RF-12 Personalización estilo Terminator
-- **Perfiles** (**(DEFECTO)**): conjunto con nombre de esquema de color, fuente, tamaño, scrollback, distro, usuario y comando inicial. Cada pestaña o panel puede usar uno distinto.
-- **Layouts guardados:** disposición de pestañas y paneles (divisiones horizontales/verticales con proporciones) que se guarda con nombre y se vuelve a abrir con un toque, cada panel con su perfil y su comando inicial (p. ej. 3 paneles abiertos a tres servidores).
-- Dividir un panel en horizontal o vertical, redimensionar arrastrando los separadores y reordenar paneles.
-- **Atajos totalmente configurables** (dividir, cerrar, cambiar de panel, pantalla completa de un panel, etc.).
-- **Emitir a varios paneles** (**(DEFECTO)**): lo escrito en un panel se envía a todos los del grupo, útil para administrar varios servidores.
-- *Estado (T12b):* del perfil, hoy se aplican por panel la distro, el usuario, el scrollback y el comando inicial; el esquema, la fuente y el tamaño se guardan pero aún no se aplican por panel (D-T12b-9). Los números de pestaña (`Alt+1` a `9`) no se pueden reasignar todavía.
-- **Criterios:** un layout guardado se restaura idéntico (estructura, perfiles y comandos); los atajos y perfiles se incluyen en la copia de configuración (RF-06).
+### RF-12 Terminator-style customization
+- **Profiles** (**(DEFAULT)**): a named set of color scheme, font, size, scrollback, distro, user and startup command. Each tab or pane can use a different one.
+- **Saved layouts:** an arrangement of tabs and panes (horizontal/vertical splits with proportions) saved with a name and reopened with one tap, each pane with its profile and its startup command (e.g. 3 panes opened to three servers).
+- Split a pane horizontally or vertically, resize by dragging the dividers and reorder panes.
+- **Fully configurable shortcuts** (split, close, switch pane, full screen of a pane, etc.).
+- **Broadcast to several panes** (**(DEFAULT)**): what is typed in one pane is sent to all those in the group, useful to administer several servers.
+- *Status (T12b):* of the profile, the distro, the user, the scrollback and the startup command are applied per pane today; the scheme, the font and the size are saved but not yet applied per pane (D-T12b-9). The tab numbers (`Alt+1` to `9`) cannot be reassigned yet.
+- **Criteria:** a saved layout is restored identical (structure, profiles and commands); shortcuts and profiles are included in the configuration backup (RF-06).
 
-### RF-11 Ajustes e internacionalización
-- Inglés y español; sigue el idioma del sistema.
-- **Pantalla de Ajustes siempre accesible:** un icono permanente (⚙) en la barra de pestañas y una entrada en el menú de "+". Ese menú se abre con un botón visible (⋯, "Más opciones") junto al "+" en la barra superior, la lateral y el raíl; la pulsación larga en "+" se mantiene como atajo. No puede depender de abrir antes otra pantalla.
-- Secciones: **Apariencia** (tema, modo OLED, esquema, fuente, tamaño, márgenes, cursor; RF-10 y T12c), **Terminal** (scrollback, campana), **Teclado** (filas de teclas extra, ocultar con el teclado, atajos), **Sesiones** (wakelock, permiso de segundo plano), **Distros** (instalar, predeterminada, modo de compatibilidad), **Almacenamiento** (`~/storage`), **Red** (DNS de respaldo), **Copias de seguridad** (RF-06) y **Acerca de** (versión, licencias y créditos).
-- **Criterios:** todos los ajustes del MVP se cambian desde esa pantalla, sin editar ficheros ni usar adb; se conservan al reiniciar y viajan en la copia de configuración (RF-06).
+### RF-11 Settings and internationalization
+- English and Spanish; follows the system language.
+- **A Settings screen that is always reachable:** a permanent icon (⚙) in the tab bar and an entry in the "+" menu. That menu opens with a visible button (⋯, "More options") next to the "+" in the top bar, the sidebar and the rail; a long press on "+" is kept as a shortcut. It cannot depend on opening another screen first.
+- Sections: **Appearance** (theme, OLED mode, scheme, font, size, margins, cursor; RF-10 and T12c), **Terminal** (scrollback, bell), **Keyboard** (extra-key rows, hide with the keyboard, shortcuts), **Sessions** (wake lock, background permission), **Distros** (install, default, compatibility mode), **Storage** (`~/storage`), **Network** (fallback DNS), **Backups** (RF-06) and **About** (version, licenses and credits).
+- **Criteria:** all the MVP's settings are changed from that screen, without editing files or using adb; they are kept across restarts and travel in the configuration backup (RF-06).
 
-### RF-13 Arranque y primera ejecución
-- Al abrir la app, la primera pestaña abre la **distro predeterminada** (proot) si está lista; con la app cerrada del todo y reabierta ocurre lo mismo.
-- Si no hay ninguna distro instalada, se muestra la **configuración inicial** (RF-15) en lugar del shell de Android.
-- Las pestañas se nombran con su distro (p. ej. "Alpine"), no con "Shell N", salvo que el usuario las renombre.
-- **Criterio:** instalada una distro, cerrar la app y volver a abrirla deja un prompt de esa distro en la primera pestaña. (Comprobado en un Pixel 8; el nombre de la pestaña, pendiente.)
+### RF-13 Start and first run
+- When the app opens, the first tab opens the **default distro** (proot) if it is ready; with the app fully closed and reopened the same happens.
+- If no distro is installed, the **initial setup** (RF-15) is shown instead of the Android shell.
+- Tabs are named after their distro (e.g. "Alpine"), not "Shell N", unless the user renames them.
+- **Criterion:** with a distro installed, closing the app and opening it again leaves a prompt of that distro in the first tab. (Checked on a Pixel 8; the tab name, pending.)
 
-### RF-13b Sin sesiones, la app se cierra
-- Cuando el número de sesiones llega a **cero por cualquier vía** (la acción «Salir» de la notificación, la última pestaña cerrada con su X, el menú de salir), la app se cierra del todo: se detiene el servicio y desaparece la notificación, y se cierra y quita la tarea aunque la actividad esté parada o en recientes. Una sesión cuyo proceso terminó sigue listada hasta que se cierra, y no cuenta como cero.
-- Abrir la app (icono, recientes, notificación) es siempre un arranque normal: una pestaña de la distro predeterminada (RF-13) o la configuración inicial (RF-15). Nunca hay una app abierta con cero pestañas, y una pantalla antigua que vuelve sin sesiones se cierra sola sin abrir pestañas.
+### RF-13b With no sessions, the app closes
+- When the number of sessions reaches **zero by any path** (the "Exit" action of the notification, the last tab closed with its X, the exit menu), the app closes completely: the service is stopped and the notification goes away, and the task is closed and removed even if the activity is stopped or in recents. A session whose process ended stays listed until it is closed, and does not count as zero.
+- Opening the app (icon, recents, notification) is always a normal start: a tab of the default distro (RF-13) or the initial setup (RF-15). There is never an open app with zero tabs, and an old screen that comes back without sessions closes itself without opening tabs.
 
-### RF-14 Diseño estilo iOS
-El usuario probó la app en un Pixel 8 y la encontró fea ("hay que rediseñarla al estilo iOS"). La interfaz propia (todo menos el área del terminal) pasa a un diseño **inspirado en iOS**, sobre un sistema de componentes común (`ui/ios`):
-- **Títulos grandes que colapsan** al desplazar, con una barra de navegación pequeña que los recoge.
-- **Barras translúcidas con desenfoque** del contenido que pasa por debajo (desde Android 12; antes, una barra casi sólida con el mismo aspecto).
-- **Listas agrupadas** con esquinas redondeadas sobre fondo gris, separadores finos con sangría, chevrones, valores y filas con interruptor o acción destructiva.
-- **Interruptores, controles segmentados, campo de búsqueda y botones** (rellenos, tintados y planos) al estilo iOS.
-- **Hojas modales con asa** (alturas media y completa, arrastrables) en lugar de diálogos Material; alertas y hojas de acciones; menús contextuales.
-- **Tipografía y espaciado de iOS** (escala de Large Title 34 a Caption 12, rejilla de 8 pt), **animaciones de muelle** y **respuesta háptica**; sin botones flotantes (FAB).
-- **Claro, oscuro y OLED coherentes con los esquemas de color de T12**: el tinte sale del azul del esquema elegido y se ajusta para ser legible.
-- **Accesibilidad:** TalkBack con roles y estados, zonas táctiles de al menos 48 dp, escala de fuente del sistema y contraste de texto de al menos 4,5:1 en todos los temas y esquemas.
+### RF-14 iOS-style design
+The user tried the app on a Pixel 8 and found it ugly ("it has to be redesigned in the iOS style"). The app's own interface (everything but the terminal area) moves to an **iOS-inspired** design, on a common component system (`ui/ios`):
+- **Large titles that collapse** on scroll, with a small navigation bar that takes them in.
+- **Translucent bars with blur** of the content passing underneath (from Android 12; before that, an almost solid bar with the same look).
+- **Grouped lists** with rounded corners on a grey background, thin indented separators, chevrons, values and rows with a switch or a destructive action.
+- **Switches, segmented controls, search field and buttons** (filled, tinted and plain) in the iOS style.
+- **Modal sheets with a handle** (half and full height, draggable) instead of Material dialogs; alerts and action sheets; context menus.
+- **iOS typography and spacing** (Large Title 34 to Caption 12 scale, 8 pt grid), **spring animations** and **haptic response**; no floating buttons (FAB).
+- **Light, dark and OLED consistent with the T12 color schemes**: the tint comes from the chosen scheme's blue and is adjusted to be legible.
+- **Accessibility:** TalkBack with roles and states, touch targets of at least 48 dp, the system font scale and a text contrast of at least 4.5:1 in all themes and schemes.
 
-**Qué NO se hace:** no se usan **SF Pro, SF Symbols ni ningún recurso de Apple** (su licencia no lo permite). La tipografía es **Inter** (SIL OFL-1.1) y los iconos son **Lucide** (ISC); ambos se acreditan en `THIRD_PARTY_NOTICES.md`. Es un diseño inspirado, no una copia con marca, y no se afirma ninguna afiliación con Apple. El área del terminal (texto monoespaciado, colores del esquema) no cambia de aspecto.
+**What is NOT done:** **SF Pro, SF Symbols or any Apple asset** are not used (their license does not allow it). The typography is **Inter** (SIL OFL-1.1) and the icons are **Lucide** (ISC); both are credited in `THIRD_PARTY_NOTICES.md`. It is an inspired design, not a branded copy, and no affiliation with Apple is claimed. The terminal area (monospaced text, scheme colors) does not change its look.
 
-**Criterios:** el catálogo de componentes (solo en builds de depuración) enseña cada uno en claro, oscuro y OLED; las pantallas rediseñadas (T22b y T22c) solo usan componentes de `ui/ios`; ningún texto va fijo en un componente.
+**Criteria:** the component catalog (only in debug builds) shows each one in light, dark and OLED; the redesigned screens (T22b and T22c) only use `ui/ios` components; no text is fixed inside a component.
 
-### RF-15 Configuración inicial (primer arranque)
-Petición del usuario: «si no hay distro, muestra directamente una configuración inicial para instalar una, para que la experiencia sea coherente». Antes, una instalación nueva abría un shell de Android sin distro y el usuario tenía que descubrir Ajustes > Distribuciones > Gestionar > +.
-- Al abrir la app **sin ninguna distro lista y sin pestañas abiertas**, en vez de la pestaña del shell de Android se muestra una pantalla completa de bienvenida, en estilo iOS (`ui/ios`): explicación corta, elección de distribución (Alpine —la descarga más pequeña, preseleccionada y recomendada—, Debian, Ubuntu y Fedora, las del catálogo), nombre y usuario por defecto (`root`), una nota de red y de tamaño, y el botón principal **Instalar**.
-- **Restaurar desde una copia de seguridad** reutiliza el flujo de Ajustes > Copias de seguridad (selector del sistema, contraseña si está cifrada, progreso y cancelación).
-- La instalación es **la misma** que la de Distribuciones (mismo ViewModel e instalador, con progreso, cancelación y errores). Un fallo se muestra con su motivo y el formulario sigue ahí para **reintentar o elegir otra distro**: no hay callejón sin salida.
-- Al terminar, la distro nueva es la **predeterminada**, la configuración se cierra y la primera pestaña la abre (RF-13).
-- «Omitir, usar por ahora el shell de Android» (botón de texto, no es el camino por defecto) abre el shell de Android; solo se recuerda durante la sesión: sin distro, la configuración vuelve a mostrarse en el siguiente arranque.
-- El aviso «Mantener las sesiones activas» no se muestra sobre la configuración: aparece al empezar la primera sesión.
-- **Criterio:** en una instalación nueva se ve la bienvenida, no un shell de Android; instalar Alpine desde ella termina en un prompt de Alpine en la primera pestaña. (Pendiente de comprobar en dispositivo.)
+### RF-15 Initial setup (first run)
+User request: "if there is no distro, show an initial setup straight away to install one, so the experience is consistent". Before, a new install opened an Android shell with no distro and the user had to discover Settings > Distributions > Manage > +.
+- When the app opens **with no ready distro and no open tabs**, instead of the Android shell tab a full-screen welcome screen is shown, in iOS style (`ui/ios`): a short explanation, a choice of distribution (Alpine —the smallest download, preselected and recommended—, Debian, Ubuntu and Fedora, those of the catalog), a name and default user (`root`), a note on network and size, and the main **Install** button.
+- **Restore from a backup** reuses the Settings > Backups flow (system picker, password if encrypted, progress and cancellation).
+- The installation is **the same** as Distributions' (same ViewModel and installer, with progress, cancellation and errors). A failure is shown with its reason and the form stays there to **retry or pick another distro**: there is no dead end.
+- When it ends, the new distro is the **default**, the setup closes and the first tab opens it (RF-13).
+- "Skip, use the Android shell for now" (a text button, not the default path) opens the Android shell; it is only remembered during the session: with no distro, the setup is shown again on the next start.
+- The "Keep sessions alive" notice is not shown over the setup: it appears when the first session starts.
+- **Criterion:** on a new install the welcome is seen, not an Android shell; installing Alpine from it ends at an Alpine prompt in the first tab. (Still to be checked on a device.)
 
-### RF-16 Barra lateral de pestañas dinámica
-Petición del usuario (0.1.1): «quiero que la barra lateral en horizontal se encoja al pulsar en el terminal, es decir, que tenga un tamaño dinámico». En ventanas anchas (RF-03, desde 600 dp) la columna de pestañas ocupaba un ancho fijo y, p. ej. en media pantalla, dejaba al terminal con 49 columnas. Ahora tiene dos estados:
-- **Desplegada** (192 dp): el aspecto de siempre (píldoras con nombre, «+», ⚙) más un botón con un chevrón para contraerla.
-- **Contraída** (franja de 56 dp, con zonas táctiles de 48 dp): la inicial de cada pestaña (la activa resaltada), «+» y ⚙, y arriba un chevrón para desplegarla. Tocar la franja (o su chevrón) la despliega; una pulsación larga sobre una pestaña pregunta «¿Cerrar <nombre>?», igual que en la barra completa (ahí están el menú de renombrar/cerrar y el arrastre para reordenar).
-- **Automático:** al tocar un panel del terminal la barra se contrae; solo cambia el estado al tocar, nunca se contrae sola por tiempo. Se muestra desplegada al abrir la app. En la barra superior (ventanas estrechas) no cambia nada.
-- **Ajuste** en Ajustes > Terminal: «Contraer la barra lateral al usar el terminal» (por defecto activado); desactivado = siempre desplegada, y no se muestra ningún control para contraerla. Viaja en la copia de configuración (RF-06) con un campo versionado.
-- **El PTY** se redimensiona **una vez** por cambio, al ancho final (el área del terminal se calcula con el ancho de destino y solo su dibujo se desliza durante la animación), sin perder el scrollback ni el foco del teclado. Con «Quitar animaciones» del sistema el cambio es instantáneo.
-- **Accesibilidad:** la franja y sus pestañas dicen nombre, posición («pestaña 2 de 3»), estado y seleccionada; el control de desplegar/contraer tiene etiqueta, y cada pestaña ofrece la acción personalizada «Desplegar/Contraer la barra lateral».
-- **Criterios:** tocar el terminal en horizontal en una tablet o en un móvil ancho contrae la barra y el terminal gana columnas (`stty size`); tocar la franja la despliega y el terminal las pierde; el teclado no se cierra al animarse; en vertical en el Pixel 8 todo queda igual. (Pendiente de comprobar en dispositivo.)
+### RF-16 Dynamic tab sidebar
+User request (0.1.1): "I want the sidebar in landscape to shrink when I tap the terminal, that is, to have a dynamic size". On wide windows (RF-03, from 600 dp) the tab column took a fixed width and, e.g. in half screen, left the terminal with 49 columns. Now it has two states:
+- **Expanded** (192 dp): the usual look (pills with a name, "+", ⚙) plus a button with a chevron to collapse it.
+- **Collapsed** (a 56 dp strip, with 48 dp touch targets): the initial of each tab (the active one highlighted), "+" and ⚙, and a chevron on top to expand it. Tapping the strip (or its chevron) expands it; a long press on a tab asks "Close <name>?", the same as in the full bar (that is where the rename/close menu and the drag to reorder are).
+- **Automatic:** tapping a terminal pane collapses the bar; the state only changes on a tap, it never collapses by itself on a timer. It is shown expanded when the app opens. In the top bar (narrow windows) nothing changes.
+- **Setting** in Settings > Terminal: "Collapse the sidebar when using the terminal" (on by default); off = always expanded, and no control to collapse it is shown. It travels in the configuration backup (RF-06) with a versioned field.
+- **The PTY** is resized **once** per change, to the final width (the terminal area is computed with the target width and only its drawing slides during the animation), without losing the scrollback or the keyboard focus. With the system's "Remove animations" the change is instant.
+- **Accessibility:** the strip and its tabs say name, position ("tab 2 of 3"), state and selected; the expand/collapse control has a label, and each tab offers the custom action "Expand/Collapse the sidebar".
+- **Criteria:** tapping the terminal in landscape on a tablet or a wide phone collapses the bar and the terminal gains columns (`stty size`); tapping the strip expands it and the terminal loses them; the keyboard does not close while animating; in portrait on the Pixel 8 everything stays the same. (Still to be checked on a device.)
 
-### RF-17 Pulsación larga en una pestaña
-Petición del usuario (0.1.2): «si mantengo pulsada una pestaña de la barra, que salga la confirmación de cierre». Una pulsación larga sobre una pestaña (barra completa o franja) que se suelta sin moverse muestra «¿Cerrar <nombre>?» con Cerrar/Cancelar, aunque su proceso ya haya terminado; si hay un proceso vivo se añade el aviso de que se detendrá. Pulsación larga y arrastre sigue reordenando (y no pregunta). Tocar selecciona y doble toque renombra, como antes. TalkBack conserva sus acciones (renombrar, cerrar, mover). (Pendiente de comprobar en dispositivo.)
+### RF-17 Long press on a tab
+User request (0.1.2): "if I long-press a tab in the bar, show the close confirmation". A long press on a tab (full bar or strip) released without moving shows "Close <name>?" with Close/Cancel, even if its process has already ended; if a process is alive, the notice that it will be stopped is added. A long press followed by a drag still reorders (and does not ask). Tapping selects and a double tap renames, as before. TalkBack keeps its actions (rename, close, move). (Still to be checked on a device.)
 
-## 4. Fuera de alcance (MVP)
-- Cualquier entorno gráfico (X11, Wayland, VNC).
-- Bootstrap y gestor de paquetes propios tipo `pkg`; plugins o addons de Termux.
-- Proveedor SAF de documentos (la distro en la app Archivos). Backlog.
-- Copias de seguridad automáticas a un destino (SAF/SFTP). Backlog.
-- Restaurar pestañas y scrollback tras un cierre. Backlog.
-- Más distros (Arch, Fedora, Kali...). Backlog.
-- Acceso root del dispositivo, `chroot` o contenedores reales.
-- Sincronización en la nube, cuenta propia, telemetría o analíticas.
-- Cualquier servicio de Google.
+## 4. Out of scope (MVP)
+- Any graphical environment (X11, Wayland, VNC).
+- Own bootstrap and package manager like `pkg`; Termux plugins or add-ons.
+- A SAF documents provider (the distro in the Files app). Backlog.
+- Automatic backups to a destination (SAF/SFTP). Backlog.
+- Restoring tabs and scrollback after a close. Backlog.
+- More distros (Arch, Kali...). Backlog.
+- Device root access, `chroot` or real containers.
+- Cloud sync, an own account, telemetry or analytics.
+- Any Google service.
 
-## 5. Modelo de datos y almacenamiento
+## 5. Data model and storage
 
-- **Perfil:** `{ id, nombre, esquema, fuente, tamaño, scrollback, distroId, usuario, comando inicial }`. **Layout:** árbol de paneles con proporciones, perfil y comando por panel. La configuración completa se serializa a un formato versionado (**(DEFECTO)** JSON) para el backup.
-- **Distro:** `{ id, nombre, tipo (debian/ubuntu/alpine), versión, ruta del rootfs, usuario por defecto, tamaño, fecha }`. El rootfs vive en el almacenamiento privado de la app.
-- **Host SSH:** `{ id, nombre, host, puerto, usuario, claveId, distroId }`. **Pestañas/paneles:** estado de UI en memoria; el servicio es la fuente de verdad de las sesiones vivas.
-- Metadatos en Room; los rootfs son directorios del sistema de archivos. Esquema versionado con migraciones probadas.
-- Copias de seguridad: tar con `zstd` preservando metadatos POSIX (ver riesgos).
+- **Profile:** `{ id, name, scheme, font, size, scrollback, distroId, user, startup command }`. **Layout:** a tree of panes with proportions, profile and command per pane. The complete configuration is serialized to a versioned format (**(DEFAULT)** JSON) for the backup.
+- **Distro:** `{ id, name, type (debian/ubuntu/alpine), version, rootfs path, default user, size, date }`. The rootfs lives in the app's private storage.
+- **SSH host:** `{ id, name, host, port, user, keyId, distroId }`. **Tabs/panes:** UI state in memory; the service is the source of truth for live sessions.
+- Metadata in Room; rootfs images are file-system directories. A versioned schema with tested migrations.
+- Backups: tar with `zstd` preserving POSIX metadata (see risks).
 
-## 6. Requisitos no funcionales
-- **Rendimiento:** arranque en frío hasta un prompt < 1,5 s con una distro ya instalada; salida de texto fluida (p. ej. `cat` de un archivo grande sin bloquear la UI).
-- **Privacidad:** sin telemetría ni servicios de terceros. La app solo usa la red cuando lo pide el usuario (descarga de rootfs, lo que ejecute en la terminal).
-- **Seguridad:** claves cifradas con Keystore; `allowBackup` desactivado (se usa el backup propio); sin logs de contenido de terminal ni de secretos. Verificación SHA-256 de todo lo descargado.
-- **Accesibilidad:** TalkBack en la UI de la app (la terminal en sí expone texto), tamaños táctiles ≥ 48 dp, escalado de fuente, contraste suficiente.
-- **Robustez:** ninguna pérdida de datos de distros ante cierres, falta de espacio o fallos de red; operaciones largas reanudables o transaccionales.
+## 6. Non-functional requirements
+- **Performance:** cold start to a prompt < 1.5 s with a distro already installed; smooth text output (e.g. `cat` of a large file without blocking the UI).
+- **Privacy:** no telemetry or third-party services. The app only uses the network when the user asks (rootfs download, whatever they run in the terminal).
+- **Security:** keys encrypted with the Keystore; `allowBackup` disabled (the own backup is used); no logs of terminal content or of secrets. SHA-256 verification of everything downloaded.
+- **Accessibility:** TalkBack in the app's UI (the terminal itself exposes text), touch targets ≥ 48 dp, font scaling, enough contrast.
+- **Robustness:** no loss of distro data on closes, lack of space or network failures; long operations resumable or transactional.
 
-## 7. Calidad y CI
-- **GitHub Actions:** en cada PR, build (incluida la compilación NDK de proot) + detekt + ktlint + Android Lint + tests unitarios + Kover.
-- **Cobertura (Kover):** ≥85 % global en `domain`/`data`; **100 % en la verificación de rootfs/descargas y en el formato de backup (cifrado, restauración)**; excluidos código generado, `@Preview` y UI Compose pura.
-- **Tests de integración en dispositivo/emulador:** instalar una distro, ejecutar un comando, redimensionar y comprobar `stty size`, exportar y restaurar.
-- **Dependabot** semanal agrupado; **comprobación de licencias** que falla ante dependencias no libres o Play Services; verificación de dependencias de Gradle.
-- Versionado **SemVer**, Conventional Commits. Builds reproducibles y firma propia como en UltimateDeck (ver `RELEASING.md` cuando exista).
+## 7. Quality and CI
+- **GitHub Actions:** on every PR, build (including proot's NDK build) + detekt + ktlint + Android Lint + unit tests + Kover.
+- **Coverage (Kover):** ≥85 % overall in `domain`/`data`; **100 % in rootfs/download verification and in the backup format (encryption, restore)**; generated code, `@Preview` and pure Compose UI excluded.
+- **Integration tests on a device/emulator:** install a distro, run a command, resize and check `stty size`, export and restore.
+- A weekly grouped **Dependabot**; a **license check** that fails on non-free dependencies or Play Services; Gradle dependency verification.
+- **SemVer** versioning, Conventional Commits. Reproducible builds and own signing as in UltimateDeck (see `RELEASING.md` when it exists).
 
-## 8. Riesgos conocidos
-1. **Compilar proot en el build y que funcione en Android moderno** (`seccomp`, `ptrace`, `/proc`, `link2symlink`). Es la tarea de mayor riesgo; prototipar primero (Fase 0).
-2. **Android 12+ y el "phantom process killer":** el sistema puede matar procesos hijo (límite de ~32) aunque haya servicio en primer plano. Documentar el ajuste de desarrollador y mitigar en lo posible. Android 14+ exige declarar el tipo del servicio en primer plano.
-3. **`targetSdk` 28 y su obsolescencia:** Google puede endurecer la instalación de apps con `targetSdk` bajo. Vigilarlo; es el motivo de no publicar en Play.
-4. **Vista de terminal propia en Compose:** rendimiento del dibujado (Canvas), selección de texto, IME e ratón. Prototipar antes de construir el resto.
-5. **Redimensionado en tablet:** validar `SIGWINCH`/`TIOCSWINSZ` con multiventana y teclado (es el problema que motiva el proyecto).
-6. **Backup de rootfs:** preservar propietarios, permisos, symlinks y archivos especiales sin root; tamaño y tiempos de rootfs grandes.
-7. **Distribución de rootfs de terceros:** solo se descargan de fuentes oficiales y con hash; no se redistribuyen en el APK.
+## 8. Known risks
+1. **Building proot in the build and having it work on modern Android** (`seccomp`, `ptrace`, `/proc`, `link2symlink`). It is the highest-risk task; prototype first (Phase 0).
+2. **Android 12+ and the "phantom process killer":** the system may kill child processes (a limit of ~32) even with a foreground service. Document the developer setting and mitigate as far as possible. Android 14+ requires declaring the foreground service type.
+3. **`targetSdk` 28 and its obsolescence:** Google may tighten the installation of apps with a low `targetSdk`. Watch it; it is the reason for not publishing on Play.
+4. **Own terminal view in Compose:** drawing performance (Canvas), text selection, IME and mouse. Prototype before building the rest.
+5. **Resizing on tablets:** validate `SIGWINCH`/`TIOCSWINSZ` with multi-window and keyboard (it is the problem that motivates the project).
+6. **Rootfs backup:** preserve owners, permissions, symlinks and special files without root; size and times of large rootfs images.
+7. **Distribution of third-party rootfs images:** they are only downloaded from official sources and with a hash; they are not redistributed in the APK.
 
-## 9. Decisiones abiertas (a confirmar durante la implementación)
-- Fuente/Nerd Font concreta y su licencia.
-- Atajos de teclado por defecto.
-- URL y esquema exacto de verificación de cada rootfs (hash vs firma).
-- Versión mínima de Android efectiva tras probar proot en API 26–28.
-- Si "restaurar pestañas" entra en el MVP (por defecto no).
+## 9. Open decisions (to confirm during implementation)
+- The concrete font/Nerd Font and its license.
+- Default keyboard shortcuts.
+- URL and exact verification scheme of each rootfs (hash vs signature).
+- The effective minimum Android version after testing proot on API 26–28.
+- Whether "restore tabs" enters the MVP (by default no).
