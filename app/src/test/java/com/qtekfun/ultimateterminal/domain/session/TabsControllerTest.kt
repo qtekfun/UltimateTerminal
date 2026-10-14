@@ -40,7 +40,8 @@ private class Shells : SessionFactory {
         return Handle().also { handles[id] = it }
     }
 
-    fun ends(id: SessionId) = exits.getValue(id)(0)
+    /** Ends the shell with an error right after starting, which keeps the tab listed. */
+    fun ends(id: SessionId) = exits.getValue(id)(127)
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)

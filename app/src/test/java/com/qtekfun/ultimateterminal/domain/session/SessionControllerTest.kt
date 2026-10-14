@@ -63,7 +63,9 @@ class SessionControllerTest {
     private val factory = FakeFactory()
     private val service = FakeService()
     private var emptied = 0
-    private val controller = SessionController(factory, service, onEmpty = { emptied++ })
+    private var now = 0L
+    private val controller =
+        SessionController(factory, service, onEmpty = { emptied++ }, clock = { now })
     private lateinit var racing: SessionController
     private val big = TerminalLayout(GridSize(200, 50), 9, 18)
 
@@ -168,11 +170,37 @@ class SessionControllerTest {
     }
 
     @Test
-    fun anEndedShellStaysListedSoTheAppStaysOpen() {
+    fun aShellThatEndsCleanlyTakesItsTabAndTheAppStopsWithTheLastOne() {
+        val first = controller.newSession()
+        val second = controller.newSession()
+
+        factory.shellEnds(first, 0)
+        assertEquals(listOf(second), controller.state.value.items.map { it.id })
+        assertEquals(0, emptied)
+
+        factory.shellEnds(second, 0)
+        assertEquals(emptyList<SessionInfo>(), controller.state.value.items)
+        assertEquals(1, emptied)
+    }
+
+    @Test
+    fun aShellThatLivedAWhileClosesEvenWithAnErrorStatus() {
+        val id = controller.newSession()
+        now = 60_000
+
+        factory.shellEnds(id, 130)
+
+        assertEquals(emptyList<SessionInfo>(), controller.state.value.items)
+        assertEquals(1, emptied)
+    }
+
+    @Test
+    fun aShellThatFailsRightAwayStaysListedToShowWhy() {
         val id = controller.newSession()
 
-        factory.shellEnds(id, 0)
+        factory.shellEnds(id, 127)
 
+        assertEquals(SessionState.Exited(127), controller.state.value.items.single().state)
         assertEquals(0, emptied)
     }
 
