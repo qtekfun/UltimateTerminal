@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -405,14 +406,25 @@ internal fun TerminalOverlays(viewModel: TerminalViewModel, inputView: Array<Ter
         LaunchedEffect(covered) { if (covered) inputView[0]?.hideKeyboard() }
 
         if (selection != null) {
-            IosButton(
-                text = stringResource(R.string.terminal_copy),
-                onClick = viewModel.selection::copy,
-                modifier = Modifier.align(
-                    Alignment.TopEnd
-                ).padding(8.dp).width(OVERLAY_BUTTON_WIDTH),
-                style = IosButtonStyle.TINTED
-            )
+            // A long press selects a cell and brings these up: copy what is selected, or paste the
+            // clipboard in its place (there is no other touch way to paste).
+            Row(
+                Modifier.align(Alignment.TopEnd).padding(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                IosButton(
+                    text = stringResource(R.string.terminal_copy),
+                    onClick = viewModel.selection::copy,
+                    modifier = Modifier.width(OVERLAY_BUTTON_WIDTH),
+                    style = IosButtonStyle.TINTED
+                )
+                IosButton(
+                    text = stringResource(R.string.terminal_paste),
+                    onClick = viewModel::paste,
+                    modifier = Modifier.width(OVERLAY_BUTTON_WIDTH),
+                    style = IosButtonStyle.TINTED
+                )
+            }
         }
         exitStatus?.let { status ->
             IosButton(
