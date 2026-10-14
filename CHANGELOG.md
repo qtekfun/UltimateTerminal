@@ -10,6 +10,11 @@ and the project uses [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Text selection: the two big Copy/Paste buttons in the corner are replaced by a compact bar next to the
+  selection with Copy, Paste, Select all and Select line. A long press now picks the word under the
+  finger, and each end of the selection has a handle you can drag. Not tried on a device yet.
+
 ## [0.1.4] - 2026-10-14
 
 Two fixes from using the app on a phone. Neither has been tried on a device yet; the README says what has

@@ -5,6 +5,7 @@ package com.qtekfun.ultimateterminal.terminal
 
 import com.qtekfun.ultimateterminal.domain.terminal.CellPosition
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalSelection
+import com.qtekfun.ultimateterminal.domain.terminal.WordBounds
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,6 +29,53 @@ class SelectionController(private val hostProvider: () -> TerminalSessionHost?) 
 
     fun clear() {
         state.value = null
+    }
+
+    /** Selects the word under [position], or just that cell when it is blank. */
+    fun selectWord(position: CellPosition) {
+        val line = rowText(position.row)
+        val word = line?.let { WordBounds.at(it, position.column) }
+        state.value = if (word == null) {
+            TerminalSelection(position, position)
+        } else {
+            TerminalSelection(position.copy(column = word.first), position.copy(column = word.last))
+        }
+    }
+
+    /** Selects the whole row [row]. */
+    fun selectLine(row: Int) {
+        val columns = hostProvider()?.emulator?.mColumns ?: return
+        state.value = TerminalSelection(CellPosition(0, row), CellPosition(columns - 1, row))
+    }
+
+    /** Selects the visible screen and the whole scrollback. */
+    fun selectAll() {
+        val emulator = hostProvider()?.emulator ?: return
+        state.value = TerminalSelection(
+            CellPosition(0, -emulator.screen.activeTranscriptRows),
+            CellPosition(emulator.mColumns - 1, emulator.mRows - 1)
+        )
+    }
+
+    /** Moves one end of the selection (a dragged handle); the other end stays where it was. */
+    fun moveEnd(movingStart: Boolean, position: CellPosition) {
+        val current = state.value ?: return
+        state.value = if (movingStart) {
+            TerminalSelection(position, current.end)
+        } else {
+            TerminalSelection(current.start, position)
+        }
+    }
+
+    private fun rowText(row: Int): String? {
+        val emulator = hostProvider()?.emulator
+        val inRange = emulator != null && row >= -emulator.screen.activeTranscriptRows &&
+            row < emulator.mRows
+        return if (emulator != null && inRange) {
+            emulator.screen.getSelectedText(0, row, emulator.mColumns - 1, row)?.trimEnd('\n')
+        } else {
+            null
+        }
     }
 
     /** Copies the selected text to the clipboard and clears the selection. */

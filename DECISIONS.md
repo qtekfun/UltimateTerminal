@@ -2885,3 +2885,10 @@ With tests on the host (JVM): modes, links (absolute, relative, broken), 000 and
 
 ### D-REL-8 · 2026-10-14 · 0.1.4
 - At the user's request `0.1.4` (versionCode 10499) is published with the Paste button and the SSH server key that the app remembers. Neither of the two is tested on a device yet (the second could not even be reproduced: D-SSH-2); the changelog says so.
+
+### D-SEL-1 · 2026-10-14 · Selection: a compact bar, handles and word/line/all, drawn by the app
+- **Report:** "copy and paste is so big it is useless and options are missing"; select all and selection handles were absent. Copy and Paste were two fixed 120 dp buttons in the top-right corner, over the text.
+- **Why not the system's:** Android's native toolbar and handles belong to `TextView`/`EditText`; the terminal is a canvas the system knows nothing about, so it cannot supply them. Using a floating `ActionMode` for the toolbar was considered and left out: it needs a `View` of its own and its position and size are not ours to control.
+- **Decision:** `SelectionToolbar` (a 44 dp pill, wrapping its content) sits above the selection's first row, or under its last one when there is no room above, and offers Copy, Paste, Select all and Select line. A long press selects the word under the finger (`WordBounds`: a run of non-blank characters, so paths and URLs come whole) and dragging stretches it. Two circular handles at the ends are dragged by `selectionHandles`, which runs first in the pointer chain and only takes a touch that lands within 28 dp of a handle. Select all covers the screen and the whole scrollback.
+- **Limit:** word bounds treat one column as one character, which is approximate next to wide characters. Tab/drag details and handle feel are not validated on a device.
+

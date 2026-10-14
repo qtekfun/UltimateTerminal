@@ -20,11 +20,12 @@ class PasteButtonGuardTest {
     @Test
     fun `the selection bar offers Paste next to Copy`() {
         val screen = source("ui/TerminalScreen.kt")
-        val selectionBar = screen.substringAfter("if (selection != null) {")
-            .substringBefore("exitStatus?.let")
-        assertTrue("viewModel.selection::copy" in selectionBar)
-        assertTrue("R.string.terminal_paste" in selectionBar)
-        assertTrue("viewModel::paste" in selectionBar)
+        val bar = source("ui/SelectionActions.kt")
+        assertTrue("viewModel.selection::copy" in screen)
+        assertTrue("viewModel::paste" in screen)
+        assertTrue("R.string.terminal_copy" in bar)
+        assertTrue("R.string.terminal_paste" in bar)
+        assertTrue("R.string.terminal_select_all" in bar)
     }
 
     @Test
