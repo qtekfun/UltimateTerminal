@@ -2906,3 +2906,7 @@ With tests on the host (JVM): modes, links (absolute, relative, broken), 000 and
 - **`bundle { language { enableSplit = false } }`:** Lint's `AppBundleLocaleChanges` fails on a runtime locale change unless a bundle does not split by language. The app is distributed as APKs, so this is configuration, not a suppression.
 - **Adding a language** is a `values-xx/strings.xml` and one entry in `AppLanguage`; the per-app list is generated from the resources.
 - **Not validated on a device:** the change on Android 13+ (and the system settings entry) and the recreation on Android 8–12.
+
+### D-REL-9 · 2026-10-14 · 0.1.5
+- At the user's request ("si hay que implementarlo saca release") `0.1.5` (versionCode 10599) is published with the compact selection bar and handles, tabs that close with their shell, and the language setting. None of the three is tested on a device yet; the changelog says so.
+

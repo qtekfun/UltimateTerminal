@@ -1,0 +1,1 @@
+Barra de selección junto al texto (copiar, pegar, todo, línea) con cursores, las pestañas se cierran al terminar su shell y un ajuste de idioma.

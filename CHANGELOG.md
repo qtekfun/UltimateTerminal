@@ -10,6 +10,11 @@ and the project uses [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-10-14
+
+Three things asked for after using the app. None has been tried on a device yet; the README says what
+has been tried where.
+
 ### Added
 - Language: Settings > Terminal > Language chooses English, Spanish or the system's for this app only. On
   Android 13 and later the app also shows up in the system's per-app language settings. Not tried on a

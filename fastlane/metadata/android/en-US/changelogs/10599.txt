@@ -1,0 +1,1 @@
+Selection bar next to the text (copy, paste, select all, line) with handles, tabs close when their shell ends, and a language setting.
