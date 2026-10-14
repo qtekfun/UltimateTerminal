@@ -7,6 +7,9 @@
     <string name="app_name">UltimateTerminal</string>
     <string name="terminal_copy">Copiar</string>
     <string name="terminal_paste">Pegar</string>
+    <string name="terminal_select_all">Todo</string>
+    <string name="terminal_select_all_description">Seleccionar todo</string>
+    <string name="terminal_select_line">Línea</string>
     <string name="terminal_description">Terminal</string>
     <string name="terminal_show_keyboard">Mostrar el teclado</string>
     <string name="terminal_session_ended">Sesión terminada (código %1$d). Toca para reiniciar</string>

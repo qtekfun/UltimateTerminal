@@ -8,11 +8,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -32,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,7 +85,6 @@ import com.qtekfun.ultimateterminal.terminal.TerminalRequest
 import com.qtekfun.ultimateterminal.terminal.TerminalTypefaces
 import com.qtekfun.ultimateterminal.terminal.TerminalViewModel
 import com.qtekfun.ultimateterminal.ui.ios.IosButton
-import com.qtekfun.ultimateterminal.ui.ios.IosButtonStyle
 import com.qtekfun.ultimateterminal.ui.ios.IosTheme
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
@@ -387,7 +385,6 @@ private fun SchemeAndFontEffects(
 
 @Composable
 internal fun TerminalOverlays(viewModel: TerminalViewModel, inputView: Array<TerminalInputView?>) {
-    val selection by viewModel.selection.selection.collectAsStateWithLifecycle()
     val exitStatus by viewModel.exitStatus.collectAsStateWithLifecycle()
     val keyboardType = LocalKeyboardType.current
     Box(Modifier.fillMaxSize()) {
@@ -405,27 +402,6 @@ internal fun TerminalOverlays(viewModel: TerminalViewModel, inputView: Array<Ter
         LaunchedEffect(Unit) { if (!covered) inputView[0]?.showKeyboard() }
         LaunchedEffect(covered) { if (covered) inputView[0]?.hideKeyboard() }
 
-        if (selection != null) {
-            // A long press selects a cell and brings these up: copy what is selected, or paste the
-            // clipboard in its place (there is no other touch way to paste).
-            Row(
-                Modifier.align(Alignment.TopEnd).padding(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                IosButton(
-                    text = stringResource(R.string.terminal_copy),
-                    onClick = viewModel.selection::copy,
-                    modifier = Modifier.width(OVERLAY_BUTTON_WIDTH),
-                    style = IosButtonStyle.TINTED
-                )
-                IosButton(
-                    text = stringResource(R.string.terminal_paste),
-                    onClick = viewModel::paste,
-                    modifier = Modifier.width(OVERLAY_BUTTON_WIDTH),
-                    style = IosButtonStyle.TINTED
-                )
-            }
-        }
         exitStatus?.let { status ->
             IosButton(
                 text = stringResource(
@@ -453,7 +429,6 @@ internal fun TerminalCanvas(
     val frame by viewModel.frame.collectAsStateWithLifecycle()
     val topRow by viewModel.topRow.collectAsStateWithLifecycle()
     val selection by viewModel.selection.selection.collectAsStateWithLifecycle()
-    val onPinch = remember(viewModel) { viewModel.fontSize::pinch }
     // A blinking cursor redraws the canvas on a timer, and shows solid while output arrives.
     var blinkTick by remember { mutableIntStateOf(0) }
     LaunchedEffect(painter) {
@@ -474,48 +449,49 @@ internal fun TerminalCanvas(
     // text: reading every redraw aloud would be noise, and the content must not leak into any log.
     val description = stringResource(R.string.terminal_description)
     val showKeyboard = stringResource(R.string.terminal_show_keyboard)
-    Canvas(
-        Modifier
-            .fillMaxSize()
-            .semantics {
-                contentDescription = description
-                onClick(label = showKeyboard) {
-                    onTap()
-                    true
-                }
-            }
-            .pointerInput(painter) {
-                detectTapGestures(onTap = {
-                    viewModel.selection.clear()
-                    onTap()
-                })
-            }
-            .pointerInput(painter) {
-                detectVerticalDragGestures { _, dragAmount ->
-                    viewModel.scrollBy(dragAmount, painter.cellHeight.toFloat())
-                }
-            }
-            .pointerInput(painter) {
-                detectDragGesturesAfterLongPress(
-                    onDragStart = { viewModel.selection.start(cellAt(it)) },
-                    onDrag = { change, _ -> viewModel.selection.extend(cellAt(change.position)) }
+    val handleColor = IosTheme.colors.tint
+    val currentSelection by rememberUpdatedState(selection)
+    val currentTopRow by rememberUpdatedState(topRow)
+    Box(Modifier.fillMaxSize()) {
+        Canvas(
+            Modifier.fillMaxSize().terminalGestures(
+                TerminalGestureInput(
+                    viewModel = viewModel,
+                    painter = painter,
+                    description = description,
+                    showKeyboard = showKeyboard,
+                    onTap = onTap,
+                    cellAt = ::cellAt,
+                    selection = { currentSelection },
+                    topRow = { currentTopRow }
                 )
+            )
+        ) {
+            // Reading the frame here makes only the drawing, not the composition, depend on it.
+            val emulator = viewModel.emulator
+            if (frame >= 0 && blinkTick >= 0 && emulator != null) {
+                drawIntoCanvas { painter.draw(it.nativeCanvas, emulator, topRow, selection) }
+                selection?.let { drawSelectionHandles(it, topRow, painter, handleColor) }
             }
-            // Last, so it sees the events first and can take a two-finger pinch for itself.
-            .pinchToZoom(onPinch)
-    ) {
-        // Reading the frame here makes only the drawing, not the composition, depend on it.
-        val emulator = viewModel.emulator
-        if (frame >= 0 && blinkTick >= 0 && emulator != null) {
-            drawIntoCanvas { painter.draw(it.nativeCanvas, emulator, topRow, selection) }
+        }
+        selection?.let {
+            SelectionToolbar(
+                selection = it,
+                topRow = topRow,
+                painter = painter,
+                actions = SelectionActions(
+                    copy = viewModel.selection::copy,
+                    paste = viewModel::paste,
+                    selectAll = viewModel.selection::selectAll,
+                    selectLine = { viewModel.selection.selectLine(it.start.row) }
+                )
+            )
         }
     }
 }
 
 /** A little more than the 200 ms of the sidebar's animation. */
 private const val SIDEBAR_SETTLE_MILLIS = 300L
-
-private val OVERLAY_BUTTON_WIDTH = 120.dp
 
 /** Half a period of the blinking cursor. */
 private const val CURSOR_BLINK_MILLIS = 530L
