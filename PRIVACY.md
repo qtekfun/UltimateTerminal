@@ -20,7 +20,8 @@ to its developers.** This page says what the app does with data and why it asks 
 ### What stays on your device
 
 Everything the app stores is in its private storage on your device: the Linux distributions you
-install, your settings and appearance choices, the list of SSH hosts, and SSH keys. Android's own
+install, your settings and appearance choices, the list of SSH hosts, the host keys you chose to trust
+(a `known_hosts` file), and SSH keys. Android's own
 backup is turned off for the app (`allowBackup=false`), so none of this is copied to Google's cloud by
 the system. SSH private keys are encrypted at rest with a key held by the Android Keystore. By design, the app
 does not write the content of your terminal, or any secret, to a log.
@@ -90,7 +91,8 @@ página explica qué hace la app con los datos y por qué pide cada permiso.
 ### Lo que se queda en tu dispositivo
 
 Todo lo que la app guarda está en su almacenamiento privado: las distribuciones Linux que instalas, tus
-ajustes y elecciones de apariencia, la lista de hosts SSH y las claves SSH. La copia de seguridad del propio
+ajustes y elecciones de apariencia, la lista de hosts SSH, las claves de servidor en las que confiaste
+(un archivo `known_hosts`) y las claves SSH. La copia de seguridad del propio
 Android está desactivada para la app (`allowBackup=false`), así que el sistema no copia nada de esto a la
 nube de Google. Las claves privadas SSH se cifran en reposo con una clave que guarda el Keystore de Android.
 Por diseño, la app no escribe en un registro el contenido de tu terminal ni ningún secreto.

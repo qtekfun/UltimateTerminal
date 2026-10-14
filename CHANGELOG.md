@@ -11,6 +11,11 @@ and the project uses [SemVer](https://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- SSH: the host key you trust ("are you sure you want to continue connecting?") is now kept by the app, in
+  its own storage outside the distro, and is bound into the connection. The question used to come back at
+  every connection. I could not reproduce the cause on a device, so this removes what could go wrong in the
+  distro's own `~/.ssh` (permissions, home folder, the temporary-file-and-rename step) rather than fixing
+  one proven fault; if the question still comes back, say so. (Not yet tried on a device.)
 - There is now a Paste button on a touch screen. Copy had a button when text was selected, but pasting
   only worked with a hardware keyboard (Ctrl+Shift+V, Shift+Insert). A long press on the terminal selects
   a cell and shows "Copy" and "Paste"; Paste writes the clipboard to the shell (bracketed when the

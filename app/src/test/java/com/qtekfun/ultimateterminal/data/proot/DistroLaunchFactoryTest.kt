@@ -94,4 +94,16 @@ class DistroLaunchFactoryTest {
         assertFalse(launch.command.any { it.endsWith(":/etc/resolv.conf") })
         assertEquals(listOf("ssh", "u@h"), launch.command.takeLast(2))
     }
+
+    @Test
+    fun theFolderOfTrustedHostKeysIsCreatedAndBoundIntoTheGuest() = runTest {
+        val scope = TestScope(StandardTestDispatcher(testScheduler))
+        val plan = SshLaunchPlan(distro, listOf("ssh", "u@h")) {}
+
+        val launch = DistroLaunchFactory(builder, storage, dns, scope).create(plan)
+
+        val folder = (FsPath.of("ssh-known-hosts") as Outcome.Success).value
+        assertTrue(storage.exists(folder))
+        assertTrue("/data/files/storage/ssh-known-hosts:/ut-ssh" in launch.command)
+    }
 }

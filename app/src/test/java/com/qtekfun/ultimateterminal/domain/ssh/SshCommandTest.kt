@@ -23,6 +23,8 @@ class SshCommandTest {
         assertEquals(
             listOf(
                 "ssh", "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=3",
+                "-o", "UserKnownHostsFile=/ut-ssh/known_hosts /root/.ssh/known_hosts",
+                "-o", "UpdateHostKeys=no",
                 "-p", "22", "--", "deploy@example.com"
             ),
             command(host)
@@ -109,5 +111,17 @@ class SshCommandTest {
         val args = command(host.copy(name = "a; rm -rf /"), keyPath)
         // The name is only a label: it never reaches the command line.
         assertTrue(args.none { "rm" in it })
+    }
+
+    @Test
+    fun theTrustedHostKeysAreKeptInTheFileTheAppOwnsAndTheDistrosIsOnlyRead() {
+        val args = command(host)
+        val value = args.single { it.startsWith("UserKnownHostsFile=") }
+        assertEquals("UserKnownHostsFile=/ut-ssh/known_hosts /root/.ssh/known_hosts", value)
+        // ssh adds to the first file of the list: it must be the app's.
+        assertTrue(value.removePrefix("UserKnownHostsFile=").startsWith(SshKnownHosts.GUEST_FILE))
+        assertTrue("UpdateHostKeys=no" in args)
+        // The question is still asked once: nothing here turns the check off.
+        assertTrue(args.none { it.startsWith("StrictHostKeyChecking") })
     }
 }
