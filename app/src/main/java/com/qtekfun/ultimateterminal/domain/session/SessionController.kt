@@ -109,8 +109,10 @@ class SessionController(
     private val service: ServiceControl,
     initialLayout: TerminalLayout = DEFAULT_LAYOUT,
     /** Called when the last session goes away, by any path: the app closes (RF-13b). */
-    private val onEmpty: () -> Unit = {}
+    private val onEmpty: () -> Unit = {},
+    private val clock: () -> Long = System::currentTimeMillis
 ) : PaneEditor {
+    private val startedAt = mutableMapOf<SessionId, Long>()
     private val handles = mutableMapOf<SessionId, SessionHandle>()
     private val openings = mutableMapOf<SessionId, PaneOpening>()
     private val sizes = PtySizes(handles)
@@ -155,6 +157,7 @@ class SessionController(
     override fun openingOf(id: SessionId): PaneOpening? = openings[id]
 
     private fun startShell(id: SessionId, launch: SessionLaunch?): SessionId {
+        startedAt[id] = clock()
         val onExit = { status: Int -> onExited(id, status) }
         // One start only: a launch that fails must not fall back to a second, plain shell.
         val handle = if (factory is LaunchingSessionFactory) {
@@ -177,6 +180,7 @@ class SessionController(
         publish(mutableState.value.closed(id))
         sizes.forget(id)
         openings.remove(id)
+        startedAt.remove(id)
         handles.remove(id)?.stop()
     }
 
@@ -224,7 +228,10 @@ class SessionController(
     }
 
     private val onExited: (SessionId, Int) -> Unit = { id, status ->
+        val lived = clock() - (startedAt[id] ?: clock())
         publish(mutableState.value.exited(id, status))
+        // The shell ended by itself: its tab or pane goes too, unless it failed to start.
+        if (AutoClose.shouldClose(status, lived)) close(id)
     }
 
     private fun publish(next: Sessions) {
