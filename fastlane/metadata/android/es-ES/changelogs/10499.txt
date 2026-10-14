@@ -1,0 +1,1 @@
+Versión 0.1.4. Un botón Pegar para pantallas táctiles (pulsación larga en el terminal: Copiar y Pegar) y SSH recuerda las claves de servidor en las que confías, para no preguntar en cada conexión. Software temprano: el README dice qué está verificado en un dispositivo.

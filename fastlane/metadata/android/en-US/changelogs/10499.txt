@@ -1,0 +1,1 @@
+Release 0.1.4. A Paste button for touch screens (long press the terminal: Copy and Paste), and SSH keeps the host keys you trust so it stops asking at every connection. Early software: the README says what is verified on a device.
