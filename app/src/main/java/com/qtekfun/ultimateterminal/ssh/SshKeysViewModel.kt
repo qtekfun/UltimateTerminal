@@ -50,9 +50,40 @@ class SshKeysViewModel @Inject constructor(
         state.copy(keys = keys)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, local.value)
 
-    fun generateKey(name: String, type: SshKeyType) = addKey { keyService.generate(name, type) }
+    /** [passphrase] is wiped when the key is made; leave it empty for no protection. */
+    fun generateKey(name: String, type: SshKeyType, passphrase: CharArray) =
+        addKey(passphrase) { keyService.generate(name, type, passphrase) }
 
-    fun importKey(name: String, text: String) = addKey { keyService.import(name, text) }
+    /** [passphrase] is the one of the key being imported, if it has one; it is wiped afterwards. */
+    fun importKey(name: String, text: String, passphrase: CharArray) =
+        addKey(passphrase) { keyService.import(name, text, passphrase) }
+
+    /**
+     * Sets, changes or removes a key's passphrase: [current] opens a protected key, [replacement]
+     * is the new one (empty removes the protection). Both are wiped afterwards.
+     */
+    fun changePassphrase(alias: String, current: CharArray, replacement: CharArray) {
+        val change = when {
+            current.isEmpty() -> PassphraseChange.SET
+            replacement.isEmpty() -> PassphraseChange.REMOVED
+            else -> PassphraseChange.CHANGED
+        }
+        viewModelScope.launch {
+            local.update { it.copy(busy = true, message = null) }
+            try {
+                when (val result = keyService.changePassphrase(alias, current, replacement)) {
+                    is SshResult.Success -> local.update {
+                        it.copy(busy = false, message = SshMessage.PassphraseUpdated(change))
+                    }
+
+                    is SshResult.Failure -> report(SshMessage.Failed(result.error))
+                }
+            } finally {
+                current.fill(NUL)
+                replacement.fill(NUL)
+            }
+        }
+    }
 
     fun removeKey(alias: String) {
         viewModelScope.launch {
@@ -107,15 +138,19 @@ class SshKeysViewModel @Inject constructor(
 
     fun dismissMessage() = local.update { it.copy(message = null) }
 
-    private fun addKey(create: suspend () -> SshResult<SshKeyInfo>) {
+    private fun addKey(passphrase: CharArray, create: suspend () -> SshResult<SshKeyInfo>) {
         viewModelScope.launch {
             local.update { it.copy(busy = true, message = null) }
-            when (val result = create()) {
-                is SshResult.Success -> local.update {
-                    it.copy(busy = false, message = SshMessage.KeyAdded(result.value.name))
-                }
+            try {
+                when (val result = create()) {
+                    is SshResult.Success -> local.update {
+                        it.copy(busy = false, message = SshMessage.KeyAdded(result.value.name))
+                    }
 
-                is SshResult.Failure -> report(SshMessage.Failed(result.error))
+                    is SshResult.Failure -> report(SshMessage.Failed(result.error))
+                }
+            } finally {
+                passphrase.fill(NUL)
             }
         }
     }
@@ -125,5 +160,6 @@ class SshKeysViewModel @Inject constructor(
 
     private companion object {
         val FILE_FAILED = SshMessage.Failed(SshError.Storage("cannot save the file"))
+        const val NUL = '\u0000'
     }
 }

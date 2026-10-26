@@ -10,6 +10,22 @@ and the project uses [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- SSH keys can now be protected with a passphrase (or a PIN of at least four characters). Generate a key
+  with one, import an OpenSSH key that has one, or set, change or remove it on a key you already have, from
+  the key's menu. The key is then stored encrypted in OpenSSH's own format, on top of the Android Keystore
+  layer, so a lost phone does not hand over a usable key. Connecting asks for the passphrase, with a switch to
+  keep that key unlocked for 15 minutes (in memory only). Keys without a passphrase keep working as before.
+  Checked against the real `ssh-keygen` on a computer; not tried on a device yet.
+
+### Changed
+- Importing a key that has an old-style (PEM or PKCS#8) passphrase is still refused, now with a message that
+  names `ssh-keygen -p -o` to convert it.
+
+### Notes
+- Hardware security keys (FIDO2 / YubiKey) are not supported yet. `DECISIONS.md` (D-PK-7) has the research
+  and the plan: they need an `ssh-agent` served by the app first.
+
 ## [0.1.5] - 2026-10-14
 
 Three things asked for after using the app. None has been tried on a device yet; the README says what

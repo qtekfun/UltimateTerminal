@@ -121,5 +121,13 @@ private fun AppSettings.toDto() = SettingsDto(
     )
 )
 
-private fun SshKeyInfo.toDto(privateKey: String) =
-    KeyDto(alias, name, type.name, publicKey, fingerprint, createdAt.toString(), privateKey)
+private fun SshKeyInfo.toDto(privateKey: String) = KeyDto(
+    alias,
+    name,
+    type.name,
+    publicKey,
+    fingerprint,
+    createdAt.toString(),
+    privateKey,
+    passphraseProtected
+)

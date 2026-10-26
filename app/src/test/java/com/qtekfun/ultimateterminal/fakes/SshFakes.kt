@@ -96,7 +96,7 @@ class FakeSshKeyStore : SshKeyStore {
         if (failPuts) {
             SshResult.Failure(SshError.Storage("disk full"))
         } else {
-            infos.value = infos.value + info
+            infos.value = infos.value.filterNot { it.alias == info.alias } + info
             secrets[info.alias] = privateKey
             SshResult.Success(Unit)
         }

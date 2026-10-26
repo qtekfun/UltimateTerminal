@@ -13,6 +13,7 @@ import com.qtekfun.ultimateterminal.domain.model.DistroState
 import com.qtekfun.ultimateterminal.domain.model.SshHost
 import com.qtekfun.ultimateterminal.domain.repository.DistroRepository
 import com.qtekfun.ultimateterminal.domain.repository.SshHostRepository
+import com.qtekfun.ultimateterminal.domain.ssh.KeyUnlock
 import com.qtekfun.ultimateterminal.domain.ssh.SshConnector
 import com.qtekfun.ultimateterminal.domain.ssh.SshError
 import com.qtekfun.ultimateterminal.domain.ssh.SshKeyInfo
@@ -41,8 +42,17 @@ sealed interface SshMessage {
 
     data object PrivateKeySaved : SshMessage
 
+    /** The passphrase of a key was set, changed or removed. */
+    data class PassphraseUpdated(val change: PassphraseChange) : SshMessage
+
     data object PublicKeyCopied : SshMessage
 }
+
+/** What happened to a key's passphrase. */
+enum class PassphraseChange { SET, CHANGED, REMOVED }
+
+/** A connection waits for the passphrase of [keyName]; [wrong] if the last one tried was not it. */
+data class UnlockRequest(val hostId: Long, val keyName: String, val wrong: Boolean)
 
 data class SshUiState(
     val hosts: List<SshHost> = emptyList(),
@@ -51,7 +61,9 @@ data class SshUiState(
     val distros: List<Distro> = emptyList(),
     /** A connection is being prepared; the screen shows progress and blocks a second tap. */
     val busy: Boolean = false,
-    val message: SshMessage? = null
+    val message: SshMessage? = null,
+    /** The key of the host being connected is protected and needs its passphrase. */
+    val unlock: UnlockRequest? = null
 )
 
 /**
@@ -90,23 +102,53 @@ class SshViewModel @Inject constructor(
         viewModelScope.launch { hostRepository.remove(id) }
     }
 
-    /** Opens a tab running `ssh` for the host; [onOpened] runs once the tab exists. */
-    fun connect(hostId: Long, onOpened: () -> Unit) {
+    /**
+     * Opens a tab running `ssh` for the host; [onOpened] runs once the tab exists. If the host's key
+     * is protected and no passphrase is remembered, [SshUiState.unlock] asks for it, and the screen
+     * calls this again with [passphrase] and whether to [remember] it for a while. [passphrase] is
+     * wiped when the attempt ends.
+     */
+    fun connect(
+        hostId: Long,
+        passphrase: CharArray? = null,
+        remember: Boolean = false,
+        onOpened: () -> Unit
+    ) {
         viewModelScope.launch {
-            local.update { it.copy(busy = true, message = null) }
-            when (val plan = connector.prepare(hostId)) {
-                is SshResult.Failure -> report(SshMessage.Failed(plan.error))
+            local.update { it.copy(busy = true, message = null, unlock = null) }
+            val unlock = passphrase?.let { KeyUnlock(it, remember) }
+            try {
+                when (val plan = connector.prepare(hostId, unlock)) {
+                    is SshResult.Failure -> failed(hostId, plan.error)
 
-                is SshResult.Success -> {
-                    sessions.newSession(plan.value.distro.id, launchFactory.create(plan.value))
-                    local.update { it.copy(busy = false) }
-                    onOpened()
+                    is SshResult.Success -> {
+                        sessions.newSession(plan.value.distro.id, launchFactory.create(plan.value))
+                        local.update { it.copy(busy = false) }
+                        onOpened()
+                    }
                 }
+            } finally {
+                passphrase?.fill('\u0000')
             }
         }
     }
 
+    fun cancelUnlock() = local.update { it.copy(unlock = null) }
+
     fun dismissMessage() = local.update { it.copy(message = null) }
+
+    private suspend fun failed(hostId: Long, error: SshError) {
+        val needsPassphrase =
+            error == SshError.PassphraseRequired || error == SshError.WrongPassphrase
+        val alias = hostRepository.get(hostId)?.keyAlias
+        val keyName = uiState.value.keys.firstOrNull { it.alias == alias }?.name
+        if (needsPassphrase && keyName != null) {
+            val request = UnlockRequest(hostId, keyName, wrong = error == SshError.WrongPassphrase)
+            local.update { it.copy(busy = false, unlock = request) }
+        } else {
+            report(SshMessage.Failed(error))
+        }
+    }
 
     private fun report(message: SshMessage) =
         local.update { it.copy(busy = false, message = message) }

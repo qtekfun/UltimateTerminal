@@ -4,12 +4,14 @@
 package com.qtekfun.ultimateterminal.domain.ssh
 
 import java.security.MessageDigest
+import java.security.SecureRandom
 import java.util.Base64
 
 /**
  * Reads and writes the OpenSSH key formats (the `openssh-key-v1` private key file and the
- * `authorized_keys` public line), for Ed25519 and RSA. Private keys are written unencrypted: at
- * rest they are sealed by a [SecretBox], and in the distro the file is private to the app.
+ * `authorized_keys` public line), for Ed25519 and RSA. A private key is written either unencrypted
+ * or protected by a passphrase, as `ssh-keygen` does it (AES-256-CTR keyed by `bcrypt_pbkdf`); in
+ * both cases it is also sealed by a [SecretBox] at rest.
  */
 object OpenSshKeyFormat {
     private const val BEGIN = "-----BEGIN OPENSSH PRIVATE KEY-----"
@@ -18,6 +20,11 @@ object OpenSshKeyFormat {
     private const val NONE = "none"
     private const val LINE_LENGTH = 70
     private const val BLOCK = 8
+    private const val BCRYPT = "bcrypt"
+    private const val SALT_BYTES = 16
+
+    /** `ssh-keygen -a`'s default: about a fifth of a second on a phone. */
+    const val DEFAULT_ROUNDS = 16
 
     fun publicBlob(key: SshPrivateKey): ByteArray = SshWriter().apply {
         string(key.type.sshName)
@@ -45,10 +52,57 @@ object OpenSshKeyFormat {
         return "SHA256:" + Base64.getEncoder().withoutPadding().encodeToString(digest)
     }
 
-    /** Writes an unencrypted `openssh-key-v1` file. */
-    fun encodePrivate(key: SshPrivateKey, comment: String): String {
+    /**
+     * Writes an `openssh-key-v1` file: unencrypted if [passphrase] is null, otherwise encrypted with
+     * it, using [rounds] of `bcrypt_pbkdf` and a fresh random salt from [random].
+     */
+    fun encodePrivate(
+        key: SshPrivateKey,
+        comment: String,
+        passphrase: ByteArray? = null,
+        rounds: Int = DEFAULT_ROUNDS,
+        random: SecureRandom = SecureRandom()
+    ): String {
+        val cipher = if (passphrase == null) null else KeyCipher.default
+        val salt = ByteArray(SALT_BYTES).also(random::nextBytes)
+        val block = cipher?.blockSize ?: BLOCK
+        val section = privateSection(key, comment)
+        var padding = 1
+        while (section.size() % block != 0) section.raw(byteArrayOf((padding++).toByte()))
+        val plain = section.toByteArray()
+        val body = if (cipher == null || passphrase == null) {
+            plain
+        } else {
+            cipher.encrypt(passphrase, salt, rounds, plain).also { plain.fill(0) }
+        }
+        val file = SshWriter().apply {
+            raw(MAGIC)
+            string(if (cipher == null) NONE else KeyCipher.DEFAULT_NAME)
+            string(if (cipher == null) NONE else BCRYPT)
+            bytes(
+                if (cipher == null) {
+                    ByteArray(0)
+                } else {
+                    SshWriter().apply {
+                        bytes(salt)
+                        int(rounds)
+                    }.toByteArray()
+                }
+            )
+            int(1)
+            bytes(publicBlob(key))
+            bytes(body)
+        }.toByteArray()
+        val armored = Base64.getEncoder().encodeToString(
+            file
+        ).chunked(LINE_LENGTH).joinToString("\n")
+        return "$BEGIN\n$armored\n$END\n"
+    }
+
+    // The private section before padding: the check words, the key and its comment.
+    private fun privateSection(key: SshPrivateKey, comment: String): SshWriter {
         val check = checkInt(key)
-        val section = SshWriter().apply {
+        return SshWriter().apply {
             int(check)
             int(check)
             string(key.type.sshName)
@@ -69,33 +123,35 @@ object OpenSshKeyFormat {
             }
             string(comment)
         }
-        var padding = 1
-        while (section.size() % BLOCK != 0) section.raw(byteArrayOf((padding++).toByte()))
-        val file = SshWriter().apply {
-            raw(MAGIC)
-            string(NONE)
-            string(NONE)
-            string("")
-            int(1)
-            bytes(publicBlob(key))
-            bytes(section.toByteArray())
-        }.toByteArray()
-        val body = Base64.getEncoder().encodeToString(file).chunked(LINE_LENGTH).joinToString("\n")
-        return "$BEGIN\n$body\n$END\n"
     }
 
     /**
-     * Reads an unencrypted OpenSSH private key. A passphrase-protected key gives
-     * [SshError.EncryptedKey]; anything damaged gives [SshError.CorruptKey]; other key types
-     * (ECDSA, certificates) give [SshError.UnsupportedKeyFormat].
+     * Reads an OpenSSH private key. A protected key needs its [passphrase] (UTF-8 bytes): without it
+     * the result is [SshError.PassphraseRequired], with a wrong one [SshError.WrongPassphrase]. Anything
+     * damaged gives [SshError.CorruptKey]; other key types (ECDSA, certificates) and ciphers give
+     * [SshError.UnsupportedKeyFormat].
      */
-    fun parsePrivate(text: String): SshResult<SshPrivateKey> {
-        val body = text.trim().removePrefix(BEGIN).removeSuffix(END)
-        val framed = text.trim().startsWith(BEGIN) && text.trim().endsWith(END)
-        return if (!framed) {
+    fun parsePrivate(text: String, passphrase: ByteArray? = null): SshResult<SshPrivateKey> {
+        val body = framedBody(text)
+        return if (body == null) {
             SshResult.Failure(SshError.UnsupportedKeyFormat)
         } else {
-            OpenSshKeyReader.decode(body)
+            OpenSshKeyReader.decode(body, passphrase)
+        }
+    }
+
+    /** Whether [text] is an OpenSSH private key that needs a passphrase to be read. */
+    fun isProtected(text: String): Boolean {
+        val cipher = framedBody(text)?.let(OpenSshKeyReader::cipherName)
+        return cipher != null && cipher != NONE
+    }
+
+    private fun framedBody(text: String): String? {
+        val trimmed = text.trim()
+        return if (trimmed.startsWith(BEGIN) && trimmed.endsWith(END)) {
+            trimmed.removePrefix(BEGIN).removeSuffix(END)
+        } else {
+            null
         }
     }
 

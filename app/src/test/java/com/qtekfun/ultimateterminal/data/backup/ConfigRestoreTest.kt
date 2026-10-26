@@ -388,4 +388,20 @@ class ConfigRestoreTest {
         assertEquals(restored.id, new.profiles.observeAll().first().single().distroId)
         assertTrue(restored.isDefault)
     }
+
+    @Test
+    fun aProtectedKeyArrivesStillProtectedAndAnOlderBackupReadsAsUnprotected() = runBlocking {
+        val key = sampleSnapshot().sshKeys.single()
+        apply(
+            sampleSnapshot().copy(
+                sshKeys = listOf(
+                    key.copy(alias = "k000000000007", name = "guarded", passphraseProtected = true),
+                    key
+                )
+            )
+        )
+        val restored = new.keys.observe().first().associateBy { it.name }
+        assertTrue(restored.getValue("guarded").passphraseProtected)
+        assertFalse(restored.getValue("laptop").passphraseProtected)
+    }
 }

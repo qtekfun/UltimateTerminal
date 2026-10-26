@@ -8,45 +8,100 @@ import java.util.Base64
 /** Reads the body of an `openssh-key-v1` file. See [OpenSshKeyFormat.parsePrivate]. */
 internal object OpenSshKeyReader {
     private const val NONE = "none"
+    private const val BCRYPT = "bcrypt"
     private const val ED25519_KEY_BYTES = 32
     private const val ED25519_PAIR_BYTES = 64
+    private const val MAX_ROUNDS = 1024
 
-    fun decode(body: String): SshResult<SshPrivateKey> {
+    /** The cipher named in the header: `none` for an unprotected key, null if it does not parse. */
+    fun cipherName(body: String): String? {
+        val raw = runCatching { Base64.getMimeDecoder().decode(body.filterNot(Char::isWhitespace)) }
+            .getOrNull()
+        return try {
+            raw?.let {
+                SshReader(it).also { reader -> reader.expect(OpenSshKeyFormat.MAGIC) }.text()
+            }
+        } catch (_: MalformedKey) {
+            null
+        }
+    }
+
+    fun decode(body: String, passphrase: ByteArray?): SshResult<SshPrivateKey> {
         val raw = runCatching { Base64.getMimeDecoder().decode(body.filterNot(Char::isWhitespace)) }
             .getOrNull()
         return if (raw == null) {
             SshResult.Failure(SshError.CorruptKey)
         } else {
             try {
-                readFile(SshReader(raw))
+                readFile(SshReader(raw), passphrase)
             } catch (_: MalformedKey) {
                 SshResult.Failure(SshError.CorruptKey)
             }
         }
     }
 
-    private fun readFile(reader: SshReader): SshResult<SshPrivateKey> {
+    private fun readFile(reader: SshReader, passphrase: ByteArray?): SshResult<SshPrivateKey> {
         reader.expect(OpenSshKeyFormat.MAGIC)
-        val cipher = reader.text()
+        val cipherName = reader.text()
         val kdf = reader.text()
-        reader.bytes()
+        val kdfOptions = reader.bytes()
         val count = reader.int()
         return when {
-            cipher != NONE || kdf != NONE -> SshResult.Failure(SshError.EncryptedKey)
-
             count != 1 -> SshResult.Failure(SshError.UnsupportedKeyFormat)
+
+            cipherName == NONE && kdf == NONE -> {
+                reader.bytes()
+                readSection(SshReader(reader.bytes()), protected = false)
+            }
+
+            cipherName == NONE || kdf != BCRYPT -> SshResult.Failure(SshError.UnsupportedKeyFormat)
 
             else -> {
                 reader.bytes()
-                readSection(SshReader(reader.bytes()))
+                val sealed = reader.bytes()
+                decryptSection(cipherName, kdfOptions, sealed, passphrase)
             }
         }
     }
 
-    private fun readSection(section: SshReader): SshResult<SshPrivateKey> {
+    private fun decryptSection(
+        cipherName: String,
+        kdfOptions: ByteArray,
+        sealed: ByteArray,
+        passphrase: ByteArray?
+    ): SshResult<SshPrivateKey> {
+        val cipher = KeyCipher.named(cipherName)
+        val options = SshReader(kdfOptions)
+        val salt = options.bytes()
+        val rounds = options.int()
+        val usable = cipher != null && salt.isNotEmpty() && rounds in 1..MAX_ROUNDS
+        return when {
+            !usable -> SshResult.Failure(SshError.UnsupportedKeyFormat)
+
+            passphrase == null || passphrase.isEmpty() ->
+                SshResult.Failure(SshError.PassphraseRequired)
+
+            sealed.isEmpty() || sealed.size % cipher.blockSize != 0 -> throw MalformedKey()
+
+            else -> {
+                val plain = cipher.decrypt(passphrase, salt, rounds, sealed)
+                try {
+                    readSection(SshReader(plain), protected = true)
+                } finally {
+                    plain.fill(0)
+                }
+            }
+        }
+    }
+
+    // In a protected key, two check words that differ mean the passphrase was wrong.
+    private fun readSection(section: SshReader, protected: Boolean): SshResult<SshPrivateKey> {
         val first = section.int()
         val second = section.int()
-        if (first != second) throw MalformedKey()
+        if (first != second) {
+            if (protected) return SshResult.Failure(SshError.WrongPassphrase)
+            throw MalformedKey()
+        }
         val key = when (section.text()) {
             SshKeyType.ED25519.sshName -> readEd25519(section)
             SshKeyType.RSA.sshName -> readRsa(section)

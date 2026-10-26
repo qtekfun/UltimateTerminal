@@ -11,7 +11,8 @@ import java.util.Base64
 
 /**
  * Reads a private key a user pasted or picked, whatever the file format: OpenSSH (Ed25519, RSA),
- * PKCS#8 and PKCS#1 (RSA). A passphrase-protected key is refused with [SshError.EncryptedKey].
+ * PKCS#8 and PKCS#1 (RSA). An OpenSSH key protected by a passphrase is read with it; an old-style
+ * encrypted PEM or PKCS#8 key is refused with [SshError.EncryptedKey].
  *
  * Ed25519 in PKCS#8 is not supported: the public key has to be computed from the secret, which the
  * platform's cryptography API does not offer.
@@ -24,13 +25,13 @@ object PrivateKeyText {
     private const val RSA_FIELDS = 9
     private val header = Regex("""-----BEGIN ([A-Z0-9 ]+)-----""")
 
-    fun parse(text: String): SshResult<SshPrivateKey> {
+    fun parse(text: String, passphrase: ByteArray? = null): SshResult<SshPrivateKey> {
         val kind = header.find(text.trim())?.groupValues?.get(1)
         val body = text.trim().lines().filterNot {
             it.startsWith("-----") || ":" in it
         }.joinToString("")
         return when {
-            kind == OPENSSH -> OpenSshKeyFormat.parsePrivate(text)
+            kind == OPENSSH -> OpenSshKeyFormat.parsePrivate(text, passphrase)
 
             kind == ENCRYPTED_PKCS8 || "ENCRYPTED" in text.take(ENCRYPTED_SCAN) ->
                 SshResult.Failure(SshError.EncryptedKey)

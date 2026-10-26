@@ -156,12 +156,12 @@ class OpenSshKeyFormatTest {
     }
 
     @Test
-    fun aPassphraseProtectedKeyIsRefusedAsEncrypted() {
+    fun aProtectedKeyWhoseKdfOptionsAreMissingIsCorrupt() {
         val file = header(cipher = "aes256-ctr", kdf = "bcrypt") {
             str(ByteArray(8))
             str(ByteArray(8))
         }
-        assertEquals(SshError.EncryptedKey, error(frame(file)))
+        assertEquals(SshError.CorruptKey, error(frame(file)))
     }
 
     @Test

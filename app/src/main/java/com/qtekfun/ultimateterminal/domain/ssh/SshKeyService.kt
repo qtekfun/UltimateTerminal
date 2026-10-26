@@ -37,18 +37,94 @@ class SshKeyService(
     private val generator: SshKeyGenerator,
     private val hosts: SshHostRepository,
     private val clock: Clock = Clock.systemUTC(),
-    private val cpuDispatcher: CoroutineDispatcher = Dispatchers.Default
+    private val cpuDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val unlocks: PassphraseCache = PassphraseCache()
 ) {
     val supportedTypes: List<SshKeyType> get() = generator.supportedTypes
 
     fun observe(): Flow<List<SshKeyInfo>> = store.observe()
 
-    suspend fun generate(name: String, type: SshKeyType): SshResult<SshKeyInfo> =
-        withContext(cpuDispatcher) { generator.generate(type) }.flatMap { key -> save(name, key) }
+    /** Makes a key; with a [passphrase] the stored private key is encrypted with it. */
+    suspend fun generate(
+        name: String,
+        type: SshKeyType,
+        passphrase: CharArray? = null
+    ): SshResult<SshKeyInfo> = withPassphrase(passphrase, checkLength = true) { bytes ->
+        withContext(cpuDispatcher) { generator.generate(type) }
+            .flatMap { key -> save(name, key, bytes) }
+    }
 
-    /** Imports an unencrypted private key given as text (OpenSSH, PKCS#8 or PKCS#1 RSA). */
-    suspend fun import(name: String, text: String): SshResult<SshKeyInfo> =
-        PrivateKeyText.parse(text).flatMap { key -> save(name, key) }
+    /**
+     * Imports a private key given as text (OpenSSH, PKCS#8 or PKCS#1 RSA). An OpenSSH key that is
+     * protected needs its [passphrase] and stays protected by it. A key that is not protected
+     * ignores [passphrase]; protect it afterwards with [changePassphrase].
+     */
+    suspend fun import(
+        name: String,
+        text: String,
+        passphrase: CharArray? = null
+    ): SshResult<SshKeyInfo> = withPassphrase(passphrase, checkLength = false) { bytes ->
+        withContext(cpuDispatcher) { PrivateKeyText.parse(text, bytes) }.flatMap { key ->
+            save(name, key, bytes.takeIf { OpenSshKeyFormat.isProtected(text) })
+        }
+    }
+
+    /**
+     * Sets, changes or removes the passphrase of a stored key. [current] opens a protected key
+     * (it is ignored for an unprotected one); a null or empty [replacement] leaves the key
+     * unprotected. Whatever was remembered for the key is forgotten.
+     */
+    suspend fun changePassphrase(
+        alias: String,
+        current: CharArray?,
+        replacement: CharArray?
+    ): SshResult<SshKeyInfo> {
+        val info = store.observe().first().firstOrNull { it.alias == alias }
+        return if (info == null) {
+            SshResult.Failure(SshError.KeyNotFound)
+        } else {
+            withPassphrase(current, checkLength = false) { old ->
+                withPassphrase(replacement, checkLength = true) { new ->
+                    store.privateKey(alias).flatMap { text -> rewrap(info, text, old, new) }
+                }
+            }
+        }
+    }
+
+    private suspend fun rewrap(
+        info: SshKeyInfo,
+        text: String,
+        old: ByteArray?,
+        new: ByteArray?
+    ): SshResult<SshKeyInfo> {
+        val encoded = withContext(cpuDispatcher) {
+            OpenSshKeyFormat.parsePrivate(text, old).map { key ->
+                OpenSshKeyFormat.encodePrivate(key, info.name, new)
+            }
+        }
+        val updated = info.copy(passphraseProtected = new != null)
+        return encoded.flatMap { store.put(updated, it) }.map { updated }
+            .also { unlocks.forget(info.alias) }
+    }
+
+    // Hands [block] the passphrase as bytes (null if there is none) and wipes them afterwards. With
+    // [checkLength], a passphrase shorter than the minimum is refused before anything is done.
+    private suspend fun <T> withPassphrase(
+        chars: CharArray?,
+        checkLength: Boolean,
+        block: suspend (ByteArray?) -> SshResult<T>
+    ): SshResult<T> {
+        val given = chars?.takeIf { it.isNotEmpty() }
+        if (checkLength && given != null && given.size < Passphrases.MIN_LENGTH) {
+            return SshResult.Failure(SshError.PassphraseTooShort(Passphrases.MIN_LENGTH))
+        }
+        val bytes = given?.let(Passphrases::toBytes)
+        return try {
+            block(bytes)
+        } finally {
+            bytes?.fill(0)
+        }
+    }
 
     /** The private key as OpenSSH text. The UI must warn before showing or saving it. */
     suspend fun exportPrivate(alias: String): SshResult<String> = store.privateKey(alias)
@@ -68,11 +144,15 @@ class SshKeyService(
         return if (users > 0) {
             SshResult.Failure(SshError.KeyInUse(users))
         } else {
-            store.delete(alias)
+            store.delete(alias).also { unlocks.forget(alias) }
         }
     }
 
-    private suspend fun save(rawName: String, key: SshPrivateKey): SshResult<SshKeyInfo> {
+    private suspend fun save(
+        rawName: String,
+        key: SshPrivateKey,
+        passphrase: ByteArray?
+    ): SshResult<SshKeyInfo> {
         val name = (Validation.name(rawName) as? Outcome.Success)?.value
         val taken = name != null && store.observe().first().any { it.name.equals(name, true) }
         return when {
@@ -87,9 +167,13 @@ class SshKeyService(
                     type = key.type,
                     publicKey = OpenSshKeyFormat.publicLine(key, name),
                     fingerprint = OpenSshKeyFormat.fingerprint(key),
-                    createdAt = Instant.now(clock)
+                    createdAt = Instant.now(clock),
+                    passphraseProtected = passphrase != null
                 )
-                store.put(info, OpenSshKeyFormat.encodePrivate(key, name)).map { info }
+                val text = withContext(cpuDispatcher) {
+                    OpenSshKeyFormat.encodePrivate(key, name, passphrase)
+                }
+                store.put(info, text).map { info }
             }
         }
     }

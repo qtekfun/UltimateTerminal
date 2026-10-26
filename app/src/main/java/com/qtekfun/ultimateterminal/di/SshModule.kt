@@ -16,6 +16,7 @@ import com.qtekfun.ultimateterminal.domain.repository.DistroRepository
 import com.qtekfun.ultimateterminal.domain.repository.FileSystemRepository
 import com.qtekfun.ultimateterminal.domain.repository.SecretFileStore
 import com.qtekfun.ultimateterminal.domain.repository.SshHostRepository
+import com.qtekfun.ultimateterminal.domain.ssh.PassphraseCache
 import com.qtekfun.ultimateterminal.domain.ssh.SecretBox
 import com.qtekfun.ultimateterminal.domain.ssh.SshConnector
 import com.qtekfun.ultimateterminal.domain.ssh.SshKeyGenerator
@@ -75,21 +76,28 @@ object SshModule {
 
     @Provides
     @Singleton
-    fun keyService(
-        store: SshKeyStore,
-        generator: SshKeyGenerator,
-        hosts: SshHostRepository
-    ): SshKeyService = SshKeyService(store, generator, hosts)
+    fun passphraseCache(): PassphraseCache = PassphraseCache()
 
     @Provides
     @Singleton
+    fun keyService(
+        store: SshKeyStore,
+        generator: SshKeyGenerator,
+        hosts: SshHostRepository,
+        unlocks: PassphraseCache
+    ): SshKeyService = SshKeyService(store, generator, hosts, unlocks = unlocks)
+
+    @Provides
+    @Singleton
+    @Suppress("LongParameterList") // a provider only lists what the class needs
     fun connector(
         hosts: SshHostRepository,
         distros: DistroRepository,
         keys: SshKeyStore,
         files: SecretFileStore,
-        tokens: TokenSource
-    ): SshConnector = SshConnector(hosts, distros, keys, files, tokens)
+        tokens: TokenSource,
+        unlocks: PassphraseCache
+    ): SshConnector = SshConnector(hosts, distros, keys, files, tokens, unlocks)
 
     @Provides
     @Singleton

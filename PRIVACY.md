@@ -23,7 +23,9 @@ Everything the app stores is in its private storage on your device: the Linux di
 install, your settings and appearance choices, the list of SSH hosts, the host keys you chose to trust
 (a `known_hosts` file), and SSH keys. Android's own
 backup is turned off for the app (`allowBackup=false`), so none of this is copied to Google's cloud by
-the system. SSH private keys are encrypted at rest with a key held by the Android Keystore. By design, the app
+the system. SSH private keys are encrypted at rest with a key held by the Android Keystore, and, if you set one, also
+with a passphrase that the app never stores: it is kept in memory only if you ask it to keep the key
+unlocked, for fifteen minutes. By design, the app
 does not write the content of your terminal, or any secret, to a log.
 
 ### Where the network is used

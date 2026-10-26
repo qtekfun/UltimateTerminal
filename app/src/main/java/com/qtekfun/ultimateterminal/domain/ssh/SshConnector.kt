@@ -12,6 +12,9 @@ import com.qtekfun.ultimateterminal.domain.model.SshHost
 import com.qtekfun.ultimateterminal.domain.repository.DistroRepository
 import com.qtekfun.ultimateterminal.domain.repository.SecretFileStore
 import com.qtekfun.ultimateterminal.domain.repository.SshHostRepository
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Random hexadecimal text; faked in tests so file names are predictable. */
 fun interface TokenSource {
@@ -31,9 +34,20 @@ class SshLaunchPlan(
 }
 
 /**
+ * A passphrase typed to unlock a protected key for one connection. [remember] keeps it in memory
+ * for a while (see [PassphraseCache]) so that reconnecting does not ask again. The caller owns
+ * [passphrase] and wipes it; the connector only reads it.
+ */
+class KeyUnlock(val passphrase: CharArray, val remember: Boolean) {
+    override fun toString(): String = "KeyUnlock(remember=$remember)"
+}
+
+/**
  * Prepares a one-touch connection to a saved host.
  *
- * The private key is decrypted only here and written to a file inside the distro's `/tmp`, readable
+ * A key that is protected by a passphrase is opened here with the one the user types (or the one
+ * the cache still holds); without it the result is [SshError.PassphraseRequired]. The private key is
+ * decrypted only here and written to a file inside the distro's `/tmp`, readable
  * by the app alone, because `ssh -i` needs a file. The file lives as long as the session and is
  * removed when it ends; any left behind by a crash is removed the next time a connection starts.
  * DECISIONS.md (D-T14) says what this does and does not protect against.
@@ -43,17 +57,20 @@ class SshConnector(
     private val distros: DistroRepository,
     private val keys: SshKeyStore,
     private val files: SecretFileStore,
-    private val tokens: TokenSource
+    private val tokens: TokenSource,
+    private val unlocks: PassphraseCache = PassphraseCache(),
+    private val cpuDispatcher: CoroutineDispatcher = Dispatchers.Default
 ) {
     private val live = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
-    suspend fun prepare(hostId: Long): SshResult<SshLaunchPlan> {
+    /** [unlock] is the passphrase the user just typed, if the host's key asked for one. */
+    suspend fun prepare(hostId: Long, unlock: KeyUnlock? = null): SshResult<SshLaunchPlan> {
         val host = hosts.get(hostId)
         val distro = host?.let { chooseDistro(it) }
         return when {
             host == null -> SshResult.Failure(SshError.HostNotFound)
             distro == null -> SshResult.Failure(SshError.NoDistro)
-            else -> plan(host, distro)
+            else -> plan(host, distro, unlock)
         }
     }
 
@@ -62,7 +79,11 @@ class SshConnector(
         return wanted?.takeIf { it.state == DistroState.READY }
     }
 
-    private suspend fun plan(host: SshHost, distro: Distro): SshResult<SshLaunchPlan> {
+    private suspend fun plan(
+        host: SshHost,
+        distro: Distro,
+        unlock: KeyUnlock?
+    ): SshResult<SshLaunchPlan> {
         val tmp = distro.directory.child(TMP).getOrNull()
         removeStaleKeys(tmp)
         val alias = host.keyAlias
@@ -71,7 +92,7 @@ class SshConnector(
         } else if (tmp == null) {
             SshResult.Failure(SshError.Storage("no temporary directory"))
         } else {
-            materialize(alias, tmp)
+            materialize(alias, tmp, unlock)
         }
         return materialized.flatMap { key ->
             val guestPath = key?.let { "/$TMP/${it.name}" }
@@ -88,10 +109,14 @@ class SshConnector(
         }
     }
 
-    private suspend fun materialize(alias: String, tmp: FsPath): SshResult<KeyFile> {
+    private suspend fun materialize(
+        alias: String,
+        tmp: FsPath,
+        unlock: KeyUnlock?
+    ): SshResult<KeyFile> {
         val name = "$KEY_PREFIX${tokens.hex(TOKEN_BYTES)}"
         val path = tmp.child(name).getOrNull()
-        val text = keys.privateKey(alias)
+        val text = keys.privateKey(alias).flatMap { stored -> open(alias, stored, unlock) }
         return when {
             path == null -> SshResult.Failure(SshError.Invalid("keyPath"))
 
@@ -112,6 +137,51 @@ class SshConnector(
             }
 
             else -> SshResult.Failure(SshError.KeyNotFound)
+        }
+    }
+
+    // The key as the plain OpenSSH text `ssh -i` reads. A protected key is decrypted with the typed
+    // passphrase or the remembered one; a wrong one is forgotten so it is not tried again.
+    private suspend fun open(alias: String, stored: String, unlock: KeyUnlock?): SshResult<String> {
+        val typed = unlock?.passphrase?.takeIf { it.isNotEmpty() }?.let(Passphrases::toBytes)
+        val passphrase = typed ?: unlocks.recall(alias)
+        return try {
+            when {
+                !OpenSshKeyFormat.isProtected(stored) -> SshResult.Success(stored)
+
+                passphrase == null -> SshResult.Failure(SshError.PassphraseRequired)
+
+                else -> decrypt(
+                    alias,
+                    stored,
+                    passphrase,
+                    remember =
+                        typed != null && unlock.remember
+                )
+            }
+        } finally {
+            passphrase?.fill(0)
+        }
+    }
+
+    private suspend fun decrypt(
+        alias: String,
+        stored: String,
+        passphrase: ByteArray,
+        remember: Boolean
+    ): SshResult<String> = when (
+        val parsed = withContext(cpuDispatcher) {
+            OpenSshKeyFormat.parsePrivate(stored, passphrase)
+        }
+    ) {
+        is SshResult.Failure -> {
+            if (parsed.error == SshError.WrongPassphrase) unlocks.forget(alias)
+            parsed
+        }
+
+        is SshResult.Success -> {
+            if (remember) unlocks.remember(alias, passphrase)
+            SshResult.Success(OpenSshKeyFormat.encodePrivate(parsed.value, ""))
         }
     }
 

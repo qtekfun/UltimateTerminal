@@ -11,8 +11,17 @@ sealed interface SshError {
     /** The text is not a private key the app can read (only OpenSSH and PKCS#8 are supported). */
     data object UnsupportedKeyFormat : SshError
 
-    /** The key is protected by a passphrase; remove it first (`ssh-keygen -p`). */
+    /** An old-style (PEM or PKCS#8) encrypted key, which the app cannot read: convert it first. */
     data object EncryptedKey : SshError
+
+    /** The key needs its passphrase to be used and none was given or remembered. */
+    data object PassphraseRequired : SshError
+
+    /** The passphrase does not open the key. */
+    data object WrongPassphrase : SshError
+
+    /** A new passphrase shorter than [minimum] characters. */
+    data class PassphraseTooShort(val minimum: Int) : SshError
 
     /** A stored or imported key that is damaged or fails its integrity check. */
     data object CorruptKey : SshError
