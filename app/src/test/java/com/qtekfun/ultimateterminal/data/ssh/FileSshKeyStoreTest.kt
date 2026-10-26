@@ -180,4 +180,14 @@ class FileSshKeyStoreTest {
         assertTrue(Regex("k[0-9a-f]{12}").matches(a))
         assertEquals(13, b.length)
     }
+
+    @Test
+    fun theProtectedFlagSurvivesAndAKeyStoredBeforeItWasNotProtected() = runTest {
+        store.put(info("k000000000001").copy(passphraseProtected = true), pem)
+        // what an older version wrote: no such field
+        files.files["ssh-keys/k000000000002.meta"] = meta().toByteArray()
+        val listed = store.observe().first().associateBy { it.alias }
+        assertTrue(listed.getValue("k000000000001").passphraseProtected)
+        assertFalse(listed.getValue("k000000000002").passphraseProtected)
+    }
 }

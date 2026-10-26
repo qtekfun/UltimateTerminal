@@ -166,4 +166,20 @@ class ConfigCodecTest {
         )
         assertEquals(expected, mapped)
     }
+
+    @Test
+    fun theProtectedFlagOfAKeySurvivesAndAnOldBackupWithoutItIsNotProtected() {
+        val key = sampleSnapshot().sshKeys.single().copy(passphraseProtected = true)
+        val snapshot = sampleSnapshot().copy(sshKeys = listOf(key))
+        val back = ConfigCodec.decode(ConfigCodec.encode(snapshot)).value()
+        assertEquals(true, back.sshKeys.single().passphraseProtected)
+
+        val old = text(
+            ConfigCodec.encode(sampleSnapshot())
+        ).replace(",\"passphraseProtected\":false", "")
+        assertEquals(
+            false,
+            ConfigCodec.decode(old.toByteArray()).value().sshKeys.single().passphraseProtected
+        )
+    }
 }

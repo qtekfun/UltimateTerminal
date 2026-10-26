@@ -117,7 +117,9 @@ class FileSshKeyStore(
         val type: String,
         val publicKey: String,
         val fingerprint: String,
-        val createdAt: String
+        val createdAt: String,
+        // Absent in files written before passphrases existed: those keys are not protected.
+        val passphraseProtected: Boolean = false
     ) {
         fun toInfo(alias: String): SshKeyInfo? {
             val keyType = SshKeyType.entries.firstOrNull { it.name == type }
@@ -125,7 +127,7 @@ class FileSshKeyStore(
             return if (keyType == null || time == null || version != VERSION) {
                 null
             } else {
-                SshKeyInfo(alias, name, keyType, publicKey, fingerprint, time)
+                SshKeyInfo(alias, name, keyType, publicKey, fingerprint, time, passphraseProtected)
             }
         }
 
@@ -136,7 +138,8 @@ class FileSshKeyStore(
                 info.type.name,
                 info.publicKey,
                 info.fingerprint,
-                info.createdAt.toString()
+                info.createdAt.toString(),
+                info.passphraseProtected
             )
         }
     }

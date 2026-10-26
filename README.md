@@ -48,7 +48,8 @@ been checked.
   Normal is meant to stop some phones (Huawei, Xiaomi, OPPO and others) from showing their secure
   password keyboard in the terminal; this is addressed but not yet verified on such a phone.
 - **SSH:** saved hosts that open a tab already running `ssh`, and SSH keys you can generate, import and
-  export. Private keys are encrypted at rest with the Android Keystore.
+  export. Private keys are encrypted at rest with the Android Keystore, and can also be protected with a
+  passphrase (or a PIN) that you type to connect, in the same format `ssh-keygen` uses.
 - **Device files:** optional access to the shared storage from the distribution, under `~/storage`,
   for example to copy a log to Downloads. The storage permission is requested only when you turn it on.
 - **Backups:** export one distribution, the settings, or everything to a file, optionally encrypted
@@ -98,6 +99,7 @@ tablet** (Android 12, 2800x1840). Nothing was run on any other device.
 | Pinch zoom, selection gestures, tab reordering, hardware-keyboard shortcuts | | yes |
 | Fonts of your own, OLED mode, schemes you edit | | yes (the preview and picking a built-in scheme were seen on the Pixel 8) |
 | SSH hosts and keys with the real Keystore, running `ssh` to a real server | | yes (OpenSSH key format checked against the real `ssh-keygen` on a computer) |
+| SSH keys protected with a passphrase: generate, import, change, connect | | yes (keys read and written both ways with the real `ssh-keygen` on a computer; the dialogs and the connection were not tried on a device) |
 | Backups: export and restore with the system file picker (the Settings page opens on the Pixel 8) | | yes |
 | `~/storage` mount and its permission on Android 13 and later | | yes (an untested hypothesis, see `DECISIONS.md` D-T13-3) |
 | Split-screen mode, split panes and a distro on the tablet | | yes (split screen fails with a system exception on this tablet's EMUI) |

@@ -46,6 +46,9 @@ private sealed interface KeyDialog {
 
     data class Delete(val key: SshKeyInfo) : KeyDialog
 
+    /** Set or change the key's passphrase, or ([removing]) take it off. */
+    data class Passphrase(val key: SshKeyInfo, val removing: Boolean) : KeyDialog
+
     /** The warning shown before the private key is written anywhere. */
     data class ExportWarning(val key: SshKeyInfo) : KeyDialog
 }
@@ -134,8 +137,8 @@ private fun KeyDialogHost(
 
         KeyDialog.Generate -> GenerateKeyDialog(
             types = state.keyTypes,
-            onGenerate = { name, type ->
-                viewModel.generateKey(name, type)
+            onGenerate = { name, type, passphrase ->
+                viewModel.generateKey(name, type, passphrase)
                 dismiss()
             },
             onDismiss = dismiss
@@ -143,8 +146,18 @@ private fun KeyDialogHost(
 
         KeyDialog.Import -> ImportKeyDialog(
             viewModel = viewModel,
-            onImport = { name, text ->
-                viewModel.importKey(name, text)
+            onImport = { name, text, passphrase ->
+                viewModel.importKey(name, text, passphrase)
+                dismiss()
+            },
+            onDismiss = dismiss
+        )
+
+        is KeyDialog.Passphrase -> ChangePassphraseDialog(
+            key = dialog.key,
+            removing = dialog.removing,
+            onApply = { current, replacement ->
+                viewModel.changePassphrase(dialog.key.alias, current, replacement)
                 dismiss()
             },
             onDismiss = dismiss
@@ -194,9 +207,26 @@ private fun AddActions(targets: KeyTargets) {
 /** What can be done with one key: the sheet that slides up when its row is tapped. */
 @Composable
 private fun KeyActions(key: SshKeyInfo, targets: KeyTargets) {
+    val passphraseActions = if (key.passphraseProtected) {
+        listOf(
+            IosAction(stringResource(R.string.ssh_key_change_passphrase)) {
+                targets.show(KeyDialog.Passphrase(key, removing = false))
+            },
+            IosAction(stringResource(R.string.ssh_key_remove_passphrase)) {
+                targets.show(KeyDialog.Passphrase(key, removing = true))
+            }
+        )
+    } else {
+        listOf(
+            IosAction(stringResource(R.string.ssh_key_set_passphrase)) {
+                targets.show(KeyDialog.Passphrase(key, removing = false))
+            }
+        )
+    }
     IosActionSheet(
         actions = listOf(
-            IosAction(stringResource(R.string.ssh_key_copy_public)) { targets.copy(key) },
+            IosAction(stringResource(R.string.ssh_key_copy_public)) { targets.copy(key) }
+        ) + passphraseActions + listOf(
             IosAction(stringResource(R.string.ssh_key_export_private)) {
                 targets.show(KeyDialog.ExportWarning(key))
             },
@@ -228,7 +258,12 @@ private fun KeyList(keys: List<SshKeyInfo>, onAdd: () -> Unit, onOpen: (SshKeyIn
                 IosListRow(
                     title = key.name,
                     subtitle = key.type.sshName + "\n" +
-                        stringResource(R.string.ssh_key_fingerprint, key.fingerprint),
+                        stringResource(R.string.ssh_key_fingerprint, key.fingerprint) +
+                        if (key.passphraseProtected) {
+                            "\n" + stringResource(R.string.ssh_key_protected)
+                        } else {
+                            ""
+                        },
                     glyph = IosGlyph.KEY,
                     accessory = IosAccessory.Chevron,
                     showSeparator = index != keys.lastIndex,

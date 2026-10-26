@@ -147,7 +147,9 @@ internal data class KeyDto(
     val publicKey: String,
     val fingerprint: String,
     val createdAt: String,
-    val privateKey: String
+    val privateKey: String,
+    /** `privateKey` is encrypted with the key's passphrase. Absent in older backups: not protected. */
+    val passphraseProtected: Boolean = false
 )
 
 internal object ConfigCodec {

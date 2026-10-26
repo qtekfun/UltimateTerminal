@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -22,6 +23,7 @@ import com.qtekfun.ultimateterminal.R
 import com.qtekfun.ultimateterminal.domain.ios.SheetDetent
 import com.qtekfun.ultimateterminal.domain.model.Distro
 import com.qtekfun.ultimateterminal.domain.model.SshHost
+import com.qtekfun.ultimateterminal.domain.ssh.Passphrases
 import com.qtekfun.ultimateterminal.domain.ssh.SshKeyInfo
 import com.qtekfun.ultimateterminal.domain.ssh.SshKeyType
 import com.qtekfun.ultimateterminal.ssh.SshKeysViewModel
@@ -231,11 +233,14 @@ private fun <T> ChoiceSection(
 @Composable
 internal fun GenerateKeyDialog(
     types: List<SshKeyType>,
-    onGenerate: (String, SshKeyType) -> Unit,
+    onGenerate: (String, SshKeyType, CharArray) -> Unit,
     onDismiss: () -> Unit
 ) {
     var name by rememberSaveable { mutableStateOf("") }
     var type by rememberSaveable { mutableStateOf(types.firstOrNull() ?: SshKeyType.RSA) }
+    // Not saveable on purpose: a passphrase must not go into the saved instance state.
+    var passphrase by remember { mutableStateOf("") }
+    var confirmation by remember { mutableStateOf("") }
     IosBottomSheet(onDismiss = onDismiss, detents = listOf(SheetDetent.LARGE)) {
         Column {
             IosSheetHeader(
@@ -243,7 +248,8 @@ internal fun GenerateKeyDialog(
                 cancelLabel = stringResource(R.string.dialog_cancel),
                 confirmLabel = stringResource(R.string.ssh_key_generate),
                 onCancel = onDismiss,
-                onConfirm = { onGenerate(name, type) }
+                onConfirm = { onGenerate(name, type, passphrase.toCharArray()) },
+                confirmEnabled = Passphrases.check(passphrase, confirmation) == Passphrases.Check.OK
             )
             IosSection {
                 IosTextField(
@@ -259,6 +265,14 @@ internal fun GenerateKeyDialog(
                 selected = type,
                 onSelect = { type = it }
             )
+            NewPassphraseSection(
+                passphrase = passphrase,
+                confirmation = confirmation,
+                onPassphrase = { passphrase = it },
+                onConfirmation = { confirmation = it },
+                hint = stringResource(R.string.ssh_generate_passphrase_hint),
+                passphraseLabel = stringResource(R.string.ssh_field_passphrase_optional)
+            )
         }
     }
 }
@@ -271,14 +285,15 @@ private fun typeLabel(type: SshKeyType): Int = when (type) {
 @Composable
 internal fun ImportKeyDialog(
     viewModel: SshKeysViewModel,
-    onImport: (String, String) -> Unit,
+    onImport: (String, String, CharArray) -> Unit,
     onDismiss: () -> Unit
 ) {
     val resolver = LocalContext.current.contentResolver
     var name by rememberSaveable { mutableStateOf("") }
     var text by rememberSaveable { mutableStateOf("") }
+    var passphrase by remember { mutableStateOf("") } // never saved: see SshPassphraseDialogs
     var unreadable by rememberSaveable { mutableStateOf(false) }
-    // The last name we filled in, so a second pick replaces it but never what the user typed.
+    // The last name we filled in: a second pick replaces it, never what the user typed.
     var suggested by rememberSaveable { mutableStateOf("") }
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
@@ -301,7 +316,7 @@ internal fun ImportKeyDialog(
                 cancelLabel = stringResource(R.string.dialog_cancel),
                 confirmLabel = stringResource(R.string.ssh_key_import),
                 onCancel = onDismiss,
-                onConfirm = { onImport(name, text) }
+                onConfirm = { onImport(name, text, passphrase.toCharArray()) }
             )
             val footer = stringResource(
                 if (unreadable) R.string.ssh_import_unreadable else R.string.ssh_import_hint
@@ -316,15 +331,26 @@ internal fun ImportKeyDialog(
                     showSeparator = false
                 )
             }
-            IosSection {
-                IosListRow(
-                    title = stringResource(R.string.ssh_import_choose),
-                    glyph = IosGlyph.FOLDER,
-                    accessory = IosAccessory.Chevron,
-                    showSeparator = false,
-                    onClick = { pick.launch(arrayOf("*/*")) }
-                )
-            }
+            PassphraseEntrySection(
+                value = passphrase,
+                onChange = { passphrase = it },
+                label = stringResource(R.string.ssh_field_passphrase_import),
+                footer = stringResource(R.string.ssh_import_passphrase_hint)
+            )
+            ChooseFileSection { pick.launch(arrayOf("*/*")) }
         }
+    }
+}
+
+@Composable
+private fun ChooseFileSection(onClick: () -> Unit) {
+    IosSection {
+        IosListRow(
+            title = stringResource(R.string.ssh_import_choose),
+            glyph = IosGlyph.FOLDER,
+            accessory = IosAccessory.Chevron,
+            showSeparator = false,
+            onClick = onClick
+        )
     }
 }

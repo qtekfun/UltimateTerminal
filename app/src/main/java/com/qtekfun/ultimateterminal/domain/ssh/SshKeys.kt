@@ -21,7 +21,9 @@ data class SshKeyInfo(
     val publicKey: String,
     /** `SHA256:...`, as `ssh-keygen -l` prints it. */
     val fingerprint: String,
-    val createdAt: Instant
+    val createdAt: Instant,
+    /** The private key is encrypted with a passphrase the user types to connect. */
+    val passphraseProtected: Boolean = false
 )
 
 /**

@@ -70,6 +70,7 @@ fun SshScreen(onClose: () -> Unit, viewModel: SshViewModel = viewModel()) {
             )
         }
     }
+    UnlockHost(state, viewModel, onClose)
     HostDialogHost(
         dialog = dialog,
         state = state,
@@ -82,6 +83,20 @@ fun SshScreen(onClose: () -> Unit, viewModel: SshViewModel = viewModel()) {
             closeScreen = onClose
         )
     )
+}
+
+/** Asks for the passphrase when the connection of a host is waiting for one. */
+@Composable
+private fun UnlockHost(state: SshUiState, viewModel: SshViewModel, onOpened: () -> Unit) {
+    state.unlock?.let { request ->
+        UnlockKeyDialog(
+            request = request,
+            onUnlock = { passphrase, remember ->
+                viewModel.connect(request.hostId, passphrase, remember, onOpened = onOpened)
+            },
+            onDismiss = viewModel::cancelUnlock
+        )
+    }
 }
 
 internal sealed interface HostDialog {

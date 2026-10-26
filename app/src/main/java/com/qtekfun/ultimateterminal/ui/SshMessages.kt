@@ -9,21 +9,48 @@ import androidx.compose.ui.res.stringResource
 import com.qtekfun.ultimateterminal.R
 import com.qtekfun.ultimateterminal.domain.DomainError
 import com.qtekfun.ultimateterminal.domain.ssh.SshError
+import com.qtekfun.ultimateterminal.ssh.PassphraseChange
 import com.qtekfun.ultimateterminal.ssh.SshMessage
 
 @StringRes
 private fun SshError.messageRes(): Int = when (this) {
     is SshError.Invalid -> R.string.ssh_err_invalid
+
     SshError.UnsupportedKeyFormat -> R.string.ssh_err_format
+
     SshError.EncryptedKey -> R.string.ssh_err_encrypted
+
     SshError.CorruptKey -> R.string.ssh_err_corrupt
+
     is SshError.UnsupportedKeyType -> R.string.ssh_err_key_type
+
     is SshError.NameTaken -> R.string.ssh_err_name_taken
+
     SshError.KeyNotFound -> R.string.ssh_err_key_missing
+
     is SshError.KeyInUse -> R.string.ssh_err_key_in_use
+
     SshError.HostNotFound -> R.string.ssh_err_host_missing
+
     SshError.NoDistro -> R.string.ssh_err_no_distro
+
+    SshError.PassphraseRequired, SshError.WrongPassphrase, is SshError.PassphraseTooShort ->
+        passphraseMessageRes()
+
     is SshError.Storage -> R.string.ssh_err_storage
+}
+
+@StringRes
+private fun SshError.passphraseMessageRes(): Int = when (this) {
+    SshError.WrongPassphrase -> R.string.ssh_err_wrong_passphrase
+    is SshError.PassphraseTooShort -> R.string.ssh_err_passphrase_short
+    else -> R.string.ssh_err_passphrase_required
+}
+
+@Composable
+private fun SshError.messageText(): String = when (this) {
+    is SshError.PassphraseTooShort -> stringResource(R.string.ssh_err_passphrase_short, minimum)
+    else -> stringResource(messageRes())
 }
 
 @StringRes
@@ -36,8 +63,20 @@ private fun DomainError.hostMessageRes(): Int = when (this) {
 @Composable
 internal fun SshMessage.text(): String = when (this) {
     is SshMessage.KeyAdded -> stringResource(R.string.ssh_msg_key_added, name)
-    is SshMessage.Failed -> stringResource(error.messageRes())
+
+    is SshMessage.Failed -> error.messageText()
+
     is SshMessage.HostFailed -> stringResource(error.hostMessageRes())
+
     SshMessage.PrivateKeySaved -> stringResource(R.string.ssh_msg_private_saved)
+
+    is SshMessage.PassphraseUpdated -> stringResource(
+        when (change) {
+            PassphraseChange.SET -> R.string.ssh_msg_passphrase_set
+            PassphraseChange.CHANGED -> R.string.ssh_msg_passphrase_changed
+            PassphraseChange.REMOVED -> R.string.ssh_msg_passphrase_removed
+        }
+    )
+
     SshMessage.PublicKeyCopied -> stringResource(R.string.ssh_msg_public_copied)
 }

@@ -240,4 +240,87 @@ class SshConnectorTest {
         val p = plan(host(keyAlias = keyAlias()).id)
         assertFalse(p.toString().contains(".ut-ssh"))
     }
+
+    private suspend fun protectedKeyAlias(passphrase: String = "hunter22"): String {
+        val alias = keys.newAlias()
+        val key = SshPrivateKey.Ed25519(ByteArray(32) { 1 }, ByteArray(32) { 2 })
+        keys.put(
+            SshKeyInfo(
+                alias,
+                "p",
+                SshKeyType.ED25519,
+                "ssh-ed25519 AAAA",
+                "SHA256:x",
+                Instant.EPOCH,
+                passphraseProtected = true
+            ),
+            OpenSshKeyFormat.encodePrivate(key, "p", passphrase.toByteArray(), rounds = 2)
+        )
+        return alias
+    }
+
+    private fun unlock(passphrase: String, remember: Boolean = false) =
+        KeyUnlock(passphrase.toCharArray(), remember)
+
+    private suspend fun prepare(id: Long, unlock: KeyUnlock? = null) = connector.prepare(id, unlock)
+
+    @Test
+    fun aProtectedKeyWithoutItsPassphraseAsksForOneAndWritesNothing() = runTest {
+        distro("a", "distros/a")
+        val h = host(keyAlias = protectedKeyAlias())
+        assertEquals(SshError.PassphraseRequired, (prepare(h.id) as SshResult.Failure).error)
+        assertTrue(tmpFiles().isEmpty())
+    }
+
+    @Test
+    fun aWrongPassphraseIsReportedAndWritesNothing() = runTest {
+        distro("a", "distros/a")
+        val h = host(keyAlias = protectedKeyAlias())
+        assertEquals(
+            SshError.WrongPassphrase,
+            (prepare(h.id, unlock("nope-nope")) as SshResult.Failure).error
+        )
+        assertTrue(tmpFiles().isEmpty())
+    }
+
+    @Test
+    fun theRightPassphraseWritesTheKeyUnprotectedForSsh() = runTest {
+        distro("a", "distros/a")
+        val h = host(keyAlias = protectedKeyAlias())
+        val p = (prepare(h.id, unlock("hunter22")) as SshResult.Success).value
+        val written = String(files.files.getValue(tmpFiles().single()))
+        assertFalse(OpenSshKeyFormat.isProtected(written))
+        assertTrue(OpenSshKeyFormat.parsePrivate(written) is SshResult.Success)
+        assertTrue("-i" in p.guestCommand)
+        p.cleanup()
+        assertTrue(tmpFiles().isEmpty())
+    }
+
+    @Test
+    fun aPassphraseKeptUnlockedIsNotAskedForAgain() = runTest {
+        distro("a", "distros/a")
+        val h = host(keyAlias = protectedKeyAlias())
+        (prepare(h.id, unlock("hunter22", remember = true)) as SshResult.Success).value.cleanup()
+        assertTrue(prepare(h.id) is SshResult.Success)
+    }
+
+    @Test
+    fun aPassphraseNotKeptUnlockedIsAskedForEveryTime() = runTest {
+        distro("a", "distros/a")
+        val h = host(keyAlias = protectedKeyAlias())
+        (prepare(h.id, unlock("hunter22")) as SshResult.Success).value.cleanup()
+        assertEquals(SshError.PassphraseRequired, (prepare(h.id) as SshResult.Failure).error)
+    }
+
+    @Test
+    fun aRememberedPassphraseThatNoLongerFitsIsForgotten() = runTest {
+        val unlocks = PassphraseCache()
+        val own = SshConnector(hosts, distros, keys, files, CountingTokens(), unlocks)
+        distro("a", "distros/a")
+        val alias = protectedKeyAlias()
+        val h = host(keyAlias = alias)
+        unlocks.remember(alias, "stale-pass".toByteArray())
+        assertEquals(SshError.WrongPassphrase, (own.prepare(h.id) as SshResult.Failure).error)
+        assertEquals(SshError.PassphraseRequired, (own.prepare(h.id) as SshResult.Failure).error)
+    }
 }

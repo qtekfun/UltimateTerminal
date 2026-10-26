@@ -93,6 +93,7 @@ A terminal for Android designed for **server maintainers** and the spiritual suc
 ### RF-09 SSH host manager
 - A list of saved servers (name, host, port, user, key) that opens a tab with `ssh` already started in the chosen distro.
 - Key management: generate, import and export. **Private keys are encrypted at rest with the Android Keystore** and never go to logs.
+- **Passphrase-protected keys:** a key can be generated with a passphrase, an OpenSSH key that has one can be imported, and a passphrase can be added, changed or removed later. A protected key is stored in OpenSSH's own encrypted format (`aes256-ctr` keyed by `bcrypt_pbkdf`), on top of the Keystore layer. Connecting with it asks for the passphrase, with the option to keep that key unlocked for 15 minutes (in memory only). A key without a passphrase keeps working as before. Hardware security keys (FIDO2, PIV, OpenPGP) are not supported yet: see `DECISIONS.md` (D-PK-8).
 - **Criteria:** connecting to a saved host takes one tap; the private key does not appear in plain text outside the distro.
 
 ### RF-10 Themes, OLED mode and fonts
@@ -185,7 +186,7 @@ User request (0.1.2): "if I long-press a tab in the bar, show the close confirma
 ## 6. Non-functional requirements
 - **Performance:** cold start to a prompt < 1.5 s with a distro already installed; smooth text output (e.g. `cat` of a large file without blocking the UI).
 - **Privacy:** no telemetry or third-party services. The app only uses the network when the user asks (rootfs download, whatever they run in the terminal).
-- **Security:** keys encrypted with the Keystore; `allowBackup` disabled (the own backup is used); no logs of terminal content or of secrets. SHA-256 verification of everything downloaded.
+- **Security:** keys encrypted with the Keystore, and optionally with a passphrase of the user's; a passphrase is never stored or logged; `allowBackup` disabled (the own backup is used); no logs of terminal content or of secrets. SHA-256 verification of everything downloaded.
 - **Accessibility:** TalkBack in the app's UI (the terminal itself exposes text), touch targets ≥ 48 dp, font scaling, enough contrast.
 - **Robustness:** no loss of distro data on closes, lack of space or network failures; long operations resumable or transactional.
 

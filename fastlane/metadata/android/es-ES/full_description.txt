@@ -8,7 +8,7 @@ UltimateTerminal es una terminal para Android pensada para quien mantiene servid
 • Varias pestañas y paneles divididos, perfiles (distro, usuario, comando inicial), layouts de paneles guardados, escribir en varios paneles a la vez con un indicador rojo y atajos que puedes cambiar
 • Una fila de teclas extra (Esc, Tab, Ctrl, Alt, flechas) que se muestra mientras el teclado está abierto, atajos de teclado físico y zoom con pellizco
 • Un terminal que se redimensiona con la ventana, el teclado y la rotación (comprobado en un móvil y en una tablet, incluida una ventana redimensionada), y con la pantalla dividida (sin comprobar en un dispositivo)
-• Hosts SSH guardados y claves SSH que puedes generar, importar y exportar; las claves se cifran con el Keystore de Android
+• Hosts SSH guardados y claves SSH que puedes generar, importar y exportar; las claves se cifran con el Keystore de Android y pueden protegerse además con una frase de contraseña
 • Acceso opcional al almacenamiento del dispositivo desde la distro, en ~/storage, por ejemplo para copiar logs a Descargas. El permiso solo se pide al activarlo
 • Copias de seguridad de una distro, de los ajustes o de todo, con cifrado opcional con contraseña, para restaurar en otro dispositivo
 • Apariencia: esquemas de color, un modo OLED de negro puro, una fuente monoespaciada incluida o tu propio archivo de fuente, y tres estilos para las teclas extra

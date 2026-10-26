@@ -257,7 +257,7 @@ private fun KeyDto.toInfo(): SshKeyInfo? {
     return if (keyType == null || created == null) {
         null
     } else {
-        SshKeyInfo(alias, name, keyType, publicKey, fingerprint, created)
+        SshKeyInfo(alias, name, keyType, publicKey, fingerprint, created, passphraseProtected)
     }
 }
 

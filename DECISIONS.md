@@ -33,6 +33,9 @@ working. Pending, among other things:
   (see D-T08b-8 with the acceptance criterion of the first test on the tablet).
 - T14, SSH: the real Keystore, `ssh` inside proot with the temporary key, the file picker and the
   cleanup of the key file (see "T14: what has NOT been validated").
+- D-PK, passphrase-protected SSH keys: the dialogs (generate, import, set/change/remove, unlock),
+  the time one `bcrypt_pbkdf` run takes on a low-end phone, connecting with a protected key and with
+  "keep unlocked", and the fields being cleared on rotation (see "D-PK: what has NOT been validated").
 - T08, foreground service: that Android starts it with the `specialUse` type on 12–16, that the
   notification appears and its actions (new session, exit) work, that the shell survives
   closing the activity and turning the screen off, and that the UI reconnects to the live session. Also the
@@ -1102,7 +1105,7 @@ paths with `..`). The saved host's name is only a label and never reaches the co
 **Decision:** the `openssh-key-v1` format (private key without passphrase) and the `authorized_keys` line
 are written and read in `OpenSshKeyFormat`, for Ed25519 and RSA. Import also accepts PKCS#8 and
 PKCS#1 (RSA only, which are the usual old keys) in `PrivateKeyText`. A key with a passphrase
-is rejected with a message that explains how to remove it (`ssh-keygen -p`). ECDSA, DSA and
+is rejected with a message that explains how to remove it (`ssh-keygen -p`; **superseded by D-PK-1**: an OpenSSH key with a passphrase is now read, only the old PEM/PKCS#8 encryption is still refused). ECDSA, DSA and
 certificates are not supported, nor Ed25519 in PKCS#8.
 **Reason:** `ssh` needs that format and the platform's cryptography API does not produce it. It is
 little code (about 200 lines) and is tested against real `ssh-keygen` keys; BouncyCastle would add
@@ -1164,7 +1167,8 @@ hands of another person (no authentication is asked to use the key, see D-T14-4)
 programs inside the distro, which can read `/tmp/.ut-ssh-…` while the session lasts; the
 user saving the exported private key in an insecure place (the screen warns before).
 **Impact:** it is a level similar to `~/.ssh/id_*` without passphrase on any Linux, with the
-advantage that at rest it is encrypted.
+advantage that at rest it is encrypted. **Updated by D-PK-6:** a passphrase now covers the "unlocked
+device in the hands of another person" case for protected keys.
 
 ### D-T14-7 · 2026-10-04 · Gap found: nothing connected proot with the sessions
 **Decision:** T09 and T07 left the `distroId` saved in each tab, but `AndroidSessionFactory`
@@ -2909,4 +2913,163 @@ With tests on the host (JVM): modes, links (absolute, relative, broken), 000 and
 
 ### D-REL-9 · 2026-10-14 · 0.1.5
 - At the user's request ("si hay que implementarlo saca release") `0.1.5` (versionCode 10599) is published with the compact selection bar and handles, tabs that close with their shell, and the language setting. None of the three is tested on a device yet; the changelog says so.
+
+
+## D-PK · Passphrase-protected SSH keys, and hardware keys (feat/protected-ssh-keys)
+
+**Request:** keys stored in the app must be protectable "with a PIN or a hardware key", so that a lost
+phone does not hand over usable keys; first a passphrase, then research on FIDO2 / YubiKey.
+
+### D-PK-1 · 2026-10-26 · A protected key is stored as OpenSSH's own encrypted `openssh-key-v1`
+- **Decision:** a key with a passphrase is written as `ssh-keygen -N` writes it: cipher `aes256-ctr`, KDF
+  `bcrypt` (16 rounds, 16-byte random salt), the public part in the clear. It is the same text the
+  Keystore layer (D-T14-4) seals, so at rest there are two independent layers: the passphrase, and the
+  Keystore key. Reading accepts `aes128/192/256-ctr` and `aes128/192/256-cbc`, so keys made elsewhere
+  import without conversion. The AEAD ciphers (`*-gcm@openssh.com`, `chacha20-poly1305@openssh.com`)
+  are refused as unsupported: `ssh-keygen` only uses them if asked with `-Z`. At most 1024 rounds are
+  accepted, so a hostile file cannot hang the phone.
+- **Reason:** the format is the standard, the user can export a protected key and use it anywhere,
+  and an imported protected key does not need re-encoding by a format of ours. A key made by the app
+  was checked to open with `ssh-keygen -y -P`, and the keys `ssh-keygen` makes open in the app.
+- **A wrong passphrase** is told apart from a damaged file by the two check words of the format
+  (they only match when the decryption worked): `WrongPassphrase` against `CorruptKey`.
+- **A "PIN":** the minimum is 4 characters, so a four-digit PIN is allowed, but the dialogs say that a
+  long phrase is much stronger. A short secret falls to an offline attack by whoever has the encrypted
+  file *and* gets past the Keystore (see D-PK-6); the Keystore layer is what makes that hard.
+- **Alternatives:** an own format with AES-GCM and PBKDF2 (non-standard, not exportable, and a weaker KDF
+  than `bcrypt_pbkdf` for a short secret on a phone); Argon2 (not in the platform, a new dependency).
+
+### D-PK-2 · 2026-10-26 · `bcrypt_pbkdf` written in Kotlin, no new dependency
+- **Decision:** `BcryptPbkdf` (+ `BlowfishState`, `BlowfishTables`), about 200 lines, and `AES/CTR|CBC` from
+  the platform. No BouncyCastle (the reason in D-T14-2 stands: 2 MB and another license).
+- **The Blowfish constants** are the first 1042 words of the hexadecimal digits of pi. They were not
+  typed from memory: a script computes pi with big integers (Machin's formula) and writes them as text,
+  and the first, the 19th and the last word were checked against the published values.
+- **Checked** against OpenBSD's reference vector (`password`/`salt`/4 rounds), against three keys written by
+  OpenSSH 10.2 (`aes256-ctr`, `aes256-cbc`, a non-ASCII passphrase; they are in the tests as base64
+  without the frame, with the passphrase in the open: throwaway keys made for this, worth nothing), and, when
+  `ssh-keygen` is installed (CI and developer machines), live in both directions for every supported
+  cipher and for RSA.
+- **Cost:** the default 16 rounds run in a fraction of a second on a PC; on a phone it was **not timed**.
+  It runs on the CPU dispatcher, never on the main thread.
+- **Wiping:** the derived key, the decrypted section, the SHA-512 digests and the Blowfish state are zeroed
+  after use, and the passphrase handed around the domain is a `ByteArray` the caller wipes. A Compose text field
+  holds a `String`, which cannot be wiped: the UI copies it to a `CharArray` at the last moment and the
+  ViewModels wipe that copy. This is "where practical", not a guarantee against a memory dump.
+
+### D-PK-3 · 2026-10-26 · Where the passphrase can be set, changed or removed
+- **Generate:** an optional passphrase and its confirmation. **Import:** a field "its passphrase (if any)";
+  a protected OpenSSH key is checked with it and stays protected by the same one. An unprotected key
+  ignores the field (protect it afterwards). **Existing keys:** the key's action sheet offers "Set",
+  "Change" or "Remove the passphrase". Changing and removing need the current one; a wrong current one
+  changes nothing. Keys stored before this change are unprotected and keep working as they were.
+- **Rewriting a key** (`SshKeyService.changePassphrase`) reads the stored text, decrypts it, encodes it
+  again with a fresh salt and replaces both files. The `.key` is written before the `.meta`; whether a key is
+  protected is decided by the stored text itself, not by the flag in the `.meta`, so an interrupted
+  rewrite cannot leave a key that is shown as unprotected and then fails.
+- **Fields are not saved with the instance state** (`remember`, not `rememberSaveable`): a passphrase does not
+  go into a `Bundle`. Rotating the screen with a dialog open clears them.
+
+### D-PK-4 · 2026-10-26 · Connecting: ask, decrypt in the app, optionally keep unlocked for 15 minutes
+- **Decision:** `SshConnector.prepare` fails with `PassphraseRequired` when the key is protected and no
+  passphrase is remembered; the hosts screen then asks for it (a sheet with a secure field and a switch
+  "Keep it unlocked for 15 minutes") and calls `prepare` again. A wrong one comes back as `WrongPassphrase`
+  and the sheet shows it. The connector decrypts the key **in the app** and writes the *plain* key to the
+  same 0600 temporary file as before (D-T14-5); `ssh` never sees a passphrase.
+- **Keep unlocked:** `PassphraseCache`, in memory only, keyed by the key's alias, 15 minutes from when it was
+  typed (not extended by use), zeroed when it expires, is forgotten, or when the key is changed or deleted, and lost
+  when the process ends. A remembered passphrase that stops fitting is dropped at the first failure.
+- **Why not let `ssh` ask in the terminal** (write the encrypted key and let OpenSSH prompt): it would keep
+  the key encrypted on disk while the session lasts, which is better, but the passphrase would be typed in
+  the terminal (the keyboard policy, the extra keys row, scrollback, shell history of other programs) and the
+  app could not offer "keep unlocked". The cleaner fix for both is an in-app `ssh-agent` (D-PK-8), so
+  this stays as the next step.
+- **Biometrics (not done):** the app does not use `BiometricPrompt`, and the Keystore key here is not bound
+  to user authentication (D-T14-4 chose one-tap connections). Binding a Keystore key to biometrics to
+  wrap the passphrase needs `androidx.biometric` (Apache-2.0, no Play Services) and a device to try it on;
+  it was left out rather than shipped untested. It would be an opt-in "unlock with fingerprint" next to
+  "keep unlocked".
+
+### D-PK-5 · 2026-10-26 · Backups, logs and Android's own backup
+- A protected key goes into the configuration backup as the same encrypted text with `passphraseProtected:
+  true`; a backup from before this change has no such field and reads as unprotected. A backup that includes SSH
+  keys stays optionally encrypted with its own password (T15); a protected key is therefore covered by two
+  secrets in an encrypted backup, and by one (its passphrase) in a plain one.
+- `allowBackup` is `false` and `data_extraction_rules.xml` and `backup_rules.xml` exclude files, databases and
+  shared preferences from cloud backup and device transfer; nothing was changed there. The passphrase is
+  never written to disk, preferences, logs or the saved instance state. No error type carries it, and
+  `KeyUnlock.toString` omits it.
+
+### D-PK-6 · 2026-10-26 · Threat model with a passphrase
+- **Now also protects against:** a lost or borrowed phone that is unlocked (or whose Keystore is used by
+  a rooted attacker): the stored key is still encrypted by the passphrase, and the 15-minute window is the
+  only time it is in memory. A stolen storage dump is covered twice.
+- **Still does not protect against:** the 0600 temporary file with the *decrypted* key while a session is
+  open (D-T14-5/6; the in-app agent is the way out); another program inside the distro reading it; a short
+  PIN against someone who has both the encrypted file and the Keystore; malware with root reading the
+  process memory while the key is unlocked; a keyboard that logs what is typed.
+- **A brute-force limit** on wrong attempts is not implemented: each attempt costs one `bcrypt_pbkdf`, which
+  slows a person at the screen but is not a lockout.
+
+### D-PK-7 · 2026-10-26 · Hardware security keys: research and outcome
+**Outcome: not implemented in this change. Documented here as the follow-up, with the design.**
+
+- **What the app actually runs:** the app has no SSH library. It starts OpenSSH's `ssh` inside proot (D-T14-1).
+  So "does our SSH library support `sk-ssh-ed25519@openssh.com`" becomes "can `ssh` in proot reach the key":
+  OpenSSH (8.2 or later, on the server too) supports `sk-ssh-ed25519@openssh.com` and
+  `sk-ecdsa-sha2-nistp256@openssh.com`, but its client talks to the key through a *security key provider*
+  (the built-in USB HID one, or `libfido2`), which opens `/dev/hidraw*`. Inside proot on Android there is no
+  such device, and Android gives USB devices to the *app* as a file descriptor through `UsbManager`, not to the
+  processes proot starts. NFC is only available to the app. So `ssh` inside the distro cannot sign with a
+  YubiKey by itself, and no setting fixes that.
+- **Android's FIDO2 APIs cannot do it:** Credential Manager and Play Services' `Fido2ApiClient` are WebAuthn
+  for web origins: the relying party id is tied to the caller's origin and the client data is a JSON
+  structure the platform hashes; OpenSSH needs rp id `ssh:` and its own challenge hash. Play Services is
+  proprietary and forbidden here anyway (the free-software rules, F-Droid). This is why apps that do this talk to the key
+  themselves.
+- **What can talk to the key: Yubico's `yubikit-android`** (checked 2026-10-26): Apache-2.0 (compatible with
+  GPL-3.0-or-later), on Maven Central, no Play Services, actively maintained (3.x line; commits in
+  October 2026), USB and NFC, API 21+. Its `fido` module exposes the raw CTAP2 session (`Ctap2Session.makeCredential`
+  / `getAssertions` with an arbitrary rp id and client data hash, plus the PIN/UV protocols), which is what `ssh-sk`
+  needs; it also has `piv` and `openpgp` modules. Its transitive dependencies and the F-Droid scanner result
+  must be checked when it is added (`./gradlew dependencies`, `THIRD_PARTY_NOTICES.md`).
+- **What `ssh` would need from the app:** an **ssh-agent** the app serves. The app listens on a Unix
+  socket inside a folder bound into the guest (the same trick as `/ut-ssh` for `known_hosts`, D-T14-10), the
+  host entry passes `-o IdentityAgent=...`, and the agent answers `REQUEST_IDENTITIES` and `SIGN_REQUEST` by
+  talking to the key through yubikit. Every route below needs this agent; none can work without it.
+- **Routes, in the order I would build them:**
+  1. **FIDO2 `sk-ssh-ed25519` / `sk-ecdsa-sha2-nistp256`.** Registration is `makeCredential` (rp `ssh:`,
+     Ed25519 where the key supports it, otherwise ES256; a non-resident credential whose handle goes in the stored key file,
+     or a resident one). Signing is `getAssertion` with the SHA-256 of the data OpenSSH sends as the
+     client data hash; the SSH signature is the raw signature plus the `flags` byte and the 4-byte counter from the authenticator
+     data. A touch is needed for every signature, and the PIN if the credential asks. Needs OpenSSH 8.2+ on every server.
+  2. **PIV** (yubikit `piv`): ECDSA P-256/P-384 or RSA keys in a slot, with a PIN (and touch) policy; the
+     public key is a standard `ecdsa-sha2-nistp256` or `ssh-rsa` one, so **any server accepts it**, old or new.
+     The agent hashes and signs through PIV. The app does not support ECDSA keys yet (D-T14-2), so the public-key
+     line and the signature conversion (DER to SSH `r`,`s`) are new code.
+  3. **OpenPGP** (yubikit `openpgp`, or the OpenKeychain route that ConnectBot uses): an authentication
+     subkey signs; Ed25519 on recent keys. Similar to PIV, with the GnuPG key management on top.
+- **Why it was left out of this change** (rather than shipped half-done): it cannot be tested without a real
+  YubiKey and a phone, which this change did not have, and the code would be the sign-in path of a trip
+  nobody could rehearse; it needs a long-lived agent service with a foreground USB/NFC flow (NFC needs a tap per
+  signature while the app is in the foreground and `ssh` blocks waiting); and a feature this size
+  should be reviewed on its own. The passphrase work above stands without it.
+- **The agent also pays back on its own:** with an in-app agent, protected software keys could be signed
+  without ever writing the decrypted key to the rootfs (the improvement D-T14-5 and D-PK-4 point at).
+  A reasonable order is: agent for software keys first, then FIDO2 (or PIV if servers older than 8.2 matter).
+
+### D-PK-8 · 2026-10-26 · What is still to do for hardware keys
+Agent service and socket binding; `yubikit` dependencies and notices; registration screen (touch/PIN prompts,
+NFC and USB permission); key type `sk-*` in `SshKeyType` and the stored key handle; the signature
+assembly; a 100 % tested pure core (agent protocol, signature formatting) with the device flow tested by hand.
+
+### D-PK: what has NOT been validated
+- Anything on a device: the dialogs, the `bcrypt_pbkdf` time on a low-end phone (it is a pure-JVM loop;
+  if it is slow, lower the default rounds or move to a native implementation), connecting with a protected
+  key in proot, and the 15-minute window.
+- The fields being cleared on rotation (by design), TalkBack on the new dialogs and the 48 dp targets.
+- `ssh` with a key written by `SshConnector` after decrypting a protected one: it is the same plain
+  `openssh-key-v1` text as before; the interop test checks that `ssh-keygen` reads protected files the app
+  writes and the app reads protected files `ssh-keygen` writes.
+- Hardware keys: nothing, see D-PK-7.
 
