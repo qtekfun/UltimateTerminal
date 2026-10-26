@@ -3073,3 +3073,5 @@ assembly; a 100 % tested pure core (agent protocol, signature formatting) with t
   writes and the app reads protected files `ssh-keygen` writes.
 - Hardware keys: nothing, see D-PK-7.
 
+### D-REL-10 · 2026-10-26 · 0.1.6
+- `0.1.6` (versionCode 10699) is published with passphrase/PIN protection for SSH keys, needed before a trip. It is a patch bump, as 0.1.5 was for its features: before 1.0.0 the app stays `0.1.x`. The changelog says the feature is not tried on a device yet.

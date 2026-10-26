@@ -1,0 +1,1 @@
+Protege las claves SSH con una frase de paso o un PIN: se pone, cambia o quita desde el menú de la clave, y se puede mantener desbloqueada 15 minutos.

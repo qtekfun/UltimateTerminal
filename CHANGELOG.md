@@ -10,6 +10,11 @@ and the project uses [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-10-26
+
+SSH keys can now be protected with a passphrase. Not tried on a device yet; the README says what has been
+tried where.
+
 ### Added
 - SSH keys can now be protected with a passphrase (or a PIN of at least four characters). Generate a key
   with one, import an OpenSSH key that has one, or set, change or remove it on a key you already have, from

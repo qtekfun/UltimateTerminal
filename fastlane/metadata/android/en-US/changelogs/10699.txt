@@ -1,0 +1,1 @@
+Protect SSH keys with a passphrase or PIN: set, change or remove it from the key's menu, and keep a key unlocked for 15 minutes.
