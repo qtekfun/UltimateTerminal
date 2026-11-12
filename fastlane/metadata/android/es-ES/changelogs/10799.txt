@@ -1,0 +1,1 @@
+Copiar y pegar usan el menú flotante de Android, colocado sobre la parte visible de la selección; el scroll ya no la borra, y arrastrar un tirador al borde desplaza la pantalla para ampliarla.

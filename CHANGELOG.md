@@ -10,6 +10,24 @@ and the project uses [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-11-12
+
+Copy and paste now use Android's own floating menu, and a selection survives scrolling. Not tried on a
+device yet.
+
+### Changed
+- Selecting text shows Android's floating text menu (Copy, Paste, Select all, Select line; what does not
+  fit goes to its overflow) instead of the app's own bar. It sits over the part of the selection that is on
+  screen, so a selection longer than a screen no longer hides it; it steps aside while you scroll or drag a
+  handle and comes back when you let go. Back closes it and clears the selection.
+
+### Fixed
+- Scrolling no longer clears the selection: only a real tap does.
+
+### Added
+- Dragging a selection handle to the top or bottom edge scrolls, so a selection can span several screens.
+- A long press that starts a selection vibrates.
+
 ## [0.1.6] - 2026-10-26
 
 SSH keys can now be protected with a passphrase. Not tried on a device yet; the README says what has been
