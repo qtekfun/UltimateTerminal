@@ -1,0 +1,1 @@
+Copy and paste use Android's floating text menu, placed over the visible part of the selection; scrolling keeps the selection, and dragging a handle to an edge scrolls to extend it.

@@ -3084,3 +3084,6 @@ assembly; a 100 % tested pure core (agent protocol, signature formatting) with t
 - **Gestures:** a tap is now one finger lifted within the touch slop and before the long-press timeout (`onPlainTap`), so no swipe clears the selection. Dragging a handle, or stretching after a long press, to the top or bottom band scrolls the view and extends the selection (`edgeScrollLines`, faster past the edge), so selections can span several screens. A long press vibrates.
 - **Not done:** other apps' actions (Translate, `ACTION_PROCESS_TEXT`) — a `TextView` adds them itself, a canvas does not; and moving the selection when new output scrolls the screen.
 - **Not validated on a device.**
+
+### D-REL-11 · 2026-11-12 · 0.1.7
+- At the user's request ("cuando esté todo, PRs que pasen CI, mergeamos y sacamos release; eso es lo que yo pruebo") `0.1.7` (versionCode 10799) is published with Android's floating text menu for the selection and the selection kept while scrolling (D-SEL-2), plus Gradle 9.9.1 and the dependency bumps that unblocked CI. Not tried on a device; the user tests this release.
