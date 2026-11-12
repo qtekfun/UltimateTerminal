@@ -4,10 +4,11 @@
 package com.qtekfun.ultimateterminal.ui
 
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
@@ -16,6 +17,7 @@ import com.qtekfun.ultimateterminal.domain.terminal.CellPosition
 import com.qtekfun.ultimateterminal.domain.terminal.TerminalSelection
 import com.qtekfun.ultimateterminal.terminal.TerminalPainter
 import com.qtekfun.ultimateterminal.terminal.TerminalViewModel
+import kotlinx.coroutines.coroutineScope
 
 /** Everything the terminal's touch handling needs from the screen. */
 @Suppress("LongParameterList")
@@ -24,15 +26,18 @@ internal class TerminalGestureInput(
     val painter: TerminalPainter,
     val description: String,
     val showKeyboard: String,
+    val haptics: HapticFeedback,
     val onTap: () -> Unit,
+    val onTouchInProgress: (Boolean) -> Unit,
     val cellAt: (Offset) -> CellPosition,
     val selection: () -> TerminalSelection?,
     val topRow: () -> Int
 )
 
 /**
- * Tap raises the keyboard, a vertical drag scrolls, a long press picks a word and dragging stretches
- * it, a pinch zooms, and a touch on a selection handle moves that end of the selection.
+ * Tap raises the keyboard (and drops the selection), a vertical drag scrolls, a long press picks a
+ * word and dragging stretches it, a pinch zooms, and a touch on a selection handle moves that end of
+ * the selection. Stretching a selection to an edge scrolls. Scrolling never changes the selection.
  */
 internal fun Modifier.terminalGestures(input: TerminalGestureInput): Modifier {
     val viewModel = input.viewModel
@@ -45,11 +50,11 @@ internal fun Modifier.terminalGestures(input: TerminalGestureInput): Modifier {
                 true
             }
         }
-        .pointerInput(painter) {
-            detectTapGestures(onTap = {
-                viewModel.selection.clear()
-                input.onTap()
-            })
+        // First of all on the way in: it only watches, to hide the floating menu during a gesture.
+        .trackTouchInProgress(input.onTouchInProgress)
+        .onPlainTap {
+            viewModel.selection.clear()
+            input.onTap()
         }
         .pointerInput(painter) {
             detectVerticalDragGestures { _, dragAmount ->
@@ -57,12 +62,24 @@ internal fun Modifier.terminalGestures(input: TerminalGestureInput): Modifier {
             }
         }
         .pointerInput(painter) {
-            detectDragGesturesAfterLongPress(
-                onDragStart = { viewModel.selection.selectWord(input.cellAt(it)) },
-                onDrag = { change, _ ->
-                    viewModel.selection.extend(input.cellAt(change.position))
-                }
-            )
+            coroutineScope {
+                val autoScroll =
+                    EdgeAutoScroll(this, this@pointerInput, painter, viewModel::scrollLines) {
+                        viewModel.selection.extend(input.cellAt(it))
+                    }
+                detectDragGesturesAfterLongPress(
+                    onDragStart = {
+                        input.haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.selection.selectWord(input.cellAt(it))
+                    },
+                    onDrag = { change, _ ->
+                        viewModel.selection.extend(input.cellAt(change.position))
+                        autoScroll.follow(change.position)
+                    },
+                    onDragEnd = autoScroll::stop,
+                    onDragCancel = autoScroll::stop
+                )
+            }
         }
         // Next to last, so it sees the events first and can take a two-finger pinch.
         .pinchToZoom(viewModel.fontSize::pinch)
@@ -71,6 +88,7 @@ internal fun Modifier.terminalGestures(input: TerminalGestureInput): Modifier {
             selection = input.selection,
             topRow = input.topRow,
             painter = painter,
+            scrollLines = viewModel::scrollLines,
             onMove = viewModel.selection::moveEnd
         )
 }

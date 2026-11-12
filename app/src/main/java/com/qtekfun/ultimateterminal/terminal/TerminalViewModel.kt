@@ -230,6 +230,11 @@ class TerminalViewModel @Inject constructor(
         if (lines != 0) topRowState.value = clampTopRow(topRowState.value - lines, transcriptRows)
     }
 
+    /** Moves the view [lines] rows (negative: back into the history), as a selection drag does at an edge. */
+    fun scrollLines(lines: Int) {
+        topRowState.value = clampTopRow(topRowState.value + lines, transcriptRows)
+    }
+
     private fun scrollToLiveScreen() {
         topRowState.value = 0
         scroll.reset()

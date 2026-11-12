@@ -18,14 +18,15 @@ class PasteButtonGuardTest {
         File(main, "java/com/qtekfun/ultimateterminal/$path").readText()
 
     @Test
-    fun `the selection bar offers Paste next to Copy`() {
+    fun `the selection menu offers Paste next to Copy`() {
         val screen = source("ui/TerminalScreen.kt")
-        val bar = source("ui/SelectionActions.kt")
+        val bar = source("ui/NativeSelectionToolbar.kt")
         assertTrue("viewModel.selection::copy" in screen)
         assertTrue("viewModel::paste" in screen)
         assertTrue("R.string.terminal_copy" in bar)
         assertTrue("R.string.terminal_paste" in bar)
         assertTrue("R.string.terminal_select_all" in bar)
+        assertTrue("android.R.id.paste -> paste()" in bar)
     }
 
     @Test

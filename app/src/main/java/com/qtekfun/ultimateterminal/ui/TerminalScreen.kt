@@ -41,9 +41,12 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -75,6 +78,7 @@ import com.qtekfun.ultimateterminal.domain.terminal.KeyboardType
 import com.qtekfun.ultimateterminal.domain.terminal.extraKeysHeightPx
 import com.qtekfun.ultimateterminal.domain.terminal.reserveBottom
 import com.qtekfun.ultimateterminal.domain.terminal.terminalLayoutFor
+import com.qtekfun.ultimateterminal.domain.terminal.visibleIn
 import com.qtekfun.ultimateterminal.domain.terminal.withTextMargin
 import com.qtekfun.ultimateterminal.domain.theme.TerminalColorScheme
 import com.qtekfun.ultimateterminal.domain.theme.ThemeDecision
@@ -440,9 +444,10 @@ internal fun TerminalCanvas(
         }
     }
 
+    // The live value, not the composed one: an edge scroll moves it between two frames.
     fun cellAt(offset: Offset) = CellPosition(
         column = (offset.x / painter.cellWidth).toInt().coerceAtLeast(0),
-        row = (offset.y / painter.cellHeight).toInt().coerceAtLeast(0) + topRow
+        row = (offset.y / painter.cellHeight).toInt().coerceAtLeast(0) + viewModel.topRow.value
     )
 
     // The screen is drawn, so a screen reader gets a name and a way to raise the keyboard, not the
@@ -450,22 +455,29 @@ internal fun TerminalCanvas(
     val description = stringResource(R.string.terminal_description)
     val showKeyboard = stringResource(R.string.terminal_show_keyboard)
     val handleColor = IosTheme.colors.tint
+    val haptics = LocalHapticFeedback.current
     val currentSelection by rememberUpdatedState(selection)
-    val currentTopRow by rememberUpdatedState(topRow)
+    var touchInProgress by remember { mutableStateOf(false) }
+    var origin by remember { mutableStateOf(Offset.Zero) }
     Box(Modifier.fillMaxSize()) {
         Canvas(
-            Modifier.fillMaxSize().terminalGestures(
-                TerminalGestureInput(
-                    viewModel = viewModel,
-                    painter = painter,
-                    description = description,
-                    showKeyboard = showKeyboard,
-                    onTap = onTap,
-                    cellAt = ::cellAt,
-                    selection = { currentSelection },
-                    topRow = { currentTopRow }
+            Modifier
+                .fillMaxSize()
+                .onGloballyPositioned { origin = it.positionInRoot() }
+                .terminalGestures(
+                    TerminalGestureInput(
+                        viewModel = viewModel,
+                        painter = painter,
+                        description = description,
+                        showKeyboard = showKeyboard,
+                        haptics = haptics,
+                        onTap = onTap,
+                        onTouchInProgress = { touchInProgress = it },
+                        cellAt = ::cellAt,
+                        selection = { currentSelection },
+                        topRow = { viewModel.topRow.value }
+                    )
                 )
-            )
         ) {
             // Reading the frame here makes only the drawing, not the composition, depend on it.
             val emulator = viewModel.emulator
@@ -474,20 +486,34 @@ internal fun TerminalCanvas(
                 selection?.let { drawSelectionHandles(it, topRow, painter, handleColor) }
             }
         }
-        selection?.let {
-            SelectionToolbar(
-                selection = it,
-                topRow = topRow,
-                painter = painter,
-                actions = SelectionActions(
-                    copy = viewModel.selection::copy,
-                    paste = viewModel::paste,
-                    selectAll = viewModel.selection::selectAll,
-                    selectLine = { viewModel.selection.selectLine(it.start.row) }
-                )
-            )
-        }
+        SelectionMenu(viewModel, painter, { origin }, hidden = touchInProgress)
     }
+}
+
+/** The system's floating menu over the part of the selection that is on screen. */
+@Composable
+private fun SelectionMenu(
+    viewModel: TerminalViewModel,
+    painter: TerminalPainter,
+    origin: () -> Offset,
+    hidden: Boolean
+) {
+    val topRow by viewModel.topRow.collectAsStateWithLifecycle()
+    val selection by viewModel.selection.selection.collectAsStateWithLifecycle()
+    val emulator = viewModel.emulator
+    NativeSelectionToolbar(
+        visible = emulator?.let { selection?.visibleIn(topRow, it.mRows, it.mColumns) },
+        painter = painter,
+        origin = origin,
+        hidden = hidden,
+        actions = SelectionActions(
+            copy = viewModel.selection::copy,
+            paste = viewModel::paste,
+            selectAll = viewModel.selection::selectAll,
+            selectLine = { selection?.let { viewModel.selection.selectLine(it.start.row) } },
+            dismiss = viewModel.selection::clear
+        )
+    )
 }
 
 /** A little more than the 200 ms of the sidebar's animation. */
